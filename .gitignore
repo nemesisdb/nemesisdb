@@ -1,0 +1,3 @@
+build/*
+server/Debug/bin/*
+server/Release/bin/*
