@@ -11,6 +11,7 @@ namespace fusion { namespace core {
 #define fc_always_inline inline __attribute__((always_inline))
 
 static const char * FUSION_VERSION = "0.2.0";
+static const std::size_t FUSION_MAX_CORES = 64U;
 
 
 static inline bool setThreadAffinity(const std::thread::native_handle_type handle, const size_t core)

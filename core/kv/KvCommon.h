@@ -3,9 +3,11 @@
 
 #include <map>
 #include <array>
+#include <any>
 #include <nlohmann/json.hpp>
 #include <uwebsockets/App.h>
 #include <core/FusionCommon.h>
+
 
 namespace fusion { namespace core { namespace kv {
 
@@ -58,6 +60,7 @@ enum class KvRequestStatus
   CommandUnknown = 10,
   CommandNotExist,
   CommandInvalid, // root invalid
+  JsonInvalid,
   KeySet = 20,
   KeyUpdated,
   KeyNotExist,
@@ -65,9 +68,8 @@ enum class KvRequestStatus
   KeyRemoved,
   KeyLengthInvalid,
   KeyMissing,  
-  ValueMissing,
+  ValueMissing = 40,
   ValueTypeInvalid,
-  JsonInvalid,
   TypeInvalid,
   ExcessKeys,
   Unknown = 100
@@ -90,7 +92,7 @@ struct PoolRequestResponse
 { 
   using enum KvRequestStatus;
 
-  static kvjson getFound (cachedpair pair/*, const KvMetrics m*/)
+  static kvjson getFound (cachedpair pair)
   {
     kvjson rsp;    
     rsp["GET_RSP"] = std::move(pair);
@@ -98,7 +100,7 @@ struct PoolRequestResponse
     return rsp;
   }
 
-  static kvjson getNotFound (cachedpair key/*, const KvMetrics m*/)
+  static kvjson getNotFound (cachedpair key)
   {
     kvjson rsp;
     rsp["GET_RSP"]["st"] = KeyNotExist;
@@ -106,7 +108,7 @@ struct PoolRequestResponse
     return rsp;
   }
 
-  static kvjson keySet (const bool isSet, const std::string_view k/*, const KvMetrics m*/)
+  static kvjson keySet (const bool isSet, const std::string_view k)
   {
     kvjson rsp;
     rsp["SET_RSP"]["st"] = isSet ? KeySet : KeyUpdated;
@@ -114,7 +116,7 @@ struct PoolRequestResponse
     return rsp;
   }
 
-  static kvjson keySet (const bool isSet, std::string&& k/*, const KvMetrics m*/)
+  static kvjson keySet (const bool isSet, std::string&& k)
   {
     kvjson rsp;
     rsp["SET_RSP"]["st"] = isSet ? KeySet : KeyUpdated;
@@ -122,7 +124,7 @@ struct PoolRequestResponse
     return rsp;
   }
   
-  static kvjson keyAdd (const bool isAdded, const std::string_view k/*, const KvMetrics m*/)
+  static kvjson keyAdd (const bool isAdded, const std::string_view k)
   {
     kvjson rsp;
     rsp["ADD_RSP"]["st"] = isAdded ? KeySet : KeyExists;
@@ -130,14 +132,12 @@ struct PoolRequestResponse
     return rsp;
   }
 
-  static PoolRequestResponse keyRemoved (const bool removed, const std::string_view k/*, const KvMetrics m*/)
+  static kvjson keyRemoved (const bool removed, const std::string_view k)
   {
-    return PoolRequestResponse{.status = removed ? KeyRemoved : KeyNotExist, .contents = kvjson{{"k", k}}/*, .metrics = m*/};
-  }
-
-  static PoolRequestResponse clear (const std::size_t nCleared/*, const KvMetrics m*/)
-  {
-    return PoolRequestResponse{.status = Ok/*, .metrics = m*/, .affectedCount = nCleared};
+    kvjson rsp;
+    rsp["RMV_RSP"]["st"] = removed ? KeyRemoved : KeyNotExist;
+    rsp["RMV_RSP"]["k"] = std::move(k);
+    return rsp;
   }
 
   static PoolRequestResponse count (const std::size_t count/*, const KvMetrics m*/)
@@ -179,6 +179,7 @@ struct KvCommand
   uWS::Loop * loop; // the uWS event loop, so we can defer() websocket calls on an event loop thread
   kvjson contents;  // json taken from the request, contents depends on the query
   KvQueryType type; 
+  std::function<void(std::any)> cordinatedResponseHandler; 
 };
 
 using KvWebSocket = uWS::WebSocket<false, true, KvRequest>;

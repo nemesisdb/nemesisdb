@@ -108,40 +108,33 @@ private:
         command.loop->defer([ws = command.ws, added = false, key = std::move(key)]{ ws->send(PoolRequestResponse::keyAdd(added, std::move(key)).dump(), kv::WsSendOpCode);});
     };
 
-
-    /*
-
-    auto add = [](CacheMap& map, KvQuery& query)
+    auto remove = [](CacheMap& map, KvCommand& command)
     {
-      const auto& key = query.contents.items().begin().key(); 
-      auto& value = query.contents.items().begin().value(); 
-
-      const auto [ignore, added] = map.emplace(key, std::move(value));
-
-      //query.metrics.poolHandlerComplete = KvClock::now();
-      //query.rspHandler(PoolRequestResponse::keyAdd(added, key, //query.metrics));
-    };
-
-    auto addQ = add;  // they are the same, the handler decides if a response is sent.
-
-    auto remove = [](CacheMap& map, KvQuery& query)
-    {
-      const auto& key = query.contents.get_ref<const std::string&>();
+      const auto& key = command.contents.get_ref<const std::string&>();
       const auto nRemoved = map.erase(key);
 
-      //query.metrics.poolHandlerComplete = KvClock::now();
-      //query.rspHandler(PoolRequestResponse::keyRemoved(nRemoved != 0U, key, //query.metrics));
+      command.loop->defer([ws = command.ws, removed = nRemoved != 0U, key = std::move(key)]{ ws->send(PoolRequestResponse::keyRemoved(removed, std::move(key)).dump(), kv::WsSendOpCode);});
     };
 
-    auto clear = [](CacheMap& map, KvQuery& query)
+    auto clear = [](CacheMap& map, KvCommand& command)
     {
-      const auto size = map.size();
-      map.clear();
-      //query.metrics.poolHandlerComplete = KvClock::now();
+      const std::size_t size = map.size();
+      bool valid = true;
 
-      //query.rspHandler(PoolRequestResponse::clear(size, //query.metrics));
+      try
+      {
+        map.clear();
+      }
+      catch (...)
+      {
+        valid = false;
+      }
+      
+      command.cordinatedResponseHandler(std::make_any<std::tuple<bool, std::size_t>>(std::make_tuple(valid, size)));
     };
 
+
+    /*
     auto serverInfo = [](CacheMap& map, KvQuery& query)
     {
       const auto size = map.size();
@@ -174,17 +167,18 @@ private:
     };
     */
     
-    static const std::array<std::function<void(CacheMap&, KvCommand&)>, static_cast<std::size_t>(5U/*KvQueryType::Max*/)> handlers = 
+    static const std::array<std::function<void(CacheMap&, KvCommand&)>, static_cast<std::size_t>(7U/*KvQueryType::Max*/)> handlers = 
     {      
       set,
       setQ,
       get,
       add,
-      addQ/*,
+      addQ,
       remove,
-      clear,
+      clear/*,
       serverInfo,
-      renameKey*/
+      renameKey
+      */
     };
 
     CacheMap map;

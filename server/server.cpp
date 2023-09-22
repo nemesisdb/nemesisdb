@@ -18,7 +18,7 @@ int main()
 
   int port = 1987;
 
-  const auto nCores = std::thread::hardware_concurrency();
+  const auto nCores = std::min<std::size_t>(std::thread::hardware_concurrency(), FUSION_MAX_CORES);
   
   std::size_t nIoThreads = 1U;
 
@@ -34,6 +34,12 @@ int main()
 
   kv::KvHandler handlers {kv::MaxPools, nIoThreads};
   std::vector<std::jthread *> threads;
+
+  std::cout << "Total Cores: " << std::thread::hardware_concurrency() << '\n'
+            << "Max Cores: " << nCores << '\n'
+            << "I/O Threads: " << nIoThreads << '\n'
+            << "Pools: " << kv::MaxPools << '\n'
+            << "Pools First Core: " << nIoThreads << '\n'; 
 
   std::atomic_bool listenSuccess{true};
 
