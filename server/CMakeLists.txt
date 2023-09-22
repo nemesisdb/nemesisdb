@@ -3,11 +3,10 @@ project(fusion VERSION 0.1.0 LANGUAGES CXX)
 
 include_directories("../")
 include_directories("../vcpkg/installed/x64-linux/include")
+include_directories("../unordered_dense/include")
 link_directories("../vcpkg/installed/x64-linux/lib")
 
 # include_directories("./")
-# include_directories("../uuid_v4")
-# include_directories("../unordered_dense/include")
 
 
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/${CMAKE_BUILD_TYPE}/bin)

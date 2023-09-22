@@ -1,19 +1,14 @@
+#ifndef FC_CORE_FUSIONCOMMON_H
+#define FC_CORE_FUSIONCOMMON_H
 
 #include <string_view>
 #include <mutex>
 #include <ostream>
-#include <uwebsockets/App.h>
+
 
 namespace fusion { namespace core {
 
-struct QueryData
-{
-  uWS::WebSocket<false, true, QueryData> * ws;
-};
-
-
-using WebSocket = uWS::WebSocket<false, true, QueryData>;
-
+#define fc_always_inline inline __attribute__((always_inline))
 
 static const char * FUSION_VERSION = "0.2.0";
 
@@ -29,3 +24,5 @@ static inline bool setThreadAffinity(const std::thread::native_handle_type handl
 
 } // namespace core
 } // namespace fusion
+
+#endif
