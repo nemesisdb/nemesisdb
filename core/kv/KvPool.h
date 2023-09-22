@@ -51,6 +51,15 @@ private:
     
   void run ()
   {
+    auto doAdd = [](CacheMap& map, KvCommand& command) -> std::tuple<bool, std::string_view>
+    {
+      const auto& key = command.contents.items().begin().key(); 
+      auto& value = command.contents.items().begin().value(); 
+
+      const auto [ignore, added] = map.emplace(key, std::move(value));
+      return std::make_tuple(added, key);
+    };
+
     auto set = [](CacheMap& map, KvCommand& command)
     {
       const auto& key = command.contents.begin().key(); 
@@ -84,16 +93,6 @@ private:
       }
       else
         command.loop->defer([ws = command.ws, key = std::move(command.contents)]{ ws->send(PoolRequestResponse::getNotFound(std::move(key)).dump(), kv::WsSendOpCode);});
-    };
-
-    
-    auto doAdd = [](CacheMap& map, KvCommand& command) -> std::tuple<bool, std::string_view>
-    {
-      const auto& key = command.contents.items().begin().key(); 
-      auto& value = command.contents.items().begin().value(); 
-
-      const auto [ignore, added] = map.emplace(key, std::move(value));
-      return std::make_tuple(added, key);
     };
 
     auto add = [doAdd](CacheMap& map, KvCommand& command)
@@ -133,41 +132,42 @@ private:
       command.cordinatedResponseHandler(std::make_any<std::tuple<bool, std::size_t>>(std::make_tuple(valid, size)));
     };
 
-
-    /*
-    auto serverInfo = [](CacheMap& map, KvQuery& query)
+    auto serverInfo = [](CacheMap& map, KvCommand& command)
     {
-      const auto size = map.size();
-      //query.metrics.poolHandlerComplete = KvClock::now();
-
-      //query.rspHandler(PoolRequestResponse::count(size, //query.metrics));
+      // does nothing, never called, but required for handlers array below
     };
 
-    auto renameKey = [](CacheMap& map, KvQuery& query)
+    auto count = [](CacheMap& map, KvCommand& command)
     {
-      auto& existingKey = query.contents.begin().key();
-      auto newKey = query.contents.begin().value().get<std::string_view>();
+      command.cordinatedResponseHandler(std::make_any<std::size_t>(map.size()));
+    };
+
+    // auto renameKey = [](CacheMap& map, KvCommand& command)
+    // {
+    //   auto& existingKey = command.contents.begin().key();
+    //   auto newKey = command.contents.begin().value().get<std::string_view>();
       
-      if (auto it = map.find(existingKey) ; it != map.end())
-      {
-        const auto [ignore, inserted] = map.emplace(newKey, std::move(it->second));
+    //   if (auto it = map.find(existingKey) ; it != map.end())
+    //   {
+    //     const auto [ignore, inserted] = map.emplace(newKey, std::move(it->second));
 
-        if (inserted)
-          map.erase(existingKey);
-        
-        //query.metrics.poolHandlerComplete = KvClock::now();
-        inserted ?  //query.rspHandler(PoolRequestResponse::renameKey(query.contents, //query.metrics)) :
-                    //query.rspHandler(PoolRequestResponse::renameKeyFail(QueryStatus::KeyExists, query.contents, //query.metrics));
-      }
-      else
-      {
-        //query.metrics.poolHandlerComplete = KvClock::now();
-        //query.rspHandler(PoolRequestResponse::renameKeyFail(QueryStatus::KeyNotExist, query.contents, //query.metrics));
-      }
-    };
-    */
-    
-    static const std::array<std::function<void(CacheMap&, KvCommand&)>, static_cast<std::size_t>(7U/*KvQueryType::Max*/)> handlers = 
+    //     if (inserted)
+    //     {
+    //       map.erase(existingKey);
+    //       command.loop->defer([ws = command.ws, contents = std::move(command.contents)]{ ws->send(PoolRequestResponse::renameKey(std::move(contents)).dump(), kv::WsSendOpCode);});
+    //     }
+    //     else
+    //       command.loop->defer([ws = command.ws, contents = std::move(command.contents)]{ ws->send(PoolRequestResponse::renameKeyFail(KvRequestStatus::KeyExists, std::move(contents)).dump(), kv::WsSendOpCode);});
+    //   }
+    //   else
+    //   {
+    //     command.loop->defer([ws = command.ws, contents = std::move(command.contents)]{ ws->send(PoolRequestResponse::renameKeyFail(KvRequestStatus::KeyNotExist, std::move(contents)).dump(), kv::WsSendOpCode);}) ;
+    //   }
+    // };
+
+
+    // CAREFUL: these have to be in the order of KvQueryType enum
+    static const std::array<std::function<void(CacheMap&, KvCommand&)>, static_cast<std::size_t>(KvQueryType::Max)> handlers = 
     {      
       set,
       setQ,
@@ -175,10 +175,10 @@ private:
       add,
       addQ,
       remove,
-      clear/*,
+      clear,
       serverInfo,
-      renameKey
-      */
+      count/*,
+      renameKey*/
     };
 
     CacheMap map;

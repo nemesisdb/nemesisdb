@@ -16,6 +16,8 @@ int main()
 {
   std::cout << "Fusion v" << FUSION_VERSION << " starting\n";
 
+  kv::serverStats = new kv::ServerStats;
+
   int port = 1987;
 
   const auto nCores = std::min<std::size_t>(std::thread::hardware_concurrency(), FUSION_MAX_CORES);
@@ -45,7 +47,7 @@ int main()
 
   for (std::size_t i = 0U, core = 0 ; i < nIoThreads ; ++i, ++core)
   {
-    auto * thread = new std::jthread([&handlers, port, &listenSuccess]()
+    auto * thread = new std::jthread([&handlers, port, &listenSuccess, serverStats = kv::serverStats]()
     {
       auto wsApp = uWS::App().ws<kv::KvRequest>("/*",
       {
@@ -60,10 +62,12 @@ int main()
         {
           ws->getUserData()->ws = ws; // ws pointer is valid until the client disconnects (after close lambda exits)
         },
-        .message = [&handlers](kv::KvWebSocket * ws, std::string_view message, uWS::OpCode opCode)
+        .message = [&handlers, serverStats](kv::KvWebSocket * ws, std::string_view message, uWS::OpCode opCode)
         {   
+          ++serverStats->queryCount;
+
           if (opCode != uWS::OpCode::TEXT)
-            ws->send(kv::createErrorResponse(kv::KvRequestStatus::TypeInvalid).dump(), kv::WsSendOpCode);
+            ws->send(kv::createErrorResponse(kv::KvRequestStatus::OpCodeInvalid).dump(), kv::WsSendOpCode);
           else
           {
             if (auto request = kv::kvjson::parse(message, nullptr, false); request.is_discarded())

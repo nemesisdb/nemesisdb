@@ -34,7 +34,8 @@ enum class KvQueryType : std::uint8_t
   Remove,
   Clear,
   ServerInfo,
-  RenameKey,
+  Count,
+  //RenameKey,
   Max,
   Unknown,
 };
@@ -50,13 +51,15 @@ const std::map<std::string_view, KvQueryType> QueryNameToType =
   {"RMV",           KvQueryType::Remove},
   {"CLEAR",         KvQueryType::Clear},
   {"SERVER_INFO",   KvQueryType::ServerInfo},
-  {"RNM_KEY",       KvQueryType::RenameKey}
+  //{"RNM_KEY",       KvQueryType::RenameKey},
+  {"COUNT",         KvQueryType::Count}
 };
 
 
 enum class KvRequestStatus
 {
   Ok = 1,
+  OpCodeInvalid,
   CommandUnknown = 10,
   CommandNotExist,
   CommandInvalid, // root invalid
@@ -67,11 +70,10 @@ enum class KvRequestStatus
   KeyExists,
   KeyRemoved,
   KeyLengthInvalid,
-  KeyMissing,  
+  KeyMissing,
+  KeyTypeInvalid,
   ValueMissing = 40,
   ValueTypeInvalid,
-  TypeInvalid,
-  ExcessKeys,
   Unknown = 100
 };
 
@@ -87,7 +89,7 @@ enum class KvErrorCode
   Unknown  
 };
 
-// TODO this won't work, statis members are static for all pools. See about making the response object static per thread, thread_local may be useful or static PoolRequestResponse in the KvPool class
+
 struct PoolRequestResponse
 { 
   using enum KvRequestStatus;
@@ -140,19 +142,20 @@ struct PoolRequestResponse
     return rsp;
   }
 
-  static PoolRequestResponse count (const std::size_t count/*, const KvMetrics m*/)
+  static kvjson renameKey (kvjson pair)
   {
-    return PoolRequestResponse{.status = Ok/*, .metrics = m*/, .affectedCount = count};
+    kvjson rsp;
+    rsp["RNM_KEY_RSP"] = std::move(pair);
+    rsp["RNM_KEY_RSP"]["st"] = KeySet;    
+    return rsp;
   }
 
-  static PoolRequestResponse renameKey (kvjson pair/*, const KvMetrics m*/)
+  static kvjson renameKeyFail (const KvRequestStatus status, kvjson pair)
   {
-    return PoolRequestResponse{.status = KeySet, .contents = std::move(pair)/*, .metrics = m*/};
-  }
-
-  static PoolRequestResponse renameKeyFail (const KvRequestStatus status, kvjson pair/*, const KvMetrics m*/)
-  {
-    return PoolRequestResponse{.status = status, .contents = std::move(pair)/*, .metrics = m*/};
+    kvjson rsp;
+    rsp["RNM_KEY_RSP"] = std::move(pair);
+    rsp["RNM_KEY_RSP"]["st"] = status;    
+    return rsp;
   }
 
   static PoolRequestResponse unknownError ()
@@ -162,7 +165,6 @@ struct PoolRequestResponse
 
   KvRequestStatus status;
   kvjson contents;
-  //KvMetrics metrics;
   std::size_t affectedCount{0};
 };
 
@@ -185,6 +187,13 @@ struct KvCommand
 using KvWebSocket = uWS::WebSocket<false, true, KvRequest>;
 
 
+struct ServerStats
+{
+  std::atomic_size_t queryCount{0U};
+
+} * serverStats;
+
+
 static const std::array<std::function<bool(const std::string_view&, PoolId&)>, 2U> PoolIndexers =
 {
   [](const std::string_view& k, PoolId& id) -> bool
@@ -193,7 +202,7 @@ static const std::array<std::function<bool(const std::string_view&, PoolId&)>, 2
       return false;
 
     id = ((k[0U] + k[1U] + k[2U] + k[3U] + k[4U] + k[5U]) & 0xFFFFFFFF) % MaxPools;
-      return true;
+    return true;
   },
 
   [](const std::string_view& k, PoolId& id) -> bool
@@ -202,7 +211,7 @@ static const std::array<std::function<bool(const std::string_view&, PoolId&)>, 2
       return false;
 
     id = 0U;
-      return true;
+    return true;
   }
 };
 

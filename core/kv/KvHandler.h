@@ -16,7 +16,7 @@ namespace fusion { namespace core { namespace kv {
 class KvHandler
 {
 public:
-  KvHandler(const std::size_t nPools, const std::size_t coreOffset) : m_poolIndex(0U) // TODO
+  KvHandler(const std::size_t nPools, const std::size_t coreOffset) : m_poolIndex(nPools == 1U ? 1U : 0U)
   {
     for (std::size_t pool = 0, core = coreOffset ; pool < nPools ; ++pool, ++core)
       m_pools.emplace_back(new KvPool{core, pool});
@@ -25,7 +25,7 @@ public:
 private:
   
   // CAREFUL: these have to be in the order of KvQueryType enum
-  const std::function<void(KvRequest *)> Handlers[static_cast<std::size_t>(7U/*KvQueryType::Max*/)] = 
+  const std::function<void(KvRequest *)> Handlers[static_cast<std::size_t>(KvQueryType::Max)] =
   {
     std::bind(&KvHandler::set, std::ref(*this), std::placeholders::_1),
     std::bind(&KvHandler::setQ, std::ref(*this), std::placeholders::_1),
@@ -33,9 +33,10 @@ private:
     std::bind(&KvHandler::add, std::ref(*this), std::placeholders::_1),
     std::bind(&KvHandler::addQ, std::ref(*this), std::placeholders::_1),
     std::bind(&KvHandler::rmv, std::ref(*this), std::placeholders::_1),
-    std::bind(&KvHandler::clear, std::ref(*this), std::placeholders::_1)
-    // std::bind(&KvHandler::executeServerInfo, std::ref(*this), std::placeholders::_1),
-    // std::bind(&KvHandler::executeRenameKey, std::ref(*this), std::placeholders::_1)
+    std::bind(&KvHandler::clear, std::ref(*this), std::placeholders::_1),
+    std::bind(&KvHandler::serverInfo, std::ref(*this), std::placeholders::_1),
+    std::bind(&KvHandler::count, std::ref(*this), std::placeholders::_1)/*,
+    std::bind(&KvHandler::renameKey, std::ref(*this), std::placeholders::_1)*/
   };
 
 public:
@@ -55,6 +56,8 @@ public:
       if (auto itType = QueryNameToType.find(queryName) ; itType != QueryNameToType.cend())
       {
         auto handler = Handlers[static_cast<std::size_t>(itType->second)];
+
+        // TODO check command root is correct type (most are object, GET is array)
         
         try
         {
@@ -75,10 +78,11 @@ public:
 
 private:
 
-  void set(KvRequest * query)
+  fc_always_inline void set(KvRequest * query)
   {
     static const KvQueryType queryType = KvQueryType::Set;
     static const std::string_view queryName = "SET";
+    static const std::string_view queryRspName = "SET_RSP";
 
     for (auto& pair : query->json[queryName].items())
     {
@@ -96,24 +100,20 @@ private:
                                               .type = queryType});
         }
         else
-        {
-          // auto rsp = createErrorResponse(QueryStatus::KeyLengthInvalid, queryType, key);
-          // m_ws->write(asio::buffer(rsp.dump()));
-        }
+          query->ws->send(createErrorResponse(queryRspName, KvRequestStatus::KeyLengthInvalid, key).dump(), WsSendOpCode);
       }
       else
-      {
-        // auto rsp = createErrorResponse(QueryStatus::ValueTypeInvalid, queryType, key);
-        // m_ws->write(asio::buffer(rsp.dump()));
-      }
+        query->ws->send(createErrorResponse(queryRspName, KvRequestStatus::ValueTypeInvalid, key).dump(), WsSendOpCode);
     }
   }
 
 
-  void setQ(KvRequest * query)
+  fc_always_inline void setQ(KvRequest * query)
   {
     static const KvQueryType queryType = KvQueryType::SetQ;
     static const std::string_view queryName = "SETQ";
+    static const std::string_view queryRspName = "SETQ_RSP";
+
 
     for (auto& pair : query->json[queryName].items())
     {
@@ -131,34 +131,26 @@ private:
                                               .type = queryType});
         }
         else
-        {
-          // auto rsp = createErrorResponse(QueryStatus::KeyLengthInvalid, queryType, key);
-          // m_ws->write(asio::buffer(rsp.dump()));
-        }
+          query->ws->send(createErrorResponse(queryRspName, KvRequestStatus::KeyLengthInvalid, key).dump(), WsSendOpCode);
       }
       else
-      {
-        // auto rsp = createErrorResponse(QueryStatus::ValueTypeInvalid, queryType, key);
-        // m_ws->write(asio::buffer(rsp.dump()));
-      }
+        query->ws->send(createErrorResponse(queryRspName, KvRequestStatus::ValueTypeInvalid, key).dump(), WsSendOpCode);
     }
   }
 
 
-  void get(KvRequest * query)
+  fc_always_inline void get(KvRequest * query)
   {
     static const KvQueryType queryType = KvQueryType::Get;
     static const std::string_view queryName = "GET";
+    static const std::string_view queryRspName = "GET_RSP";
 
     for (auto& jsonKey : query->json[queryName])
     {
       bool valid = true;
 
       if (!jsonKey.is_string())
-      {
-        //auto rsp = createErrorResponse(QueryStatus::TypeInvalid, queryType, "key is not a string");
-        //m_ws->write(asio::buffer(rsp.dump()));
-      }
+        query->ws->send(createErrorResponse(queryRspName, KvRequestStatus::KeyTypeInvalid).dump(), WsSendOpCode);
       else
       {
         PoolId poolId;
@@ -172,16 +164,13 @@ private:
                                               .type = queryType});
         }
         else
-        {
-          // auto rsp = createErrorResponse(QueryStatus::KeyLengthInvalid, queryType, key);
-          // m_ws->write(asio::buffer(rsp.dump()));
-        }
+          query->ws->send(createErrorResponse(queryRspName, KvRequestStatus::KeyLengthInvalid).dump(), WsSendOpCode);
       }
     }
   }
 
 
-  void doAdd(KvRequest * query, const KvQueryType queryType, const std::string_view queryName)
+  fc_always_inline void doAdd(KvRequest * query, const KvQueryType queryType, const std::string_view queryName, const std::string_view queryRspName)
   {
     for (auto& pair : query->json[queryName].items())
     {
@@ -199,40 +188,37 @@ private:
                                               .type = queryType});
         }
         else
-        {
-          // auto rsp = createErrorResponse(QueryStatus::KeyLengthInvalid, queryType, key);
-          // m_ws->write(asio::buffer(rsp.dump()));
-        }
+          query->ws->send(createErrorResponse(queryRspName, KvRequestStatus::KeyLengthInvalid, key).dump(), WsSendOpCode);
       }
       else
-      {
-        // auto rsp = createErrorResponse(QueryStatus::ValueTypeInvalid, queryType, key);
-        // m_ws->write(asio::buffer(rsp.dump()));
-      }
+        query->ws->send(createErrorResponse(queryRspName, KvRequestStatus::ValueTypeInvalid, key).dump(), WsSendOpCode);
     }
   }
 
 
-  void add(KvRequest * query)
+  fc_always_inline void add(KvRequest * query)
   {
     static const KvQueryType queryType = KvQueryType::Add;
     static const std::string_view queryName = "ADD";
+    static const std::string_view queryRspName = "ADD_RSP";
 
-    doAdd(query, queryType, queryName);
+    doAdd(query, queryType, queryName, queryRspName);
   }
 
-  void addQ(KvRequest * query)
+  fc_always_inline void addQ(KvRequest * query)
   {
     static const KvQueryType queryType = KvQueryType::AddQ;
     static const std::string_view queryName = "ADDQ";
+    static const std::string_view queryRspName = "ADDQ_RSP";
 
-    doAdd(query, queryType, queryName);
+    doAdd(query, queryType, queryName, queryRspName);
   }
 
-  void rmv(KvRequest * query)
+  fc_always_inline void rmv(KvRequest * query)
   {
     static const KvQueryType queryType = KvQueryType::Remove;
     static const std::string_view queryName = "RMV";
+    static const std::string_view queryRspName = "RMV_RSP";
 
     for (auto& key : query->json[queryName])
     {
@@ -250,20 +236,14 @@ private:
                                             .type = queryType});
         }
         else
-        {
-          // auto rsp = createErrorResponse(QueryStatus::KeyLengthInvalid, queryType, k);
-          // m_ws->write(asio::buffer(rsp.dump()));
-        }
+          query->ws->send(createErrorResponse(queryRspName, KvRequestStatus::KeyLengthInvalid, k).dump(), WsSendOpCode);
       }
       else
-      {
-        // auto rsp = createErrorResponse(QueryStatus::TypeInvalid, queryType, "key is not a string");
-        // m_ws->write(asio::buffer(rsp.dump()));
-      }
+        query->ws->send(createErrorResponse(queryRspName, KvRequestStatus::KeyTypeInvalid).dump(), WsSendOpCode);
     }
   }
 
-  void clear(KvRequest * query)
+  fc_always_inline void clear(KvRequest * query)
   {
     static const KvQueryType queryType = KvQueryType::Clear;
     static const std::string_view queryName = "CLEAR";
@@ -275,14 +255,14 @@ private:
     std::atomic_ref<bool> clearedRef{cleared};
 
     std::latch done{static_cast<std::ptrdiff_t>(m_pools.size())};
-    
+
 
     auto onPoolResponse = [this, &done, &countRef, &clearedRef](std::any poolResult)
     {
       auto [success, count] = std::any_cast<std::tuple<bool, std::size_t>>(poolResult);
       
       if (success)
-        countRef += std::any_cast<std::size_t>(count);
+        countRef += count;
       else
         clearedRef = false;
 
@@ -292,7 +272,6 @@ private:
     for (auto& pool : m_pools)
     {
       pool->execute(KvCommand{  .ws = query->ws,
-                                .loop = uWS::Loop::get(),
                                 .type = queryType,
                                 .cordinatedResponseHandler = onPoolResponse});
     }
@@ -305,6 +284,63 @@ private:
 
     query->ws->send(rsp.dump(), WsSendOpCode);
   }
+
+  fc_always_inline void serverInfo(KvRequest * query)
+  {
+    static const KvQueryType queryType = KvQueryType::ServerInfo;
+    static const std::string_view queryName = "SERVER_INFO";
+
+    static kvjson rsp {{"SERVER_INFO_RSP", {{"st", KvRequestStatus::Ok}, {"version", FUSION_VERSION}}}};
+    rsp["SERVER_INFO_RSP"]["qryCnt"] = serverStats->queryCount.load();
+
+    query->ws->send(rsp.dump(), WsSendOpCode);
+  }
+
+  fc_always_inline void count(KvRequest * query)
+  {
+    static const KvQueryType queryType = KvQueryType::Count;
+    static const std::string_view queryName = "COUNT";
+
+    std::size_t count{0};
+    bool cleared = true;
+
+    std::atomic_ref<std::size_t> countRef{count};
+
+    std::latch done{static_cast<std::ptrdiff_t>(m_pools.size())};
+
+
+    auto onPoolResponse = [this, &done, &countRef](std::any poolResult)
+    {
+      countRef += std::any_cast<std::size_t>(poolResult);
+      done.count_down();
+    };
+                
+    for (auto& pool : m_pools)
+    {
+      pool->execute(KvCommand{  .ws = query->ws,
+                                .type = queryType,
+                                .cordinatedResponseHandler = onPoolResponse});
+    }
+    
+    done.wait();
+
+    kvjson rsp;
+    rsp["COUNT_RSP"]["st"] = KvRequestStatus::Ok;
+    rsp["COUNT_RSP"]["cnt"] = count;
+
+    query->ws->send(rsp.dump(), WsSendOpCode);
+  }
+
+  // fc_always_inline void renameKey(KvRequest * query)
+  // {
+  //   static const KvQueryType queryType = KvQueryType::RenameKey;
+  //   static const std::string_view queryName = "RNM_KEY";
+
+  //   // find the pool for the existing key and new key
+  //   // if they are the same pool, can rename key in that pool
+  //   // else extract value from existing pool and insert into new pool
+  // }
+
 
 private:
   std::size_t m_poolIndex;
