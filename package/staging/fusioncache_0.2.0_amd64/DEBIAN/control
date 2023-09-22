@@ -1,7 +1,0 @@
-Package: fusioncache
-Version: 0.2.0
-Architecture: amd64
-Maintainer: FusionCache <contact@fusioncache.io>
-Homepage: fusioncache.io
-Description: FusionCache
- JSON cache.
