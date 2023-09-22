@@ -4,6 +4,7 @@
 
 #include <functional>
 #include <vector>
+#include <tuple>
 #include <core/kv/KvCommon.h>
 #include <core/kv/KvPool.h>
 
@@ -22,11 +23,13 @@ public:
 
 private:
   
-  const std::function<void(KvRequest *)> Handlers[static_cast<std::size_t>(3U/*KvQueryType::Max*/)] = 
+  const std::function<void(KvRequest *)> Handlers[static_cast<std::size_t>(5U/*KvQueryType::Max*/)] = 
   {
     std::bind(&KvHandler::set, std::ref(*this), std::placeholders::_1),
     std::bind(&KvHandler::setQ, std::ref(*this), std::placeholders::_1),
-    std::bind(&KvHandler::get, std::ref(*this), std::placeholders::_1)
+    std::bind(&KvHandler::get, std::ref(*this), std::placeholders::_1),
+    std::bind(&KvHandler::add, std::ref(*this), std::placeholders::_1),
+    std::bind(&KvHandler::addQ, std::ref(*this), std::placeholders::_1)
     // std::bind(&KvHandler::executeAdd, std::ref(*this), std::placeholders::_1),
     // std::bind(&KvHandler::executeAddQ, std::ref(*this), std::placeholders::_1),
     // std::bind(&KvHandler::executeRemove, std::ref(*this), std::placeholders::_1),
@@ -37,19 +40,14 @@ private:
 
 public:
 
-  bool handle(KvRequest * query)
+  std::tuple<KvRequestStatus,std::string> handle(KvRequest * query)
   {
-    bool handled = true;
+    std::tuple<KvRequestStatus,std::string> status = std::make_tuple(KvRequestStatus::Ok, "");
 
     auto& request = query->json;
 
     if (request.size() != 1U)
-    {
-      //auto rsp = createServerErrorResponse (KvErrorCode::ExcessiveValues, "Only one command permitted"sv);
-      //m_ws->write(asio::buffer(rsp.dump()));
-      std::cout << "ExcessiveValues\n";
-      handled = false;
-    }
+      std::get<KvRequestStatus>(status) = KvRequestStatus::CommandInvalid;
     else  [[likely]]
     {
       const std::string& queryName = request.cbegin().key();
@@ -59,27 +57,19 @@ public:
         auto handler = Handlers[static_cast<std::size_t>(itType->second)];
         
         try
-        {                   
+        {
           handler(query);
         }
         catch (const std::exception& kex)
         {
-          // auto rsp = createServerErrorResponse (kex.ec(), kex.what());
-          // ws->write(asio::buffer(rsp.dump()));
-          std::cout << "Exception " << kex.what() << "\n";
-          handled = false;
+          std::get<KvRequestStatus>(status) = KvRequestStatus::Unknown;
         }
       }
       else
-      {
-        // auto rsp = createServerErrorResponse (KvErrorCode::QueryUnknown, queryName);
-        // m_ws->write(asio::buffer(rsp.dump()));
-        std::cout << "QueryUnknown\n";
-        handled = false;
-      }
+        status = std::make_tuple(KvRequestStatus::CommandUnknown, queryName);
     }
 
-    return handled;
+    return status;
   }
 
 
@@ -190,6 +180,54 @@ private:
     }
   }
 
+
+  void doAdd(KvRequest * query, const KvQueryType queryType, const std::string_view queryName)
+  {
+    for (auto& pair : query->json[queryName].items())
+    {
+      auto& key = pair.key(); 
+      auto& value = pair.value(); 
+
+      if (valueTypeValid(value))    [[likely]]
+      {
+        PoolId poolId;
+        if (PoolIndexers[m_poolIndex](key, poolId))    [[likely]]
+        {
+          m_pools[poolId]->execute(KvCommand{ .ws = query->ws,
+                                              .loop = uWS::Loop::get(),
+                                              .contents = std::move(pair),
+                                              .type = queryType});
+        }
+        else
+        {
+          // auto rsp = createErrorResponse(QueryStatus::KeyLengthInvalid, queryType, key);
+          // m_ws->write(asio::buffer(rsp.dump()));
+        }
+      }
+      else
+      {
+        // auto rsp = createErrorResponse(QueryStatus::ValueTypeInvalid, queryType, key);
+        // m_ws->write(asio::buffer(rsp.dump()));
+      }
+    }
+  }
+
+
+  void add(KvRequest * query)
+  {
+    static const KvQueryType queryType = KvQueryType::Add;
+    static const std::string_view queryName = "ADD";
+
+    doAdd(query, queryType, queryName);
+  }
+
+  void addQ(KvRequest * query)
+  {
+    static const KvQueryType queryType = KvQueryType::AddQ;
+    static const std::string_view queryName = "ADDQ";
+
+    doAdd(query, queryType, queryName);
+  }
 
 private:
   std::size_t m_poolIndex;

@@ -8,8 +8,6 @@
 #include <core/kv/KvHandler.h>
 
 
-std::mutex stdoutMutex;
-
 using namespace fusion::core;
 namespace kv = fusion::core::kv;
 
@@ -18,85 +16,88 @@ int main()
 {
   std::cout << "Fusion v" << FUSION_VERSION << " starting\n";
 
-  std::size_t nPools = std::max<std::size_t>(1U, std::thread::hardware_concurrency()); // TODO
-  std::size_t nIoThreads = 4U;    // TODO
+  int port = 1987;
 
-  kv::KvHandler handlers{nPools - nIoThreads, nIoThreads}; 
+  const auto nCores = std::thread::hardware_concurrency();
+  
+  std::size_t nIoThreads = 1U;
+
+  // TODO expirement
+  if (nCores >= 48U)
+    nIoThreads = 4U;
+  else if (nCores >= 24U)
+    nIoThreads = 3U;
+  else if (nCores >= 16U)
+    nIoThreads = 2U;
+  
+  kv::MaxPools = std::max<std::size_t>(1U, nCores - nIoThreads);
+
+  kv::KvHandler handlers {kv::MaxPools, nIoThreads};
   std::vector<std::jthread *> threads;
+
+  std::atomic_bool listenSuccess{true};
 
   for (std::size_t i = 0U, core = 0 ; i < nIoThreads ; ++i, ++core)
   {
-    auto * thread = new std::jthread([&handlers]()
+    auto * thread = new std::jthread([&handlers, port, &listenSuccess]()
     {
-      uWS::App().ws<kv::KvRequest>("/*",
+      auto wsApp = uWS::App().ws<kv::KvRequest>("/*",
       {
-        // Settings
         .compression = uWS::SHARED_COMPRESSOR,
-        .maxPayloadLength = 16 * 1024,
+        .maxPayloadLength = 16 * 1024,  // TODO
         .idleTimeout = 120,
         .maxBackpressure =  1024 * 1024,
-        // Handlers
+
+        // handlers
         .upgrade = nullptr,
         .open = [](kv::KvWebSocket * ws)
         {
-          ws->getUserData()->ws = ws;
+          ws->getUserData()->ws = ws; // ws pointer is valid until the client disconnects (after close lambda exits)
         },
         .message = [&handlers](kv::KvWebSocket * ws, std::string_view message, uWS::OpCode opCode)
         {   
-          //ws->send(message, opCode);
-          //ws->getUserData()->ws->send(message, opCode);
-          //ws->cork([ws, message, opCode](){ ws->send(message, opCode); });
-    
-          if (auto request = kv::kvjson::parse(message, nullptr, false); request.is_discarded())
-          {
-            ws->send("Invalid JSON", uWS::OpCode::TEXT);
-          }
+          if (opCode != uWS::OpCode::TEXT)
+            ws->send(kv::createErrorResponse(kv::KvRequestStatus::TypeInvalid).dump(), kv::WsSendOpCode);
           else
           {
-            ws->getUserData()->json = std::move(request);
-            
-            if (!handlers.handle(ws->getUserData()))
+            if (auto request = kv::kvjson::parse(message, nullptr, false); request.is_discarded())
+              ws->send(kv::createErrorResponse(kv::KvRequestStatus::JsonInvalid).dump(), kv::WsSendOpCode);
+            else
             {
-              ws->send("handler call failed", uWS::OpCode::TEXT);
+              ws->getUserData()->json = std::move(request);
+              
+              if (auto [status, msg] = handlers.handle(ws->getUserData()) ; status != kv::KvRequestStatus::Ok)
+                ws->send(kv::createErrorResponse(status, msg).dump(), kv::WsSendOpCode);
             }
           }
         },
-        .drain = [](auto */*ws*/)
-        {
-          
-        },
-        .ping = [](auto */*ws*/, std::string_view)
-        {
-
-        },
-        .pong = [](auto */*ws*/, std::string_view)
-        {
-
-        },
         .close = [](auto */*ws*/, int /*code*/, std::string_view /*message*/)
         {
-          std::cout << "in close\n";
+          std::cout << "in close\n"; // TODO
         }
       })
-      .listen(1987, [](auto *listen_socket)
+      .listen(port, [port, &listenSuccess](auto * socket)
       {
-        if (listen_socket)
-        {
-          std::cout << "Thread " << std::this_thread::get_id() << " listening on port " << 1987 << std::endl;
-        }
-        else
-        {
-          std::cout << "Thread " << std::this_thread::get_id() << " failed to listen on port 1987" << std::endl;
-        }
-      })
-      .run();
+        if (!socket)
+          listenSuccess = false;          
+      });
+
+      if (!wsApp.constructorFailed())
+        wsApp.run();
     });
 
-    if (!setThreadAffinity(thread->native_handle(), core))
+    if (setThreadAffinity(thread->native_handle(), core))
+      std::cout << "Assigned io thread to core " << core << '\n';
+    else
       std::cout << "Failed to assign io thread to core " << core << '\n';
 
     threads.push_back(thread);
   }
+
+  if (listenSuccess)
+    std::cout << "Listening on port " << port << std::endl;
+  else
+    std::cout << "Failed to listen on port " << port << std::endl;
 
   for(auto thread : threads)
     thread->join();

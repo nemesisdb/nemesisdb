@@ -23,7 +23,7 @@ class KvPool
 
 public:
 
-  KvPool(const std::size_t core, const PoolId id) noexcept : m_core(core), m_poolId(id), m_run(true), m_channel(8192U), m_thread(&KvPool::run, this) 
+  KvPool(const std::size_t core, const PoolId id) noexcept : m_poolId(id), m_run(true), m_channel(8192U), m_thread(&KvPool::run, this) 
   {
     if (!setThreadAffinity(m_thread.native_handle(), core))
       std::cout << "Failed to assign KvPool thread: " << core << '\n';
@@ -57,8 +57,7 @@ private:
       auto& value = command.contents.begin().value(); 
       const auto [ignore, inserted] = map.insert_or_assign(key, std::move(value));
       
-      // TODO problem here, probably because calling from thread outside of uWS event loop
-      command.loop->defer([ws = command.ws, key = std::move(key), inserted](){ws->send(PoolRequestResponse::keySet(inserted, std::move(key)).dump(), uWS::OpCode::TEXT); });
+      command.loop->defer([ws = command.ws, key = std::move(key), inserted](){ws->send(PoolRequestResponse::keySet(inserted, std::move(key)).dump(), kv::WsSendOpCode); });
     };
 
     auto setQ = [](CacheMap& map, KvCommand& command)
@@ -72,7 +71,7 @@ private:
       catch(const std::exception& e)
       {
         kvjson unknownErrRsp{{"SETQ_RSP", {{"st", KvRequestStatus::Unknown}, {"k", std::move(key)}}}};
-        command.ws->send(unknownErrRsp.dump(), uWS::OpCode::TEXT);
+        command.ws->send(unknownErrRsp.dump(), kv::WsSendOpCode);
       }
     };
 
@@ -81,20 +80,36 @@ private:
       if (const auto it = map.find(command.contents) ; it != map.cend())
       {
         cachedpair pair = {{it->first, it->second}};
-        command.loop->defer([ws = command.ws, pair = std::move(pair)]{ ws->send(PoolRequestResponse::getFound(std::move(pair)).dump(), uWS::OpCode::TEXT);});
+        command.loop->defer([ws = command.ws, pair = std::move(pair)]{ ws->send(PoolRequestResponse::getFound(std::move(pair)).dump(), kv::WsSendOpCode);});
       }
       else
-        command.ws->send(PoolRequestResponse::getNotFound(std::move(command.contents)).dump(), uWS::OpCode::TEXT);
+        command.loop->defer([ws = command.ws, key = std::move(command.contents)]{ ws->send(PoolRequestResponse::getNotFound(std::move(key)).dump(), kv::WsSendOpCode);});
+    };
+
+    
+    auto doAdd = [](CacheMap& map, KvCommand& command) -> std::tuple<bool, std::string_view>
+    {
+      const auto& key = command.contents.items().begin().key(); 
+      auto& value = command.contents.items().begin().value(); 
+
+      const auto [ignore, added] = map.emplace(key, std::move(value));
+      return std::make_tuple(added, key);
+    };
+
+    auto add = [doAdd](CacheMap& map, KvCommand& command)
+    {
+      auto [added, key] = doAdd(map, command);
+      command.loop->defer([ws = command.ws, added, key = std::move(key)]{ ws->send(PoolRequestResponse::keyAdd(added, std::move(key)).dump(), kv::WsSendOpCode);});
+    };
+
+    auto addQ = [doAdd](CacheMap& map, KvCommand& command)
+    {
+      if (auto [added, key] = doAdd(map, command); !added)  // only respond if key not added
+        command.loop->defer([ws = command.ws, added = false, key = std::move(key)]{ ws->send(PoolRequestResponse::keyAdd(added, std::move(key)).dump(), kv::WsSendOpCode);});
     };
 
 
     /*
-    auto setQ = [](CacheMap& map, KvQuery& query)
-    {
-      const auto& key = query.contents.items().begin().key(); 
-      auto& value = query.contents.items().begin().value(); 
-      map.insert_or_assign(key, std::move(value));
-    };
 
     auto add = [](CacheMap& map, KvQuery& query)
     {
@@ -159,13 +174,13 @@ private:
     };
     */
     
-    static const std::array<std::function<void(CacheMap&, KvCommand&)>, static_cast<std::size_t>(3U/*KvQueryType::Max*/)> handlers = 
+    static const std::array<std::function<void(CacheMap&, KvCommand&)>, static_cast<std::size_t>(5U/*KvQueryType::Max*/)> handlers = 
     {      
       set,
       setQ,
-      get/*,
+      get,
       add,
-      addQ,
+      addQ/*,
       remove,
       clear,
       serverInfo,
@@ -180,35 +195,29 @@ private:
       while (m_run)
       {
         command = m_channel.value_pop();
-        // //query.metrics.poolHandlerCalled = KvClock::now();
-
         handlers[static_cast<const std::size_t>(command.type)](map, command);
-        
         // TODO command = KvCommand{};
       }
     }
-    catch (const boost::fibers::fiber_error fex)
+    catch (const boost::fibers::fiber_error& fex)
     {
       if (!m_channel.is_closed())
       {
         std::cout << "Pool Exception: " << fex.what() << '\n';
-        // if (//query.rspHandler)
-        //   //query.rspHandler(PoolRequestResponse::unknownError());
+        command.loop->defer([ws = command.ws]{ ws->send(createErrorResponse(KvRequestStatus::Unknown).dump(), kv::WsSendOpCode);});
       } 
     }
     catch (const std::exception& ex)
     {
       std::cout << "Pool Exception: " << ex.what() << '\n';
-      // if (//query.rspHandler)
-      //   //query.rspHandler(PoolRequestResponse::unknownError());
+      command.loop->defer([ws = command.ws]{ ws->send(createErrorResponse(KvRequestStatus::Unknown).dump(), kv::WsSendOpCode);});
     }
   }
 
 
 private:
-  std::size_t m_core;
   PoolId m_poolId;
-  std::atomic_bool m_run;
+  std::atomic_bool m_run; // TODO this doesn't need to be atomic, stop() just closes channel?
   std::jthread m_thread;
   boost::fibers::buffered_channel<KvCommand> m_channel;  
   
