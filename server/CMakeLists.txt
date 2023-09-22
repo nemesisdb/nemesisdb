@@ -20,8 +20,8 @@ set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O3")
 # https://github.com/boostorg/fiber/issues/301
 
 
-# set(Boost_USE_STATIC_LIBS ON)
-# set(Boost_USE_STATIC_RUNTIME ON)
+set(Boost_USE_STATIC_LIBS ON)
+set(Boost_USE_STATIC_RUNTIME ON)
 
 set(CMAKE_GENERATOR_PLATFORM x64)
 set(CPACK_PROJECT_NAME ${PROJECT_NAME})
