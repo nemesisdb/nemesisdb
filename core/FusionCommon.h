@@ -11,6 +11,11 @@ namespace fusion { namespace core {
 #define fc_always_inline inline __attribute__((always_inline))
 
 static const char * FUSION_VERSION = "0.2.0";
+static const std::size_t FUSION_CONFIG_VERSION = 1U;
+
+static const std::size_t FUSION_KV_MINPAYLOAD = 64U;
+static const std::size_t FUSION_KV_MAXPAYLOAD = 2U * 1024U * 1024U;
+
 static const std::size_t FUSION_MAX_CORES = 64U;
 
 

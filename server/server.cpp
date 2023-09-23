@@ -2,7 +2,10 @@
 #include <thread>
 #include <algorithm>
 #include <mutex>
+#include <latch>
+#include <filesystem>
 #include <uwebsockets/App.h>
+#include <core/FusionConfig.h>
 #include <core/FusionCommon.h>
 #include <core/kv/KvCommon.h>
 #include <core/kv/KvHandler.h>
@@ -12,18 +15,21 @@ using namespace fusion::core;
 namespace kv = fusion::core::kv;
 
 
-int main()
+int main (int argc, char ** argv)
 {
   std::cout << "Fusion v" << FUSION_VERSION << " starting\n";
 
+
+  if (fusion::core::readConfig(argc, argv); !config.valid)
+    return 0;
+
+
   kv::serverStats = new kv::ServerStats;
 
-  int port = 1987;
+  unsigned int maxPayload = config.cfg["kv"]["maxPayload"];
+  std::string ip = config.cfg["kv"]["ip"];
+  int port = config.cfg["kv"]["port"];
   
-  const unsigned int maxPayloadDefault = 1024U;
-  unsigned int maxPayloadMax = 2U * 1024U * 1024U;
-  unsigned int maxPayload = maxPayloadDefault;  // TODO
-
 
   const auto nCores = std::min<std::size_t>(std::thread::hardware_concurrency(), FUSION_MAX_CORES);
   
@@ -48,17 +54,19 @@ int main()
             << "Pools: " << kv::MaxPools << '\n'
             << "Pools First Core: " << nIoThreads << '\n'; 
 
-  std::atomic_bool listenSuccess{true};
+  std::size_t listenSuccess{0U};
+  std::atomic_ref listenSuccessRef{listenSuccess};
+  std::latch startLatch (nIoThreads);
 
   for (std::size_t i = 0U, core = 0 ; i < nIoThreads ; ++i, ++core)
   {
-    auto * thread = new std::jthread([&handlers, port, &listenSuccess, maxPayload, serverStats = kv::serverStats]()
+    auto * thread = new std::jthread([&handlers, &ip, port, &listenSuccessRef, &startLatch, maxPayload, serverStats = kv::serverStats]()
     {
       auto wsApp = uWS::App().ws<kv::KvRequest>("/*",
       {
         .compression = uWS::DISABLED,
         .maxPayloadLength = maxPayload,
-        .idleTimeout = 180,
+        .idleTimeout = 180, // TODO should be configurable?
         .maxBackpressure =  1024 * 1024,
         // handlers
         .upgrade = nullptr,
@@ -90,29 +98,41 @@ int main()
           std::cout << "in close\n"; // TODO
         }
       })
-      .listen(port, [port, &listenSuccess](auto * socket)
+      .addServerName("FusionCache")
+      .listen(ip, port, [port, &listenSuccessRef, &startLatch](auto * listenSocket)
       {
-        if (!socket)
-          listenSuccess = false;          
+        if (listenSocket)
+        {
+          us_socket_t * socket = reinterpret_cast<us_socket_t *>(listenSocket); // this cast is safe
+          listenSuccessRef += us_socket_is_closed(0, socket) ? 0U : 1U;
+        }
+
+        startLatch.count_down();
       });
 
       if (!wsApp.constructorFailed())
         wsApp.run();
     });
+    
 
-    if (setThreadAffinity(thread->native_handle(), core))
+    if (thread && setThreadAffinity(thread->native_handle(), core))
+    {
       std::cout << "Assigned io thread to core " << core << '\n';
+      threads.push_back(thread);
+    }
     else
-      std::cout << "Failed to assign io thread to core " << core << '\n';
-
-    threads.push_back(thread);
+      std::cout << "Failed to assign io thread to core " << core << '\n';    
   }
 
-  if (listenSuccess)
-    std::cout << "Listening on port " << port << std::endl;
-  else
-    std::cout << "Failed to listen on port " << port << std::endl;
+  startLatch.wait();
 
+  if (listenSuccess == nIoThreads)
+    std::cout << "Listening on " << ip << ":"  << port << std::endl;
+  else
+    std::cout << "Failed to listen on " << ip << ":"  << port << std::endl;
+
+  
+  std::cout << "Ready\n";
   for(auto thread : threads)
     thread->join();
 }

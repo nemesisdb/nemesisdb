@@ -1,0 +1,116 @@
+#ifndef FC_CORE_FUSIONCONFIG_H
+#define FC_CORE_FUSIONCONFIG_H
+
+#include <string_view>
+#include <mutex>
+#include <fstream>
+#include <boost/program_options.hpp>
+#include <nlohmann/json.hpp>
+#include <core/FusionCommon.h>
+
+
+namespace fusion { namespace core {
+
+using json = nlohmann::json;
+
+
+struct FusionConfig
+{
+  FusionConfig() : valid(false)
+  {
+
+  }
+
+  FusionConfig(json&& config) : cfg(std::move(config)), valid(true)
+  {
+
+  }
+
+  json cfg;
+  bool valid;
+
+} config;
+
+
+inline bool isValid (std::function<bool()> isValidCheck, const std::string_view msg)
+{
+  const auto valid = isValidCheck();
+  if (!valid)
+    std::cout << "\n** Config Error **\n" << msg << "\n****\n";
+  return valid;
+};
+
+
+void readConfig(std::filesystem::path path)
+{
+  std::ifstream configStream{path};
+  json cfg;
+
+  if (cfg = json::parse(configStream, nullptr, false); cfg.is_discarded())
+    std::cout << "Config file not valid JSON\n";
+  else
+  {
+    bool valid = false;
+    valid = isValid([&cfg](){ return cfg.contains("version") && cfg.at("version").is_number_unsigned(); }, "Require version as an unsigned int") &&
+            isValid([&cfg](){ return cfg.at("version") == fusion::core::FUSION_CONFIG_VERSION; }, "Config version not compatible") &&
+            isValid([&cfg](){ return cfg.contains("kv") && cfg.at("kv").is_object(); }, "Require kv section as an object");
+    
+    if (valid)
+    {
+      const auto& kvCfg = cfg.at("kv");
+      valid = isValid([&kvCfg](){ return kvCfg.contains("ip") && kvCfg.contains("port") && kvCfg.contains("maxPayload"); }, "kv section requires ip, port and maxPayload") &&
+              isValid([&kvCfg](){ return kvCfg.at("ip").is_string() && kvCfg.at("port").is_number_unsigned() && kvCfg.at("maxPayload").is_number_unsigned(); }, "kv::ip must string, kv::port and kv::maxPayload must be unsigned integer") &&
+              isValid([&kvCfg](){ return kvCfg.at("maxPayload") >= fusion::core::FUSION_KV_MINPAYLOAD; }, "kv::maxPayload below minimum") &&
+              isValid([&kvCfg](){ return kvCfg.at("maxPayload") <= fusion::core::FUSION_KV_MAXPAYLOAD; }, "kv::maxPayload exceeds maximum");
+
+      if (valid)
+        config = FusionConfig{std::move(cfg)};
+    }
+  }
+}
+
+
+void readConfig (const int argc, char ** argv)
+{
+  namespace po = boost::program_options;
+
+  std::cout << "Reading config\n";
+
+  std::filesystem::path cfgPath;
+
+  po::options_description common("");
+  common.add_options()("help",    "Show help");
+
+  po::options_description configFile("Config file");
+  configFile.add_options()("config",  po::value<std::filesystem::path>(&cfgPath),     "Path to json config file");
+  
+  po::options_description all;
+  all.add(common);
+  all.add(configFile);
+  
+  po::variables_map vm;
+  po::store(po::parse_command_line(argc, argv, all), vm);
+  po::notify(vm);
+
+  if (vm.contains("help"))
+    std::cout << all << '\n';  
+  else
+  { 
+    if (vm.count("config") != 1U)
+      std::cout << "Must set one --config option, with path to the JSON config file\n";
+    else
+    {
+      if (!std::filesystem::exists(cfgPath))
+        std::cout << "Config file path not found\n";
+      else
+        readConfig(cfgPath);
+    }
+  }
+}
+
+
+
+} // namespace core
+} // namespace fusion
+
+#endif
