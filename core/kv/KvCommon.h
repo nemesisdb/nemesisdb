@@ -60,9 +60,8 @@ enum class KvRequestStatus
 {
   Ok = 1,
   OpCodeInvalid,
-  CommandUnknown = 10,
-  CommandNotExist,
-  CommandInvalid, // root invalid
+  CommandNotExist = 10,
+  CommandMultiple, 
   JsonInvalid,
   KeySet = 20,
   KeyUpdated,
@@ -142,13 +141,13 @@ struct PoolRequestResponse
     return rsp;
   }
 
-  static kvjson renameKey (kvjson pair)
-  {
-    kvjson rsp;
-    rsp["RNM_KEY_RSP"] = std::move(pair);
-    rsp["RNM_KEY_RSP"]["st"] = KeySet;    
-    return rsp;
-  }
+  // static kvjson renameKey (kvjson pair)
+  // {
+  //   kvjson rsp;
+  //   rsp["RNM_KEY_RSP"] = std::move(pair);
+  //   rsp["RNM_KEY_RSP"]["st"] = KeySet;    
+  //   return rsp;
+  // }
 
   static kvjson renameKeyFail (const KvRequestStatus status, kvjson pair)
   {

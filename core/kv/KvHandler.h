@@ -48,7 +48,7 @@ public:
     auto& request = query->json;
 
     if (request.size() != 1U)
-      std::get<KvRequestStatus>(status) = KvRequestStatus::CommandInvalid;
+      std::get<KvRequestStatus>(status) = KvRequestStatus::CommandMultiple;
     else  [[likely]]
     {
       const std::string& queryName = request.cbegin().key();
@@ -69,7 +69,7 @@ public:
         }
       }
       else
-        status = std::make_tuple(KvRequestStatus::CommandUnknown, queryName);
+        status = std::make_tuple(KvRequestStatus::CommandNotExist, queryName);
     }
 
     return status;

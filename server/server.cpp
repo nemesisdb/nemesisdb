@@ -19,6 +19,11 @@ int main()
   kv::serverStats = new kv::ServerStats;
 
   int port = 1987;
+  
+  const unsigned int maxPayloadDefault = 1024U;
+  unsigned int maxPayloadMax = 2U * 1024U * 1024U;
+  unsigned int maxPayload = maxPayloadDefault;  // TODO
+
 
   const auto nCores = std::min<std::size_t>(std::thread::hardware_concurrency(), FUSION_MAX_CORES);
   
@@ -47,15 +52,14 @@ int main()
 
   for (std::size_t i = 0U, core = 0 ; i < nIoThreads ; ++i, ++core)
   {
-    auto * thread = new std::jthread([&handlers, port, &listenSuccess, serverStats = kv::serverStats]()
+    auto * thread = new std::jthread([&handlers, port, &listenSuccess, maxPayload, serverStats = kv::serverStats]()
     {
       auto wsApp = uWS::App().ws<kv::KvRequest>("/*",
       {
-        .compression = uWS::SHARED_COMPRESSOR,
-        .maxPayloadLength = 16 * 1024,  // TODO
-        .idleTimeout = 120,
+        .compression = uWS::DISABLED,
+        .maxPayloadLength = maxPayload,
+        .idleTimeout = 180,
         .maxBackpressure =  1024 * 1024,
-
         // handlers
         .upgrade = nullptr,
         .open = [](kv::KvWebSocket * ws)
