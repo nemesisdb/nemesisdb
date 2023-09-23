@@ -7,7 +7,7 @@
 #include <tuple>
 #include <latch>
 #include <core/kv/KvCommon.h>
-#include <core/kv/KvPool.h>
+#include <core/kv/KvPoolWorker.h>
 
 
 namespace fusion { namespace core { namespace kv {
@@ -19,7 +19,7 @@ public:
   KvHandler(const std::size_t nPools, const std::size_t coreOffset) : m_poolIndex(nPools == 1U ? 1U : 0U)
   {
     for (std::size_t pool = 0, core = coreOffset ; pool < nPools ; ++pool, ++core)
-      m_pools.emplace_back(new KvPool{core, pool});
+      m_pools.emplace_back(new KvPoolWorker{core, pool});
   }
 
 private:
@@ -344,7 +344,7 @@ private:
 
 private:
   std::size_t m_poolIndex;
-  std::vector<KvPool *> m_pools;
+  std::vector<KvPoolWorker *> m_pools;
 };
 
 }

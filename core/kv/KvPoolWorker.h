@@ -16,34 +16,33 @@ namespace fusion { namespace core { namespace kv {
 using CacheMap = ankerl::unordered_dense::segmented_map<cachedkey, cachedvalue>;
 
 
-// A pool runs in a thread which is assigned to a core.
-// It is assigned based on MaxPools, which is the hardware_concurrency().
-class KvPool
+// A number of KvPools are created, the amount created is MaxPools, which is typically hardware_concurrency() minus number of IO threads.
+// A pool worker runs in a thread which is assigned to a core. Each pool worker has a dedicated map which stores the key/values. 
+// A key is hashed and then modulode with MaxPools which determines which pool worker handles that key.
+// The hash is just a simple addition of the first N characters in the key (rather than std::hash, which is a bit heavy for this usecase).
+class KvPoolWorker
 { 
 
 public:
 
-  KvPool(const std::size_t core, const PoolId id) noexcept : m_poolId(id), m_run(true), m_channel(8192U), m_thread(&KvPool::run, this) 
+  KvPoolWorker(const std::size_t core, const PoolId id) noexcept : m_poolId(id), m_run(true), m_channel(8192U), m_thread(&KvPoolWorker::run, this) 
   {
     if (!setThreadAffinity(m_thread.native_handle(), core))
-      std::cout << "Failed to assign KvPool thread: " << core << '\n';
+      std::cout << "Failed to assign KvPoolWorker thread: " << core << '\n';
 
     //setThreadRealtime(m_thread.native_handle(), 25);
   }
 
-  ~KvPool()
+  ~KvPoolWorker()
   {
     m_run = false;
     m_channel.close();
   }
 
-  KvPool& operator=(KvPool&&) noexcept = default;
+  KvPoolWorker& operator=(KvPoolWorker&&) noexcept = default;
 
   fc_always_inline void execute(KvCommand&& command)
   {
-    //query.metrics.poolReceived = KvClock::now();
-    //query.metrics.poolId = m_poolId;
-    
     m_channel.push(std::move(command));
   }
 
