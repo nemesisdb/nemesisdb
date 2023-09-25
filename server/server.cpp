@@ -51,8 +51,7 @@ int main (int argc, char ** argv)
   std::cout << "Total Cores: " << std::thread::hardware_concurrency() << '\n'
             << "Max Cores: " << nCores << '\n'
             << "I/O Threads: " << nIoThreads << '\n'
-            << "Pools: " << kv::MaxPools << '\n'
-            << "Pools First Core: " << nIoThreads << '\n'; 
+            << "Pools: " << kv::MaxPools << '\n';
 
   std::size_t listenSuccess{0U};
   std::atomic_ref listenSuccessRef{listenSuccess};
@@ -116,21 +115,15 @@ int main (int argc, char ** argv)
     
 
     if (thread && setThreadAffinity(thread->native_handle(), core))
-    {
-      std::cout << "Assigned io thread to core " << core << '\n';
       threads.push_back(thread);
-    }
     else
       std::cout << "Failed to assign io thread to core " << core << '\n';    
   }
 
   startLatch.wait();
 
-  if (listenSuccess == nIoThreads)
-    std::cout << "Listening on " << ip << ":"  << port << std::endl;
-  else
+  if (listenSuccess != nIoThreads)
     std::cout << "Failed to listen on " << ip << ":"  << port << std::endl;
-
   
   std::cout << "Ready\n";
   for(auto thread : threads)
