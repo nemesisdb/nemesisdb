@@ -17,12 +17,34 @@ namespace kv = fusion::core::kv;
 
 int main (int argc, char ** argv)
 {
+  // cores => io threads
+  static const std::map<std::size_t, std::size_t> CoresToIoThreads =
+  {
+    {1, 1},
+    {2, 1},
+    {4, 3},
+    {8, 6},
+    {12, 10},
+    {16, 12},
+    {18, 15},
+    {20, 17},
+    {24, 20},
+    {32, 28},
+    {48, 44},
+    {64, 58}
+  };
+
   std::cout << "Fusion v" << FUSION_VERSION << " starting\n";
 
-
-  if (fusion::core::readConfig(argc, argv); !config.valid)
-    return 0;
-
+  #ifndef NDEBUG
+    config.cfg["version"] = 1;
+    config.cfg["kv"]["ip"] = "127.0.0.1";
+    config.cfg["kv"]["port"] = 1987;
+    config.cfg["kv"]["maxPayload"] = 1024U;
+  #else
+    if (fusion::core::readConfig(argc, argv); !config.valid)
+      return 0;
+  #endif
 
   kv::serverStats = new kv::ServerStats;
 
@@ -32,26 +54,24 @@ int main (int argc, char ** argv)
   
 
   const auto nCores = std::min<std::size_t>(std::thread::hardware_concurrency(), FUSION_MAX_CORES);
-  
-  std::size_t nIoThreads = 1U;
 
-  // TODO expirement
-  if (nCores >= 48U)
-    nIoThreads = 4U;
-  else if (nCores >= 24U)
-    nIoThreads = 3U;
-  else if (nCores >= 16U)
-    nIoThreads = 2U;
+  if (nCores < 1U || nCores > 256U)
+  {
+    std::cout << "Core count unexpected: " << nCores << '\n';
+    return 0;
+  }
+  
+  const std::size_t nIoThreads = CoresToIoThreads.contains(nCores) ? CoresToIoThreads.at(nCores) : std::prev(CoresToIoThreads.upper_bound(nCores), 1)->second;
   
   kv::MaxPools = std::max<std::size_t>(1U, nCores - nIoThreads);
 
   kv::KvHandler handlers {kv::MaxPools, nIoThreads};
   std::vector<std::jthread *> threads;
 
-  std::cout << "Total Cores: " << std::thread::hardware_concurrency() << '\n'
-            << "Max Cores: " << nCores << '\n'
-            << "I/O Threads: " << nIoThreads << '\n'
-            << "Pools: " << kv::MaxPools << '\n';
+  std::cout << "Available Cores: "  << std::thread::hardware_concurrency() << '\n'
+            << "Fusion Max Cores: " << nCores << '\n'
+            << "I/O Threads: "      << nIoThreads << '\n'      // TODO remove
+            << "Pools: "            << kv::MaxPools << '\n';   // TODO remove
 
   std::size_t listenSuccess{0U};
   std::atomic_ref listenSuccessRef{listenSuccess};
@@ -61,17 +81,17 @@ int main (int argc, char ** argv)
   {
     auto * thread = new std::jthread([&handlers, &ip, port, &listenSuccessRef, &startLatch, maxPayload, serverStats = kv::serverStats]()
     {
-      auto wsApp = uWS::App().ws<kv::KvRequest>("/*",
+      auto wsApp = uWS::App().ws<kv::KvSession>("/*",
       {
         .compression = uWS::DISABLED,
         .maxPayloadLength = maxPayload,
         .idleTimeout = 180, // TODO should be configurable?
-        .maxBackpressure =  1024 * 1024,
+        .maxBackpressure = 16 * 1024 * 1024,
         // handlers
         .upgrade = nullptr,
         .open = [](kv::KvWebSocket * ws)
         {
-          ws->getUserData()->ws = ws; // ws pointer is valid until the client disconnects (after close lambda exits)
+          //ws->getUserData()->ws = ws; // ws pointer is valid until the client disconnects (after close lambda exits)
         },
         .message = [&handlers, serverStats](kv::KvWebSocket * ws, std::string_view message, uWS::OpCode opCode)
         {   
@@ -85,19 +105,19 @@ int main (int argc, char ** argv)
               ws->send(kv::createErrorResponse(kv::KvRequestStatus::JsonInvalid).dump(), kv::WsSendOpCode);
             else
             {
-              ws->getUserData()->json = std::move(request);
+              //ws->getUserData()->json = std::move(request);
               
-              if (auto [status, msg] = handlers.handle(ws->getUserData()) ; status != kv::KvRequestStatus::Ok)
+              if (auto [status, msg] = handlers.handle(ws, std::move(request)) ; status != kv::KvRequestStatus::Ok)
                 ws->send(kv::createErrorResponse(status, msg).dump(), kv::WsSendOpCode);
             }
           }
         },
-        .close = [](auto */*ws*/, int /*code*/, std::string_view /*message*/)
+        .close = [](kv::KvWebSocket * ws, int /*code*/, std::string_view /*message*/)
         {
-          std::cout << "in close\n"; // TODO
+          // TODO when a client disconnects mid query
+          //ws->getUserData()->isConnected(false);
         }
       })
-      .addServerName("FusionCache")
       .listen(ip, port, [port, &listenSuccessRef, &startLatch](auto * listenSocket)
       {
         if (listenSocket)
@@ -125,8 +145,13 @@ int main (int argc, char ** argv)
   if (listenSuccess != nIoThreads)
     std::cout << "Failed to listen on " << ip << ":"  << port << std::endl;
   
+  
   std::cout << "Ready\n";
   for(auto thread : threads)
     thread->join();
+
+  
+  if (kv::serverStats)
+    delete kv::serverStats;
 }
 

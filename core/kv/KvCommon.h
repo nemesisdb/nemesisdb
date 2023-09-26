@@ -168,22 +168,42 @@ struct PoolRequestResponse
 };
 
 
-struct KvRequest
+
+struct KvSession
 {
-  uWS::WebSocket<false, true, KvRequest> * ws;
-  kvjson json;
+  KvSession () : connected(new std::atomic_bool{true})
+  {
+  }
+
+  KvSession (KvSession&& other) : connected(other.connected)
+  {
+    other.connected = nullptr;
+  }
+  
+  ~KvSession()
+  {
+    if (connected)
+      delete connected;
+
+    connected = nullptr;
+  }
+
+  std::atomic_bool * connected;
 };
+
+
 
 struct KvCommand
 {
-  uWS::WebSocket<false, true, KvRequest> * ws;  // to access the websocket and userdata
+  uWS::WebSocket<false, true, KvSession> * ws;  // to access the websocket and userdata
   uWS::Loop * loop; // the uWS event loop, so we can defer() websocket calls on an event loop thread
   kvjson contents;  // json taken from the request, contents depends on the query
   KvQueryType type; 
   std::function<void(std::any)> cordinatedResponseHandler; 
 };
 
-using KvWebSocket = uWS::WebSocket<false, true, KvRequest>;
+
+using KvWebSocket = uWS::WebSocket<false, true, KvSession>;
 
 
 struct ServerStats
