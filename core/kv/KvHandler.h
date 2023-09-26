@@ -94,7 +94,7 @@ private:
         PoolId poolId;
         if (PoolIndexers[m_poolIndex](key, poolId))    [[likely]]
         {
-          m_pools[poolId]->execute(new KvCommand{ .ws = ws,
+          m_pools[poolId]->execute(KvCommand{ .ws = ws,
                                                   .loop = uWS::Loop::get(),
                                                   .contents = std::move(pair),
                                                   .type = queryType});
@@ -125,10 +125,10 @@ private:
         PoolId poolId;
         if (PoolIndexers[m_poolIndex](key, poolId))    [[likely]]
         {
-          m_pools[poolId]->execute(new KvCommand{ .ws = ws,
-                                                  .loop = uWS::Loop::get(),
-                                                  .contents = std::move(pair),
-                                                  .type = queryType});
+          m_pools[poolId]->execute(KvCommand{ .ws = ws,
+                                              .loop = uWS::Loop::get(),
+                                              .contents = std::move(pair),
+                                              .type = queryType});
         }
         else
           ws->send(createErrorResponse(queryRspName, KvRequestStatus::KeyLengthInvalid, key).dump(), WsSendOpCode);
@@ -158,7 +158,7 @@ private:
 
         if (PoolIndexers[m_poolIndex](key, poolId))  [[likely]]
         {
-          m_pools[poolId]->execute(new KvCommand{ .ws = ws,
+          m_pools[poolId]->execute(KvCommand{ .ws = ws,
                                               .loop = uWS::Loop::get(),
                                               .contents = std::move(key),
                                               .type = queryType});
@@ -182,7 +182,7 @@ private:
         PoolId poolId;
         if (PoolIndexers[m_poolIndex](key, poolId))    [[likely]]
         {
-          m_pools[poolId]->execute(new KvCommand{ .ws = ws,
+          m_pools[poolId]->execute(KvCommand{ .ws = ws,
                                               .loop = uWS::Loop::get(),
                                               .contents = std::move(pair),
                                               .type = queryType});
@@ -230,7 +230,7 @@ private:
 
         if (PoolIndexers[m_poolIndex](k, poolId))  [[likely]]
         {
-          m_pools[poolId]->execute(new KvCommand{ .ws = ws,
+          m_pools[poolId]->execute(KvCommand{ .ws = ws,
                                             .loop = uWS::Loop::get(),
                                             .contents = std::move(k),
                                             .type = queryType});
@@ -269,21 +269,15 @@ private:
       done.count_down();
     };
 
-    std::vector<KvCommand *> commands{m_pools.size()};
 
     for (auto& pool : m_pools)
     {
-      auto * command = new KvCommand{ .ws = ws,
-                                      .type = queryType,
-                                      .cordinatedResponseHandler = onPoolResponse};
-      commands.emplace_back(command);
-      pool->execute(command);
+      pool->execute(KvCommand{ .ws = ws,
+                              .type = queryType,
+                              .cordinatedResponseHandler = onPoolResponse});
     }
     
     done.wait();
-
-    for (auto command : commands)
-      delete command;
 
     kvjson rsp;
     rsp["CLEAR_RSP"]["st"] = cleared ? KvRequestStatus::Ok : KvRequestStatus::Unknown;
@@ -322,22 +316,15 @@ private:
       done.count_down();
     };
     
-    std::vector<KvCommand *> commands{m_pools.size()};
 
     for (auto& pool : m_pools)
     {
-      auto * command = new KvCommand {.ws = ws,
-                                      .type = queryType,
-                                      .cordinatedResponseHandler = onPoolResponse};
-      pool->execute(command);
-
-      commands.emplace_back(command);
+      pool->execute(KvCommand {.ws = ws,
+                               .type = queryType,
+                               .cordinatedResponseHandler = onPoolResponse});
     }
     
     done.wait();
-
-    for (auto command : commands)
-      delete command;
 
     kvjson rsp;
     rsp["COUNT_RSP"]["st"] = KvRequestStatus::Ok;

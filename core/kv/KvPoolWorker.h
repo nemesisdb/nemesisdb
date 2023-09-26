@@ -42,50 +42,48 @@ public:
   KvPoolWorker& operator=(KvPoolWorker&&) noexcept = default;
 
 
-  fc_always_inline void execute(KvCommand * cmd)
+  fc_always_inline void execute(KvCommand&& cmd)
   {
-    m_channel.push(cmd);
+    m_channel.push(std::move(cmd));
   }
 
 private:
     
-  fc_always_inline void send (KvCommand * cmd, std::string&& msg)
+  fc_always_inline void send (KvCommand& cmd, std::string&& msg)
   {
-    cmd->loop->defer([cmd, msg = std::move(msg)] () mutable
+    cmd.loop->defer([cmd, msg = std::move(msg)] () mutable
     {
-      if (cmd->ws->getUserData()->connected)
-        cmd->ws->send(msg, kv::WsSendOpCode);
-
-      delete cmd;
+      if (cmd.ws->getUserData()->connected)
+        cmd.ws->send(msg, kv::WsSendOpCode);
     });
   }
   
   void run ()
   {
-    auto doAdd = [](CacheMap& map, KvCommand * cmd) -> std::tuple<bool, std::string_view>
+    auto doAdd = [](CacheMap& map, KvCommand& cmd) -> std::tuple<bool, std::string_view>
     {
-      const auto& key = cmd->contents.items().begin().key();
-      auto& value = cmd->contents.items().begin().value(); 
+      const auto& key = cmd.contents.items().begin().key();
+      auto& value = cmd.contents.items().begin().value(); 
 
       const auto [ignore, added] = map.emplace(key, std::move(value));
       return std::make_tuple(added, key);
     };
 
-    auto set = [this](CacheMap& map, KvCommand * cmd)
+    auto set = [this](CacheMap& map, KvCommand& cmd)
     {
-      const auto& key = cmd->contents.begin().key(); 
-      auto& value = cmd->contents.begin().value(); 
+      const auto& key = cmd.contents.begin().key(); 
+      auto& value = cmd.contents.begin().value(); 
       const auto [ignore, inserted] = map.insert_or_assign(key, std::move(value));
       
       send(cmd, PoolRequestResponse::keySet(inserted, std::move(key)).dump());
     };
 
-    auto setQ = [this](CacheMap& map, KvCommand * cmd)
+    auto setQ = [this](CacheMap& map, KvCommand& cmd)
     {
-      const auto& key = cmd->contents.begin().key(); 
+      const auto& key = cmd.contents.begin().key(); 
       try
       {
-        auto& value = cmd->contents.begin().value(); 
+        auto& value = cmd.contents.begin().value(); 
         map.insert_or_assign(key, std::move(value));  
       }
       catch(const std::exception& e)
@@ -95,38 +93,38 @@ private:
       }
     };
 
-    auto get = [this](CacheMap& map, KvCommand * cmd)
+    auto get = [this](CacheMap& map, KvCommand& cmd)
     {
-      if (const auto it = map.find(cmd->contents) ; it != map.cend())
+      if (const auto it = map.find(cmd.contents) ; it != map.cend())
       {
         cachedpair pair = {{it->first, it->second}};
         send(cmd, PoolRequestResponse::getFound(std::move(pair)).dump());
       }
       else
-        send(cmd, PoolRequestResponse::getNotFound(std::move(cmd->contents)).dump()); 
+        send(cmd, PoolRequestResponse::getNotFound(std::move(cmd.contents)).dump()); 
     };
 
-    auto add = [doAdd, this](CacheMap& map, KvCommand * cmd)
+    auto add = [doAdd, this](CacheMap& map, KvCommand& cmd)
     {
       auto [added, key] = doAdd(map, cmd);
       send(cmd, PoolRequestResponse::keyAdd(added, std::move(key)).dump()); 
     };
 
-    auto addQ = [doAdd, this](CacheMap& map, KvCommand * cmd)
+    auto addQ = [doAdd, this](CacheMap& map, KvCommand& cmd)
     {
       if (auto [added, key] = doAdd(map, cmd); !added)  // only respond if key not added
         send(cmd, PoolRequestResponse::keyAdd(added, std::move(key)).dump()); 
     };
 
-    auto remove = [this](CacheMap& map, KvCommand * cmd)
+    auto remove = [this](CacheMap& map, KvCommand& cmd)
     {
-      const auto& key = cmd->contents.get_ref<const std::string&>();
+      const auto& key = cmd.contents.get_ref<const std::string&>();
       const auto nRemoved = map.erase(key);
 
       send(cmd, PoolRequestResponse::keyRemoved(nRemoved, std::move(key)).dump()); 
     };
 
-    auto clear = [this](CacheMap& map, KvCommand * cmd)
+    auto clear = [this](CacheMap& map, KvCommand& cmd)
     {
       const std::size_t size = map.size();
       bool valid = true;
@@ -140,21 +138,21 @@ private:
         valid = false;
       }
       
-      cmd->cordinatedResponseHandler(std::make_any<std::tuple<bool, std::size_t>>(std::make_tuple(valid, size)));
+      cmd.cordinatedResponseHandler(std::make_any<std::tuple<bool, std::size_t>>(std::make_tuple(valid, size)));
     };
 
-    auto serverInfo = [this](CacheMap& map, KvCommand * cmd)
+    auto serverInfo = [this](CacheMap& map, KvCommand& cmd)
     {
       // does nothing, never called, but required for handlers array below
     };
 
-    auto count = [this](CacheMap& map, KvCommand * cmd)
+    auto count = [this](CacheMap& map, KvCommand& cmd)
     {
-      cmd->cordinatedResponseHandler(std::make_any<std::size_t>(map.size()));
+      cmd.cordinatedResponseHandler(std::make_any<std::size_t>(map.size()));
     };
 
     /*
-    auto renameKey = [](CacheMap& map, KvCommand * cmd)
+    auto renameKey = [](CacheMap& map, KvCommand& cmd)
     {
       auto& existingKey = command->contents.begin().key();
       auto newKey = command->contents.begin().value().get<std::string_view>();
@@ -180,7 +178,7 @@ private:
 
 
     // CAREFUL: these have to be in the order of KvQueryType enum
-    static const std::array<std::function<void(CacheMap&, KvCommand *)>, static_cast<std::size_t>(KvQueryType::Max)> handlers = 
+    static const std::array<std::function<void(CacheMap&, KvCommand&)>, static_cast<std::size_t>(KvQueryType::Max)> handlers = 
     {      
       set,
       setQ,
@@ -195,14 +193,14 @@ private:
     };
 
     CacheMap map;
-    KvCommand * cmd {nullptr};
+    KvCommand cmd;
 
     try
     {
       while (m_run)
       {
         cmd = std::move(m_channel.value_pop());
-        handlers[static_cast<const std::size_t>(cmd->type)](map, cmd);
+        handlers[static_cast<const std::size_t>(cmd.type)](map, cmd);
         // TODO command = KvCommand{};
       }
     }
@@ -211,15 +209,13 @@ private:
       if (!m_channel.is_closed())
       {
         std::cout << "Pool Fiber Exception: " << fex.what() << '\n';
-        if (cmd)
-          send(cmd, createErrorResponse(KvRequestStatus::Unknown).dump());;
+        send(cmd, createErrorResponse(KvRequestStatus::Unknown).dump());;
       } 
     }
     catch (const std::exception& ex)
     {
       std::cout << "Pool Exception: " << ex.what() << '\n';
-      if (cmd)
-        send(cmd, createErrorResponse(KvRequestStatus::Unknown).dump());
+      send(cmd, createErrorResponse(KvRequestStatus::Unknown).dump());
     }
   }
 
@@ -228,7 +224,7 @@ private:
   PoolId m_poolId;
   std::atomic_bool m_run; // TODO this doesn't need to be atomic, stop() just closes channel?
   std::jthread m_thread;
-  boost::fibers::buffered_channel<KvCommand *> m_channel;  
+  boost::fibers::buffered_channel<KvCommand> m_channel;  
   
 };
 
