@@ -43,16 +43,16 @@ enum class KvQueryType : std::uint8_t
 
 const std::map<std::string_view, KvQueryType> QueryNameToType = 
 {
-  {"SET",           KvQueryType::Set},
-  {"SETQ",          KvQueryType::SetQ},
-  {"GET",           KvQueryType::Get},
-  {"ADD",           KvQueryType::Add},
-  {"ADDQ",          KvQueryType::AddQ},
-  {"RMV",           KvQueryType::Remove},
-  {"CLEAR",         KvQueryType::Clear},
-  {"SERVER_INFO",   KvQueryType::ServerInfo},
-  //{"RNM_KEY",       KvQueryType::RenameKey},
-  {"COUNT",         KvQueryType::Count}
+  {"KV_SET",          KvQueryType::Set},
+  {"KV_SETQ",         KvQueryType::SetQ},
+  {"KV_GET",          KvQueryType::Get},
+  {"KV_ADD",          KvQueryType::Add},
+  {"KV_ADDQ",         KvQueryType::AddQ},
+  {"KV_RMV",          KvQueryType::Remove},
+  {"KV_CLEAR",        KvQueryType::Clear},
+  {"KV_COUNT",        KvQueryType::Count},
+  {"KV_SERVER_INFO",  KvQueryType::ServerInfo}
+  //{"KV_RNM",       KvQueryType::RenameKey}
 };
 
 
@@ -96,66 +96,66 @@ struct PoolRequestResponse
   static kvjson getFound (cachedpair pair)
   {
     kvjson rsp;    
-    rsp["GET_RSP"] = std::move(pair);
-    rsp["GET_RSP"]["st"] = Ok;
+    rsp["KV_GET_RSP"] = std::move(pair);
+    rsp["KV_GET_RSP"]["st"] = Ok;
     return rsp;
   }
 
   static kvjson getNotFound (cachedpair key)
   {
     kvjson rsp;
-    rsp["GET_RSP"]["st"] = KeyNotExist;
-    rsp["GET_RSP"]["k"] = std::move(key);
+    rsp["KV_GET_RSP"]["st"] = KeyNotExist;
+    rsp["KV_GET_RSP"]["k"] = std::move(key);
     return rsp;
   }
 
   static kvjson keySet (const bool isSet, const std::string_view k)
   {
     kvjson rsp;
-    rsp["SET_RSP"]["st"] = isSet ? KeySet : KeyUpdated;
-    rsp["SET_RSP"]["k"] = std::move(k);
+    rsp["KV_SET_RSP"]["st"] = isSet ? KeySet : KeyUpdated;
+    rsp["KV_SET_RSP"]["k"] = std::move(k);
     return rsp;
   }
 
   static kvjson keySet (const bool isSet, std::string&& k)
   {
     kvjson rsp;
-    rsp["SET_RSP"]["st"] = isSet ? KeySet : KeyUpdated;
-    rsp["SET_RSP"]["k"] = std::move(k);
+    rsp["KV_SET_RSP"]["st"] = isSet ? KeySet : KeyUpdated;
+    rsp["KV_SET_RSP"]["k"] = std::move(k);
     return rsp;
   }
   
   static kvjson keyAdd (const bool isAdded, const std::string_view k)
   {
     kvjson rsp;
-    rsp["ADD_RSP"]["st"] = isAdded ? KeySet : KeyExists;
-    rsp["ADD_RSP"]["k"] = std::move(k);
+    rsp["KV_ADD_RSP"]["st"] = isAdded ? KeySet : KeyExists;
+    rsp["KV_ADD_RSP"]["k"] = std::move(k);
     return rsp;
   }
 
   static kvjson keyRemoved (const bool removed, const std::string_view k)
   {
     kvjson rsp;
-    rsp["RMV_RSP"]["st"] = removed ? KeyRemoved : KeyNotExist;
-    rsp["RMV_RSP"]["k"] = std::move(k);
+    rsp["KV_RMV_RSP"]["st"] = removed ? KeyRemoved : KeyNotExist;
+    rsp["KV_RMV_RSP"]["k"] = std::move(k);
     return rsp;
   }
 
   // static kvjson renameKey (kvjson pair)
   // {
   //   kvjson rsp;
-  //   rsp["RNM_KEY_RSP"] = std::move(pair);
-  //   rsp["RNM_KEY_RSP"]["st"] = KeySet;    
+  //   rsp["KV_RNM_RSP"] = std::move(pair);
+  //   rsp["KV_RNM_RSP"]["st"] = KeySet;    
   //   return rsp;
   // }
 
-  static kvjson renameKeyFail (const KvRequestStatus status, kvjson pair)
-  {
-    kvjson rsp;
-    rsp["RNM_KEY_RSP"] = std::move(pair);
-    rsp["RNM_KEY_RSP"]["st"] = status;    
-    return rsp;
-  }
+  // static kvjson renameKeyFail (const KvRequestStatus status, kvjson pair)
+  // {
+  //   kvjson rsp;
+  //   rsp["KV_RNM_RSP"] = std::move(pair);
+  //   rsp["KV_RNM_RSP"]["st"] = status;    
+  //   return rsp;
+  // }
 
   static PoolRequestResponse unknownError ()
   {
@@ -247,8 +247,8 @@ static kvjson createErrorResponse (const std::string_view commandRsp, const KvRe
 static kvjson createErrorResponse (const KvRequestStatus status, const std::string_view msg = "")
 {
   kvjson rsp;
-  rsp["ERR"]["st"] = status;
-  rsp["ERR"]["m"] = msg;
+  rsp["KV_ERR"]["st"] = status;
+  rsp["KV_ERR"]["m"] = msg;
   return rsp;
 }
 

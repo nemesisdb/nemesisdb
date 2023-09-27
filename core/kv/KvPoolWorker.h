@@ -90,7 +90,7 @@ private:
       }
       catch(const std::exception& e)
       {
-        kvjson unknownErrRsp{{"SETQ_RSP", {{"st", KvRequestStatus::Unknown}, {"k", std::move(key)}}}};
+        kvjson unknownErrRsp{{"KV_SETQ_RSP", {{"st", KvRequestStatus::Unknown}, {"k", std::move(key)}}}};
         send(cmd, unknownErrRsp.dump());
       }
     };
