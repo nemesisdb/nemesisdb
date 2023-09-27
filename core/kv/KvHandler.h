@@ -63,7 +63,7 @@ public:
         }
         catch (const std::exception& kex)
         {
-          std::get<KvRequestStatus>(status) = KvRequestStatus::Unknown;
+          status = std::make_tuple(KvRequestStatus::Unknown, queryName);
         }
       }
       else
@@ -79,8 +79,8 @@ private:
   fc_always_inline void set(KvWebSocket * ws, kvjson&& json)
   {
     static const KvQueryType queryType = KvQueryType::Set;
-    static const std::string_view queryName = "SET";
-    static const std::string_view queryRspName = "SET_RSP";
+    static const std::string_view queryName = "KV_SET";
+    static const std::string_view queryRspName = "KV_SET_RSP";
 
     for (auto& pair : json[queryName].items())
     {
@@ -109,8 +109,8 @@ private:
   fc_always_inline void setQ(KvWebSocket * ws, kvjson&& json)
   {
     static const KvQueryType queryType = KvQueryType::SetQ;
-    static const std::string_view queryName = "SETQ";
-    static const std::string_view queryRspName = "SETQ_RSP";
+    static const std::string_view queryName = "KV_SETQ";
+    static const std::string_view queryRspName = "KV_SETQ_RSP";
 
 
     for (auto& pair : json[queryName].items())
@@ -140,8 +140,8 @@ private:
   fc_always_inline void get(KvWebSocket * ws, kvjson&& json)
   {
     static const KvQueryType queryType = KvQueryType::Get;
-    static const std::string_view queryName = "GET";
-    static const std::string_view queryRspName = "GET_RSP";
+    static const std::string_view queryName = "KV_GET";
+    static const std::string_view queryRspName = "KV_GET_RSP";
 
     for (auto& jsonKey : json[queryName])
     {
@@ -197,8 +197,8 @@ private:
   fc_always_inline void add(KvWebSocket * ws, kvjson&& json)
   {
     static const KvQueryType queryType = KvQueryType::Add;
-    static const std::string_view queryName = "ADD";
-    static const std::string_view queryRspName = "ADD_RSP";
+    static const std::string_view queryName = "KV_ADD";
+    static const std::string_view queryRspName = "KV_ADD_RSP";
 
     doAdd(std::move(json), ws, queryType, queryName, queryRspName);
   }
@@ -206,8 +206,8 @@ private:
   fc_always_inline void addQ(KvWebSocket * ws, kvjson&& json)
   {
     static const KvQueryType queryType = KvQueryType::AddQ;
-    static const std::string_view queryName = "ADDQ";
-    static const std::string_view queryRspName = "ADDQ_RSP";
+    static const std::string_view queryName = "KV_ADDQ";
+    static const std::string_view queryRspName = "KV_ADDQ_RSP";
 
     doAdd(std::move(json), ws, queryType, queryName, queryRspName);
   }
@@ -215,8 +215,8 @@ private:
   fc_always_inline void rmv(KvWebSocket * ws, kvjson&& json)
   {
     static const KvQueryType queryType = KvQueryType::Remove;
-    static const std::string_view queryName = "RMV";
-    static const std::string_view queryRspName = "RMV_RSP";
+    static const std::string_view queryName = "KV_RMV";
+    static const std::string_view queryRspName = "KV_RMV_RSP";
 
     for (auto& key : json[queryName])
     {
@@ -244,7 +244,7 @@ private:
   fc_always_inline void clear(KvWebSocket * ws, kvjson&& json)
   {
     static const KvQueryType queryType = KvQueryType::Clear;
-    static const std::string_view queryName = "CLEAR";
+    static const std::string_view queryName = "KV_CLEAR";
     
     std::size_t count{0};
     bool cleared = true;
@@ -278,8 +278,8 @@ private:
     done.wait();
 
     kvjson rsp;
-    rsp["CLEAR_RSP"]["st"] = cleared ? KvRequestStatus::Ok : KvRequestStatus::Unknown;
-    rsp["CLEAR_RSP"]["cnt"] = count;
+    rsp["KV_CLEAR_RSP"]["st"] = cleared ? KvRequestStatus::Ok : KvRequestStatus::Unknown;
+    rsp["KV_CLEAR_RSP"]["cnt"] = count;
 
     ws->send(rsp.dump(), WsSendOpCode);
   }
@@ -287,10 +287,10 @@ private:
   fc_always_inline void serverInfo(KvWebSocket * ws, kvjson&& json)
   {
     static const KvQueryType queryType = KvQueryType::ServerInfo;
-    static const std::string_view queryName = "SERVER_INFO";
+    static const std::string_view queryName = "KV_SERVER_INFO";
 
-    static kvjson rsp {{"SERVER_INFO_RSP", {{"st", KvRequestStatus::Ok}, {"version", FUSION_VERSION}}}};
-    rsp["SERVER_INFO_RSP"]["qryCnt"] = serverStats->queryCount.load();
+    static kvjson rsp {{"KV_SERVER_INFO_RSP", {{"st", KvRequestStatus::Ok}, {"version", FUSION_VERSION}}}};
+    rsp["KV_SERVER_INFO_RSP"]["qryCnt"] = serverStats->queryCount.load();
 
     ws->send(rsp.dump(), WsSendOpCode);
   }
@@ -298,7 +298,7 @@ private:
   fc_always_inline void count(KvWebSocket * ws, kvjson&& json)
   {
     static const KvQueryType queryType = KvQueryType::Count;
-    static const std::string_view queryName = "COUNT";
+    static const std::string_view queryName = "KV_COUNT";
 
     std::size_t count{0};
     bool cleared = true;
@@ -325,8 +325,8 @@ private:
     done.wait();
 
     kvjson rsp;
-    rsp["COUNT_RSP"]["st"] = KvRequestStatus::Ok;
-    rsp["COUNT_RSP"]["cnt"] = count;
+    rsp["KV_COUNT_RSP"]["st"] = KvRequestStatus::Ok;
+    rsp["KV_COUNT_RSP"]["cnt"] = count;
 
     ws->send(rsp.dump(), WsSendOpCode);
   }
@@ -334,7 +334,7 @@ private:
   // fc_always_inline void renameKey(KvWebSocket * ws, kvjson&& json)
   // {
   //   static const KvQueryType queryType = KvQueryType::RenameKey;
-  //   static const std::string_view queryName = "RNM_KEY";
+  //   static const std::string_view queryName = "KV_RNM";
 
   //   // find the pool for the existing key and new key
   //   // if they are the same pool, can rename key in that pool

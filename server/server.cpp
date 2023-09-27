@@ -71,8 +71,8 @@ int main (int argc, char ** argv)
   std::cout << "Fusion Max Cores: " << FUSION_MAX_CORES << '\n'
             << "Available Cores: "  << std::thread::hardware_concurrency() << '\n';
 
-  /*std::cout << "I/O Threads: "      << nIoThreads << '\n'      // TODO remove
-            << "Pools: "            << kv::MaxPools << '\n';   // TODO remove*/
+  /*std::cout << "I/O Threads: "    << nIoThreads << '\n'     // TODO remove
+            << "Pools: "            << kv::MaxPools << '\n';  // TODO remove */
 
   std::size_t listenSuccess{0U};
   std::atomic_ref listenSuccessRef{listenSuccess};
@@ -105,8 +105,6 @@ int main (int argc, char ** argv)
               ws->send(kv::createErrorResponse(kv::KvRequestStatus::JsonInvalid).dump(), kv::WsSendOpCode);
             else
             {
-              //ws->getUserData()->json = std::move(request);
-              
               if (auto [status, msg] = handlers.handle(ws, std::move(request)) ; status != kv::KvRequestStatus::Ok)
                 ws->send(kv::createErrorResponse(status, msg).dump(), kv::WsSendOpCode);
             }
