@@ -32,7 +32,7 @@ echo "Package: fusioncache" > $controlFilePath
 echo "Version: $1" >> $controlFilePath
 echo "Architecture: amd64" >> $controlFilePath
 echo "Maintainer: FusionCache <contact@fusioncache.io>" >> $controlFilePath
-echo "Homepage: fusioncache.io" >> $controlFilePath
+echo "Homepage: https://fusioncache.io" >> $controlFilePath
 echo "Description: FusionCache" >> $controlFilePath
 echo " JSON cache." >> $controlFilePath
 

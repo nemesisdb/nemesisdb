@@ -29,6 +29,8 @@ public:
   {
     if (!setThreadAffinity(m_thread.native_handle(), core))
       std::cout << "Failed to assign KvPoolWorker thread: " << core << '\n';
+    //else
+      //std::cout << "Assigned KvPoolWorker thread: " << core << '\n';
 
     //setThreadRealtime(m_thread.native_handle(), 25);
   }

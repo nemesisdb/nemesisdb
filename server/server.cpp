@@ -65,19 +65,20 @@ int main (int argc, char ** argv)
   
   kv::MaxPools = std::max<std::size_t>(1U, nCores - nIoThreads);
 
-  kv::KvHandler handlers {kv::MaxPools, nIoThreads};
+  kv::KvHandler handlers {kv::MaxPools, nCores - kv::MaxPools};
   std::vector<std::jthread *> threads;
 
-  std::cout << "Available Cores: "  << std::thread::hardware_concurrency() << '\n'
-            << "Fusion Max Cores: " << nCores << '\n'
-            << "I/O Threads: "      << nIoThreads << '\n'      // TODO remove
-            << "Pools: "            << kv::MaxPools << '\n';   // TODO remove
+  std::cout << "Fusion Max Cores: " << FUSION_MAX_CORES << '\n'
+            << "Available Cores: "  << std::thread::hardware_concurrency() << '\n';
+
+  /*std::cout << "I/O Threads: "      << nIoThreads << '\n'      // TODO remove
+            << "Pools: "            << kv::MaxPools << '\n';   // TODO remove*/
 
   std::size_t listenSuccess{0U};
   std::atomic_ref listenSuccessRef{listenSuccess};
   std::latch startLatch (nIoThreads);
 
-  for (std::size_t i = 0U, core = 0 ; i < nIoThreads ; ++i, ++core)
+  for (std::size_t i = 0U, core = 0U ; i < nIoThreads ; ++i, ++core)
   {
     auto * thread = new std::jthread([&handlers, &ip, port, &listenSuccessRef, &startLatch, maxPayload, serverStats = kv::serverStats]()
     {
@@ -91,7 +92,6 @@ int main (int argc, char ** argv)
         .upgrade = nullptr,
         .open = [](kv::KvWebSocket * ws)
         {
-          //ws->getUserData()->ws = ws; // ws pointer is valid until the client disconnects (after close lambda exits)
         },
         .message = [&handlers, serverStats](kv::KvWebSocket * ws, std::string_view message, uWS::OpCode opCode)
         {   
@@ -114,8 +114,7 @@ int main (int argc, char ** argv)
         },
         .close = [](kv::KvWebSocket * ws, int /*code*/, std::string_view /*message*/)
         {
-          // TODO when a client disconnects mid query
-          //ws->getUserData()->isConnected(false);
+          ws->getUserData()->connected->store(false);
         }
       })
       .listen(ip, port, [port, &listenSuccessRef, &startLatch](auto * listenSocket)

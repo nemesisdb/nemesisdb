@@ -25,7 +25,7 @@ public:
 private:
   
   // CAREFUL: these have to be in the order of KvQueryType enum
-  const std::function<void(/*KvRequest */KvWebSocket *, kvjson&&)> Handlers[static_cast<std::size_t>(KvQueryType::Max)] =
+  const std::function<void(KvWebSocket *, kvjson&&)> Handlers[static_cast<std::size_t>(KvQueryType::Max)] =
   {
     std::bind(&KvHandler::set, std::ref(*this), std::placeholders::_1, std::placeholders::_2),
     std::bind(&KvHandler::setQ, std::ref(*this), std::placeholders::_1, std::placeholders::_2),
@@ -41,11 +41,9 @@ private:
 
 public:
 
-  std::tuple<KvRequestStatus,std::string> handle(/*KvRequest * query*/KvWebSocket * ws, kvjson&& json)
+  std::tuple<KvRequestStatus,std::string> handle(KvWebSocket * ws, kvjson&& json)
   {
     std::tuple<KvRequestStatus,std::string> status = std::make_tuple(KvRequestStatus::Ok, "");
-
-    //auto& request = query->json;
 
     if (json.size() != 1U)
       std::get<KvRequestStatus>(status) = KvRequestStatus::CommandMultiple;
@@ -78,7 +76,7 @@ public:
 
 private:
 
-  fc_always_inline void set(/*KvRequest * query*/KvWebSocket * ws, kvjson&& json)
+  fc_always_inline void set(KvWebSocket * ws, kvjson&& json)
   {
     static const KvQueryType queryType = KvQueryType::Set;
     static const std::string_view queryName = "SET";
@@ -95,9 +93,9 @@ private:
         if (PoolIndexers[m_poolIndex](key, poolId))    [[likely]]
         {
           m_pools[poolId]->execute(KvCommand{ .ws = ws,
-                                                  .loop = uWS::Loop::get(),
-                                                  .contents = std::move(pair),
-                                                  .type = queryType});
+                                              .loop = uWS::Loop::get(),
+                                              .contents = std::move(pair),
+                                              .type = queryType});
         }
         else
           ws->send(createErrorResponse(queryRspName, KvRequestStatus::KeyLengthInvalid, key).dump(), WsSendOpCode);
@@ -108,7 +106,7 @@ private:
   }
 
 
-  fc_always_inline void setQ(/*KvRequest * query*/KvWebSocket * ws, kvjson&& json)
+  fc_always_inline void setQ(KvWebSocket * ws, kvjson&& json)
   {
     static const KvQueryType queryType = KvQueryType::SetQ;
     static const std::string_view queryName = "SETQ";
@@ -139,7 +137,7 @@ private:
   }
 
 
-  fc_always_inline void get(/*KvRequest * query*/KvWebSocket * ws, kvjson&& json)
+  fc_always_inline void get(KvWebSocket * ws, kvjson&& json)
   {
     static const KvQueryType queryType = KvQueryType::Get;
     static const std::string_view queryName = "GET";
@@ -196,7 +194,7 @@ private:
   }
 
 
-  fc_always_inline void add(/*KvRequest * query*/KvWebSocket * ws, kvjson&& json)
+  fc_always_inline void add(KvWebSocket * ws, kvjson&& json)
   {
     static const KvQueryType queryType = KvQueryType::Add;
     static const std::string_view queryName = "ADD";
@@ -205,7 +203,7 @@ private:
     doAdd(std::move(json), ws, queryType, queryName, queryRspName);
   }
 
-  fc_always_inline void addQ(/*KvRequest * query*/KvWebSocket * ws, kvjson&& json)
+  fc_always_inline void addQ(KvWebSocket * ws, kvjson&& json)
   {
     static const KvQueryType queryType = KvQueryType::AddQ;
     static const std::string_view queryName = "ADDQ";
@@ -214,7 +212,7 @@ private:
     doAdd(std::move(json), ws, queryType, queryName, queryRspName);
   }
 
-  fc_always_inline void rmv(/*KvRequest * query*/KvWebSocket * ws, kvjson&& json)
+  fc_always_inline void rmv(KvWebSocket * ws, kvjson&& json)
   {
     static const KvQueryType queryType = KvQueryType::Remove;
     static const std::string_view queryName = "RMV";
@@ -243,7 +241,7 @@ private:
     }
   }
 
-  fc_always_inline void clear(/*KvRequest * query*/KvWebSocket * ws, kvjson&& json)
+  fc_always_inline void clear(KvWebSocket * ws, kvjson&& json)
   {
     static const KvQueryType queryType = KvQueryType::Clear;
     static const std::string_view queryName = "CLEAR";
@@ -286,7 +284,7 @@ private:
     ws->send(rsp.dump(), WsSendOpCode);
   }
 
-  fc_always_inline void serverInfo(/*KvRequest * query*/KvWebSocket * ws, kvjson&& json)
+  fc_always_inline void serverInfo(KvWebSocket * ws, kvjson&& json)
   {
     static const KvQueryType queryType = KvQueryType::ServerInfo;
     static const std::string_view queryName = "SERVER_INFO";
@@ -297,7 +295,7 @@ private:
     ws->send(rsp.dump(), WsSendOpCode);
   }
 
-  fc_always_inline void count(/*KvRequest * query*/KvWebSocket * ws, kvjson&& json)
+  fc_always_inline void count(KvWebSocket * ws, kvjson&& json)
   {
     static const KvQueryType queryType = KvQueryType::Count;
     static const std::string_view queryName = "COUNT";
@@ -333,7 +331,7 @@ private:
     ws->send(rsp.dump(), WsSendOpCode);
   }
 
-  // fc_always_inline void renameKey(/*KvRequest * query*/KvWebSocket * ws, kvjson&& json)
+  // fc_always_inline void renameKey(KvWebSocket * ws, kvjson&& json)
   // {
   //   static const KvQueryType queryType = KvQueryType::RenameKey;
   //   static const std::string_view queryName = "RNM_KEY";
