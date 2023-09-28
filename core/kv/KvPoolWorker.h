@@ -153,6 +153,42 @@ private:
       cmd.cordinatedResponseHandler(std::make_any<std::size_t>(map.size()));
     };
 
+    auto append = [this](CacheMap& map, KvCommand& cmd)
+    {
+      KvRequestStatus status = KvRequestStatus::Ok;
+
+      auto& key = cmd.contents.begin().key();
+      if (const auto it = map.find(key) ; it != map.cend())
+      {
+        const auto type = cmd.contents.begin().value().type();
+        switch (type)
+        {
+          case kvjson::value_t::array:
+          {
+            for (auto& item : cmd.contents.at(key))
+              it->second.insert(it->second.end(), std::move(item));
+          }
+          break;
+
+          case kvjson::value_t::object:
+            it->second.insert(cmd.contents.begin().value().begin(), cmd.contents.begin().value().end());
+          break;
+
+          case kvjson::value_t::string:
+            it->second.get_ref<kvjson::string_t&>().append(cmd.contents.begin().value());
+          break;
+
+          default:
+            status = KvRequestStatus::ValueTypeInvalid;
+          break;
+        }
+      }
+      else
+        status = KvRequestStatus::KeyNotExist;
+
+      send(cmd, PoolRequestResponse::append(status, std::move(key)).dump());
+    };
+
     /*
     auto renameKey = [](CacheMap& map, KvCommand& cmd)
     {
@@ -190,8 +226,9 @@ private:
       remove,
       clear,
       serverInfo,
-      count/*,
-      renameKey*/
+      count,
+      append
+      /*renameKey*/
     };
 
     CacheMap map;
