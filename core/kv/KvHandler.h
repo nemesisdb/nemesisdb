@@ -16,10 +16,16 @@ namespace fusion { namespace core { namespace kv {
 class KvHandler
 {
 public:
-  KvHandler(const std::size_t nPools, const std::size_t coreOffset) : m_createPoolId(nPools == 1U ? PoolIndexers[1U] : PoolIndexers[0U]) //m_poolIndex(nPools == 1U ? 1U : 0U)
+  KvHandler(const std::size_t nPools, const std::size_t coreOffset) : m_createPoolId(nPools == 1U ? PoolIndexers[1U] : PoolIndexers[0U])
   {
     for (std::size_t pool = 0, core = coreOffset ; pool < nPools ; ++pool, ++core)
       m_pools.emplace_back(new KvPoolWorker{core, pool});
+  }
+
+  ~KvHandler()
+  {
+    for (auto& pool : m_pools)
+      delete pool;
   }
 
 private:
@@ -353,9 +359,8 @@ private:
         ws->send(createErrorResponse(queryRspName, KvRequestStatus::KeyLengthInvalid, kv.key()).dump(), WsSendOpCode);
     }
   }
-  
 
-  // fc_always_inline void renameKey(KvWebSocket * ws, kvjson&& json)
+
   // {
   //   static const KvQueryType queryType = KvQueryType::RenameKey;
   //   static const std::string_view queryName = "KV_RNM";

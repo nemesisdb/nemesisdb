@@ -1,3 +1,4 @@
+#include <signal.h> 
 #include <iostream>
 #include <thread>
 #include <algorithm>
@@ -15,10 +16,25 @@
 using namespace fusion::core;
 namespace kv = fusion::core::kv;
 
+std::latch run{1U};
+
+
+inline void kvSigHandle(int param)
+{
+  run.count_down();
+}
+
+
 
 int main (int argc, char ** argv)
 {
   std::cout << "Fusion v" << FUSION_VERSION << " starting\n";
+
+  std::cout << "Registering signals\n";
+  signal(SIGINT,  kvSigHandle);
+  signal(SIGTERM, kvSigHandle); // docker stop
+  signal(SIGKILL, kvSigHandle); // docker kill 
+
 
   FusionConfig config;
 
@@ -32,8 +48,11 @@ int main (int argc, char ** argv)
       return 0;
   #endif
 
-
   kv::KvServer server;
-  server.run(config);  
+  server.run(config);
+
+  run.wait();
+
+  server.stop();
 }
 
