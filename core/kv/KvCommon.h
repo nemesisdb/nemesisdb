@@ -42,18 +42,18 @@ enum class KvQueryType : std::uint8_t
 };
 
 
-const std::map<const std::string_view, const KvQueryType> QueryNameToType = 
+const std::map<const std::string_view, std::tuple<const KvQueryType, const kvjson::value_t>> QueryNameToType = 
 {
-  {"KV_SET",          KvQueryType::Set},
-  {"KV_SETQ",         KvQueryType::SetQ},
-  {"KV_GET",          KvQueryType::Get},
-  {"KV_ADD",          KvQueryType::Add},
-  {"KV_ADDQ",         KvQueryType::AddQ},
-  {"KV_RMV",          KvQueryType::Remove},
-  {"KV_CLEAR",        KvQueryType::Clear},
-  {"KV_COUNT",        KvQueryType::Count},
-  {"KV_SERVER_INFO",  KvQueryType::ServerInfo},
-  {"KV_APPEND",       KvQueryType::Append}
+  {"KV_SET",          {KvQueryType::Set, kvjson::value_t::object}},
+  {"KV_SETQ",         {KvQueryType::SetQ, kvjson::value_t::object}},
+  {"KV_GET",          {KvQueryType::Get, kvjson::value_t::array}},
+  {"KV_ADD",          {KvQueryType::Add, kvjson::value_t::object}},
+  {"KV_ADDQ",         {KvQueryType::AddQ, kvjson::value_t::object}},
+  {"KV_RMV",          {KvQueryType::Remove, kvjson::value_t::object}},
+  {"KV_CLEAR",        {KvQueryType::Clear, kvjson::value_t::object}},
+  {"KV_COUNT",        {KvQueryType::Count, kvjson::value_t::object}},
+  {"KV_SERVER_INFO",  {KvQueryType::ServerInfo, kvjson::value_t::object}},
+  {"KV_APPEND",       {KvQueryType::Append, kvjson::value_t::object}}
   //{"KV_RNM",       KvQueryType::RenameKey}
 };
 
@@ -62,9 +62,10 @@ enum class KvRequestStatus
 {
   Ok = 1,
   OpCodeInvalid,
-  CommandNotExist = 10,
-  CommandMultiple, 
   JsonInvalid,
+  CommandNotExist = 10,
+  CommandMultiple,
+  CommandType, 
   KeySet = 20,
   KeyUpdated,
   KeyNotExist,
@@ -263,6 +264,10 @@ static kvjson createErrorResponse (const KvRequestStatus status, const std::stri
   return rsp;
 }
 
+// std::string kvStatusToString (const KvRequestStatus st)
+// {
+//   return std::to_string(static_cast<std::uint8_t>(st));
+// }
 
 fc_always_inline bool valueTypeValid (const kvjson& value)
 {

@@ -60,18 +60,25 @@ public:
     
       if (auto itType = QueryNameToType.find(queryName) ; itType != QueryNameToType.cend())
       {
-        auto handler = Handlers[static_cast<std::size_t>(itType->second)];
+        auto [queryType, commandType] = itType->second;
 
-        // TODO check command root is correct type (most are object, GET is array)
-        
-        try
+        if (commandType == json.at(queryName).type())
         {
-          handler(ws, std::move(json));
+          auto handler = Handlers[static_cast<std::size_t>(queryType)];
+
+          try
+          {
+            handler(ws, std::move(json));
+          }
+          catch (const std::exception& kex)
+          {
+            status = std::make_tuple(KvRequestStatus::Unknown, queryName);
+          }
         }
-        catch (const std::exception& kex)
+        else
         {
-          status = std::make_tuple(KvRequestStatus::Unknown, queryName);
-        }
+          status = std::make_tuple(KvRequestStatus::CommandType, queryName);
+        }        
       }
       else
         status = std::make_tuple(KvRequestStatus::CommandNotExist, queryName);
@@ -169,7 +176,7 @@ private:
                                               .type = queryType});
         }
         else
-          ws->send(createErrorResponse(queryRspName, KvRequestStatus::KeyLengthInvalid).dump(), WsSendOpCode);
+          ws->send(createErrorResponse(queryRspName, KvRequestStatus::KeyLengthInvalid, key).dump(), WsSendOpCode);
       }
     }
   }

@@ -45,10 +45,7 @@ public:
     {
       std::scoped_lock lck{m_sessionsMux};
       for (auto ws : m_sessions)
-      {
-        std::cout << "ws = " << ws << '\n';
         ws->end(1000); 
-      }        
 
       m_sessions.clear();
     }
@@ -156,12 +153,17 @@ public:
               ws->send(kv::createErrorResponse(kv::KvRequestStatus::OpCodeInvalid).dump(), kv::WsSendOpCode);
             else
             {
-              if (auto request = kv::kvjson::parse(message, nullptr, false); request.is_discarded())
+              if (auto request = kv::kvjson::parse(message, nullptr, false); request.is_discarded()) // TODO change parse() to accept?
                 ws->send(kv::createErrorResponse(kv::KvRequestStatus::JsonInvalid).dump(), kv::WsSendOpCode);
               else
               {
-                if (auto [status, msg] = m_handlers->handle(ws, std::move(request)) ; status != kv::KvRequestStatus::Ok)
-                  ws->send(kv::createErrorResponse(status, msg).dump(), kv::WsSendOpCode);
+                if (auto [status, queryName] = m_handlers->handle(ws, std::move(request)) ; status != KvRequestStatus::Ok)
+                {
+                  if (status == KvRequestStatus::CommandType)
+                    ws->send(createErrorResponse(queryName+"_RSP", status).dump(), kv::WsSendOpCode);
+                  else
+                    ws->send(createErrorResponse(status, queryName).dump(), kv::WsSendOpCode);
+                }
               }
             }
           },
