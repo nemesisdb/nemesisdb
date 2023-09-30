@@ -5,7 +5,7 @@
 #   /usr/bin/cmake --config Release --target clean
 # fi
 
-# /usr/bin/cmake --config Release -j 18
+/usr/bin/cmake --config Release --target All -j 18 --./
 
 cd bin
 

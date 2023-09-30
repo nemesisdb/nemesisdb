@@ -115,7 +115,7 @@ private:
     auto addQ = [doAdd, this](CacheMap& map, KvCommand& cmd)
     {
       if (auto [added, key] = doAdd(map, cmd); !added)  // only respond if key not added
-        send(cmd, PoolRequestResponse::keyAdd(added, std::move(key)).dump()); 
+        send(cmd, PoolRequestResponse::keyAddQ(added, std::move(key)).dump()); 
     };
 
     auto remove = [this](CacheMap& map, KvCommand& cmd)
