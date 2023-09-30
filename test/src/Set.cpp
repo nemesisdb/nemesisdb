@@ -3,6 +3,8 @@
 using namespace fusion::test;
 
 
+
+
 TEST_F(FusionTest, Scalar)
 {
 	const std::vector<TestData> data = 

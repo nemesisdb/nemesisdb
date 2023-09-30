@@ -49,7 +49,7 @@ const std::map<const std::string_view, std::tuple<const KvQueryType, const kvjso
   {"KV_GET",          {KvQueryType::Get, kvjson::value_t::array}},
   {"KV_ADD",          {KvQueryType::Add, kvjson::value_t::object}},
   {"KV_ADDQ",         {KvQueryType::AddQ, kvjson::value_t::object}},
-  {"KV_RMV",          {KvQueryType::Remove, kvjson::value_t::object}},
+  {"KV_RMV",          {KvQueryType::Remove, kvjson::value_t::array}},
   {"KV_CLEAR",        {KvQueryType::Clear, kvjson::value_t::object}},
   {"KV_COUNT",        {KvQueryType::Count, kvjson::value_t::object}},
   {"KV_SERVER_INFO",  {KvQueryType::ServerInfo, kvjson::value_t::object}},

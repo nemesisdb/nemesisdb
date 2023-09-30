@@ -127,6 +127,16 @@ TEST_F(FusionTest, KeyInvalidType)
 }
 
 
+TEST_F(FusionTest, KeyNotExist)
+{
+	TestClient tc;
+
+	ASSERT_TRUE(tc.open());
+	
+	tc.test(TestData { .request = R"({ "KV_GET":["imnothere"] })"_json,	.expected = {R"({ "KV_GET_RSP":{ "st":22, "k":"imnothere" } })"_json} });
+}
+
+
 int main (int argc, char ** argv)
 {
 	testing::InitGoogleTest(&argc, argv);	
