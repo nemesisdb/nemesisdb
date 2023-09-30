@@ -62,7 +62,7 @@ private:
   
   void run ()
   {
-    auto doAdd = [](CacheMap& map, KvCommand& cmd) -> std::tuple<bool, std::string_view>
+    auto doAdd = [](CacheMap& map, KvCommand& cmd) -> std::tuple<bool, std::string>
     {
       const auto& key = cmd.contents.items().begin().key();
       auto& value = cmd.contents.items().begin().value(); 
@@ -77,7 +77,7 @@ private:
       auto& value = cmd.contents.begin().value(); 
       const auto [ignore, inserted] = map.insert_or_assign(key, std::move(value));
       
-      send(cmd, PoolRequestResponse::keySet(inserted, std::move(key)).dump());
+      send(cmd, PoolRequestResponse::keySet(inserted, key).dump());
     };
 
     auto setQ = [this](CacheMap& map, KvCommand& cmd)
@@ -115,7 +115,7 @@ private:
     auto addQ = [doAdd, this](CacheMap& map, KvCommand& cmd)
     {
       if (auto [added, key] = doAdd(map, cmd); !added)  // only respond if key not added
-        send(cmd, PoolRequestResponse::keyAdd(added, std::move(key)).dump()); 
+        send(cmd, PoolRequestResponse::keyAddQ(added, std::move(key)).dump()); 
     };
 
     auto remove = [this](CacheMap& map, KvCommand& cmd)
@@ -151,6 +151,42 @@ private:
     auto count = [this](CacheMap& map, KvCommand& cmd)
     {
       cmd.cordinatedResponseHandler(std::make_any<std::size_t>(map.size()));
+    };
+
+    auto append = [this](CacheMap& map, KvCommand& cmd)
+    {
+      KvRequestStatus status = KvRequestStatus::Ok;
+
+      auto& key = cmd.contents.begin().key();
+      if (const auto it = map.find(key) ; it != map.cend())
+      {
+        const auto type = cmd.contents.begin().value().type();
+        switch (type)
+        {
+          case kvjson::value_t::array:
+          {
+            for (auto& item : cmd.contents.at(key))
+              it->second.insert(it->second.end(), std::move(item));
+          }
+          break;
+
+          case kvjson::value_t::object:
+            it->second.insert(cmd.contents.begin().value().begin(), cmd.contents.begin().value().end());
+          break;
+
+          case kvjson::value_t::string:
+            it->second.get_ref<kvjson::string_t&>().append(cmd.contents.begin().value());
+          break;
+
+          default:
+            status = KvRequestStatus::ValueTypeInvalid;
+          break;
+        }
+      }
+      else
+        status = KvRequestStatus::KeyNotExist;
+
+      send(cmd, PoolRequestResponse::append(status, std::move(key)).dump());
     };
 
     /*
@@ -190,8 +226,9 @@ private:
       remove,
       clear,
       serverInfo,
-      count/*,
-      renameKey*/
+      count,
+      append
+      /*renameKey*/
     };
 
     CacheMap map;

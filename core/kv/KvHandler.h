@@ -16,10 +16,16 @@ namespace fusion { namespace core { namespace kv {
 class KvHandler
 {
 public:
-  KvHandler(const std::size_t nPools, const std::size_t coreOffset) : m_poolIndex(nPools == 1U ? 1U : 0U)
+  KvHandler(const std::size_t nPools, const std::size_t coreOffset) : m_createPoolId(nPools == 1U ? PoolIndexers[1U] : PoolIndexers[0U])
   {
     for (std::size_t pool = 0, core = coreOffset ; pool < nPools ; ++pool, ++core)
       m_pools.emplace_back(new KvPoolWorker{core, pool});
+  }
+
+  ~KvHandler()
+  {
+    for (auto& pool : m_pools)
+      delete pool;
   }
 
 private:
@@ -35,8 +41,9 @@ private:
     std::bind(&KvHandler::rmv, std::ref(*this), std::placeholders::_1, std::placeholders::_2),
     std::bind(&KvHandler::clear, std::ref(*this), std::placeholders::_1, std::placeholders::_2),
     std::bind(&KvHandler::serverInfo, std::ref(*this), std::placeholders::_1, std::placeholders::_2),
-    std::bind(&KvHandler::count, std::ref(*this), std::placeholders::_1, std::placeholders::_2)/*,
-    std::bind(&KvHandler::renameKey, std::ref(*this), std::placeholders::_1)*/
+    std::bind(&KvHandler::count, std::ref(*this), std::placeholders::_1, std::placeholders::_2),
+    std::bind(&KvHandler::append, std::ref(*this), std::placeholders::_1, std::placeholders::_2)
+    /*std::bind(&KvHandler::renameKey, std::ref(*this), std::placeholders::_1)*/
   };
 
 public:
@@ -53,18 +60,25 @@ public:
     
       if (auto itType = QueryNameToType.find(queryName) ; itType != QueryNameToType.cend())
       {
-        auto handler = Handlers[static_cast<std::size_t>(itType->second)];
+        auto [queryType, commandType] = itType->second;
 
-        // TODO check command root is correct type (most are object, GET is array)
-        
-        try
+        if (commandType == json.at(queryName).type())
         {
-          handler(ws, std::move(json));
+          auto handler = Handlers[static_cast<std::size_t>(queryType)];
+
+          try
+          {
+            handler(ws, std::move(json));
+          }
+          catch (const std::exception& kex)
+          {
+            status = std::make_tuple(KvRequestStatus::Unknown, queryName);
+          }
         }
-        catch (const std::exception& kex)
+        else
         {
-          status = std::make_tuple(KvRequestStatus::Unknown, queryName);
-        }
+          status = std::make_tuple(KvRequestStatus::CommandType, queryName);
+        }        
       }
       else
         status = std::make_tuple(KvRequestStatus::CommandNotExist, queryName);
@@ -90,7 +104,7 @@ private:
       if (valueTypeValid(value))    [[likely]]
       {
         PoolId poolId;
-        if (PoolIndexers[m_poolIndex](key, poolId))    [[likely]]
+        if (m_createPoolId(key, poolId))    [[likely]]
         {
           m_pools[poolId]->execute(KvCommand{ .ws = ws,
                                               .loop = uWS::Loop::get(),
@@ -121,7 +135,7 @@ private:
       if (valueTypeValid(value))    [[likely]]
       {
         PoolId poolId;
-        if (PoolIndexers[m_poolIndex](key, poolId))    [[likely]]
+        if (m_createPoolId(key, poolId))    [[likely]]
         {
           m_pools[poolId]->execute(KvCommand{ .ws = ws,
                                               .loop = uWS::Loop::get(),
@@ -154,7 +168,7 @@ private:
         PoolId poolId;
         auto key = jsonKey.get<std::string_view>();
 
-        if (PoolIndexers[m_poolIndex](key, poolId))  [[likely]]
+        if (m_createPoolId(key, poolId))  [[likely]]
         {
           m_pools[poolId]->execute(KvCommand{ .ws = ws,
                                               .loop = uWS::Loop::get(),
@@ -162,7 +176,7 @@ private:
                                               .type = queryType});
         }
         else
-          ws->send(createErrorResponse(queryRspName, KvRequestStatus::KeyLengthInvalid).dump(), WsSendOpCode);
+          ws->send(createErrorResponse(queryRspName, KvRequestStatus::KeyLengthInvalid, key).dump(), WsSendOpCode);
       }
     }
   }
@@ -178,7 +192,7 @@ private:
       if (valueTypeValid(value))    [[likely]]
       {
         PoolId poolId;
-        if (PoolIndexers[m_poolIndex](key, poolId))    [[likely]]
+        if (m_createPoolId(key, poolId))    [[likely]]
         {
           m_pools[poolId]->execute(KvCommand{ .ws = ws,
                                               .loop = uWS::Loop::get(),
@@ -226,7 +240,7 @@ private:
 
         PoolId poolId;
 
-        if (PoolIndexers[m_poolIndex](k, poolId))  [[likely]]
+        if (m_createPoolId(k, poolId))  [[likely]]
         {
           m_pools[poolId]->execute(KvCommand{ .ws = ws,
                                             .loop = uWS::Loop::get(),
@@ -331,7 +345,29 @@ private:
     ws->send(rsp.dump(), WsSendOpCode);
   }
 
-  // fc_always_inline void renameKey(KvWebSocket * ws, kvjson&& json)
+  fc_always_inline void append(KvWebSocket * ws, kvjson&& json)
+  {
+    static const KvQueryType queryType = KvQueryType::Append;
+    static const std::string_view queryName = "KV_APPEND";
+    static const std::string_view queryRspName = "KV_APPEND_RSP";
+
+    // don't check value type here (i.e. string, object or array) because pool worker has to check anyway
+    for (auto& kv : json.at(queryName).items())
+    {
+      PoolId poolId;
+      if (m_createPoolId(kv.key(), poolId))
+      {
+        m_pools[poolId]->execute(KvCommand{ .ws = ws,
+                                            .loop = uWS::Loop::get(),
+                                            .contents = std::move(kv),
+                                            .type = queryType});
+      }
+      else
+        ws->send(createErrorResponse(queryRspName, KvRequestStatus::KeyLengthInvalid, kv.key()).dump(), WsSendOpCode);
+    }
+  }
+
+
   // {
   //   static const KvQueryType queryType = KvQueryType::RenameKey;
   //   static const std::string_view queryName = "KV_RNM";
@@ -343,8 +379,8 @@ private:
 
 
 private:
-  std::size_t m_poolIndex;
   std::vector<KvPoolWorker *> m_pools;
+  std::function<bool(const std::string_view&, PoolId&)> m_createPoolId;
 };
 
 }

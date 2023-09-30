@@ -35,23 +35,25 @@ enum class KvQueryType : std::uint8_t
   Clear,
   ServerInfo,
   Count,
+  Append,
   //RenameKey,
   Max,
   Unknown,
 };
 
 
-const std::map<std::string_view, KvQueryType> QueryNameToType = 
+const std::map<const std::string_view, std::tuple<const KvQueryType, const kvjson::value_t>> QueryNameToType = 
 {
-  {"KV_SET",          KvQueryType::Set},
-  {"KV_SETQ",         KvQueryType::SetQ},
-  {"KV_GET",          KvQueryType::Get},
-  {"KV_ADD",          KvQueryType::Add},
-  {"KV_ADDQ",         KvQueryType::AddQ},
-  {"KV_RMV",          KvQueryType::Remove},
-  {"KV_CLEAR",        KvQueryType::Clear},
-  {"KV_COUNT",        KvQueryType::Count},
-  {"KV_SERVER_INFO",  KvQueryType::ServerInfo}
+  {"KV_SET",          {KvQueryType::Set, kvjson::value_t::object}},
+  {"KV_SETQ",         {KvQueryType::SetQ, kvjson::value_t::object}},
+  {"KV_GET",          {KvQueryType::Get, kvjson::value_t::array}},
+  {"KV_ADD",          {KvQueryType::Add, kvjson::value_t::object}},
+  {"KV_ADDQ",         {KvQueryType::AddQ, kvjson::value_t::object}},
+  {"KV_RMV",          {KvQueryType::Remove, kvjson::value_t::array}},
+  {"KV_CLEAR",        {KvQueryType::Clear, kvjson::value_t::object}},
+  {"KV_COUNT",        {KvQueryType::Count, kvjson::value_t::object}},
+  {"KV_SERVER_INFO",  {KvQueryType::ServerInfo, kvjson::value_t::object}},
+  {"KV_APPEND",       {KvQueryType::Append, kvjson::value_t::object}}
   //{"KV_RNM",       KvQueryType::RenameKey}
 };
 
@@ -60,9 +62,10 @@ enum class KvRequestStatus
 {
   Ok = 1,
   OpCodeInvalid,
-  CommandNotExist = 10,
-  CommandMultiple, 
   JsonInvalid,
+  CommandNotExist = 10,
+  CommandMultiple,
+  CommandType, 
   KeySet = 20,
   KeyUpdated,
   KeyNotExist,
@@ -113,19 +116,11 @@ struct PoolRequestResponse
   {
     kvjson rsp;
     rsp["KV_SET_RSP"]["st"] = isSet ? KeySet : KeyUpdated;
-    rsp["KV_SET_RSP"]["k"] = std::move(k);
-    return rsp;
-  }
-
-  static kvjson keySet (const bool isSet, std::string&& k)
-  {
-    kvjson rsp;
-    rsp["KV_SET_RSP"]["st"] = isSet ? KeySet : KeyUpdated;
-    rsp["KV_SET_RSP"]["k"] = std::move(k);
+    rsp["KV_SET_RSP"]["k"] = k;
     return rsp;
   }
   
-  static kvjson keyAdd (const bool isAdded, const std::string_view k)
+  static kvjson keyAdd (const bool isAdded, std::string&& k)
   {
     kvjson rsp;
     rsp["KV_ADD_RSP"]["st"] = isAdded ? KeySet : KeyExists;
@@ -133,11 +128,27 @@ struct PoolRequestResponse
     return rsp;
   }
 
+  static kvjson keyAddQ (const bool isAdded, std::string&& k)
+  {
+    kvjson rsp;
+    rsp["KV_ADDQ_RSP"]["st"] = isAdded ? KeySet : KeyExists;
+    rsp["KV_ADDQ_RSP"]["k"] = std::move(k);
+    return rsp;
+  }
+
   static kvjson keyRemoved (const bool removed, const std::string_view k)
   {
     kvjson rsp;
     rsp["KV_RMV_RSP"]["st"] = removed ? KeyRemoved : KeyNotExist;
-    rsp["KV_RMV_RSP"]["k"] = std::move(k);
+    rsp["KV_RMV_RSP"]["k"] = k;
+    return rsp;
+  }
+
+  static kvjson append (const KvRequestStatus status, const std::string_view k)
+  {
+    kvjson rsp;
+    rsp["KV_APPEND_RSP"]["st"] = status;
+    rsp["KV_APPEND_RSP"]["k"] = k;
     return rsp;
   }
 
@@ -175,6 +186,7 @@ struct KvSession
   {
   }
 
+  // need this because uWebSockets moves the userdata after upgrade to websocket
   KvSession (KvSession&& other) : connected(other.connected)
   {
     other.connected = nullptr;
@@ -196,7 +208,7 @@ struct KvSession
 struct KvCommand
 {
   uWS::WebSocket<false, true, KvSession> * ws;  // to access the websocket and userdata
-  uWS::Loop * loop; // the uWS event loop, so we can defer() websocket calls on an event loop thread
+  uWS::Loop * loop; // TODO can this be moved to KvSession, only set once in .open handler? the uWS event loop, so we can defer() websocket calls on an event loop thread
   kvjson contents;  // json taken from the request, contents depends on the query
   KvQueryType type; 
   std::function<void(std::any)> cordinatedResponseHandler; 
@@ -243,7 +255,7 @@ static kvjson createErrorResponse (const std::string_view commandRsp, const KvRe
   return rsp;
 }
 
-// Response is the original command not unknown
+// Response is the original command not unknown.
 static kvjson createErrorResponse (const KvRequestStatus status, const std::string_view msg = "")
 {
   kvjson rsp;
@@ -252,6 +264,10 @@ static kvjson createErrorResponse (const KvRequestStatus status, const std::stri
   return rsp;
 }
 
+// std::string kvStatusToString (const KvRequestStatus st)
+// {
+//   return std::to_string(static_cast<std::uint8_t>(st));
+// }
 
 fc_always_inline bool valueTypeValid (const kvjson& value)
 {

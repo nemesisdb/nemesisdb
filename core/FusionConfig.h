@@ -29,7 +29,7 @@ struct FusionConfig
   json cfg;
   bool valid;
 
-} config;
+} ;
 
 
 inline bool isValid (std::function<bool()> isValidCheck, const std::string_view msg)
@@ -41,10 +41,12 @@ inline bool isValid (std::function<bool()> isValidCheck, const std::string_view 
 };
 
 
-void readConfig(std::filesystem::path path)
+void readConfig(FusionConfig& config, std::filesystem::path path)
 {
   std::ifstream configStream{path};
   json cfg;
+
+  config = FusionConfig{};
 
   if (cfg = json::parse(configStream, nullptr, false); cfg.is_discarded())
     std::cout << "Config file not valid JSON\n";
@@ -62,15 +64,14 @@ void readConfig(std::filesystem::path path)
               isValid([&kvCfg](){ return kvCfg.at("ip").is_string() && kvCfg.at("port").is_number_unsigned() && kvCfg.at("maxPayload").is_number_unsigned(); }, "kv::ip must string, kv::port and kv::maxPayload must be unsigned integer") &&
               isValid([&kvCfg](){ return kvCfg.at("maxPayload") >= fusion::core::FUSION_KV_MINPAYLOAD; }, "kv::maxPayload below minimum") &&
               isValid([&kvCfg](){ return kvCfg.at("maxPayload") <= fusion::core::FUSION_KV_MAXPAYLOAD; }, "kv::maxPayload exceeds maximum");
-
-      if (valid)
-        config = FusionConfig{std::move(cfg)};
+    
+      config = FusionConfig{std::move(cfg)};
     }
   }
 }
 
 
-void readConfig (const int argc, char ** argv)
+void readConfig (FusionConfig& config, const int argc, char ** argv)
 {
   namespace po = boost::program_options;
 
@@ -103,7 +104,7 @@ void readConfig (const int argc, char ** argv)
       if (!std::filesystem::exists(cfgPath))
         std::cout << "Config file path not found\n";
       else
-        readConfig(cfgPath);
+        readConfig(config, cfgPath);
     }
   }
 }
