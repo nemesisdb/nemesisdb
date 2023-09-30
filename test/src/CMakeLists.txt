@@ -13,13 +13,20 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/../bin/)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DFC_UNIT_TEST -march=native") 
 
 add_executable(test_set Set.cpp)
+add_executable(test_setq SetQ.cpp)
+add_executable(test_add Add.cpp)
 add_executable(test_get Get.cpp)
 
 
 target_compile_features(test_set PUBLIC cxx_std_20)
+target_compile_features(test_setq PUBLIC cxx_std_20)
+target_compile_features(test_add PUBLIC cxx_std_20)
 target_compile_features(test_get PUBLIC cxx_std_20)
 
+
 target_link_libraries(test_set -luSockets -lz -lboost_fiber -lboost_program_options -lboost_context -lgtest)
+target_link_libraries(test_setq -luSockets -lz -lboost_fiber -lboost_program_options -lboost_context -lgtest)
+target_link_libraries(test_add -luSockets -lz -lboost_fiber -lboost_program_options -lboost_context -lgtest)
 target_link_libraries(test_get -luSockets -lz -lboost_fiber -lboost_program_options -lboost_context -lgtest)
 
 

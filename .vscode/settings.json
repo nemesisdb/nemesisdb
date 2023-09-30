@@ -82,6 +82,7 @@
     "variant": "cpp",
     "csignal": "cpp",
     "latch": "cpp",
-    "barrier": "cpp"
+    "barrier": "cpp",
+    "*.ipp": "cpp"
   }
 }

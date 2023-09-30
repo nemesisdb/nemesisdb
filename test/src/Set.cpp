@@ -81,6 +81,33 @@ TEST_F(FusionTest, MultipleVarious)
 }
 
 
+TEST_F(FusionTest, Update)
+{
+	const std::vector<TestData> data = 
+	{
+		{TestData { .request = R"({ "KV_SET":{"string1":"asda"}})"_json,	.expected = {R"({ "KV_SET_RSP":{ "st":20, "k":"string1" } })"_json} }}
+	};
+
+
+	TestClient tc;
+
+	ASSERT_TRUE(tc.open());
+
+	for(auto& d : data)
+		tc.test(d);
+
+
+	// update
+	const std::vector<TestData> update = 
+	{
+		{TestData { .request = R"({ "KV_SET":{"string1":"asda2"}})"_json,	.expected = {R"({ "KV_SET_RSP":{ "st":21, "k":"string1" } })"_json} }}
+	};
+
+	for(auto& d : update)
+		tc.test(d);
+}
+
+
 TEST_F(FusionTest, KeyShort)
 {
 	const std::vector<TestData> data = 

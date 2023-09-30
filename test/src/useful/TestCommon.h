@@ -139,14 +139,18 @@ struct TestClient
 	}
 
 
-	void test(const TestData& td)
-	{
+	void test (const TestData& td)
+	{		
 		responses.clear();
-		latch = std::make_unique<std::latch>(td.expected.size());
+
+		if (!td.expected.empty())	// this is for SETQ and ADDQ which only response on error
+			latch = std::make_unique<std::latch>(td.expected.size());
 
 		ws->send(td.request.dump());
 		
-		latch->wait();
+		if (!td.expected.empty())
+			latch->wait();
+		
 		latch.reset();
 
 		// short path
@@ -158,6 +162,7 @@ struct TestClient
 				EXPECT_TRUE(std::any_of(td.expected.cbegin(), td.expected.cend(), [&rsp](auto& expected){ return expected == rsp; })) << rsp;
 		}
 	}
+
 
 	Ioc ioc;
 	Client client;
