@@ -116,19 +116,11 @@ struct PoolRequestResponse
   {
     kvjson rsp;
     rsp["KV_SET_RSP"]["st"] = isSet ? KeySet : KeyUpdated;
-    rsp["KV_SET_RSP"]["k"] = std::move(k);
-    return rsp;
-  }
-
-  static kvjson keySet (const bool isSet, std::string&& k)
-  {
-    kvjson rsp;
-    rsp["KV_SET_RSP"]["st"] = isSet ? KeySet : KeyUpdated;
-    rsp["KV_SET_RSP"]["k"] = std::move(k);
+    rsp["KV_SET_RSP"]["k"] = k;
     return rsp;
   }
   
-  static kvjson keyAdd (const bool isAdded, const std::string_view k)
+  static kvjson keyAdd (const bool isAdded, std::string&& k)
   {
     kvjson rsp;
     rsp["KV_ADD_RSP"]["st"] = isAdded ? KeySet : KeyExists;
@@ -140,7 +132,7 @@ struct PoolRequestResponse
   {
     kvjson rsp;
     rsp["KV_RMV_RSP"]["st"] = removed ? KeyRemoved : KeyNotExist;
-    rsp["KV_RMV_RSP"]["k"] = std::move(k);
+    rsp["KV_RMV_RSP"]["k"] = k;
     return rsp;
   }
 

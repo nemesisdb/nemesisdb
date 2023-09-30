@@ -62,7 +62,7 @@ private:
   
   void run ()
   {
-    auto doAdd = [](CacheMap& map, KvCommand& cmd) -> std::tuple<bool, std::string_view>
+    auto doAdd = [](CacheMap& map, KvCommand& cmd) -> std::tuple<bool, std::string>
     {
       const auto& key = cmd.contents.items().begin().key();
       auto& value = cmd.contents.items().begin().value(); 
@@ -77,7 +77,7 @@ private:
       auto& value = cmd.contents.begin().value(); 
       const auto [ignore, inserted] = map.insert_or_assign(key, std::move(value));
       
-      send(cmd, PoolRequestResponse::keySet(inserted, std::move(key)).dump());
+      send(cmd, PoolRequestResponse::keySet(inserted, key).dump());
     };
 
     auto setQ = [this](CacheMap& map, KvCommand& cmd)
