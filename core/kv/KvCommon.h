@@ -123,8 +123,8 @@ struct PoolRequestResponse
   static kvjson keyAdd (const bool isAdded, std::string&& k)
   {
     kvjson rsp;
-    rsp["KV_ADD_RSP"]["st"] = isAdded ? KeySet : KeyExists;
-    rsp["KV_ADD_RSP"]["k"] = std::move(k);
+    rsp["KV_ADDQ_RSP"]["st"] = isAdded ? KeySet : KeyExists;
+    rsp["KV_ADDQ_RSP"]["k"] = std::move(k);
     return rsp;
   }
 
