@@ -74,7 +74,7 @@ enum class KvRequestStatus
   KeyLengthInvalid,
   KeyMissing,
   KeyTypeInvalid,
-  ValueMissing = 40,
+  ValueMissing = 40,  // NOTE not actually used
   ValueTypeInvalid,
   Unknown = 100
 };
