@@ -189,6 +189,14 @@ private:
       send(cmd, PoolRequestResponse::append(status, std::move(key)).dump());
     };
 
+    auto contains = [this](CacheMap& map, KvCommand& cmd)
+    {
+      if (map.contains(cmd.contents))
+        send(cmd, PoolRequestResponse::contains(KvRequestStatus::KeyExists, cmd.contents.get<std::string_view>()).dump());
+      else
+        send(cmd, PoolRequestResponse::contains(KvRequestStatus::KeyNotExist, cmd.contents.get<std::string_view>()).dump());
+    };
+
     /*
     auto renameKey = [](CacheMap& map, KvCommand& cmd)
     {
@@ -227,7 +235,8 @@ private:
       clear,
       serverInfo,
       count,
-      append
+      append,
+      contains
       /*renameKey*/
     };
 

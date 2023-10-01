@@ -42,7 +42,8 @@ private:
     std::bind(&KvHandler::clear, std::ref(*this), std::placeholders::_1, std::placeholders::_2),
     std::bind(&KvHandler::serverInfo, std::ref(*this), std::placeholders::_1, std::placeholders::_2),
     std::bind(&KvHandler::count, std::ref(*this), std::placeholders::_1, std::placeholders::_2),
-    std::bind(&KvHandler::append, std::ref(*this), std::placeholders::_1, std::placeholders::_2)
+    std::bind(&KvHandler::append, std::ref(*this), std::placeholders::_1, std::placeholders::_2),
+    std::bind(&KvHandler::contains, std::ref(*this), std::placeholders::_1, std::placeholders::_2)
     /*std::bind(&KvHandler::renameKey, std::ref(*this), std::placeholders::_1)*/
   };
 
@@ -367,7 +368,36 @@ private:
     }
   }
 
+  fc_always_inline void contains(KvWebSocket * ws, kvjson&& json)
+  {
+    static const KvQueryType queryType = KvQueryType::Contains;
+    static const std::string_view queryName = "KV_CONTAINS";
+    static const std::string_view queryRspName = "KV_CONTAINS_RSP";
 
+    for (auto& jsonKey : json[queryName])
+    {
+      if (!jsonKey.is_string())
+        ws->send(createErrorResponse(queryRspName, KvRequestStatus::KeyTypeInvalid).dump(), WsSendOpCode);
+      else
+      {
+        PoolId poolId;
+        auto key = jsonKey.get<std::string_view>();
+
+        if (m_createPoolId(key, poolId))  [[likely]]
+        {
+          m_pools[poolId]->execute(KvCommand{ .ws = ws,
+                                              .loop = uWS::Loop::get(),
+                                              .contents = key,
+                                              .type = queryType});
+        }
+        else
+          ws->send(createErrorResponse(queryRspName, KvRequestStatus::KeyLengthInvalid, key).dump(), WsSendOpCode);
+      }
+    } 
+  }
+
+
+  // fc_always_inline void rename(KvWebSocket * ws, kvjson&& json)
   // {
   //   static const KvQueryType queryType = KvQueryType::RenameKey;
   //   static const std::string_view queryName = "KV_RNM";
