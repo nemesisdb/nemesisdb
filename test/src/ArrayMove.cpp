@@ -168,6 +168,37 @@ TEST_F(FusionTest, ObjectItemsMove)
 }
 
 
+TEST_F(FusionTest, MultipleKeysObjectItemsMove)
+{
+	TestClient tc;
+
+	ASSERT_TRUE(tc.open());
+
+  tc.test({TestData { .request = R"({ "KV_SET":{ "usergroups1":["a", "b", "c"], "usergroups2":["d", "e", "f"] }})"_json,
+                      .expected = { R"({ "KV_SET_RSP":{ "st":20, "k":"usergroups1" } })"_json,
+                                    R"({ "KV_SET_RSP":{ "st":20, "k":"usergroups2" } })"_json} }});
+
+	tc.test({TestData { .request = R"({ "KV_ARRAY_MOVE":{"usergroups1":[1], "usergroups2":[0]} })"_json,
+                      .expected = {R"({ "KV_ARRAY_MOVE_RSP":{ "st":1, "k":"usergroups1" } })"_json,
+                                   R"({ "KV_ARRAY_MOVE_RSP":{ "st":1, "k":"usergroups2" } })"_json } }});
+
+  tc.test({TestData { .request = R"({ "KV_GET":["usergroups1", "usergroups2"] })"_json,
+                      .expected = { R"({ "KV_GET_RSP":{ "st":1, "usergroups1":["a", "c", "b"] } })"_json,
+                                    R"({ "KV_GET_RSP":{ "st":1, "usergroups2":["e", "f", "d"] } })"_json} }});
+}
+
+
+TEST_F(FusionTest, InvalidPositionType)
+{
+	TestClient tc;
+
+	ASSERT_TRUE(tc.open());
+
+  tc.test({TestData { .request = R"({ "KV_SET":{ "usergroups":["a", "b"] }})"_json,	.expected = {R"({ "KV_SET_RSP":{ "st":20, "k":"usergroups" } })"_json} }}); 
+	tc.test({TestData { .request = R"({ "KV_ARRAY_MOVE":{"usergroups":["1", 0]} })"_json,	.expected = {R"({ "KV_ARRAY_MOVE_RSP":{ "st":41, "k":"usergroups" } })"_json} }});
+  tc.test({TestData { .request = R"({ "KV_ARRAY_MOVE":{"usergroups":[0, "1"]} })"_json,	.expected = {R"({ "KV_ARRAY_MOVE_RSP":{ "st":41, "k":"usergroups" } })"_json} }});
+}
+
 
 TEST_F(FusionTest, IncorrectCommandType)
 {

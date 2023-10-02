@@ -217,19 +217,31 @@ private:
             send(cmd, PoolRequestResponse::arrayMove(KvRequestStatus::OutOfBounds, key).dump()); 
           else
           {
-            const std::int64_t currPos = positions[0U];
-            const std::int64_t newPos = positions.size() == 1U ? array.size() : positions[1U].get<std::int64_t>(); // at the end if no position supplied
+            auto isIndexValidType = [](const json& array, const std::size_t index)
+            {
+              return array[index].is_number_unsigned();
+            };
 
-            if (currPos < 0 || currPos > array.size() - 1 || newPos < 0)
-              send(cmd, PoolRequestResponse::arrayMove(KvRequestStatus::OutOfBounds, key).dump());
-            else if (currPos == newPos)
-              send(cmd, PoolRequestResponse::arrayMove(KvRequestStatus::Ok, key).dump());
+            if (positions.size() == 1U && !isIndexValidType(positions, 0U))
+              send(cmd, PoolRequestResponse::arrayMove(KvRequestStatus::ValueTypeInvalid, key).dump());
+            else if (positions.size() == 2U && (!isIndexValidType(positions, 0U) || !isIndexValidType(positions, 1U)))
+              send(cmd, PoolRequestResponse::arrayMove(KvRequestStatus::ValueTypeInvalid, key).dump());
             else
             {
-              array.insert(std::next(array.cbegin(), newPos), std::move(array[currPos]));
-              array.erase(currPos > newPos ? currPos+1 : currPos);
+              const std::int64_t currPos = positions[0U];
+              const std::int64_t newPos = positions.size() == 1U ? array.size() : positions[1U].get<std::int64_t>(); // at the end if no position supplied
 
-              send(cmd, PoolRequestResponse::arrayMove(KvRequestStatus::Ok, key).dump());
+              if (currPos < 0 || currPos > array.size() - 1 || newPos < 0)
+                send(cmd, PoolRequestResponse::arrayMove(KvRequestStatus::OutOfBounds, key).dump());
+              else if (currPos == newPos)
+                send(cmd, PoolRequestResponse::arrayMove(KvRequestStatus::Ok, key).dump());
+              else
+              {
+                array.insert(std::next(array.cbegin(), newPos), std::move(array[currPos]));
+                array.erase(currPos > newPos ? currPos+1 : currPos);
+
+                send(cmd, PoolRequestResponse::arrayMove(KvRequestStatus::Ok, key).dump());
+              }
             }
           }
         }
