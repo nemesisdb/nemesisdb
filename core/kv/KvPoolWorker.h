@@ -4,6 +4,7 @@
 #include <string_view>
 #include <thread>
 #include <condition_variable>
+#include <algorithm> // for std::move(start, end, target)
 #include <boost/fiber/fiber.hpp>
 #include <boost/fiber/buffered_channel.hpp>
 #include <ankerl/unordered_dense.h>
@@ -197,6 +198,43 @@ private:
         send(cmd, PoolRequestResponse::contains(KvRequestStatus::KeyNotExist, cmd.contents.get<std::string_view>()).dump());
     };
 
+    auto arrayMove = [this](CacheMap& map, KvCommand& cmd)
+    {
+      // it may be the case that users uses a negative number for current, which is wrong, but we need to 
+      // detect that reliably. Plus the extra range afforded by size_t is probably unlikely required, we check for that anyway
+
+      auto& key = cmd.contents.begin().key();
+      auto& positions = cmd.contents.begin().value();
+      
+      if (positions.size() != 2U)
+        send(cmd, PoolRequestResponse::arrayMove(KvRequestStatus::ValueSize, key).dump());
+      else
+      { 
+        if (auto it = map.find(key) ; it == map.cend())
+          send(cmd, PoolRequestResponse::arrayMove(KvRequestStatus::KeyNotExist, key).dump()); 
+        else  [[likely]]
+        {
+          if (auto& array = it->second; !array.is_array())
+            send(cmd, PoolRequestResponse::arrayMove(KvRequestStatus::ValueTypeInvalid, key).dump()); 
+          else
+          {
+            const std::int64_t currPos = positions[0U];
+            std::int64_t newPos = positions[1U];
+
+            if (currPos < 0 || currPos > array.size() - 1 || newPos < 0)
+              send(cmd, PoolRequestResponse::arrayMove(KvRequestStatus::OutOfBounds, key).dump()); 
+            else
+            {
+              // if newPos is out of bounds, it goes to the end
+              newPos = std::min<std::int64_t>(newPos, array.size()-1U);
+              array.insert(std::next(array.cbegin(), newPos), std::move(array[currPos]));
+              array.erase(currPos > newPos ? currPos+1 : currPos);
+            }
+          }
+        }
+      }        
+    };
+
     /*
     auto renameKey = [](CacheMap& map, KvCommand& cmd)
     {
@@ -236,7 +274,8 @@ private:
       serverInfo,
       count,
       append,
-      contains
+      contains,
+      arrayMove
       /*renameKey*/
     };
 
