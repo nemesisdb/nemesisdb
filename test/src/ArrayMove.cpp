@@ -132,14 +132,51 @@ TEST_F(FusionTest, TwoItemsNoNewMoveLast)
 }
 
 
-// TEST_F(FusionTest, IncorrectCommandType)
-// {
-// 	TestClient tc;
+TEST_F(FusionTest, MoreItemsNoNewMoveFirst)
+{
+	TestClient tc;
 
-// 	ASSERT_TRUE(tc.open());
+	ASSERT_TRUE(tc.open());
 
-// 	tc.test(TestData { .request = R"({ "KV_ARRAY_MOVE":[0.0] })"_json,	.expected = {R"({ "KV_ARRAY_MOVE_RSP":{ "st":12, "k":"" } })"_json} });
-// }
+  tc.test({TestData { .request = R"({ "KV_SET":{ "usergroups":["a", "b", "c", "d", "e", "f"] }})"_json,	.expected = {R"({ "KV_SET_RSP":{ "st":20, "k":"usergroups" } })"_json} }}); 
+	tc.test({TestData { .request = R"({ "KV_ARRAY_MOVE":{"usergroups":[0]} })"_json,	.expected = {R"({ "KV_ARRAY_MOVE_RSP":{ "st":1, "k":"usergroups" } })"_json} }});
+  tc.test({TestData { .request = R"({ "KV_GET":["usergroups"] })"_json,	.expected = {R"({ "KV_GET_RSP":{ "st":1, "usergroups":["b", "c", "d", "e", "f", "a"] } })"_json} }});
+}
+
+
+TEST_F(FusionTest, MoreItemsNoNewMoveMid)
+{
+	TestClient tc;
+
+	ASSERT_TRUE(tc.open());
+
+  tc.test({TestData { .request = R"({ "KV_SET":{ "usergroups":["a", "b", "c", "d", "e", "f"] }})"_json,	.expected = {R"({ "KV_SET_RSP":{ "st":20, "k":"usergroups" } })"_json} }}); 
+	tc.test({TestData { .request = R"({ "KV_ARRAY_MOVE":{"usergroups":[2]} })"_json,	.expected = {R"({ "KV_ARRAY_MOVE_RSP":{ "st":1, "k":"usergroups" } })"_json} }});
+  tc.test({TestData { .request = R"({ "KV_GET":["usergroups"] })"_json,	.expected = {R"({ "KV_GET_RSP":{ "st":1, "usergroups":["a", "b", "d", "e", "f", "c"] } })"_json} }});
+}
+
+
+TEST_F(FusionTest, ObjectItemsMove)
+{
+	TestClient tc;
+
+	ASSERT_TRUE(tc.open());
+
+  tc.test({TestData { .request = R"({ "KV_SET":{ "usergroups":["a", {"x":"y"}, "c"] }})"_json,	.expected = {R"({ "KV_SET_RSP":{ "st":20, "k":"usergroups" } })"_json} }}); 
+	tc.test({TestData { .request = R"({ "KV_ARRAY_MOVE":{"usergroups":[1]} })"_json,	.expected = {R"({ "KV_ARRAY_MOVE_RSP":{ "st":1, "k":"usergroups" } })"_json} }});
+  tc.test({TestData { .request = R"({ "KV_GET":["usergroups"] })"_json,	.expected = {R"({ "KV_GET_RSP":{ "st":1, "usergroups":["a", "c", {"x":"y"}] } })"_json} }});
+}
+
+
+
+TEST_F(FusionTest, IncorrectCommandType)
+{
+	TestClient tc;
+
+	ASSERT_TRUE(tc.open());
+
+	tc.test(TestData { .request = R"({ "KV_ARRAY_MOVE":[0.0] })"_json,	.expected = {R"({ "KV_ARRAY_MOVE_RSP":{ "st":12, "k":"" } })"_json} });
+}
 
 
 int main (int argc, char ** argv)
