@@ -200,13 +200,10 @@ private:
 
     auto arrayMove = [this](CacheMap& map, KvCommand& cmd)
     {
-      // it may be the case that users uses a negative number for current, which is wrong, but we need to 
-      // detect that reliably. Plus the extra range afforded by size_t is probably unlikely required, we check for that anyway
-
       auto& key = cmd.contents.begin().key();
       auto& positions = cmd.contents.begin().value();
       
-      if (positions.size() != 2U)
+      if (positions.size() != 2U && positions.size() != 1U)
         send(cmd, PoolRequestResponse::arrayMove(KvRequestStatus::ValueSize, key).dump());
       else
       { 
@@ -216,24 +213,31 @@ private:
         {
           if (auto& array = it->second; !array.is_array())
             send(cmd, PoolRequestResponse::arrayMove(KvRequestStatus::ValueTypeInvalid, key).dump()); 
+          else if (array.empty())
+            send(cmd, PoolRequestResponse::arrayMove(KvRequestStatus::OutOfBounds, key).dump()); 
+          //else if (array.size() == 1U)
+              //send(cmd, PoolRequestResponse::arrayMove(KvRequestStatus::Ok, key).dump()); // makes no sense, but also isn't an error
           else
           {
             const std::int64_t currPos = positions[0U];
-            std::int64_t newPos = positions[1U];
+            const std::int64_t newPos = positions.size() == 1U ? array.size() : positions[1U].get<std::int64_t>(); // at the end if no position supplied
 
             if (currPos < 0 || currPos > array.size() - 1 || newPos < 0)
-              send(cmd, PoolRequestResponse::arrayMove(KvRequestStatus::OutOfBounds, key).dump()); 
+              send(cmd, PoolRequestResponse::arrayMove(KvRequestStatus::OutOfBounds, key).dump());
+            else if (currPos == newPos)
+              send(cmd, PoolRequestResponse::arrayMove(KvRequestStatus::Ok, key).dump());
             else
             {
-              // if newPos is out of bounds, it goes to the end
-              newPos = std::min<std::int64_t>(newPos, array.size()-1U);
               array.insert(std::next(array.cbegin(), newPos), std::move(array[currPos]));
               array.erase(currPos > newPos ? currPos+1 : currPos);
+
+              send(cmd, PoolRequestResponse::arrayMove(KvRequestStatus::Ok, key).dump());
             }
           }
         }
       }        
     };
+
 
     /*
     auto renameKey = [](CacheMap& map, KvCommand& cmd)
