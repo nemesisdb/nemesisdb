@@ -4,6 +4,7 @@
 #include <string_view>
 #include <mutex>
 #include <ostream>
+#include <thread>
 
 
 namespace fusion { namespace core {
