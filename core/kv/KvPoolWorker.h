@@ -215,8 +215,6 @@ private:
             send(cmd, PoolRequestResponse::arrayMove(KvRequestStatus::ValueTypeInvalid, key).dump()); 
           else if (array.empty())
             send(cmd, PoolRequestResponse::arrayMove(KvRequestStatus::OutOfBounds, key).dump()); 
-          //else if (array.size() == 1U)
-              //send(cmd, PoolRequestResponse::arrayMove(KvRequestStatus::Ok, key).dump()); // makes no sense, but also isn't an error
           else
           {
             const std::int64_t currPos = positions[0U];
