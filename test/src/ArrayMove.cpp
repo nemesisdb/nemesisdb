@@ -13,6 +13,28 @@ TEST_F(FusionTest, KeyNotExist)
 }
 
 
+TEST_F(FusionTest, EmptyArrayTwoPositions)
+{
+	TestClient tc;
+
+	ASSERT_TRUE(tc.open());
+
+  tc.test({TestData { .request = R"({ "KV_SET":{ "usergroups":[] }})"_json,	.expected = {R"({ "KV_SET_RSP":{ "st":20, "k":"usergroups" } })"_json} }});
+	tc.test({TestData { .request = R"({ "KV_ARRAY_MOVE":{"usergroups":[1,0]} })"_json,	.expected = {R"({ "KV_ARRAY_MOVE_RSP":{ "st":43, "k":"usergroups" } })"_json} }});
+}
+
+
+TEST_F(FusionTest, EmptyArrayOnePositions)
+{
+	TestClient tc;
+
+	ASSERT_TRUE(tc.open());
+
+  tc.test({TestData { .request = R"({ "KV_SET":{ "usergroups":[] }})"_json,	.expected = {R"({ "KV_SET_RSP":{ "st":20, "k":"usergroups" } })"_json} }});
+	tc.test({TestData { .request = R"({ "KV_ARRAY_MOVE":{"usergroups":[0]} })"_json,	.expected = {R"({ "KV_ARRAY_MOVE_RSP":{ "st":43, "k":"usergroups" } })"_json} }});
+}
+
+
 TEST_F(FusionTest, OneItem)
 {
 	TestClient tc;
