@@ -248,6 +248,31 @@ private:
       }        
     };
 
+    auto find = [this](CacheMap& map, KvCommand& cmd)
+    {
+      // this is sent to all workers. Each runs the "path" search on all keys, then applies the condition on each result.
+      // the keys which pass the condition, are returned
+      
+      // KvHandler validates path syntax
+      auto& [opString, handler] = findConditions.getOperation(cmd.find.condition);
+
+      kvjson::json_pointer path {cmd.contents.at("path")};
+      kvjson::const_reference value = cmd.contents.at(opString);
+
+      std::vector<cachedkey> keys;
+      keys.reserve(100U);  // TODO
+
+      for(auto& kv : map)
+      {
+        if (kv.second.contains(path) && handler(kv.second.at(path), value))
+          keys.emplace_back(kv.first);
+      }
+
+      keys.shrink_to_fit();
+
+      cmd.cordinatedResponseHandler(std::make_any<std::vector<cachedkey>>(std::move(keys)));
+    };
+
 
     /*
     auto renameKey = [](CacheMap& map, KvCommand& cmd)
@@ -289,8 +314,8 @@ private:
       count,
       append,
       contains,
-      arrayMove
-      /*renameKey*/
+      arrayMove,
+      find
     };
 
     CacheMap map;

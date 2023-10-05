@@ -44,7 +44,8 @@ private:
     std::bind(&KvHandler::count, std::ref(*this), std::placeholders::_1, std::placeholders::_2),
     std::bind(&KvHandler::append, std::ref(*this), std::placeholders::_1, std::placeholders::_2),
     std::bind(&KvHandler::contains, std::ref(*this), std::placeholders::_1, std::placeholders::_2),
-    std::bind(&KvHandler::arrayMove, std::ref(*this), std::placeholders::_1, std::placeholders::_2)
+    std::bind(&KvHandler::arrayMove, std::ref(*this), std::placeholders::_1, std::placeholders::_2),
+    std::bind(&KvHandler::find, std::ref(*this), std::placeholders::_1, std::placeholders::_2)
   };
 
 public:
@@ -420,6 +421,80 @@ private:
           ws->send(createErrorResponse(queryRspName, KvRequestStatus::KeyLengthInvalid, kv.key()).dump(), WsSendOpCode);
       }
     } 
+  }
+
+  fc_always_inline void find(KvWebSocket * ws, kvjson&& json)
+  {
+    static const KvQueryType queryType = KvQueryType::Find;
+    static const std::string_view queryName = "KV_FIND";
+    static const std::string_view queryRspName = "KV_FIND_RSP";
+
+    if (json.at(queryName).size() != 2U)
+      ws->send(createErrorResponse(queryRspName, KvRequestStatus::CommandSyntax).dump(), WsSendOpCode);
+    else if (!json.at(queryName).contains("path"))
+      ws->send(createErrorResponse(queryRspName, KvRequestStatus::CommandSyntax).dump(), WsSendOpCode);
+    else
+    {
+      std::vector<std::vector<cachedkey>> results;
+
+      std::latch rspLatch{static_cast<std::ptrdiff_t>(m_pools.size())};
+
+      auto onResponse = [&rspLatch, &results](std::any result)
+      {
+        results.emplace_back(std::any_cast<std::vector<cachedkey>>(result));
+        rspLatch.count_down();
+      };
+
+
+      // can only have two members, so begin() is not path then it must be begin()+1
+      kvjson::const_iterator itCondition, itPath;
+
+      if (auto it = json.at(queryName).begin(); it.key() == "path")
+      {
+        itPath = it;
+        itCondition = std::next (it, 1);
+      }        
+      else
+      {
+        itPath = std::next (it, 1);
+        itCondition = it;
+      }
+      
+      if (!findConditions.isValidOperator(itCondition.key()))
+        ws->send(createErrorResponse(queryRspName, KvRequestStatus::CommandSyntax).dump(), WsSendOpCode);
+      else
+      {
+        const kvjson s {{"path", itPath.value()}, {itCondition.key(), itCondition.value()}};
+        const KvCommand::Find find {.condition = findConditions.OpStringToOp.at(itCondition.key())};
+
+        for (auto& worker : m_pools)
+          worker->execute(KvCommand{.ws = ws,
+                                    .loop = uWS::Loop::get(),
+                                    .contents = s,
+                                    .type = queryType,
+                                    .cordinatedResponseHandler = onResponse,
+                                    .find = find});
+      }
+
+      
+      rspLatch.wait();
+      
+      kvjson rsp;
+      rsp[queryRspName]["st"] = KvRequestStatus::Ok;
+      rsp[queryRspName]["k"] = kvjson::array();
+
+      auto& resultArray = rsp[queryRspName]["k"];
+
+      for(auto& result : results)
+      {
+        for (auto&& key : result)
+          resultArray.insert(resultArray.cend(), std::move(key));
+      }
+
+      std::cout << rsp << '\n';
+
+      ws->send(rsp.dump(), WsSendOpCode);
+    }
   }
 
   // fc_always_inline void rename(KvWebSocket * ws, kvjson&& json)
