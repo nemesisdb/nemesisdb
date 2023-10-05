@@ -4,6 +4,7 @@
 #include <string_view>
 #include <thread>
 #include <condition_variable>
+#include <algorithm> // for std::move(start, end, target)
 #include <boost/fiber/fiber.hpp>
 #include <boost/fiber/buffered_channel.hpp>
 #include <ankerl/unordered_dense.h>
@@ -189,6 +190,65 @@ private:
       send(cmd, PoolRequestResponse::append(status, std::move(key)).dump());
     };
 
+    auto contains = [this](CacheMap& map, KvCommand& cmd)
+    {
+      if (map.contains(cmd.contents))
+        send(cmd, PoolRequestResponse::contains(KvRequestStatus::KeyExists, cmd.contents.get<std::string_view>()).dump());
+      else
+        send(cmd, PoolRequestResponse::contains(KvRequestStatus::KeyNotExist, cmd.contents.get<std::string_view>()).dump());
+    };
+
+    auto arrayMove = [this](CacheMap& map, KvCommand& cmd)
+    {
+      auto& key = cmd.contents.begin().key();
+      auto& positions = cmd.contents.begin().value();
+      
+      if (positions.size() != 2U && positions.size() != 1U)
+        send(cmd, PoolRequestResponse::arrayMove(KvRequestStatus::ValueSize, key).dump());
+      else
+      { 
+        if (auto it = map.find(key) ; it == map.cend())
+          send(cmd, PoolRequestResponse::arrayMove(KvRequestStatus::KeyNotExist, key).dump()); 
+        else  [[likely]]
+        {
+          if (auto& array = it->second; !array.is_array())
+            send(cmd, PoolRequestResponse::arrayMove(KvRequestStatus::ValueTypeInvalid, key).dump()); 
+          else if (array.empty())
+            send(cmd, PoolRequestResponse::arrayMove(KvRequestStatus::OutOfBounds, key).dump()); 
+          else
+          {
+            auto isIndexValidType = [](const json& array, const std::size_t index)
+            {
+              return array[index].is_number_unsigned();
+            };
+
+            if (positions.size() == 1U && !isIndexValidType(positions, 0U))
+              send(cmd, PoolRequestResponse::arrayMove(KvRequestStatus::ValueTypeInvalid, key).dump());
+            else if (positions.size() == 2U && (!isIndexValidType(positions, 0U) || !isIndexValidType(positions, 1U)))
+              send(cmd, PoolRequestResponse::arrayMove(KvRequestStatus::ValueTypeInvalid, key).dump());
+            else
+            {
+              const std::int64_t currPos = positions[0U];
+              const std::int64_t newPos = positions.size() == 1U ? array.size() : positions[1U].get<std::int64_t>(); // at the end if no position supplied
+
+              if (currPos < 0 || currPos > array.size() - 1 || newPos < 0)
+                send(cmd, PoolRequestResponse::arrayMove(KvRequestStatus::OutOfBounds, key).dump());
+              else if (currPos == newPos)
+                send(cmd, PoolRequestResponse::arrayMove(KvRequestStatus::Ok, key).dump());
+              else
+              {
+                array.insert(std::next(array.cbegin(), newPos), std::move(array[currPos]));
+                array.erase(currPos > newPos ? currPos+1 : currPos);
+
+                send(cmd, PoolRequestResponse::arrayMove(KvRequestStatus::Ok, key).dump());
+              }
+            }
+          }
+        }
+      }        
+    };
+
+
     /*
     auto renameKey = [](CacheMap& map, KvCommand& cmd)
     {
@@ -227,7 +287,9 @@ private:
       clear,
       serverInfo,
       count,
-      append
+      append,
+      contains,
+      arrayMove
       /*renameKey*/
     };
 

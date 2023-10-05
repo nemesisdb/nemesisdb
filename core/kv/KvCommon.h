@@ -36,7 +36,8 @@ enum class KvQueryType : std::uint8_t
   ServerInfo,
   Count,
   Append,
-  //RenameKey,
+  Contains,
+  ArrayMove,
   Max,
   Unknown,
 };
@@ -53,7 +54,9 @@ const std::map<const std::string_view, std::tuple<const KvQueryType, const kvjso
   {"KV_CLEAR",        {KvQueryType::Clear, kvjson::value_t::object}},
   {"KV_COUNT",        {KvQueryType::Count, kvjson::value_t::object}},
   {"KV_SERVER_INFO",  {KvQueryType::ServerInfo, kvjson::value_t::object}},
-  {"KV_APPEND",       {KvQueryType::Append, kvjson::value_t::object}}
+  {"KV_APPEND",       {KvQueryType::Append, kvjson::value_t::object}},
+  {"KV_CONTAINS",     {KvQueryType::Contains, kvjson::value_t::array}},
+  {"KV_ARRAY_MOVE",   {KvQueryType::ArrayMove, kvjson::value_t::object}}
   //{"KV_RNM",       KvQueryType::RenameKey}
 };
 
@@ -76,6 +79,8 @@ enum class KvRequestStatus
   KeyTypeInvalid,
   ValueMissing = 40,  // NOTE not actually used
   ValueTypeInvalid,
+  ValueSize,
+  OutOfBounds,
   Unknown = 100
 };
 
@@ -151,6 +156,24 @@ struct PoolRequestResponse
     rsp["KV_APPEND_RSP"]["k"] = k;
     return rsp;
   }
+
+  static kvjson contains (const KvRequestStatus status, const std::string_view k)
+  {
+    kvjson rsp;
+    rsp["KV_CONTAINS_RSP"]["st"] = status;
+    rsp["KV_CONTAINS_RSP"]["k"] = k;
+    return rsp;
+  }
+
+  static kvjson arrayMove (const KvRequestStatus status, const std::string_view k)
+  {
+    kvjson rsp;
+    rsp["KV_ARRAY_MOVE_RSP"]["st"] = status;
+    rsp["KV_ARRAY_MOVE_RSP"]["k"] = k;
+    return rsp;
+  }
+
+  
 
   // static kvjson renameKey (kvjson pair)
   // {
