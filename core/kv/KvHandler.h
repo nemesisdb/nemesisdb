@@ -52,10 +52,10 @@ public:
 
   std::tuple<KvRequestStatus,std::string> handle(KvWebSocket * ws, kvjson&& json)
   {
-    std::tuple<KvRequestStatus,std::string> status = std::make_tuple(KvRequestStatus::Ok, "");
+    KvRequestStatus status = KvRequestStatus::Ok;
 
-    if (json.size() != 1U)
-      std::get<KvRequestStatus>(status) = KvRequestStatus::CommandMultiple;
+    if (json.size() != 1U) [[unlikely]]
+      return std::make_tuple(KvRequestStatus::CommandMultiple, "");
     else  [[likely]]
     {
       const std::string& queryName = json.cbegin().key();
@@ -74,19 +74,17 @@ public:
           }
           catch (const std::exception& kex)
           {
-            status = std::make_tuple(KvRequestStatus::Unknown, queryName);
+            status = KvRequestStatus::Unknown;
           }
         }
         else
-        {
-          status = std::make_tuple(KvRequestStatus::CommandType, queryName);
-        }        
+          status = KvRequestStatus::CommandType;
       }
       else
-        status = std::make_tuple(KvRequestStatus::CommandNotExist, queryName);
-    }
+        status = KvRequestStatus::CommandNotExist;
 
-    return status;
+      return std::make_tuple(status, queryName);
+    }
   }
 
 
@@ -430,45 +428,59 @@ private:
     static const std::string_view queryRspName = "KV_FIND_RSP";
 
     auto& cmd = json.at(queryName);
-
-    if (cmd.size() != 2U)
+        
+    if (cmd.size() != 1U && cmd.size() != 2U)
       ws->send(createErrorResponse(queryRspName, KvRequestStatus::CommandSyntax).dump(), WsSendOpCode);
-    else if (!cmd.contains("path"))
+    else if (cmd.size() == 1U && cmd.contains("path"))
+      ws->send(createErrorResponse(queryRspName, KvRequestStatus::FindNoOperator).dump(), WsSendOpCode);
+    else if (cmd.size() == 2U && !cmd.contains("path"))
       ws->send(createErrorResponse(queryRspName, KvRequestStatus::FindNoPath).dump(), WsSendOpCode);
-    else if (!cmd.at("path").is_string() || cmd.at("path").get_ref<const std::string&>().empty())
+    else if (cmd.contains("path") && (!cmd.at("path").is_string() || cmd.at("path").get_ref<const std::string&>().empty()))
       ws->send(createErrorResponse(queryRspName, KvRequestStatus::FindPathInvalid).dump(), WsSendOpCode);
     else
     {
+      std::mutex resultMux;
       std::vector<std::vector<cachedkey>> results;
 
       std::latch rspLatch{static_cast<std::ptrdiff_t>(m_pools.size())};
 
-      auto onResponse = [&rspLatch, &results](std::any result)
+      auto onResponse = [&rspLatch, &resultMux, &results](std::any result)
       {
-        results.emplace_back(std::any_cast<std::vector<cachedkey>>(result));
+        {
+          std::scoped_lock lck{resultMux};
+          results.emplace_back(std::any_cast<std::vector<cachedkey>>(result));
+        }
+        
         rspLatch.count_down();
       };
-
-
-      // can only have two members, so begin() is not path then it must be begin()+1
+      
       kvjson::const_iterator itCondition, itPath;
+      const auto havePath = cmd.contains("path");
 
-      if (auto it = cmd.begin(); it.key() == "path")
+      if (havePath)
       {
-        itPath = it;
-        itCondition = std::next (it, 1);
-      }        
+        // can only have two members, so begin() is not path then it must be begin()+1
+        if (auto it = cmd.begin(); it.key() == "path")
+        {
+          itPath = it;
+          itCondition = std::next (it, 1);
+        }        
+        else
+        {
+          itPath = std::next (it, 1);
+          itCondition = it;
+        }
+      }
       else
       {
-        itPath = std::next (it, 1);
-        itCondition = it;
+        itCondition = cmd.begin();
       }
       
       if (!findConditions.isValidOperator(itCondition.key()))
         ws->send(createErrorResponse(queryRspName, KvRequestStatus::FindOperatorInvalid).dump(), WsSendOpCode);
       else
       {
-        const kvjson s {{"path", itPath.value()}, {itCondition.key(), itCondition.value()}};
+        const kvjson s {{"path", havePath ? itPath.value() : ""}, {itCondition.key(), itCondition.value()}};
         const KvCommand::Find find {.condition = findConditions.OpStringToOp.at(itCondition.key())};
 
         for (auto& worker : m_pools)
@@ -493,8 +505,6 @@ private:
           for (auto&& key : result)
             resultArray.insert(resultArray.cend(), std::move(key));
         }
-
-        std::cout << rsp << '\n';
 
         ws->send(rsp.dump(), WsSendOpCode);
       }

@@ -84,6 +84,7 @@ enum class KvRequestStatus
   ValueSize,
   OutOfBounds,
   FindNoPath = 60,
+  FindNoOperator,
   FindPathInvalid,
   FindOperatorInvalid,
   Unknown = 100

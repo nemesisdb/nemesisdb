@@ -258,13 +258,15 @@ private:
 
       kvjson::json_pointer path {cmd.contents.at("path")};
       kvjson::const_reference value = cmd.contents.at(opString);
-
+      
       std::vector<cachedkey> keys;
       keys.reserve(100U);  // TODO
 
       for(auto& kv : map)
       {
-        if (kv.second.contains(path) && handler(kv.second.at(path), value))
+        if (path.empty() && handler(kv.second, value))
+          keys.emplace_back(kv.first);
+        else if (kv.second.contains(path) && handler(kv.second.at(path), value))
           keys.emplace_back(kv.first);
       }
 
