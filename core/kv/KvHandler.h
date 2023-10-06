@@ -429,10 +429,14 @@ private:
     static const std::string_view queryName = "KV_FIND";
     static const std::string_view queryRspName = "KV_FIND_RSP";
 
-    if (json.at(queryName).size() != 2U)
+    auto& cmd = json.at(queryName);
+
+    if (cmd.size() != 2U)
       ws->send(createErrorResponse(queryRspName, KvRequestStatus::CommandSyntax).dump(), WsSendOpCode);
-    else if (!json.at(queryName).contains("path"))
-      ws->send(createErrorResponse(queryRspName, KvRequestStatus::CommandSyntax).dump(), WsSendOpCode);
+    else if (!cmd.contains("path"))
+      ws->send(createErrorResponse(queryRspName, KvRequestStatus::FindNoPath).dump(), WsSendOpCode);
+    else if (!cmd.at("path").is_string() || cmd.at("path").get_ref<const std::string&>().empty())
+      ws->send(createErrorResponse(queryRspName, KvRequestStatus::FindPathInvalid).dump(), WsSendOpCode);
     else
     {
       std::vector<std::vector<cachedkey>> results;
@@ -449,7 +453,7 @@ private:
       // can only have two members, so begin() is not path then it must be begin()+1
       kvjson::const_iterator itCondition, itPath;
 
-      if (auto it = json.at(queryName).begin(); it.key() == "path")
+      if (auto it = cmd.begin(); it.key() == "path")
       {
         itPath = it;
         itCondition = std::next (it, 1);
@@ -461,7 +465,7 @@ private:
       }
       
       if (!findConditions.isValidOperator(itCondition.key()))
-        ws->send(createErrorResponse(queryRspName, KvRequestStatus::CommandSyntax).dump(), WsSendOpCode);
+        ws->send(createErrorResponse(queryRspName, KvRequestStatus::FindOperatorInvalid).dump(), WsSendOpCode);
       else
       {
         const kvjson s {{"path", itPath.value()}, {itCondition.key(), itCondition.value()}};
@@ -474,26 +478,26 @@ private:
                                     .type = queryType,
                                     .cordinatedResponseHandler = onResponse,
                                     .find = find});
-      }
-
       
-      rspLatch.wait();
       
-      kvjson rsp;
-      rsp[queryRspName]["st"] = KvRequestStatus::Ok;
-      rsp[queryRspName]["k"] = kvjson::array();
+        rspLatch.wait();
+      
+        kvjson rsp;
+        rsp[queryRspName]["st"] = KvRequestStatus::Ok;
+        rsp[queryRspName]["k"] = kvjson::array();
 
-      auto& resultArray = rsp[queryRspName]["k"];
+        auto& resultArray = rsp[queryRspName]["k"];
 
-      for(auto& result : results)
-      {
-        for (auto&& key : result)
-          resultArray.insert(resultArray.cend(), std::move(key));
+        for(auto& result : results)
+        {
+          for (auto&& key : result)
+            resultArray.insert(resultArray.cend(), std::move(key));
+        }
+
+        std::cout << rsp << '\n';
+
+        ws->send(rsp.dump(), WsSendOpCode);
       }
-
-      std::cout << rsp << '\n';
-
-      ws->send(rsp.dump(), WsSendOpCode);
     }
   }
 
