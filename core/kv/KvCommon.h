@@ -240,11 +240,10 @@ struct FindConditions
 
   using ConditionOperator = std::function<bool(const kvjson&, const kvjson&)>;
 
-  const std::set<std::string> ops = {"=", ">", ">=", "<", "<="};
-  
+
   const std::map<Condition, std::tuple<const std::string, ConditionOperator>> ConditionToOp = 
   {
-    {Condition::Equals,   {"=",   [](const kvjson& a, const kvjson& b){ return a == b; }} },
+    {Condition::Equals,   {"==",   [](const kvjson& a, const kvjson& b){ return a == b; }} },
     {Condition::GT,       {">",   [](const kvjson& a, const kvjson& b){ return a > b; }} },
     {Condition::GTE,      {">=",  [](const kvjson& a, const kvjson& b){ return a >= b; }} },
     {Condition::LT,       {"<",   [](const kvjson& a, const kvjson& b){ return a < b; }} },
@@ -254,7 +253,7 @@ struct FindConditions
   
   const std::map<const std::string, Condition> OpStringToOp = 
   {
-    {"=",   Condition::Equals},
+    {"==",  Condition::Equals},
     {">",   Condition::GT},
     {">=",  Condition::GTE},
     {"<",   Condition::LT},
@@ -264,7 +263,7 @@ struct FindConditions
 
   bool isValidOperator(const std::string& opString)
   {
-    return ops.contains(opString);
+    return OpStringToOp.contains(opString);
   }
 
 

@@ -72,7 +72,7 @@ TEST_F(FusionTest, NoData)
 
 	ASSERT_TRUE(tc.open());
 
-	tc.test(TestData { .request = R"({ "KV_FIND":{ "path":"/a", "=":"dave" } })"_json,	.expected = {R"({ "KV_FIND_RSP":{ "st":1, "k":[] } })"_json} });
+	tc.test(TestData { .request = R"({ "KV_FIND":{ "path":"/a", "==":"dave" } })"_json,	.expected = {R"({ "KV_FIND_RSP":{ "st":1, "k":[] } })"_json} });
 }
 
 
@@ -83,7 +83,7 @@ TEST_F(FusionTest, RootStringEq)
 	ASSERT_TRUE(tc.open());
   
   tc.test(TestData { .request = R"({ "KV_SET":{ "user:1234":"dave" } })"_json,	.expected = {R"({ "KV_SET_RSP":{ "st":20, "k":"user:1234" } })"_json} });
-	tc.test(TestData { .request = R"({ "KV_FIND":{ "=":"dave" } })"_json,	.expected = {R"({ "KV_FIND_RSP":{ "st":1, "k":["user:1234"] } })"_json} });
+	tc.test(TestData { .request = R"({ "KV_FIND":{ "==":"dave" } })"_json,	.expected = {R"({ "KV_FIND_RSP":{ "st":1, "k":["user:1234"] } })"_json} });
 }
 
 
@@ -94,7 +94,7 @@ TEST_F(FusionTest, RootObjectEq)
 	ASSERT_TRUE(tc.open());
   
   tc.test(TestData { .request = R"({ "KV_SET":{ "user:1234": {"name":"dave"} } })"_json,	.expected = {R"({ "KV_SET_RSP":{ "st":20, "k":"user:1234" } })"_json} });
-	tc.test(TestData { .request = R"({ "KV_FIND":{ "=":{"name":"dave"} } })"_json,	.expected = {R"({ "KV_FIND_RSP":{ "st":1, "k":["user:1234"] } })"_json} });
+	tc.test(TestData { .request = R"({ "KV_FIND":{ "==":{"name":"dave"} } })"_json,	.expected = {R"({ "KV_FIND_RSP":{ "st":1, "k":["user:1234"] } })"_json} });
 }
 
 
@@ -105,7 +105,7 @@ TEST_F(FusionTest, RootArrayEq)
 	ASSERT_TRUE(tc.open());
   
   tc.test(TestData { .request = R"({ "KV_SET":{"user:1234": ["dave", 123]} })"_json,	.expected = {R"({ "KV_SET_RSP":{ "st":20, "k":"user:1234" } })"_json} });
-	tc.test(TestData { .request = R"({ "KV_FIND":{ "=":["dave", 123] } })"_json,	.expected = {R"({ "KV_FIND_RSP":{ "st":1, "k":["user:1234"] } })"_json} });
+	tc.test(TestData { .request = R"({ "KV_FIND":{ "==":["dave", 123] } })"_json,	.expected = {R"({ "KV_FIND_RSP":{ "st":1, "k":["user:1234"] } })"_json} });
 }
 
 
@@ -116,7 +116,7 @@ TEST_F(FusionTest, RootDecimalEq)
 	ASSERT_TRUE(tc.open());
   
   tc.test(TestData { .request = R"({ "KV_SET":{"user:1234":123.123} })"_json,	.expected = {R"({ "KV_SET_RSP":{ "st":20, "k":"user:1234" } })"_json} });
-	tc.test(TestData { .request = R"({ "KV_FIND":{ "=":123.123 } })"_json,	.expected = {R"({ "KV_FIND_RSP":{ "st":1, "k":["user:1234"] } })"_json} });
+	tc.test(TestData { .request = R"({ "KV_FIND":{ "==":123.123 } })"_json,	.expected = {R"({ "KV_FIND_RSP":{ "st":1, "k":["user:1234"] } })"_json} });
 }
 
 
@@ -144,7 +144,7 @@ TEST_F(FusionTest, NestedStringEq)
 	ASSERT_TRUE(tc.open());
   
   tc.test(TestData { .request = R"({ "KV_SET":{ "user:1234": {"name":"dave"} } })"_json,	.expected = {R"({ "KV_SET_RSP":{ "st":20, "k":"user:1234" } })"_json} });
-	tc.test(TestData { .request = R"({ "KV_FIND":{ "path":"/name", "=":"dave" } })"_json,	.expected = {R"({ "KV_FIND_RSP":{ "st":1, "k":["user:1234"] } })"_json} });
+	tc.test(TestData { .request = R"({ "KV_FIND":{ "path":"/name", "==":"dave" } })"_json,	.expected = {R"({ "KV_FIND_RSP":{ "st":1, "k":["user:1234"] } })"_json} });
 }
 
 
@@ -156,7 +156,7 @@ TEST_F(FusionTest, NestedIntEq)
   
   tc.test(TestData { .request = R"({ "KV_SET":{ "user:1234": {"age":25} } })"_json,	.expected = {R"({ "KV_SET_RSP":{ "st":20, "k":"user:1234" } })"_json} });
   tc.test(TestData { .request = R"({ "KV_SET":{ "user:12345": {"age":30} } })"_json,	.expected = {R"({ "KV_SET_RSP":{ "st":20, "k":"user:12345" } })"_json} });
-	tc.test(TestData { .request = R"({ "KV_FIND":{ "path":"/age", "=":25 } })"_json,	.expected = {R"({ "KV_FIND_RSP":{ "st":1, "k":["user:1234"] } })"_json} });
+	tc.test(TestData { .request = R"({ "KV_FIND":{ "path":"/age", "==":25 } })"_json,	.expected = {R"({ "KV_FIND_RSP":{ "st":1, "k":["user:1234"] } })"_json} });
 }
 
 
@@ -181,8 +181,8 @@ TEST_F(FusionTest, NestedArray)
   
   tc.test(TestData { .request = R"({ "KV_SET":{ "user:1234": {"ages":[25,30]} } })"_json,	.expected = {R"({ "KV_SET_RSP":{ "st":20, "k":"user:1234" } })"_json} });
   tc.test(TestData { .request = R"({ "KV_SET":{ "user:12345": {"ages":[35,40]} } })"_json,	.expected = {R"({ "KV_SET_RSP":{ "st":20, "k":"user:12345" } })"_json} });
-	tc.test(TestData { .request = R"({ "KV_FIND":{ "path":"/ages", "=":[35,40] } })"_json,	.expected = {R"({ "KV_FIND_RSP":{ "st":1, "k":["user:12345"] } })"_json} });
-  tc.test(TestData { .request = R"({ "KV_FIND":{ "path":"/ages", "=":[25,30] } })"_json,	.expected = {R"({ "KV_FIND_RSP":{ "st":1, "k":["user:1234"] } })"_json} });
+	tc.test(TestData { .request = R"({ "KV_FIND":{ "path":"/ages", "==":[35,40] } })"_json,	.expected = {R"({ "KV_FIND_RSP":{ "st":1, "k":["user:12345"] } })"_json} });
+  tc.test(TestData { .request = R"({ "KV_FIND":{ "path":"/ages", "==":[25,30] } })"_json,	.expected = {R"({ "KV_FIND_RSP":{ "st":1, "k":["user:1234"] } })"_json} });
 }
 
 
@@ -194,8 +194,8 @@ TEST_F(FusionTest, NestedObject)
   
   tc.test(TestData { .request = R"({ "KV_SET":{ "user:1234": {"info":{"a":"1", "b":"2"}} } })"_json,	.expected = {R"({ "KV_SET_RSP":{ "st":20, "k":"user:1234" } })"_json} });
   tc.test(TestData { .request = R"({ "KV_SET":{ "user:12345": {"info":{"a":"1", "c":"3"}}  } })"_json,	.expected = {R"({ "KV_SET_RSP":{ "st":20, "k":"user:12345" } })"_json} });
-	tc.test(TestData { .request = R"({ "KV_FIND":{ "path":"/info", "=":{"a":"1", "b":"2"} } })"_json,	.expected = {R"({ "KV_FIND_RSP":{ "st":1, "k":["user:1234"] } })"_json} });
-  tc.test(TestData { .request = R"({ "KV_FIND":{ "path":"/info", "=":{"a":"1", "c":"3"} } })"_json,	.expected = {R"({ "KV_FIND_RSP":{ "st":1, "k":["user:12345"] } })"_json} });
+	tc.test(TestData { .request = R"({ "KV_FIND":{ "path":"/info", "==":{"a":"1", "b":"2"} } })"_json,	.expected = {R"({ "KV_FIND_RSP":{ "st":1, "k":["user:1234"] } })"_json} });
+  tc.test(TestData { .request = R"({ "KV_FIND":{ "path":"/info", "==":{"a":"1", "c":"3"} } })"_json,	.expected = {R"({ "KV_FIND_RSP":{ "st":1, "k":["user:12345"] } })"_json} });
 }
 
 
@@ -206,7 +206,7 @@ TEST_F(FusionTest, DeepNestedString)
 	ASSERT_TRUE(tc.open());
   
   tc.test(TestData { .request = R"({ "KV_SET":{"user:1234":{"address":{"city":"London"} }  } })"_json,	.expected = {R"({ "KV_SET_RSP":{ "st":20, "k":"user:1234" } })"_json} });
-  tc.test(TestData { .request = R"({ "KV_FIND":{ "path":"/address/city", "=":"London" } })"_json,	.expected = {R"({ "KV_FIND_RSP":{ "st":1, "k":["user:1234"] } })"_json} });
+  tc.test(TestData { .request = R"({ "KV_FIND":{ "path":"/address/city", "==":"London" } })"_json,	.expected = {R"({ "KV_FIND_RSP":{ "st":1, "k":["user:1234"] } })"_json} });
 }
 
 
