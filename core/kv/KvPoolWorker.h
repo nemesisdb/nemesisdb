@@ -4,7 +4,7 @@
 #include <string_view>
 #include <thread>
 #include <condition_variable>
-#include <algorithm> // for std::move(start, end, target)
+#include <regex>
 #include <boost/fiber/fiber.hpp>
 #include <boost/fiber/buffered_channel.hpp>
 #include <ankerl/unordered_dense.h>
@@ -256,17 +256,33 @@ private:
       // KvHandler validates path syntax
       auto& [opString, handler] = findConditions.getOperation(cmd.find.condition);
 
+      const auto haveRegex = !cmd.contents.at("keyrgx").get_ref<const std::string&>().empty();
       kvjson::json_pointer path {cmd.contents.at("path")};
       kvjson::const_reference value = cmd.contents.at(opString);
       
       std::vector<cachedkey> keys;
       keys.reserve(100U);  // TODO
 
-      for(auto& kv : map)
+      auto valueMatch = [&handler, &keys, &value, &path](std::pair<cachedkey, cachedvalue>& kv)
       {
         if (path.empty() && handler(kv.second, value))
-          keys.emplace_back(kv.first);
+          return true;
         else if (kv.second.contains(path) && handler(kv.second.at(path), value))
+          return true;
+        else
+          return false;
+      };
+
+      const std::regex keyRegex{cmd.contents.at("keyrgx").get_ref<const std::string&>()};
+      
+      for(auto& kv : map)
+      {
+        if (haveRegex)
+        {     
+          if (std::regex_match(kv.first, keyRegex) && valueMatch(kv))
+            keys.emplace_back(kv.first);
+        }
+        else if (valueMatch(kv))
           keys.emplace_back(kv.first);
       }
 

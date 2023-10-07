@@ -20,7 +20,7 @@ TEST_F(FusionTest, NoOpNoPath)
 
 	ASSERT_TRUE(tc.open());
 
-	tc.test({TestData { .request = R"({ "KV_FIND":{ "x":"asda", "y":"asda" } })"_json,	.expected = {R"({ "KV_FIND_RSP":{ "st":60, "k":"" } })"_json} }});
+	tc.test({TestData { .request = R"({ "KV_FIND":{ "x":"asda", "y":"asda" } })"_json,	.expected = {R"({ "KV_FIND_RSP":{ "st":13, "k":"" } })"_json} }});
 }
 
 
@@ -50,7 +50,7 @@ TEST_F(FusionTest, InvalidOp)
 
 	ASSERT_TRUE(tc.open());
 
-	tc.test({TestData { .request = R"({ "KV_FIND":{ "path":"/a", "&":5 } })"_json,	.expected = {R"({ "KV_FIND_RSP":{ "st":63, "k":"" } })"_json} }});
+	tc.test({TestData { .request = R"({ "KV_FIND":{ "path":"/a", "&":5 } })"_json,	.expected = {R"({ "KV_FIND_RSP":{ "st":61, "k":"" } })"_json} }});
 }
 
 

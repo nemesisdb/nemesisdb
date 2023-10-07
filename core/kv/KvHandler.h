@@ -426,17 +426,50 @@ private:
     static const KvQueryType queryType = KvQueryType::Find;
     static const std::string_view queryName = "KV_FIND";
     static const std::string_view queryRspName = "KV_FIND_RSP";
-
+    
     auto& cmd = json.at(queryName);
-        
-    if (cmd.size() != 1U && cmd.size() != 2U)
+
+    const auto cmdSize = cmd.size();
+
+    bool havePath = false, haveRegex = false, haveOp = false, unknownKey = false;
+    kvjson::const_iterator itOp, itPath, itRegEx;
+
+    for (auto it = cmd.cbegin() ; it != cmd.cend() ; ++it)
+    {
+      if (it.key() == "path")
+      {
+        havePath = true;
+        itPath = it;
+      }
+      else if (it.key() == "keyrgx")
+      {
+        haveRegex = true;
+        itRegEx = it;
+      }
+      else if (findConditions.isValidOperator(it.key()))
+      {
+        itOp = it;
+        haveOp = true;
+      }
+      else
+        unknownKey = true;
+    }
+
+    // rules:
+    //  - op always required
+    //  - path and regex are optional
+    //  - path cannot be empty
+    //  - regex cannot be empty TODO what about disallowing "*" ?
+    if (!haveOp && !haveRegex && !havePath)
       ws->send(createErrorResponse(queryRspName, KvRequestStatus::CommandSyntax).dump(), WsSendOpCode);
-    else if (cmd.size() == 1U && cmd.contains("path"))
+    else if (!haveOp) 
       ws->send(createErrorResponse(queryRspName, KvRequestStatus::FindNoOperator).dump(), WsSendOpCode);
-    else if (cmd.size() == 2U && !cmd.contains("path"))
-      ws->send(createErrorResponse(queryRspName, KvRequestStatus::FindNoPath).dump(), WsSendOpCode);
-    else if (cmd.contains("path") && (!cmd.at("path").is_string() || cmd.at("path").get_ref<const std::string&>().empty()))
+    else if (unknownKey || (cmdSize < 1U || cmdSize > 3U))
+      ws->send(createErrorResponse(queryRspName, KvRequestStatus::CommandSyntax).dump(), WsSendOpCode);
+    else if (havePath && (!cmd.at("path").is_string() || cmd.at("path").get_ref<const std::string&>().empty()))
       ws->send(createErrorResponse(queryRspName, KvRequestStatus::FindPathInvalid).dump(), WsSendOpCode);
+    else if (haveRegex && (!cmd.at("keyrgx").is_string() || cmd.at("keyrgx").get_ref<const std::string&>().empty()))
+      ws->send(createErrorResponse(queryRspName, KvRequestStatus::FindRegExInvalid).dump(), WsSendOpCode);
     else
     {
       std::mutex resultMux;
@@ -454,60 +487,34 @@ private:
         rspLatch.count_down();
       };
       
-      kvjson::const_iterator itCondition, itPath;
-      const auto havePath = cmd.contains("path");
+      const kvjson s {{"path", havePath ? itPath.value() : ""}, {"keyrgx", haveRegex ? itRegEx.value() : ""}, {itOp.key(), itOp.value()}};
+      const KvCommand::Find find {.condition = findConditions.OpStringToOp.at(itOp.key())};
 
-      if (havePath)
+      for (auto& worker : m_pools)
       {
-        // can only have two members, so begin() is not path then it must be begin()+1
-        if (auto it = cmd.begin(); it.key() == "path")
-        {
-          itPath = it;
-          itCondition = std::next (it, 1);
-        }        
-        else
-        {
-          itPath = std::next (it, 1);
-          itCondition = it;
-        }
+        worker->execute(KvCommand{.ws = ws,
+                                  .loop = uWS::Loop::get(),
+                                  .contents = s,
+                                  .type = queryType,
+                                  .cordinatedResponseHandler = onResponse,
+                                  .find = find});
       }
-      else
+    
+      rspLatch.wait();
+    
+      kvjson rsp;
+      rsp[queryRspName]["st"] = KvRequestStatus::Ok;
+      rsp[queryRspName]["k"] = kvjson::array();
+
+      auto& resultArray = rsp[queryRspName]["k"];
+
+      for(auto& result : results)
       {
-        itCondition = cmd.begin();
+        for (auto&& key : result)
+          resultArray.insert(resultArray.cend(), std::move(key));
       }
-      
-      if (!findConditions.isValidOperator(itCondition.key()))
-        ws->send(createErrorResponse(queryRspName, KvRequestStatus::FindOperatorInvalid).dump(), WsSendOpCode);
-      else
-      {
-        const kvjson s {{"path", havePath ? itPath.value() : ""}, {itCondition.key(), itCondition.value()}};
-        const KvCommand::Find find {.condition = findConditions.OpStringToOp.at(itCondition.key())};
 
-        for (auto& worker : m_pools)
-          worker->execute(KvCommand{.ws = ws,
-                                    .loop = uWS::Loop::get(),
-                                    .contents = s,
-                                    .type = queryType,
-                                    .cordinatedResponseHandler = onResponse,
-                                    .find = find});
-      
-      
-        rspLatch.wait();
-      
-        kvjson rsp;
-        rsp[queryRspName]["st"] = KvRequestStatus::Ok;
-        rsp[queryRspName]["k"] = kvjson::array();
-
-        auto& resultArray = rsp[queryRspName]["k"];
-
-        for(auto& result : results)
-        {
-          for (auto&& key : result)
-            resultArray.insert(resultArray.cend(), std::move(key));
-        }
-
-        ws->send(rsp.dump(), WsSendOpCode);
-      }
+      ws->send(rsp.dump(), WsSendOpCode);
     }
   }
 

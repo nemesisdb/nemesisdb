@@ -86,7 +86,7 @@ enum class KvRequestStatus
   FindNoPath = 60,
   FindNoOperator,
   FindPathInvalid,
-  FindOperatorInvalid,
+  FindRegExInvalid,
   Unknown = 100
 };
 
