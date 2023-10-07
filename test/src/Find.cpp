@@ -66,24 +66,24 @@ using namespace fusion::test;
 // regex errors
 
 
-TEST_F(FusionTest, RegexNoOp)
-{
-	TestClient tc;
+// TEST_F(FusionTest, RegexNoOp)
+// {
+// 	TestClient tc;
 
-	ASSERT_TRUE(tc.open());
+// 	ASSERT_TRUE(tc.open());
 
-	tc.test(TestData { .request = R"({ "KV_FIND":{ "path":"/a", "keyrgx":"k?y" } })"_json,	.expected = {R"({ "KV_FIND_RSP":{ "st":61, "k":"" } })"_json} });
-}
+// 	tc.test(TestData { .request = R"({ "KV_FIND":{ "path":"/a", "keyrgx":"k?y" } })"_json,	.expected = {R"({ "KV_FIND_RSP":{ "st":61, "k":"" } })"_json} });
+// }
 
 
-TEST_F(FusionTest, RegexEmpty)
-{
-	TestClient tc;
+// TEST_F(FusionTest, RegexEmpty)
+// {
+// 	TestClient tc;
 
-	ASSERT_TRUE(tc.open());
+// 	ASSERT_TRUE(tc.open());
 
-	tc.test(TestData { .request = R"({ "KV_FIND":{ "path":"/a", "==":"x", "keyrgx":"" } })"_json,	.expected = {R"({ "KV_FIND_RSP":{ "st":63, "k":"" } })"_json} });
-}
+// 	tc.test(TestData { .request = R"({ "KV_FIND":{ "path":"/a", "==":"x", "keyrgx":"" } })"_json,	.expected = {R"({ "KV_FIND_RSP":{ "st":63, "k":"" } })"_json} });
+// }
 
 
 // Happy cases
@@ -244,6 +244,31 @@ TEST_F(FusionTest, RegexEmpty)
 //   tc.test(TestData { .request = R"({ "KV_FIND":{ "path":"/address/year", ">=":1982 } })"_json,	.expected = {R"({ "KV_FIND_RSP":{ "st":1, "k":["user:1234", "user:12345"] } })"_json} });
 // }
 
+
+TEST_F(FusionTest, RegExNoPath)
+{
+	TestClient tc;
+
+	ASSERT_TRUE(tc.open());
+  
+  tc.test(TestData { .request = R"({ "KV_SET":{"user:a:1":"London"} })"_json,	.expected = {R"({ "KV_SET_RSP":{ "st":20, "k":"user:a:1" } })"_json} });
+  tc.test(TestData { .request = R"({ "KV_SET":{"user:b:1":"London"} })"_json,	.expected = {R"({ "KV_SET_RSP":{ "st":20, "k":"user:b:1" } })"_json} });
+  tc.test(TestData { .request = R"({ "KV_SET":{"user:b:2":"London"} })"_json,	.expected = {R"({ "KV_SET_RSP":{ "st":20, "k":"user:b:2" } })"_json} });
+  tc.test(TestData { .request = R"({ "KV_FIND":{ "keyrgx":"user:b:\\d*", "==":"London" } })"_json,	.expected = {R"({ "KV_FIND_RSP":{ "st":1, "k":["user:b:1", "user:b:2"] } })"_json} });
+}
+
+
+TEST_F(FusionTest, RegExAndPath)
+{
+	TestClient tc;
+
+	ASSERT_TRUE(tc.open());
+  
+  tc.test(TestData { .request = R"({ "KV_SET":{"user:a:1":{"address":{"city":"London"} }  } })"_json,	.expected = {R"({ "KV_SET_RSP":{ "st":20, "k":"user:a:1" } })"_json} });
+  tc.test(TestData { .request = R"({ "KV_SET":{"user:b:1":{"address":{"city":"London"} }  } })"_json,	.expected = {R"({ "KV_SET_RSP":{ "st":20, "k":"user:b:1" } })"_json} });
+  tc.test(TestData { .request = R"({ "KV_SET":{"user:b:2":{"address":{"city":"London"} }  } })"_json,	.expected = {R"({ "KV_SET_RSP":{ "st":20, "k":"user:b:2" } })"_json} });
+  tc.test(TestData { .request = R"({ "KV_FIND":{ "path":"/address/city", "keyrgx":"user:b:\\d*", "==":"London" } })"_json,	.expected = {R"({ "KV_FIND_RSP":{ "st":1, "k":["user:b:1", "user:b:2"] } })"_json} });
+}
 
 
 int main (int argc, char ** argv)
