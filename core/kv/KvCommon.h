@@ -38,6 +38,7 @@ enum class KvQueryType : std::uint8_t
   Append,
   Contains,
   ArrayMove,
+  Find,
   Max,
   Unknown,
 };
@@ -56,8 +57,8 @@ const std::map<const std::string_view, std::tuple<const KvQueryType, const kvjso
   {"KV_SERVER_INFO",  {KvQueryType::ServerInfo, kvjson::value_t::object}},
   {"KV_APPEND",       {KvQueryType::Append, kvjson::value_t::object}},
   {"KV_CONTAINS",     {KvQueryType::Contains, kvjson::value_t::array}},
-  {"KV_ARRAY_MOVE",   {KvQueryType::ArrayMove, kvjson::value_t::object}}
-  //{"KV_RNM",       KvQueryType::RenameKey}
+  {"KV_ARRAY_MOVE",   {KvQueryType::ArrayMove, kvjson::value_t::object}},
+  {"KV_FIND",         {KvQueryType::Find, kvjson::value_t::object}}
 };
 
 
@@ -68,7 +69,8 @@ enum class KvRequestStatus
   JsonInvalid,
   CommandNotExist = 10,
   CommandMultiple,
-  CommandType, 
+  CommandType,
+  CommandSyntax,
   KeySet = 20,
   KeyUpdated,
   KeyNotExist,
@@ -81,6 +83,10 @@ enum class KvRequestStatus
   ValueTypeInvalid,
   ValueSize,
   OutOfBounds,
+  FindNoPath = 60,
+  FindNoOperator,
+  FindPathInvalid,
+  FindRegExInvalid,
   Unknown = 100
 };
 
@@ -228,6 +234,48 @@ struct KvSession
 
 
 
+struct FindConditions
+{
+  enum class Condition { Equals, GT, GTE, LT, LTE  };
+
+  using ConditionOperator = std::function<bool(const kvjson&, const kvjson&)>;
+
+
+  const std::map<Condition, std::tuple<const std::string, ConditionOperator>> ConditionToOp = 
+  {
+    {Condition::Equals,   {"==",   [](const kvjson& a, const kvjson& b){ return a == b; }} },
+    {Condition::GT,       {">",   [](const kvjson& a, const kvjson& b){ return a > b; }} },
+    {Condition::GTE,      {">=",  [](const kvjson& a, const kvjson& b){ return a >= b; }} },
+    {Condition::LT,       {"<",   [](const kvjson& a, const kvjson& b){ return a < b; }} },
+    {Condition::LTE,      {"<=",  [](const kvjson& a, const kvjson& b){ return a <= b; }} }
+  };
+
+  
+  const std::map<const std::string, Condition> OpStringToOp = 
+  {
+    {"==",  Condition::Equals},
+    {">",   Condition::GT},
+    {">=",  Condition::GTE},
+    {"<",   Condition::LT},
+    {"<=",  Condition::LTE}
+  };
+
+
+  bool isValidOperator(const std::string& opString)
+  {
+    return OpStringToOp.contains(opString);
+  }
+
+
+  const std::tuple<const std::string, ConditionOperator>& getOperation (const Condition cond)
+  {
+    return ConditionToOp.at(cond);
+  }
+
+} findConditions ;
+
+
+
 struct KvCommand
 {
   uWS::WebSocket<false, true, KvSession> * ws;  // to access the websocket and userdata
@@ -235,6 +283,12 @@ struct KvCommand
   kvjson contents;  // json taken from the request, contents depends on the query
   KvQueryType type; 
   std::function<void(std::any)> cordinatedResponseHandler; 
+
+  struct Find
+  {
+    FindConditions::Condition condition;
+
+  } find;
 };
 
 

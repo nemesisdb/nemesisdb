@@ -44,17 +44,18 @@ private:
     std::bind(&KvHandler::count, std::ref(*this), std::placeholders::_1, std::placeholders::_2),
     std::bind(&KvHandler::append, std::ref(*this), std::placeholders::_1, std::placeholders::_2),
     std::bind(&KvHandler::contains, std::ref(*this), std::placeholders::_1, std::placeholders::_2),
-    std::bind(&KvHandler::arrayMove, std::ref(*this), std::placeholders::_1, std::placeholders::_2)
+    std::bind(&KvHandler::arrayMove, std::ref(*this), std::placeholders::_1, std::placeholders::_2),
+    std::bind(&KvHandler::find, std::ref(*this), std::placeholders::_1, std::placeholders::_2)
   };
 
 public:
 
   std::tuple<KvRequestStatus,std::string> handle(KvWebSocket * ws, kvjson&& json)
   {
-    std::tuple<KvRequestStatus,std::string> status = std::make_tuple(KvRequestStatus::Ok, "");
+    KvRequestStatus status = KvRequestStatus::Ok;
 
-    if (json.size() != 1U)
-      std::get<KvRequestStatus>(status) = KvRequestStatus::CommandMultiple;
+    if (json.size() != 1U) [[unlikely]]
+      return std::make_tuple(KvRequestStatus::CommandMultiple, "");
     else  [[likely]]
     {
       const std::string& queryName = json.cbegin().key();
@@ -73,19 +74,17 @@ public:
           }
           catch (const std::exception& kex)
           {
-            status = std::make_tuple(KvRequestStatus::Unknown, queryName);
+            status = KvRequestStatus::Unknown;
           }
         }
         else
-        {
-          status = std::make_tuple(KvRequestStatus::CommandType, queryName);
-        }        
+          status = KvRequestStatus::CommandType;
       }
       else
-        status = std::make_tuple(KvRequestStatus::CommandNotExist, queryName);
-    }
+        status = KvRequestStatus::CommandNotExist;
 
-    return status;
+      return std::make_tuple(status, queryName);
+    }
   }
 
 
@@ -420,6 +419,103 @@ private:
           ws->send(createErrorResponse(queryRspName, KvRequestStatus::KeyLengthInvalid, kv.key()).dump(), WsSendOpCode);
       }
     } 
+  }
+
+  fc_always_inline void find(KvWebSocket * ws, kvjson&& json)
+  {
+    static const KvQueryType queryType = KvQueryType::Find;
+    static const std::string_view queryName = "KV_FIND";
+    static const std::string_view queryRspName = "KV_FIND_RSP";
+    
+    auto& cmd = json.at(queryName);
+
+    const auto cmdSize = cmd.size();
+
+    bool havePath = false, haveRegex = false, haveOp = false, unknownKey = false;
+    kvjson::const_iterator itOp, itPath, itRegEx;
+
+    for (auto it = cmd.cbegin() ; it != cmd.cend() ; ++it)
+    {
+      if (it.key() == "path")
+      {
+        havePath = true;
+        itPath = it;
+      }
+      else if (it.key() == "keyrgx")
+      {
+        haveRegex = true;
+        itRegEx = it;
+      }
+      else if (findConditions.isValidOperator(it.key()))
+      {
+        itOp = it;
+        haveOp = true;
+      }
+      else
+        unknownKey = true;
+    }
+
+    // rules:
+    //  - op always required
+    //  - path and regex are optional
+    //  - path cannot be empty
+    //  - regex cannot be empty TODO what about disallowing "*" ?
+    if (!haveOp && !haveRegex && !havePath)
+      ws->send(createErrorResponse(queryRspName, KvRequestStatus::CommandSyntax).dump(), WsSendOpCode);
+    else if (!haveOp) 
+      ws->send(createErrorResponse(queryRspName, KvRequestStatus::FindNoOperator).dump(), WsSendOpCode);
+    else if (unknownKey || (cmdSize < 1U || cmdSize > 3U))
+      ws->send(createErrorResponse(queryRspName, KvRequestStatus::CommandSyntax).dump(), WsSendOpCode);
+    else if (havePath && (!cmd.at("path").is_string() || cmd.at("path").get_ref<const std::string&>().empty()))
+      ws->send(createErrorResponse(queryRspName, KvRequestStatus::FindPathInvalid).dump(), WsSendOpCode);
+    else if (haveRegex && (!cmd.at("keyrgx").is_string() || cmd.at("keyrgx").get_ref<const std::string&>().empty()))
+      ws->send(createErrorResponse(queryRspName, KvRequestStatus::FindRegExInvalid).dump(), WsSendOpCode);
+    else
+    {
+      std::mutex resultMux;
+      std::vector<std::vector<cachedkey>> results;
+
+      std::latch rspLatch{static_cast<std::ptrdiff_t>(m_pools.size())};
+
+      auto onResponse = [&rspLatch, &resultMux, &results](std::any result)
+      {
+        {
+          std::scoped_lock lck{resultMux};
+          results.emplace_back(std::any_cast<std::vector<cachedkey>>(result));
+        }
+        
+        rspLatch.count_down();
+      };
+      
+      const kvjson s {{"path", havePath ? itPath.value() : ""}, {"keyrgx", haveRegex ? itRegEx.value() : ""}, {itOp.key(), itOp.value()}};
+      const KvCommand::Find find {.condition = findConditions.OpStringToOp.at(itOp.key())};
+
+      for (auto& worker : m_pools)
+      {
+        worker->execute(KvCommand{.ws = ws,
+                                  .loop = uWS::Loop::get(),
+                                  .contents = s,
+                                  .type = queryType,
+                                  .cordinatedResponseHandler = onResponse,
+                                  .find = find});
+      }
+    
+      rspLatch.wait();
+    
+      kvjson rsp;
+      rsp[queryRspName]["st"] = KvRequestStatus::Ok;
+      rsp[queryRspName]["k"] = kvjson::array();
+
+      auto& resultArray = rsp[queryRspName]["k"];
+
+      for(auto& result : results)
+      {
+        for (auto&& key : result)
+          resultArray.insert(resultArray.cend(), std::move(key));
+      }
+
+      ws->send(rsp.dump(), WsSendOpCode);
+    }
   }
 
   // fc_always_inline void rename(KvWebSocket * ws, kvjson&& json)
