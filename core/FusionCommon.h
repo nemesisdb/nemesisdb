@@ -17,7 +17,7 @@ static const std::size_t FUSION_CONFIG_VERSION = 1U;
 static const std::size_t FUSION_KV_MINPAYLOAD = 64U;
 static const std::size_t FUSION_KV_MAXPAYLOAD = 2U * 1024U * 1024U;
 
-static const std::size_t FUSION_MAX_CORES = 64U;
+static const std::size_t FUSION_MAX_CORES = 8U;
 
 
 static inline bool setThreadAffinity(const std::thread::native_handle_type handle, const size_t core)
