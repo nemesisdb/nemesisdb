@@ -11,18 +11,15 @@
 
 namespace fusion { namespace core { namespace kv {
 
-using kvjson = nlohmann::ordered_json;
+
 using kvhash_t = std::uint32_t;
 using PoolId = std::size_t;
-using cachedkey = std::string;
 using cachedvalue = nlohmann::ordered_json;
 using cachedpair = nlohmann::ordered_json;
 
 const uWS::OpCode WsSendOpCode = uWS::OpCode::TEXT;
 
 static kvhash_t MaxPools = 1U;
-static const std::size_t MinKeySize = 6U; // characters, not bytes. See createPoolIndex() if changing this
-
 
 enum class KvQueryType : std::uint8_t
 {  
@@ -44,50 +41,21 @@ enum class KvQueryType : std::uint8_t
 };
 
 
-const std::map<const std::string_view, std::tuple<const KvQueryType, const kvjson::value_t>> QueryNameToType = 
+const std::map<const std::string_view, std::tuple<const KvQueryType, const fcjson::value_t>> QueryNameToType = 
 {
-  {"KV_SET",          {KvQueryType::Set, kvjson::value_t::object}},
-  {"KV_SETQ",         {KvQueryType::SetQ, kvjson::value_t::object}},
-  {"KV_GET",          {KvQueryType::Get, kvjson::value_t::array}},
-  {"KV_ADD",          {KvQueryType::Add, kvjson::value_t::object}},
-  {"KV_ADDQ",         {KvQueryType::AddQ, kvjson::value_t::object}},
-  {"KV_RMV",          {KvQueryType::Remove, kvjson::value_t::array}},
-  {"KV_CLEAR",        {KvQueryType::Clear, kvjson::value_t::object}},
-  {"KV_COUNT",        {KvQueryType::Count, kvjson::value_t::object}},
-  {"KV_SERVER_INFO",  {KvQueryType::ServerInfo, kvjson::value_t::object}},
-  {"KV_APPEND",       {KvQueryType::Append, kvjson::value_t::object}},
-  {"KV_CONTAINS",     {KvQueryType::Contains, kvjson::value_t::array}},
-  {"KV_ARRAY_MOVE",   {KvQueryType::ArrayMove, kvjson::value_t::object}},
-  {"KV_FIND",         {KvQueryType::Find, kvjson::value_t::object}}
-};
-
-
-enum class KvRequestStatus
-{
-  Ok = 1,
-  OpCodeInvalid,
-  JsonInvalid,
-  CommandNotExist = 10,
-  CommandMultiple,
-  CommandType,
-  CommandSyntax,
-  KeySet = 20,
-  KeyUpdated,
-  KeyNotExist,
-  KeyExists,
-  KeyRemoved,
-  KeyLengthInvalid,
-  KeyMissing,
-  KeyTypeInvalid,
-  ValueMissing = 40,  // NOTE not actually used
-  ValueTypeInvalid,
-  ValueSize,
-  OutOfBounds,
-  FindNoPath = 60,
-  FindNoOperator,
-  FindPathInvalid,
-  FindRegExInvalid,
-  Unknown = 100
+  {"KV_SET",          {KvQueryType::Set, fcjson::value_t::object}},
+  {"KV_SETQ",         {KvQueryType::SetQ, fcjson::value_t::object}},
+  {"KV_GET",          {KvQueryType::Get, fcjson::value_t::array}},
+  {"KV_ADD",          {KvQueryType::Add, fcjson::value_t::object}},
+  {"KV_ADDQ",         {KvQueryType::AddQ, fcjson::value_t::object}},
+  {"KV_RMV",          {KvQueryType::Remove, fcjson::value_t::array}},
+  {"KV_CLEAR",        {KvQueryType::Clear, fcjson::value_t::object}},
+  {"KV_COUNT",        {KvQueryType::Count, fcjson::value_t::object}},
+  {"KV_SERVER_INFO",  {KvQueryType::ServerInfo, fcjson::value_t::object}},
+  {"KV_APPEND",       {KvQueryType::Append, fcjson::value_t::object}},
+  {"KV_CONTAINS",     {KvQueryType::Contains, fcjson::value_t::array}},
+  {"KV_ARRAY_MOVE",   {KvQueryType::ArrayMove, fcjson::value_t::object}},
+  {"KV_FIND",         {KvQueryType::Find, fcjson::value_t::object}}
 };
 
 
@@ -105,75 +73,75 @@ enum class KvErrorCode
 
 struct PoolRequestResponse
 { 
-  using enum KvRequestStatus;
+  using enum RequestStatus;
 
-  static kvjson getFound (cachedpair pair)
+  static fcjson getFound (cachedpair pair)
   {
-    kvjson rsp;    
+    fcjson rsp;    
     rsp["KV_GET_RSP"] = std::move(pair);
     rsp["KV_GET_RSP"]["st"] = Ok;
     return rsp;
   }
 
-  static kvjson getNotFound (cachedpair key)
+  static fcjson getNotFound (cachedpair key)
   {
-    kvjson rsp;
+    fcjson rsp;
     rsp["KV_GET_RSP"]["st"] = KeyNotExist;
     rsp["KV_GET_RSP"]["k"] = std::move(key);
     return rsp;
   }
 
-  static kvjson keySet (const bool isSet, const std::string_view k)
+  static fcjson keySet (const bool isSet, const std::string_view k)
   {
-    kvjson rsp;
+    fcjson rsp;
     rsp["KV_SET_RSP"]["st"] = isSet ? KeySet : KeyUpdated;
     rsp["KV_SET_RSP"]["k"] = k;
     return rsp;
   }
   
-  static kvjson keyAdd (const bool isAdded, std::string&& k)
+  static fcjson keyAdd (const bool isAdded, std::string&& k)
   {
-    kvjson rsp;
+    fcjson rsp;
     rsp["KV_ADD_RSP"]["st"] = isAdded ? KeySet : KeyExists;
     rsp["KV_ADD_RSP"]["k"] = std::move(k);
     return rsp;
   }
 
-  static kvjson keyAddQ (const bool isAdded, std::string&& k)
+  static fcjson keyAddQ (const bool isAdded, std::string&& k)
   {
-    kvjson rsp;
+    fcjson rsp;
     rsp["KV_ADDQ_RSP"]["st"] = isAdded ? KeySet : KeyExists;
     rsp["KV_ADDQ_RSP"]["k"] = std::move(k);
     return rsp;
   }
 
-  static kvjson keyRemoved (const bool removed, const std::string_view k)
+  static fcjson keyRemoved (const bool removed, const std::string_view k)
   {
-    kvjson rsp;
+    fcjson rsp;
     rsp["KV_RMV_RSP"]["st"] = removed ? KeyRemoved : KeyNotExist;
     rsp["KV_RMV_RSP"]["k"] = k;
     return rsp;
   }
 
-  static kvjson append (const KvRequestStatus status, const std::string_view k)
+  static fcjson append (const RequestStatus status, const std::string_view k)
   {
-    kvjson rsp;
+    fcjson rsp;
     rsp["KV_APPEND_RSP"]["st"] = status;
     rsp["KV_APPEND_RSP"]["k"] = k;
     return rsp;
   }
 
-  static kvjson contains (const KvRequestStatus status, const std::string_view k)
+  static fcjson contains (const RequestStatus status, const std::string_view k)
   {
-    kvjson rsp;
+    fcjson rsp;
     rsp["KV_CONTAINS_RSP"]["st"] = status;
     rsp["KV_CONTAINS_RSP"]["k"] = k;
     return rsp;
   }
 
-  static kvjson arrayMove (const KvRequestStatus status, const std::string_view k)
+  static fcjson arrayMove (const RequestStatus status, const std::string_view k)
   {
-    kvjson rsp;
+    fcjson rsp;
     rsp["KV_ARRAY_MOVE_RSP"]["st"] = status;
     rsp["KV_ARRAY_MOVE_RSP"]["k"] = k;
     return rsp;
@@ -181,17 +149,17 @@ struct PoolRequestResponse
 
   
 
-  // static kvjson renameKey (kvjson pair)
+  // static fcjson renameKey (fcjson pair)
   // {
-  //   kvjson rsp;
+  //   fcjson rsp;
   //   rsp["KV_RNM_RSP"] = std::move(pair);
   //   rsp["KV_RNM_RSP"]["st"] = KeySet;    
   //   return rsp;
   // }
 
-  // static kvjson renameKeyFail (const KvRequestStatus status, kvjson pair)
+  // static fcjson renameKeyFail (const RequestStatus status, fcjson pair)
   // {
-  //   kvjson rsp;
+  //   fcjson rsp;
   //   rsp["KV_RNM_RSP"] = std::move(pair);
   //   rsp["KV_RNM_RSP"]["st"] = status;    
   //   return rsp;
@@ -199,55 +167,29 @@ struct PoolRequestResponse
 
   static PoolRequestResponse unknownError ()
   {
-    return PoolRequestResponse{.status = KvRequestStatus::Unknown};
+    return PoolRequestResponse{.status = RequestStatus::Unknown};
   }
 
-  KvRequestStatus status;
-  kvjson contents;
+  RequestStatus status;
+  fcjson contents;
   std::size_t affectedCount{0};
 };
-
-
-
-struct KvSession
-{
-  KvSession () : connected(new std::atomic_bool{true})
-  {
-  }
-
-  // need this because uWebSockets moves the userdata after upgrade to websocket
-  KvSession (KvSession&& other) : connected(other.connected)
-  {
-    other.connected = nullptr;
-  }
-  
-  ~KvSession()
-  {
-    if (connected)
-      delete connected;
-
-    connected = nullptr;
-  }
-
-  std::atomic_bool * connected;
-};
-
 
 
 struct FindConditions
 {
   enum class Condition { Equals, GT, GTE, LT, LTE  };
 
-  using ConditionOperator = std::function<bool(const kvjson&, const kvjson&)>;
+  using ConditionOperator = std::function<bool(const fcjson&, const fcjson&)>;
 
 
   const std::map<Condition, std::tuple<const std::string, ConditionOperator>> ConditionToOp = 
   {
-    {Condition::Equals,   {"==",   [](const kvjson& a, const kvjson& b){ return a == b; }} },
-    {Condition::GT,       {">",   [](const kvjson& a, const kvjson& b){ return a > b; }} },
-    {Condition::GTE,      {">=",  [](const kvjson& a, const kvjson& b){ return a >= b; }} },
-    {Condition::LT,       {"<",   [](const kvjson& a, const kvjson& b){ return a < b; }} },
-    {Condition::LTE,      {"<=",  [](const kvjson& a, const kvjson& b){ return a <= b; }} }
+    {Condition::Equals,   {"==",   [](const fcjson& a, const fcjson& b){ return a == b; }} },
+    {Condition::GT,       {">",   [](const fcjson& a, const fcjson& b){ return a > b; }} },
+    {Condition::GTE,      {">=",  [](const fcjson& a, const fcjson& b){ return a >= b; }} },
+    {Condition::LT,       {"<",   [](const fcjson& a, const fcjson& b){ return a < b; }} },
+    {Condition::LTE,      {"<=",  [](const fcjson& a, const fcjson& b){ return a <= b; }} }
   };
 
   
@@ -278,9 +220,9 @@ struct FindConditions
 
 struct KvCommand
 {
-  uWS::WebSocket<false, true, KvSession> * ws;  // to access the websocket and userdata
-  uWS::Loop * loop; // TODO can this be moved to KvSession, only set once in .open handler? the uWS event loop, so we can defer() websocket calls on an event loop thread
-  kvjson contents;  // json taken from the request, contents depends on the query
+  uWS::WebSocket<false, true, WsSession> * ws;  // to access the websocket and userdata
+  uWS::Loop * loop; // TODO can this be moved to WsSession, only set once in .open handler? the uWS event loop, so we can defer() websocket calls on an event loop thread
+  fcjson contents;  // json taken from the request, contents depends on the query
   KvQueryType type; 
   std::function<void(std::any)> cordinatedResponseHandler; 
 
@@ -290,9 +232,6 @@ struct KvCommand
 
   } find;
 };
-
-
-using KvWebSocket = uWS::WebSocket<false, true, KvSession>;
 
 
 struct ServerStats
@@ -306,60 +245,46 @@ static const std::array<std::function<bool(const std::string_view&, PoolId&)>, 2
 {
   [](const std::string_view& k, PoolId& id) -> bool
   {
-    if (k.size() < MinKeySize)
-      return false;
+    if (isKeyValid(k))
+    {
+      id = ((k[0U] + k[1U] + k[2U] + k[3U] + k[4U] + k[5U]) & 0xFFFFFFFF) % MaxPools;
+      return true;
+    }
 
-    id = ((k[0U] + k[1U] + k[2U] + k[3U] + k[4U] + k[5U]) & 0xFFFFFFFF) % MaxPools;
-    return true;
+    return false;
   },
 
   [](const std::string_view& k, PoolId& id) -> bool
   {
-    if (k.size() < MinKeySize)
-      return false;
+    if (isKeyValid(k))
+    {
+      id = 0U;
+      return true;
+    }
 
-    id = 0U;
-    return true;
+    return false;
   }
 };
 
-// Response if the original command is known.
-static kvjson createErrorResponse (const std::string_view commandRsp, const KvRequestStatus status, const std::string_view key = "")
-{
-  kvjson rsp;
-  rsp[commandRsp]["st"] = status;
-  rsp[commandRsp]["k"] = key;
-  return rsp;
-}
-
-// Response is the original command not unknown.
-static kvjson createErrorResponse (const KvRequestStatus status, const std::string_view msg = "")
-{
-  kvjson rsp;
-  rsp["KV_ERR"]["st"] = status;
-  rsp["KV_ERR"]["m"] = msg;
-  return rsp;
-}
-
-// std::string kvStatusToString (const KvRequestStatus st)
+// std::string kvStatusToString (const RequestStatus st)
 // {
 //   return std::to_string(static_cast<std::uint8_t>(st));
 // }
 
-fc_always_inline bool valueTypeValid (const kvjson& value)
+fc_always_inline bool valueTypeValid (const fcjson& value)
 {
-  static const std::set<kvjson::value_t> DisallowedTypes = 
+  static const std::set<fcjson::value_t> DisallowedTypes = 
   {
-    kvjson::value_t::binary,
-    kvjson::value_t::discarded  // technically not possible, but for sanity
+    fcjson::value_t::binary,
+    fcjson::value_t::discarded  // technically not possible, but for sanity
   };
 
   if (value.is_array())
   {
-    static const std::set<kvjson::value_t> DisallowedArrayTypes = 
+    static const std::set<fcjson::value_t> DisallowedArrayTypes = 
     {
-      kvjson::value_t::binary,
-      kvjson::value_t::discarded
+      fcjson::value_t::binary,
+      fcjson::value_t::discarded
     };
 
     for(auto& item : value)
@@ -373,6 +298,7 @@ fc_always_inline bool valueTypeValid (const kvjson& value)
   else
     return !DisallowedTypes.contains(value.type());
 }
+
 
 }
 }

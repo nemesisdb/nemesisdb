@@ -30,9 +30,7 @@ public:
   {
     if (!setThreadAffinity(m_thread.native_handle(), core))
       std::cout << "Failed to assign KvPoolWorker thread: " << core << '\n';
-    //else
-      //std::cout << "Assigned KvPoolWorker thread: " << core << '\n';
-
+    
     //setThreadRealtime(m_thread.native_handle(), 25);
   }
 
@@ -91,7 +89,7 @@ private:
       }
       catch(const std::exception& e)
       {
-        kvjson unknownErrRsp{{"KV_SETQ_RSP", {{"st", KvRequestStatus::Unknown}, {"k", std::move(key)}}}};
+        fcjson unknownErrRsp{{"KV_SETQ_RSP", {{"st", RequestStatus::Unknown}, {"k", std::move(key)}}}};
         send(cmd, unknownErrRsp.dump());
       }
     };
@@ -156,7 +154,7 @@ private:
 
     auto append = [this](CacheMap& map, KvCommand& cmd)
     {
-      KvRequestStatus status = KvRequestStatus::Ok;
+      RequestStatus status = RequestStatus::Ok;
 
       auto& key = cmd.contents.begin().key();
       if (const auto it = map.find(key) ; it != map.cend())
@@ -164,28 +162,28 @@ private:
         const auto type = cmd.contents.begin().value().type();
         switch (type)
         {
-          case kvjson::value_t::array:
+          case fcjson::value_t::array:
           {
             for (auto& item : cmd.contents.at(key))
               it->second.insert(it->second.end(), std::move(item));
           }
           break;
 
-          case kvjson::value_t::object:
+          case fcjson::value_t::object:
             it->second.insert(cmd.contents.begin().value().begin(), cmd.contents.begin().value().end());
           break;
 
-          case kvjson::value_t::string:
-            it->second.get_ref<kvjson::string_t&>().append(cmd.contents.begin().value());
+          case fcjson::value_t::string:
+            it->second.get_ref<fcjson::string_t&>().append(cmd.contents.begin().value());
           break;
 
           default:
-            status = KvRequestStatus::ValueTypeInvalid;
+            status = RequestStatus::ValueTypeInvalid;
           break;
         }
       }
       else
-        status = KvRequestStatus::KeyNotExist;
+        status = RequestStatus::KeyNotExist;
 
       send(cmd, PoolRequestResponse::append(status, std::move(key)).dump());
     };
@@ -193,9 +191,9 @@ private:
     auto contains = [this](CacheMap& map, KvCommand& cmd)
     {
       if (map.contains(cmd.contents))
-        send(cmd, PoolRequestResponse::contains(KvRequestStatus::KeyExists, cmd.contents.get<std::string_view>()).dump());
+        send(cmd, PoolRequestResponse::contains(RequestStatus::KeyExists, cmd.contents.get<std::string_view>()).dump());
       else
-        send(cmd, PoolRequestResponse::contains(KvRequestStatus::KeyNotExist, cmd.contents.get<std::string_view>()).dump());
+        send(cmd, PoolRequestResponse::contains(RequestStatus::KeyNotExist, cmd.contents.get<std::string_view>()).dump());
     };
 
     auto arrayMove = [this](CacheMap& map, KvCommand& cmd)
@@ -204,17 +202,17 @@ private:
       auto& positions = cmd.contents.begin().value();
       
       if (positions.size() != 2U && positions.size() != 1U)
-        send(cmd, PoolRequestResponse::arrayMove(KvRequestStatus::ValueSize, key).dump());
+        send(cmd, PoolRequestResponse::arrayMove(RequestStatus::ValueSize, key).dump());
       else
       { 
         if (auto it = map.find(key) ; it == map.cend())
-          send(cmd, PoolRequestResponse::arrayMove(KvRequestStatus::KeyNotExist, key).dump()); 
+          send(cmd, PoolRequestResponse::arrayMove(RequestStatus::KeyNotExist, key).dump()); 
         else  [[likely]]
         {
           if (auto& array = it->second; !array.is_array())
-            send(cmd, PoolRequestResponse::arrayMove(KvRequestStatus::ValueTypeInvalid, key).dump()); 
+            send(cmd, PoolRequestResponse::arrayMove(RequestStatus::ValueTypeInvalid, key).dump()); 
           else if (array.empty())
-            send(cmd, PoolRequestResponse::arrayMove(KvRequestStatus::OutOfBounds, key).dump()); 
+            send(cmd, PoolRequestResponse::arrayMove(RequestStatus::OutOfBounds, key).dump()); 
           else
           {
             auto isIndexValidType = [](const json& array, const std::size_t index)
@@ -223,24 +221,24 @@ private:
             };
 
             if (positions.size() == 1U && !isIndexValidType(positions, 0U))
-              send(cmd, PoolRequestResponse::arrayMove(KvRequestStatus::ValueTypeInvalid, key).dump());
+              send(cmd, PoolRequestResponse::arrayMove(RequestStatus::ValueTypeInvalid, key).dump());
             else if (positions.size() == 2U && (!isIndexValidType(positions, 0U) || !isIndexValidType(positions, 1U)))
-              send(cmd, PoolRequestResponse::arrayMove(KvRequestStatus::ValueTypeInvalid, key).dump());
+              send(cmd, PoolRequestResponse::arrayMove(RequestStatus::ValueTypeInvalid, key).dump());
             else
             {
               const std::int64_t currPos = positions[0U];
               const std::int64_t newPos = positions.size() == 1U ? array.size() : positions[1U].get<std::int64_t>(); // at the end if no position supplied
 
               if (currPos < 0 || currPos > array.size() - 1 || newPos < 0)
-                send(cmd, PoolRequestResponse::arrayMove(KvRequestStatus::OutOfBounds, key).dump());
+                send(cmd, PoolRequestResponse::arrayMove(RequestStatus::OutOfBounds, key).dump());
               else if (currPos == newPos)
-                send(cmd, PoolRequestResponse::arrayMove(KvRequestStatus::Ok, key).dump());
+                send(cmd, PoolRequestResponse::arrayMove(RequestStatus::Ok, key).dump());
               else
               {
                 array.insert(std::next(array.cbegin(), newPos), std::move(array[currPos]));
                 array.erase(currPos > newPos ? currPos+1 : currPos);
 
-                send(cmd, PoolRequestResponse::arrayMove(KvRequestStatus::Ok, key).dump());
+                send(cmd, PoolRequestResponse::arrayMove(RequestStatus::Ok, key).dump());
               }
             }
           }
@@ -257,8 +255,8 @@ private:
       auto& [opString, handler] = findConditions.getOperation(cmd.find.condition);
 
       const auto haveRegex = !cmd.contents.at("keyrgx").get_ref<const std::string&>().empty();
-      kvjson::json_pointer path {cmd.contents.at("path")};
-      kvjson::const_reference value = cmd.contents.at(opString);
+      fcjson::json_pointer path {cmd.contents.at("path")};
+      fcjson::const_reference value = cmd.contents.at(opString);
       
       std::vector<cachedkey> keys;
       keys.reserve(100U);  // TODO
@@ -308,11 +306,11 @@ private:
           command.loop->defer([ws = command.ws, contents = std::move(command->contents)]{ ws->send(PoolRequestResponse::renameKey(std::move(contents)).dump(), kv::WsSendOpCode);});
         }
         else
-          command.loop->defer([ws = command.ws, contents = std::move(command->contents)]{ ws->send(PoolRequestResponse::renameKeyFail(KvRequestStatus::KeyExists, std::move(contents)).dump(), kv::WsSendOpCode);});
+          command.loop->defer([ws = command.ws, contents = std::move(command->contents)]{ ws->send(PoolRequestResponse::renameKeyFail(RequestStatus::KeyExists, std::move(contents)).dump(), kv::WsSendOpCode);});
       }
       else
       {
-        command.loop->defer([ws = command.ws, contents = std::move(command->contents)]{ ws->send(PoolRequestResponse::renameKeyFail(KvRequestStatus::KeyNotExist, std::move(contents)).dump(), kv::WsSendOpCode);}) ;
+        command.loop->defer([ws = command.ws, contents = std::move(command->contents)]{ ws->send(PoolRequestResponse::renameKeyFail(RequestStatus::KeyNotExist, std::move(contents)).dump(), kv::WsSendOpCode);}) ;
       }
     };
     */
@@ -353,13 +351,13 @@ private:
       if (!m_channel.is_closed())
       {
         std::cout << "Pool Fiber Exception: " << fex.what() << '\n';
-        send(cmd, createErrorResponse(KvRequestStatus::Unknown).dump());;
+        send(cmd, createErrorResponse(RequestStatus::Unknown).dump());;
       } 
     }
     catch (const std::exception& ex)
     {
       std::cout << "Pool Exception: " << ex.what() << '\n';
-      send(cmd, createErrorResponse(KvRequestStatus::Unknown).dump());
+      send(cmd, createErrorResponse(RequestStatus::Unknown).dump());
     }
   }
 

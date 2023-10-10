@@ -10,6 +10,8 @@
 #include <core/kv/KvCommon.h>
 #include <core/kv/KvPoolWorker.h>
 #include <core/kv/KvHandler.h>
+#include <core/ks/KsHandler.h>
+#include <core/ks/KsSets.h>
 #include <core/FusionConfig.h>
 
 
@@ -64,10 +66,10 @@ public:
 
     m_threads.clear();
 
-    if (m_handlers)
-      delete m_handlers;
+    if (m_kvHandler)
+      delete m_kvHandler;
 
-    m_handlers = nullptr;
+    m_kvHandler = nullptr;
 
     if (kv::serverStats)
       delete kv::serverStats;
@@ -96,6 +98,7 @@ public:
     };
     
     kv::serverStats = new kv::ServerStats;
+    auto keySets = new ks::Sets;
 
     unsigned int maxPayload = config.cfg["kv"]["maxPayload"];
     std::string ip = config.cfg["kv"]["ip"];
@@ -114,13 +117,15 @@ public:
     
     kv::MaxPools = std::max<std::size_t>(1U, nCores - nIoThreads);
 
-    m_handlers = new kv::KvHandler {kv::MaxPools, nCores - kv::MaxPools};
+    m_kvHandler = new kv::KvHandler {kv::MaxPools, nCores - kv::MaxPools, keySets};
+    m_ksHandler = new ks::KsHandler {keySets};
+
     
     #ifndef FC_UNIT_TEST
     std::cout << "Fusion Max Cores: " << FUSION_MAX_CORES << '\n'
               << "Available Cores: "  << std::thread::hardware_concurrency() << '\n';
-    /*std::cout << "I/O Threads: "    << nIoThreads << '\n'     // TODO remove
-              << "Pools: "            << kv::MaxPools << '\n';  // TODO remove */
+    //std::cout << "I/O Threads: "    << nIoThreads << '\n'
+    //          << "Pools: "            << kv::MaxPools << '\n';
     #endif
     
     std::size_t listenSuccess{0U};
@@ -131,7 +136,7 @@ public:
     {
       auto * thread = new std::jthread([this, ip, port, &listenSuccessRef, &startLatch, maxPayload, serverStats = kv::serverStats]()
       {
-        auto wsApp = uWS::App().ws<kv::KvSession>("/*",
+        auto wsApp = uWS::App().ws<WsSession>("/*",
         {
           .compression = uWS::DISABLED,
           .maxPayloadLength = maxPayload,
@@ -140,34 +145,51 @@ public:
           // handlers
           .upgrade = nullptr,
           
-          .open = [this](kv::KvWebSocket * ws)
+          .open = [this](KvWebSocket * ws)
           {
             std::scoped_lock lck{m_sessionsMux};
             m_sessions.insert(ws);
           },
-          .message = [this, serverStats](kv::KvWebSocket * ws, std::string_view message, uWS::OpCode opCode)
+          .message = [this, serverStats](KvWebSocket * ws, std::string_view message, uWS::OpCode opCode)
           {   
             ++serverStats->queryCount;
 
             if (opCode != uWS::OpCode::TEXT)
-              ws->send(kv::createErrorResponse(kv::KvRequestStatus::OpCodeInvalid).dump(), kv::WsSendOpCode);
+              ws->send(createErrorResponse(RequestStatus::OpCodeInvalid).dump(), kv::WsSendOpCode);
             else
             {
-              if (auto request = kv::kvjson::parse(message, nullptr, false); request.is_discarded()) // TODO change parse() to accept?
-                ws->send(kv::createErrorResponse(kv::KvRequestStatus::JsonInvalid).dump(), kv::WsSendOpCode);
+              if (auto request = fcjson::parse(message, nullptr, false); request.is_discarded()) // TODO change parse() to accept?
+                ws->send(createErrorResponse(RequestStatus::JsonInvalid).dump(), kv::WsSendOpCode);
               else
               {
-                if (auto [status, queryName] = m_handlers->handle(ws, std::move(request)) ; status != KvRequestStatus::Ok)
+                const auto& commandName = request.cbegin().key();
+
+                if (request.size() != 1U)
+                  ws->send(createErrorResponse(commandName + "_RSP", RequestStatus::CommandMultiple).dump(), kv::WsSendOpCode);
+                else
                 {
-                  if (status == KvRequestStatus::CommandType)
-                    ws->send(createErrorResponse(queryName+"_RSP", status).dump(), kv::WsSendOpCode);
+                  if (commandName.size() >= 2)  [[likely]]
+                  {
+                    RequestStatus status;
+                    std::string queryName;
+
+                    if (commandName[0] == 'K' && commandName[1] == 'V')
+                      std::tie(status, queryName) = m_kvHandler->handle(ws, std::move(request));
+                    else if (commandName[0] == 'K' && commandName[1] == 'S')
+                      std::tie(status, queryName) = m_ksHandler->handle(ws, std::move(request));
+
+                    if (status == RequestStatus::CommandType)
+                      ws->send(createErrorResponse(queryName+"_RSP", status).dump(), kv::WsSendOpCode);
+                    else if (status != RequestStatus::Ok)
+                      ws->send(createErrorResponse(status, queryName).dump(), kv::WsSendOpCode);
+                  }
                   else
-                    ws->send(createErrorResponse(status, queryName).dump(), kv::WsSendOpCode);
-                }
+                    ws->send(createErrorResponse(commandName + "_RSP", RequestStatus::CommandNotExist).dump(), kv::WsSendOpCode);
+                }                
               }
             }
           },
-          .close = [this](kv::KvWebSocket * ws, int /*code*/, std::string_view /*message*/)
+          .close = [this](KvWebSocket * ws, int /*code*/, std::string_view /*message*/)
           {
             ws->getUserData()->connected->store(false);
 
@@ -227,7 +249,8 @@ public:
     std::vector<std::jthread *> m_threads;
     std::vector<us_listen_socket_t *> m_sockets;
     std::set<KvWebSocket *> m_sessions;
-    kv::KvHandler * m_handlers;
+    kv::KvHandler * m_kvHandler;
+    ks::KsHandler * m_ksHandler;
     std::mutex m_socketsMux;
     std::mutex m_sessionsMux;
     std::atomic_bool m_fusionClose; // true if fusion has triggered a close
