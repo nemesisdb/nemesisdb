@@ -105,15 +105,12 @@ private:
       ws->send(createErrorResponse(queryRspName, RequestStatus::CommandSyntax).dump(), WsSendOpCode);
     else if (!cmd.contains("k") || !cmd.contains("ks"))
       ws->send(createErrorResponse(queryRspName, RequestStatus::ValueMissing).dump(), WsSendOpCode);
+    else if (!cmd.at("k").is_array())
+      ws->send(createErrorResponse(queryRspName, RequestStatus::ValueTypeInvalid, "k").dump(), WsSendOpCode);
     else
     {
-      if (isKeyValid(cmd.at("k")))
-      {
-        const auto status = m_ks->addKey(cmd.at("ks"), cmd.at("k"));
-        ws->send(createErrorResponse(queryRspName, status).dump(), WsSendOpCode);
-      }
-      else
-        ws->send(createErrorResponse(queryRspName, RequestStatus::KeyLengthInvalid).dump(), WsSendOpCode);
+      auto status = m_ks->addKeys(cmd.at("ks"), cmd.at("k"));
+      ws->send(fcjson {{queryRspName, {"st", status}}}.dump(), WsSendOpCode);
     }
   }
 
@@ -135,11 +132,10 @@ private:
         ws->send(createErrorResponse(queryRspName, RequestStatus::KeyTypeInvalid).dump(), WsSendOpCode);
       else
       {
-        auto& ksName = item.value();
         // this is an array, so cmd.items().key() is the index, and value() is the ... value
+        auto& ksName = item.value();
+
         fcjson set{{ksName, fcjson::array()}} ;
-        std::cout << set << '\n';
-        
         setsFetched += m_ks->getSet(ksName, set.at(ksName));
         rsp[queryRspName] = std::move(set);
       }

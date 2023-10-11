@@ -17,7 +17,13 @@ using namespace fusion::core::kv;
 // A KeySet can be used in commands to restrict which keys are affected.
 class Sets
 {
+  using KeySet = ankerl::unordered_dense::map<ksname, ksset>;
+  using KeySetIt = ankerl::unordered_dense::map<ksname, ksset>::iterator;
+  using KeySetConstIt = ankerl::unordered_dense::map<ksname, ksset>::const_iterator;
+
+
 public:
+
   Sets() = default;
   
   Sets(const Sets&) = delete;
@@ -33,15 +39,35 @@ public:
   }
 
 
-  RequestStatus addKey (const ksname& name, const cachedkey& key)
+  RequestStatus addKeys (const ksname& name, const fcjson& keyArray)
   {
-    if (auto it = m_sets.find(name); it != m_sets.cend())
+    std::scoped_lock lck{m_mux};
+
+    RequestStatus status = RequestStatus::Ok;
+
+    KeySetIt it = m_sets.find(name);
+    
+    if (it == m_sets.end())
+      it = m_sets.try_emplace(name, ksset{}).first;
+    
+    for (auto& key : keyArray.items())
     {
-      auto [ignore, inserted] = it->second.emplace(key);
-      return inserted ? RequestStatus::Ok : RequestStatus::KeyExists;
+      if (!isKeyValid(key.value()))
+        status = RequestStatus::KeyAddFailed;
+      else
+      {
+        try
+        {
+          it->second.emplace(key.value());
+        }
+        catch (...)
+        {
+          status = RequestStatus::KeyAddFailed;
+        }
+      }
     }
     
-    return RequestStatus::KeySetNotExist;
+    return status;
   }
 
 
@@ -86,7 +112,7 @@ public:
   
 
 private:
-  ankerl::unordered_dense::map<ksname, ksset> m_sets;
+  KeySet m_sets;
   mutable std::mutex m_mux;
 };
 

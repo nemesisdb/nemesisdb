@@ -80,6 +80,7 @@ enum class RequestStatus
   KeySetCreated = 80,
   KeySetExists,
   KeySetNotExist,
+  KeyAddFailed,
   Unknown = 1000
 };
 
@@ -98,10 +99,12 @@ bool isKeyValid(const cachedkey& k)
   return k.size() >= MinKeySize;
 }
 
+
 bool isKeyValid(const std::string_view& k)
 {
   return k.size() >= MinKeySize;
 }
+
 
 // Response if the original command is known.
 static fcjson createErrorResponse (const std::string_view commandRsp, const RequestStatus status, const std::string_view key = "")
@@ -111,6 +114,7 @@ static fcjson createErrorResponse (const std::string_view commandRsp, const Requ
   rsp[commandRsp]["k"] = key;
   return rsp;
 }
+
 
 // Response is the original command is unknown.
 static fcjson createErrorResponse (const RequestStatus status, const std::string_view msg = "")
