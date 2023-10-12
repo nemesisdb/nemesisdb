@@ -5,7 +5,6 @@
 #include <mutex>
 #include <latch>
 #include <filesystem>
-#include <uwebsockets/App.h>
 #include <core/FusionConfig.h>
 #include <core/FusionCommon.h>
 #include <core/kv/KvCommon.h>

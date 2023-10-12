@@ -33,6 +33,7 @@ private:
   const std::array<std::function<void(KvWebSocket *, fcjson&&)>, static_cast<std::size_t>(KsQueryType::Max)> Handlers = 
   {
     std::bind(&KsHandler::create,         std::ref(*this), std::placeholders::_1, std::placeholders::_2),
+    std::bind(&KsHandler::list,           std::ref(*this), std::placeholders::_1, std::placeholders::_2),
     std::bind(&KsHandler::addKey,         std::ref(*this), std::placeholders::_1, std::placeholders::_2),
     std::bind(&KsHandler::get,            std::ref(*this), std::placeholders::_1, std::placeholders::_2),
     std::bind(&KsHandler::rmvKey,         std::ref(*this), std::placeholders::_1, std::placeholders::_2),
@@ -90,14 +91,29 @@ private:
     auto& cmd = json.at(queryName);
 
     if (!cmd.contains("name"))
-      ws->send(createErrorResponse(queryRspName, RequestStatus::ValueMissing, "name").dump(), WsSendOpCode);
+      ws->send(createMessageResponse(queryRspName, RequestStatus::ValueMissing, "name").dump(), WsSendOpCode);
     else if (!cmd.at("name").is_string())
-      ws->send(createErrorResponse(queryRspName, RequestStatus::ValueTypeInvalid, "name").dump(), WsSendOpCode);
+      ws->send(createMessageResponse(queryRspName, RequestStatus::ValueTypeInvalid, "name").dump(), WsSendOpCode);
+    else if (cmd.at("name").get_ref<const std::string&>().empty())
+      ws->send(createMessageResponse(queryRspName, RequestStatus::KeySetNameInvalid, "name").dump(), WsSendOpCode);
     else
     {
       const auto status = m_ks->create(cmd.at("name")) ? RequestStatus::KeySetCreated : RequestStatus::KeySetExists;
-      ws->send(fcjson {{queryRspName, {{"st", status}}}}.dump(), WsSendOpCode);
+      ws->send(fcjson {{queryRspName, {{"st", status}, {"name", cmd.at("name")}}}}.dump(), WsSendOpCode);
     }
+  }
+
+
+  fc_always_inline void list(KvWebSocket * ws, fcjson&& json)
+  {
+    static const KsQueryType queryType = KsQueryType::List;
+    static const std::string_view queryName     = "KS_LIST";
+    static const std::string_view queryRspName  = "KS_LIST_RSP";
+
+    auto& cmd = json.at(queryName);
+
+    auto list = m_ks->list();
+    ws->send(fcjson {{queryRspName, {{"st", RequestStatus::Ok}, {"list", std::move(list)}}}}.dump(), WsSendOpCode);
   }
 
 
@@ -110,15 +126,19 @@ private:
     auto& cmd = json.at(queryName);
 
     if (cmd.size() != 2U)
-      ws->send(createErrorResponse(queryRspName, RequestStatus::CommandSyntax).dump(), WsSendOpCode);
+      ws->send(createMessageResponse(queryRspName, RequestStatus::CommandSyntax).dump(), WsSendOpCode);
     else if (!cmd.contains("k") || !cmd.contains("ks"))
-      ws->send(createErrorResponse(queryRspName, RequestStatus::ValueMissing).dump(), WsSendOpCode);
+      ws->send(createMessageResponse(queryRspName, RequestStatus::ValueMissing).dump(), WsSendOpCode);
     else if (!cmd.at("k").is_array())
-      ws->send(createErrorResponse(queryRspName, RequestStatus::ValueTypeInvalid, "k").dump(), WsSendOpCode);
+      ws->send(createMessageResponse(queryRspName, RequestStatus::ValueTypeInvalid, "k").dump(), WsSendOpCode);
     else
     {
-      auto status = m_ks->addKeys(cmd.at("ks"), cmd.at("k"));
-      ws->send(fcjson {{queryRspName, {"st", status}}}.dump(), WsSendOpCode);
+      auto status = RequestStatus::Ok;
+
+      if (!cmd.at("k").empty())
+        status = m_ks->addKeys(cmd.at("ks"), cmd.at("k"));
+      
+      ws->send(fcjson {{queryRspName, {{"st", status}, {"ks", cmd.at("ks")}}}}.dump(), WsSendOpCode);
     }
   }
 
@@ -132,26 +152,28 @@ private:
     auto& cmd = json.at(queryName);
 
     fcjson rsp;
-    std::size_t setsFetched = 0U ;
 
-    for (auto& item : cmd.items())
+    if (cmd.empty())
+      ws->send(createMessageResponse(queryRspName, RequestStatus::ValueMissing).dump(), WsSendOpCode);
+    else
     {
-      if (!item.value().is_string())
-        ws->send(createErrorResponse(queryRspName, RequestStatus::KeyTypeInvalid).dump(), WsSendOpCode);
-      else
+      for (auto& item : cmd.items())
       {
-        // this is an array, so cmd.items().key() is the index, and value() is the ... value
-        auto& ksName = item.value();
+        if (item.value().is_string())
+        {
+          // this is an array, so cmd.items().key() is the index, and value() is the ... value
+          auto& ksName = item.value();
 
-        fcjson set{{ksName, fcjson::array()}} ;
-        setsFetched += m_ks->getSet(ksName, set.at(ksName));  // intentional implicit bool to uint
-        rsp[queryRspName] = std::move(set);
+          fcjson keys = fcjson::array();
+          
+          m_ks->getSet(ksName, keys);
+          rsp[queryRspName][ksName] = std::move(keys);
+        }
       }
+
+      rsp[queryRspName]["st"] = RequestStatus::Ok;
+      ws->send(rsp.dump(), WsSendOpCode);
     }
-
-    rsp[queryRspName]["st"] = setsFetched == cmd.size() ? RequestStatus::Ok : RequestStatus::KeySetNotExist;
-
-    ws->send(rsp.dump(), WsSendOpCode);
   }
 
 

@@ -7,10 +7,11 @@
 #include <set>
 #include <tuple>
 #include <latch>
+#include <uwebsockets/App.h>
 #include <core/kv/KvCommon.h>
 #include <core/kv/KvPoolWorker.h>
 #include <core/kv/KvHandler.h>
-#include <core/ks/KsHandler.h>
+#include <core/ks/KsHandler.h>  
 #include <core/ks/KsSets.h>
 #include <core/FusionConfig.h>
 
@@ -171,18 +172,22 @@ public:
                 {
                   if (commandName.size() >= 2)  [[likely]]
                   {
-                    RequestStatus status;
-                    std::string queryName;
-
                     if (commandName[0] == 'K' && commandName[1] == 'V')
-                      std::tie(status, queryName) = m_kvHandler->handle(ws, std::move(request));
-                    else if (commandName[0] == 'K' && commandName[1] == 'S')
-                      std::tie(status, queryName) = m_ksHandler->handle(ws, std::move(request));
+                    {
+                      auto [status, queryName] = m_kvHandler->handle(ws, std::move(request));
 
-                    if (status == RequestStatus::CommandType)
-                      ws->send(createErrorResponse(queryName+"_RSP", status).dump(), kv::WsSendOpCode);
-                    else if (status != RequestStatus::Ok)
-                      ws->send(createErrorResponse(status, queryName).dump(), kv::WsSendOpCode);
+                      if (status == RequestStatus::CommandType)
+                        ws->send(createErrorResponse(queryName+"_RSP", status).dump(), kv::WsSendOpCode);
+                      else if (status != RequestStatus::Ok)
+                        ws->send(createErrorResponse(status, queryName).dump(), kv::WsSendOpCode);
+
+                    }
+                    else if (commandName[0] == 'K' && commandName[1] == 'S')
+                    {
+                      auto [status, queryName] = m_ksHandler->handle(ws, std::move(request));
+                      if (status != RequestStatus::Ok)
+                        ws->send(createMessageResponse(queryName+"_RSP", status).dump(), kv::WsSendOpCode);
+                    }
                   }
                   else
                     ws->send(createErrorResponse(commandName + "_RSP", RequestStatus::CommandNotExist).dump(), kv::WsSendOpCode);

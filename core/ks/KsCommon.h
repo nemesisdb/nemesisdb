@@ -15,6 +15,7 @@ using ksset = ankerl::unordered_dense::set<cachedkey>;
 enum class KsQueryType : std::uint8_t
 {  
   Create,
+  List,
   AddKey,
   Get,
   RemoveKey,
@@ -32,6 +33,7 @@ enum class KsQueryType : std::uint8_t
 const std::map<const std::string_view, std::tuple<const KsQueryType, const fcjson::value_t>> QueryNameToType = 
 {
   {"KS_CREATE",       {KsQueryType::Create,         fcjson::value_t::object}},
+  {"KS_LIST",         {KsQueryType::List,           fcjson::value_t::object}},
   {"KS_DELETE_SET",   {KsQueryType::DeleteSet,      fcjson::value_t::object}},
   {"KS_DELETE_ALL",   {KsQueryType::DeleteAllSets,  fcjson::value_t::object}},
   {"KS_SET_EXISTS",   {KsQueryType::SetExists,      fcjson::value_t::object}},

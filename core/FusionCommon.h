@@ -5,7 +5,7 @@
 #include <mutex>
 #include <ostream>
 #include <thread>
-
+#include <uwebsockets/App.h>
 
 namespace fusion { namespace core {
 
@@ -80,6 +80,7 @@ enum class RequestStatus
   KeySetCreated = 80,
   KeySetExists,
   KeySetNotExist,
+  KeySetNameInvalid,
   KeyAddFailed,
   KeyRemoveFailed,
   KeySetRemoveAllFailed,
@@ -119,6 +120,15 @@ static fcjson createErrorResponse (const std::string_view commandRsp, const Requ
   return rsp;
 }
 
+// Response when command known but respose is not key specific, uses 'm' instead
+static fcjson createMessageResponse (const std::string_view commandRsp, const RequestStatus status, const std::string_view msg = "")
+{
+  fcjson rsp;
+  rsp[commandRsp]["st"] = status;
+  rsp[commandRsp]["m"] = msg;
+  return rsp;
+}
+
 
 // Response is the original command is unknown.
 static fcjson createErrorResponse (const RequestStatus status, const std::string_view msg = "")
@@ -128,6 +138,9 @@ static fcjson createErrorResponse (const RequestStatus status, const std::string
   rsp["KV_ERR"]["m"] = msg;
   return rsp;
 }
+
+
+
 
 } // namespace core
 } // namespace fusion

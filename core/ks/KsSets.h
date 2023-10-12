@@ -222,6 +222,18 @@ public:
     return status;
   }
 
+  
+  fcjson list() const
+  {
+    std::scoped_lock lck{m_mux};
+    
+    fcjson list = fcjson::array();
+    
+    std::for_each(m_sets.cbegin(), m_sets.cend(), [&list](const auto& pair) { list.emplace_back(pair.first); });
+
+    return list;
+  }
+
 
   bool contains(const ksname& name) const
   {

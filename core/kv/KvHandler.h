@@ -6,6 +6,7 @@
 #include <vector>
 #include <tuple>
 #include <latch>
+#include <core/FusionCommon.h>
 #include <core/kv/KvCommon.h>
 #include <core/kv/KvPoolWorker.h>
 #include <core/ks/KsSets.h>
