@@ -37,7 +37,7 @@ private:
     std::bind(&KsHandler::addKey,         std::ref(*this), std::placeholders::_1, std::placeholders::_2),
     std::bind(&KsHandler::get,            std::ref(*this), std::placeholders::_1, std::placeholders::_2),
     std::bind(&KsHandler::rmvKey,         std::ref(*this), std::placeholders::_1, std::placeholders::_2),
-    std::bind(&KsHandler::rmvAll,         std::ref(*this), std::placeholders::_1, std::placeholders::_2),
+    std::bind(&KsHandler::clearSet,       std::ref(*this), std::placeholders::_1, std::placeholders::_2),
     std::bind(&KsHandler::deleteSet,      std::ref(*this), std::placeholders::_1, std::placeholders::_2),
     std::bind(&KsHandler::deleteAllSets,  std::ref(*this), std::placeholders::_1, std::placeholders::_2),
     std::bind(&KsHandler::setExists,      std::ref(*this), std::placeholders::_1, std::placeholders::_2),
@@ -186,33 +186,33 @@ private:
     auto& cmd = json.at(queryName);
 
     if (!cmd.contains("ks") || !cmd.contains("k"))
-      ws->send(createErrorResponse(queryRspName, RequestStatus::ValueMissing).dump(), WsSendOpCode);
-    else if (!cmd.at("ks").is_string() || !cmd.at("k").is_array())
-      ws->send(createErrorResponse(queryRspName, RequestStatus::ValueTypeInvalid).dump(), WsSendOpCode);
+      ws->send(createMessageResponse(queryRspName, RequestStatus::ValueMissing).dump(), WsSendOpCode);
+    else if (!cmd.at("ks").is_string() || !cmd.at("k").is_string())
+      ws->send(createMessageResponse(queryRspName, RequestStatus::ValueTypeInvalid).dump(), WsSendOpCode);
     else
     {
-      const auto status = m_ks->removeKeys(cmd.at("ks"), cmd.at("k"));
-      ws->send(fcjson {{queryRspName, {{"st", status}}}}.dump(), WsSendOpCode);
+      const auto status = m_ks->removeKey(cmd.at("ks"), cmd.at("k"));
+      ws->send(fcjson {{queryRspName, {{"st", status}, {"ks", cmd.at("ks")}, {"k", cmd.at("k")}}}}.dump(), WsSendOpCode);
     }    
   }
 
 
-  fc_always_inline void rmvAll(KvWebSocket * ws, fcjson&& json)
+  fc_always_inline void clearSet(KvWebSocket * ws, fcjson&& json)
   {
-    static const KsQueryType queryType = KsQueryType::RemoveAll;
-    static const std::string_view queryName     = "KS_RMV_ALL";
-    static const std::string_view queryRspName  = "KS_RMV_ALL_RSP";
+    static const KsQueryType queryType = KsQueryType::ClearSet;
+    static const std::string_view queryName     = "KS_CLEAR_SET";
+    static const std::string_view queryRspName  = "KS_CLEAR_SET_RSP";
 
     auto& cmd = json.at(queryName);
 
     if (!cmd.contains("ks"))
-      ws->send(createErrorResponse(queryRspName, RequestStatus::ValueMissing).dump(), WsSendOpCode);
+      ws->send(createMessageResponse(queryRspName, RequestStatus::ValueMissing).dump(), WsSendOpCode);
     else if (!cmd.at("ks").is_string())
-      ws->send(createErrorResponse(queryRspName, RequestStatus::ValueTypeInvalid).dump(), WsSendOpCode);
+      ws->send(createMessageResponse(queryRspName, RequestStatus::ValueTypeInvalid).dump(), WsSendOpCode);
     else
     {
       const auto status = m_ks->clearSet(cmd.at("ks"));
-      ws->send(fcjson {{queryRspName, {{"st", status}}}}.dump(), WsSendOpCode);
+      ws->send(fcjson {{queryRspName, {{"st", status}, {"ks", cmd.at("ks")}}}}.dump(), WsSendOpCode);
     }
   }
   
@@ -226,13 +226,13 @@ private:
     auto& cmd = json.at(queryName);
 
     if (!cmd.contains("ks"))
-      ws->send(createErrorResponse(queryRspName, RequestStatus::ValueMissing).dump(), WsSendOpCode);
+      ws->send(createMessageResponse(queryRspName, RequestStatus::ValueMissing).dump(), WsSendOpCode);
     else if (!cmd.at("ks").is_string())
-      ws->send(createErrorResponse(queryRspName, RequestStatus::ValueTypeInvalid).dump(), WsSendOpCode);
+      ws->send(createMessageResponse(queryRspName, RequestStatus::ValueTypeInvalid).dump(), WsSendOpCode);
     else
     {
       const auto status = m_ks->deleteSet(cmd.at("ks"));
-      ws->send(fcjson {{queryRspName, {{"st", status}}}}.dump(), WsSendOpCode);
+      ws->send(fcjson {{queryRspName, {{"st", status}, {"ks", cmd.at("ks")}}}}.dump(), WsSendOpCode);
     }
   }
 
@@ -246,7 +246,7 @@ private:
     auto& cmd = json.at(queryName);
 
     if (!cmd.empty())
-      ws->send(createErrorResponse(queryRspName, RequestStatus::CommandSyntax).dump(), WsSendOpCode);
+      ws->send(createMessageResponse(queryRspName, RequestStatus::CommandSyntax).dump(), WsSendOpCode);
     else
     {
       const auto status = m_ks->clear();
@@ -263,19 +263,14 @@ private:
 
     auto& cmd = json.at(queryName);
 
-    if (!cmd.contains("ks") || !cmd.contains("k"))
-      ws->send(createErrorResponse(queryRspName, RequestStatus::ValueMissing).dump(), WsSendOpCode);
-    else if (!cmd.at("k").is_string() || !cmd.at("ks").is_array())
-      ws->send(createErrorResponse(queryRspName, RequestStatus::ValueTypeInvalid).dump(), WsSendOpCode);
+    if (!cmd.contains("ks"))
+      ws->send(createMessageResponse(queryRspName, RequestStatus::ValueMissing).dump(), WsSendOpCode);
+    else if (!cmd.at("ks").is_string())
+      ws->send(createMessageResponse(queryRspName, RequestStatus::ValueTypeInvalid).dump(), WsSendOpCode);
     else
-    {
-      bool allExist = true;
-
-      for(auto& ks : cmd.at("ks").items())
-        allExist &= m_ks->contains(ks.value()) ;
-      
-      const RequestStatus status = allExist ? RequestStatus::KeySetExists : RequestStatus::KeySetNotExist;
-      ws->send(fcjson {{queryRspName, {{"st", status}}}}.dump(), WsSendOpCode);
+    {    
+      const RequestStatus status = m_ks->contains(cmd.at("ks")) ? RequestStatus::KeySetExists : RequestStatus::KeySetNotExist;
+      ws->send(fcjson {{queryRspName, {{"st", status}, {"ks", cmd.at("ks")}}}}.dump(), WsSendOpCode);
     } 
   }
 
@@ -289,22 +284,13 @@ private:
     auto& cmd = json.at(queryName);
 
     if (!cmd.contains("ks") || !cmd.contains("k"))
-      ws->send(createErrorResponse(queryRspName, RequestStatus::ValueMissing).dump(), WsSendOpCode);
-    else if (!cmd.at("k").is_array() || !cmd.at("ks").is_string())
-      ws->send(createErrorResponse(queryRspName, RequestStatus::ValueTypeInvalid).dump(), WsSendOpCode);
+      ws->send(createMessageResponse(queryRspName, RequestStatus::ValueMissing).dump(), WsSendOpCode);
+    else if (!cmd.at("k").is_string() || !cmd.at("ks").is_string())
+      ws->send(createMessageResponse(queryRspName, RequestStatus::ValueTypeInvalid).dump(), WsSendOpCode);
     else
     {
-      const auto& ks = cmd.at("ks");
-
-      bool allExist = true;
-      for(auto& k : cmd.at("k").items())
-      {
-        if (allExist &= m_ks->contains(ks, k.value()) ; !allExist)
-          break;
-      }
-      
-      const RequestStatus status = allExist ? RequestStatus::KeyExists : RequestStatus::KeyNotExist;
-      ws->send(fcjson {{queryRspName, {{"st", status}}}}.dump(), WsSendOpCode);
+      const auto status = m_ks->contains(cmd.at("ks"), cmd.at("k"));
+      ws->send(fcjson {{queryRspName, {{"st", status}, {"ks", cmd.at("ks")}, {"k", cmd.at("k")}}}}.dump(), WsSendOpCode);
     } 
   }
 
@@ -317,17 +303,17 @@ private:
 
     auto& cmd = json.at(queryName);
 
-    if (!cmd.contains("source_ks") || !cmd.contains("target_ks") || !cmd.contains("k"))
-      ws->send(createErrorResponse(queryRspName, RequestStatus::ValueMissing).dump(), WsSendOpCode);
-    else if (!cmd.at("k").is_string() || !cmd.at("source_ks").is_string() || !cmd.at("target_ks").is_string())
-      ws->send(createErrorResponse(queryRspName, RequestStatus::ValueTypeInvalid).dump(), WsSendOpCode);
+    if (!cmd.contains("sourceKs") || !cmd.contains("targetKs") || !cmd.contains("k"))
+      ws->send(createMessageResponse(queryRspName, RequestStatus::ValueMissing).dump(), WsSendOpCode);
+    else if (!cmd.at("k").is_string() || !cmd.at("sourceKs").is_string() || !cmd.at("targetKs").is_string())
+      ws->send(createMessageResponse(queryRspName, RequestStatus::ValueTypeInvalid).dump(), WsSendOpCode);
     else
     {
-      const auto& source = cmd.at("source_ks");
-      const auto& target = cmd.at("target_ks");
+      const auto& source = cmd.at("sourceKs");
+      const auto& target = cmd.at("targetKs");
 
-      RequestStatus status =m_ks->move(source, target, cmd.at("k"));
-      ws->send(fcjson {{queryRspName, {{"st", status}}}}.dump(), WsSendOpCode);
+      const RequestStatus status = m_ks->move(source, target, cmd.at("k"));
+      ws->send(fcjson {{queryRspName, {{"st", status}, {"sourceKs", cmd.at("sourceKs")}, {"targetKs", cmd.at("targetKs")}, {"k", cmd.at("k")}}}}.dump(), WsSendOpCode);
     }
   }
 

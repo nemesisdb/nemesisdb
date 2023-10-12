@@ -19,7 +19,7 @@ enum class KsQueryType : std::uint8_t
   AddKey,
   Get,
   RemoveKey,
-  RemoveAll,
+  ClearSet,
   DeleteSet,
   DeleteAllSets,
   SetExists,
@@ -42,7 +42,7 @@ const std::map<const std::string_view, std::tuple<const KsQueryType, const fcjso
   {"KS_GET",          {KsQueryType::Get,            fcjson::value_t::array}},
   {"KS_ADD_KEY",      {KsQueryType::AddKey,         fcjson::value_t::object}},
   {"KS_RMV_KEY",      {KsQueryType::RemoveKey,      fcjson::value_t::object}},
-  {"KS_RMV_ALL",      {KsQueryType::RemoveAll,      fcjson::value_t::object}}
+  {"KS_CLEAR_SET",    {KsQueryType::ClearSet,       fcjson::value_t::object}}
 };
 
 

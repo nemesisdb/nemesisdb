@@ -94,24 +94,37 @@ public:
   }
   
 
-  fc_always_inline RequestStatus removeKeys (const ksname& name, const fcjson& keyArray)
+  // fc_always_inline RequestStatus removeKeys (const ksname& name, const fcjson& keyArray)
+  // {
+  //   std::scoped_lock lck{m_mux};
+
+  //   RequestStatus status = RequestStatus::Ok;
+
+  //   if (auto itSet = m_sets.find(name); itSet != m_sets.end())
+  //   {
+  //     for (auto& key : keyArray.items())
+  //     {
+  //       if (!key.value().is_string())
+  //         status = RequestStatus::KeyRemoveFailed;
+  //       else
+  //         itSet->second.erase(key.value());
+  //     }
+
+  //     return status;
+  //   }
+
+  //   return RequestStatus::KeySetNotExist;
+  // }
+
+
+  fc_always_inline RequestStatus removeKey (const ksname& name, const cachedkey& key)
   {
     std::scoped_lock lck{m_mux};
 
     RequestStatus status = RequestStatus::Ok;
 
     if (auto itSet = m_sets.find(name); itSet != m_sets.end())
-    {
-      for (auto& key : keyArray.items())
-      {
-        if (!key.value().is_string())
-          status = RequestStatus::KeyRemoveFailed;
-        else
-          itSet->second.erase(key.value());
-      }
-
-      return status;
-    }
+      return itSet->second.erase(key) ? RequestStatus::Ok : RequestStatus::KeyNotExist;
 
     return RequestStatus::KeySetNotExist;
   }
@@ -134,6 +147,8 @@ public:
         status = RequestStatus::KeySetRemoveAllFailed;
       }
     }
+    else
+      status = RequestStatus::KeySetNotExist;
 
     return status;
   }
@@ -242,13 +257,13 @@ public:
   }
 
 
-  bool contains(const ksname& name, const cachedkey& key) const
+  RequestStatus contains(const ksname& name, const cachedkey& key) const
   {
     std::scoped_lock lck{m_mux};
     if (auto it = m_sets.find(name); it != m_sets.cend())
-      return it->second.contains(key);
+      return it->second.contains(key) ? RequestStatus::KeyExists : RequestStatus::KeyNotExist;
     
-    return false;
+    return RequestStatus::KeySetNotExist;
   }
   
 
