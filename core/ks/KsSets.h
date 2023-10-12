@@ -45,14 +45,14 @@ public:
 
     RequestStatus status = RequestStatus::Ok;
 
-    KeySetIt it = m_sets.find(name);
+    auto it = m_sets.find(name);
     
     if (it == m_sets.end())
       it = m_sets.try_emplace(name, ksset{}).first;
-    
+
     for (auto& key : keyArray.items())
     {
-      if (!isKeyValid(key.value()))
+      if ((!key.value().is_string()) || !isKeyValid(key.value()))
         status = RequestStatus::KeyAddFailed;
       else
       {
@@ -93,6 +93,135 @@ public:
     return false;
   }
   
+
+  fc_always_inline RequestStatus removeKeys (const ksname& name, const fcjson& keyArray)
+  {
+    std::scoped_lock lck{m_mux};
+
+    RequestStatus status = RequestStatus::Ok;
+
+    if (auto itSet = m_sets.find(name); itSet != m_sets.end())
+    {
+      for (auto& key : keyArray.items())
+      {
+        if (!key.value().is_string())
+          status = RequestStatus::KeyRemoveFailed;
+        else
+          itSet->second.erase(key.value());
+      }
+
+      return status;
+    }
+
+    return RequestStatus::KeySetNotExist;
+  }
+
+
+  fc_always_inline RequestStatus clearSet (const ksname& name)
+  {
+    std::scoped_lock lck{m_mux};
+
+    RequestStatus status = RequestStatus::Ok;
+    
+    if (auto itSet = m_sets.find(name); itSet != m_sets.end())
+    {
+      try
+      {
+        itSet->second.clear();
+      }
+      catch (...)
+      {
+        status = RequestStatus::KeySetRemoveAllFailed;
+      }
+    }
+
+    return status;
+  }
+
+
+  fc_always_inline RequestStatus deleteSet (const ksname& name)
+  {
+    std::scoped_lock lck{m_mux};
+
+    RequestStatus status = RequestStatus::Ok;
+
+    try
+    {
+      status = m_sets.erase(name) ? RequestStatus::Ok : RequestStatus::KeySetNotExist;
+    }
+    catch (...)
+    {
+      status = RequestStatus::KeySetRemoveAllFailed;
+    }
+
+    return status;
+  }
+
+
+  fc_always_inline RequestStatus clear ()
+  {
+    std::scoped_lock lck{m_mux};
+
+    RequestStatus status = RequestStatus::Ok;
+
+    try
+    {
+      m_sets.clear();
+    }
+    catch (...)
+    {
+      status = RequestStatus::KeySetClearFailed;
+    }
+
+    return status;
+  }
+
+
+  fc_always_inline RequestStatus move (const ksname& source, const ksname& target, const cachedkey& key)  
+  {
+    // can't extract() from ankerl set because non-standard API empties source (rather than a single node)
+
+    std::scoped_lock lck{m_mux};
+
+    RequestStatus status = RequestStatus::Ok;
+
+    auto itSource = m_sets.find(source);
+    auto itTarget = m_sets.find(target);
+
+    if (itSource == m_sets.end() || itTarget == m_sets.end())
+      status = RequestStatus::KeySetNotExist;
+    else
+    {
+      if (!itSource->second.contains(key))
+        status = RequestStatus::KeyNotExist;
+      else
+      {
+        try
+        {        
+          itTarget->second.emplace(key);
+        }
+        catch (...)
+        {
+          // no harm done, nothing to recover from
+          status = RequestStatus::KeyMoveFailed;
+        }
+
+        try
+        {
+          itSource->second.erase(key);
+        }
+        catch (...)
+        {
+          status = RequestStatus::KeyMoveFailed;
+          // undo adding key to target
+          itTarget->second.erase(key);
+        }
+      } 
+    }
+
+    return status;
+  }
+
 
   bool contains(const ksname& name) const
   {

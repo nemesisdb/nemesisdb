@@ -81,6 +81,10 @@ enum class RequestStatus
   KeySetExists,
   KeySetNotExist,
   KeyAddFailed,
+  KeyRemoveFailed,
+  KeySetRemoveAllFailed,
+  KeySetClearFailed,
+  KeyMoveFailed,
   Unknown = 1000
 };
 

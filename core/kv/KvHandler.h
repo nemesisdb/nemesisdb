@@ -31,7 +31,7 @@ public:
 private:
   
   // CAREFUL: these have to be in the order of KvQueryType enum
-  const std::function<void(KvWebSocket *, fcjson&&)> Handlers[static_cast<std::size_t>(KvQueryType::Max)] =
+  const std::array<std::function<void(KvWebSocket *, fcjson&&)>, static_cast<std::size_t>(KvQueryType::Max)> Handlers = 
   {
     std::bind(&KvHandler::set, std::ref(*this), std::placeholders::_1, std::placeholders::_2),
     std::bind(&KvHandler::setQ, std::ref(*this), std::placeholders::_1, std::placeholders::_2),

@@ -15,8 +15,15 @@ using ksset = ankerl::unordered_dense::set<cachedkey>;
 enum class KsQueryType : std::uint8_t
 {  
   Create,
-  Add,
+  AddKey,
   Get,
+  RemoveKey,
+  RemoveAll,
+  DeleteSet,
+  DeleteAllSets,
+  SetExists,
+  KeyExists,
+  MoveKey,
   Max,
   Unknown
 };
@@ -24,12 +31,17 @@ enum class KsQueryType : std::uint8_t
 
 const std::map<const std::string_view, std::tuple<const KsQueryType, const fcjson::value_t>> QueryNameToType = 
 {
-  {"KS_CREATE",   {KsQueryType::Create, fcjson::value_t::object}},
-  {"KS_ADD",      {KsQueryType::Add, fcjson::value_t::object}},
-  {"KS_GET",      {KsQueryType::Get, fcjson::value_t::array}}
+  {"KS_CREATE",       {KsQueryType::Create,         fcjson::value_t::object}},
+  {"KS_DELETE_SET",   {KsQueryType::DeleteSet,      fcjson::value_t::object}},
+  {"KS_DELETE_ALL",   {KsQueryType::DeleteAllSets,  fcjson::value_t::object}},
+  {"KS_SET_EXISTS",   {KsQueryType::SetExists,      fcjson::value_t::object}},
+  {"KS_KEY_EXISTS",   {KsQueryType::KeyExists,      fcjson::value_t::object}},
+  {"KS_MOVE_KEY",     {KsQueryType::MoveKey,        fcjson::value_t::object}},
+  {"KS_GET",          {KsQueryType::Get,            fcjson::value_t::array}},
+  {"KS_ADD_KEY",      {KsQueryType::AddKey,         fcjson::value_t::object}},
+  {"KS_RMV_KEY",      {KsQueryType::RemoveKey,      fcjson::value_t::object}},
+  {"KS_RMV_ALL",      {KsQueryType::RemoveAll,      fcjson::value_t::object}}
 };
-
-
 
 
 }

@@ -43,19 +43,19 @@ enum class KvQueryType : std::uint8_t
 
 const std::map<const std::string_view, std::tuple<const KvQueryType, const fcjson::value_t>> QueryNameToType = 
 {
-  {"KV_SET",          {KvQueryType::Set, fcjson::value_t::object}},
-  {"KV_SETQ",         {KvQueryType::SetQ, fcjson::value_t::object}},
-  {"KV_GET",          {KvQueryType::Get, fcjson::value_t::array}},
-  {"KV_ADD",          {KvQueryType::Add, fcjson::value_t::object}},
-  {"KV_ADDQ",         {KvQueryType::AddQ, fcjson::value_t::object}},
-  {"KV_RMV",          {KvQueryType::Remove, fcjson::value_t::array}},
-  {"KV_CLEAR",        {KvQueryType::Clear, fcjson::value_t::object}},
-  {"KV_COUNT",        {KvQueryType::Count, fcjson::value_t::object}},
+  {"KV_SET",          {KvQueryType::Set,        fcjson::value_t::object}},
+  {"KV_SETQ",         {KvQueryType::SetQ,       fcjson::value_t::object}},
+  {"KV_GET",          {KvQueryType::Get,        fcjson::value_t::array}},
+  {"KV_ADD",          {KvQueryType::Add,        fcjson::value_t::object}},
+  {"KV_ADDQ",         {KvQueryType::AddQ,       fcjson::value_t::object}},
+  {"KV_RMV",          {KvQueryType::Remove,     fcjson::value_t::array}},
+  {"KV_CLEAR",        {KvQueryType::Clear,      fcjson::value_t::object}},
+  {"KV_COUNT",        {KvQueryType::Count,      fcjson::value_t::object}},
   {"KV_SERVER_INFO",  {KvQueryType::ServerInfo, fcjson::value_t::object}},
-  {"KV_APPEND",       {KvQueryType::Append, fcjson::value_t::object}},
-  {"KV_CONTAINS",     {KvQueryType::Contains, fcjson::value_t::array}},
-  {"KV_ARRAY_MOVE",   {KvQueryType::ArrayMove, fcjson::value_t::object}},
-  {"KV_FIND",         {KvQueryType::Find, fcjson::value_t::object}}
+  {"KV_APPEND",       {KvQueryType::Append,     fcjson::value_t::object}},
+  {"KV_CONTAINS",     {KvQueryType::Contains,   fcjson::value_t::array}},
+  {"KV_ARRAY_MOVE",   {KvQueryType::ArrayMove,  fcjson::value_t::object}},
+  {"KV_FIND",         {KvQueryType::Find,       fcjson::value_t::object}}
 };
 
 
