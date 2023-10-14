@@ -85,5 +85,7 @@
     "barrier": "cpp",
     "*.ipp": "cpp",
     "regex": "cpp"
-  }
+  },
+  "editor.fontSize": 12,
+  "editor.tabSize": 2
 }
