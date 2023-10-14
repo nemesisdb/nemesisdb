@@ -4,14 +4,17 @@
   {
     "bash":
     {
-        "path": "/usr/bin/flatpak-spawn",
-        "args":
-        [
-            "--env=TERM=xterm-256color",
-            "bash",
-        ]
+        //"path": "/usr/bin/flatpak-spawn",
+        "path": "/usr/bin/bash",
+        //"args":
+        //[
+          //"--env=TERM=xterm-256color",
+          //"bash",
+        //]
     }
   },
+  "editor.fontSize": 12,
+  "editor.tabSize": 2,
   "files.associations": {
     "any": "cpp",
     "array": "cpp",
@@ -98,7 +101,5 @@
     "barrier": "cpp",
     "*.ipp": "cpp",
     "regex": "cpp"
-  },
-  "editor.fontSize": 12,
-  "editor.tabSize": 2
+  }
 }

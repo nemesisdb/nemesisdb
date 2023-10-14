@@ -14,10 +14,10 @@ namespace fusion { namespace core { namespace kv {
 
 using kvhash_t = std::uint32_t;
 using PoolId = std::size_t;
-using cachedvalue = nlohmann::ordered_json;
-using cachedpair = nlohmann::ordered_json;
 
 const uWS::OpCode WsSendOpCode = uWS::OpCode::TEXT;
+static const SessionToken defaultSessionToken = "-";
+
 
 static kvhash_t MaxPools = 1U;
 
@@ -36,6 +36,7 @@ enum class KvQueryType : std::uint8_t
   Contains,
   ArrayMove,
   Find,
+  SessionNew,
   Max,
   Unknown,
 };
@@ -43,19 +44,39 @@ enum class KvQueryType : std::uint8_t
 
 const std::map<const std::string_view, std::tuple<const KvQueryType, const fcjson::value_t>> QueryNameToType = 
 {
-  {"KV_SET",          {KvQueryType::Set,        fcjson::value_t::object}},
-  {"KV_SETQ",         {KvQueryType::SetQ,       fcjson::value_t::object}},
-  {"KV_GET",          {KvQueryType::Get,        fcjson::value_t::array}},
-  {"KV_ADD",          {KvQueryType::Add,        fcjson::value_t::object}},
-  {"KV_ADDQ",         {KvQueryType::AddQ,       fcjson::value_t::object}},
-  {"KV_RMV",          {KvQueryType::Remove,     fcjson::value_t::array}},
-  {"KV_CLEAR",        {KvQueryType::Clear,      fcjson::value_t::object}},
-  {"KV_COUNT",        {KvQueryType::Count,      fcjson::value_t::object}},
-  {"KV_SERVER_INFO",  {KvQueryType::ServerInfo, fcjson::value_t::object}},
-  {"KV_APPEND",       {KvQueryType::Append,     fcjson::value_t::object}},
-  {"KV_CONTAINS",     {KvQueryType::Contains,   fcjson::value_t::array}},
-  {"KV_ARRAY_MOVE",   {KvQueryType::ArrayMove,  fcjson::value_t::object}},
-  {"KV_FIND",         {KvQueryType::Find,       fcjson::value_t::object}}
+  {"KV_SET",          {KvQueryType::Set,          fcjson::value_t::object}},
+  {"KV_SETQ",         {KvQueryType::SetQ,         fcjson::value_t::object}},
+  {"KV_GET",          {KvQueryType::Get,          fcjson::value_t::array}},
+  {"KV_ADD",          {KvQueryType::Add,          fcjson::value_t::object}},
+  {"KV_ADDQ",         {KvQueryType::AddQ,         fcjson::value_t::object}},
+  {"KV_RMV",          {KvQueryType::Remove,       fcjson::value_t::array}},
+  {"KV_CLEAR",        {KvQueryType::Clear,        fcjson::value_t::object}},
+  {"KV_COUNT",        {KvQueryType::Count,        fcjson::value_t::object}},
+  {"KV_SERVER_INFO",  {KvQueryType::ServerInfo,   fcjson::value_t::object}},
+  {"KV_APPEND",       {KvQueryType::Append,       fcjson::value_t::object}},
+  {"KV_CONTAINS",     {KvQueryType::Contains,     fcjson::value_t::array}},
+  {"KV_ARRAY_MOVE",   {KvQueryType::ArrayMove,    fcjson::value_t::object}},
+  {"KV_FIND",         {KvQueryType::Find,         fcjson::value_t::object}},
+  {"KV_SESSION_NEW",  {KvQueryType::SessionNew,   fcjson::value_t::object}}
+};
+
+
+const std::map<const KvQueryType, const std::string> QueryTypeToName = 
+{
+  {KvQueryType::Set,            "KV_SET"},
+  {KvQueryType::SetQ,           "KV_SETQ"},
+  {KvQueryType::Get,            "KV_GET"},
+  {KvQueryType::Add,            "KV_ADD"},
+  {KvQueryType::AddQ,           "KV_ADDQ"},
+  {KvQueryType::Remove,         "KV_RMV"},
+  {KvQueryType::Clear,          "KV_CLEAR"},
+  {KvQueryType::Count,          "KV_COUNT"},
+  {KvQueryType::ServerInfo,     "KV_SERVER_INFO"},
+  {KvQueryType::Append,         "KV_APPEND"},
+  {KvQueryType::Contains,       "KV_CONTAINS"},
+  {KvQueryType::ArrayMove,      "KV_ARRAY_MOVE"},
+  {KvQueryType::Find,           "KV_FIND"},
+  {KvQueryType::SessionNew,     "KV_SESSION_NEW"},
 };
 
 
@@ -147,6 +168,17 @@ struct PoolRequestResponse
     return rsp;
   }
 
+  static fcjson sessionStart (const RequestStatus status, const SessionToken& token, const SessionName name)
+  {
+    fcjson rsp;
+    rsp["KV_SESSION_START_RSP"]["st"] = status;
+    rsp["KV_SESSION_START_RSP"]["name"] = name;
+    rsp["KV_SESSION_START_RSP"]["shtk"] = token;    
+    return rsp;
+  }
+
+  
+
   
 
   // static fcjson renameKey (fcjson pair)
@@ -176,48 +208,6 @@ struct PoolRequestResponse
 };
 
 
-struct FindConditions
-{
-  enum class Condition { Equals, GT, GTE, LT, LTE  };
-
-  using ConditionOperator = std::function<bool(const fcjson&, const fcjson&)>;
-
-
-  const std::map<Condition, std::tuple<const std::string, ConditionOperator>> ConditionToOp = 
-  {
-    {Condition::Equals,   {"==",   [](const fcjson& a, const fcjson& b){ return a == b; }} },
-    {Condition::GT,       {">",   [](const fcjson& a, const fcjson& b){ return a > b; }} },
-    {Condition::GTE,      {">=",  [](const fcjson& a, const fcjson& b){ return a >= b; }} },
-    {Condition::LT,       {"<",   [](const fcjson& a, const fcjson& b){ return a < b; }} },
-    {Condition::LTE,      {"<=",  [](const fcjson& a, const fcjson& b){ return a <= b; }} }
-  };
-
-  
-  const std::map<const std::string, Condition> OpStringToOp = 
-  {
-    {"==",  Condition::Equals},
-    {">",   Condition::GT},
-    {">=",  Condition::GTE},
-    {"<",   Condition::LT},
-    {"<=",  Condition::LTE}
-  };
-
-
-  bool isValidOperator(const std::string& opString)
-  {
-    return OpStringToOp.contains(opString);
-  }
-
-
-  const std::tuple<const std::string, ConditionOperator>& getOperation (const Condition cond)
-  {
-    return ConditionToOp.at(cond);
-  }
-
-} findConditions ;
-
-
-
 struct KvCommand
 {
   uWS::WebSocket<false, true, WsSession> * ws;  // to access the websocket and userdata
@@ -225,12 +215,8 @@ struct KvCommand
   fcjson contents;  // json taken from the request, contents depends on the query
   KvQueryType type; 
   std::function<void(std::any)> cordinatedResponseHandler; 
-
-  struct Find
-  {
-    FindConditions::Condition condition;
-
-  } find;
+  KvFind find;
+  SessionToken shtk;
 };
 
 
@@ -266,10 +252,32 @@ static const std::array<std::function<bool(const std::string_view&, PoolId&)>, 2
   }
 };
 
-// std::string kvStatusToString (const RequestStatus st)
+
+static const std::array<std::function<void(const SessionToken&, SessionPoolId&)>, 2U> SessionIndexers =
+{
+  [](const SessionToken& t, SessionPoolId& id) 
+  {
+    id = ((t[0U] + t[1U] + t[2U] + t[3U] + t[4U] + t[5U]) & 0xFFFFFFFF) % MaxPools;
+  },
+
+  [](const SessionToken& t, SessionPoolId& id)
+  {
+    id = 0U;
+  }
+};
+
+
+SessionToken createSessionToken(const SessionName& name)
+{
+  return std::to_string(std::chrono::steady_clock::now().time_since_epoch().count()); // TODO TODO
+}
+
+
+// SessionPoolId createSessionPoolId(const SessionToken& t)
 // {
-//   return std::to_string(static_cast<std::uint8_t>(st));
+//   return ((t[0U] + t[1U] + t[2U] + t[3U] + t[4U] + t[5U]) & 0xFFFFFFFF) % MaxPools;
 // }
+
 
 fc_always_inline bool valueTypeValid (const fcjson& value)
 {
@@ -298,6 +306,7 @@ fc_always_inline bool valueTypeValid (const fcjson& value)
   else
     return !DisallowedTypes.contains(value.type());
 }
+
 
 
 }

@@ -13,17 +13,26 @@ namespace fusion { namespace core {
 
 static const char * FUSION_VERSION = "0.2.6";
 static const std::size_t FUSION_CONFIG_VERSION = 1U;
+static const std::size_t FUSION_MAX_CORES = 8U;
 
 static const std::size_t FUSION_KV_MINPAYLOAD = 64U;
 static const std::size_t FUSION_KV_MAXPAYLOAD = 2U * 1024U * 1024U;
 
-static const std::size_t FUSION_MAX_CORES = 8U;
-
 static const std::size_t MinKeySize = 6U; // characters, not bytes. See createPoolIndex() if changing this
 
-using fcjson = nlohmann::ordered_json;
-using cachedkey = std::string;
+using SessionPoolId = std::size_t;
 
+
+using fcjson = nlohmann::ordered_json;
+
+// kv
+using cachedkey = std::string;
+using cachedvalue = nlohmann::ordered_json;
+using cachedpair = nlohmann::ordered_json;
+
+// session
+using SessionToken = std::string;
+using SessionName = std::string;
 
 struct WsSession
 {
@@ -50,6 +59,55 @@ struct WsSession
 
 
 using KvWebSocket = uWS::WebSocket<false, true, WsSession>;
+
+
+
+struct FindConditions
+{
+  enum class Condition { Equals, GT, GTE, LT, LTE  };
+
+  using ConditionOperator = std::function<bool(const fcjson&, const fcjson&)>;
+
+
+  const std::map<Condition, std::tuple<const std::string, ConditionOperator>> ConditionToOp = 
+  {
+    {Condition::Equals,   {"==",  [](const fcjson& a, const fcjson& b){ return a == b; }} },
+    {Condition::GT,       {">",   [](const fcjson& a, const fcjson& b){ return a > b; }} },
+    {Condition::GTE,      {">=",  [](const fcjson& a, const fcjson& b){ return a >= b; }} },
+    {Condition::LT,       {"<",   [](const fcjson& a, const fcjson& b){ return a < b; }} },
+    {Condition::LTE,      {"<=",  [](const fcjson& a, const fcjson& b){ return a <= b; }} }
+  };
+
+  
+  const std::map<const std::string, Condition> OpStringToOp = 
+  {
+    {"==",  Condition::Equals},
+    {">",   Condition::GT},
+    {">=",  Condition::GTE},
+    {"<",   Condition::LT},
+    {"<=",  Condition::LTE}
+  };
+
+
+  bool isValidOperator(const std::string& opString)
+  {
+    return OpStringToOp.contains(opString);
+  }
+
+
+  const std::tuple<const std::string, ConditionOperator>& getOperation (const Condition cond)
+  {
+    return ConditionToOp.at(cond);
+  }
+
+} findConditions ;
+
+
+struct KvFind
+{
+  FindConditions::Condition condition;
+
+};
 
 
 enum class RequestStatus
@@ -86,6 +144,7 @@ enum class RequestStatus
   KeySetRemoveAllFailed,
   KeySetClearFailed,
   KeyMoveFailed,
+  SessionNotExist = 100,
   Unknown = 1000
 };
 

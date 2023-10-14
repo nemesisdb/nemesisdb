@@ -8,14 +8,13 @@
 #include <boost/fiber/fiber.hpp>
 #include <boost/fiber/buffered_channel.hpp>
 #include <ankerl/unordered_dense.h>
-#include <core/kv/KvCommon.h>
 #include <concurrentqueue/concurrentqueue.h>
+#include <core/CacheMap.h>
+#include <core/kv/KvCommon.h>
+#include <core/kv/KvSessions.h>
 
 
 namespace fusion { namespace core { namespace kv {
-
-using CacheMap = ankerl::unordered_dense::segmented_map<cachedkey, cachedvalue>;
-
 
 // A number of KvPoolWorker are created (MaxPools), which is typically hardware_concurrency() minus the number of IO threads.
 // A pool worker runs in a thread which is assigned to a core. Each pool worker has a dedicated map which stores the key/values. 
@@ -23,7 +22,6 @@ using CacheMap = ankerl::unordered_dense::segmented_map<cachedkey, cachedvalue>;
 // The hash is just a simple addition of the first N characters in the key (rather than std::hash, which is a bit heavy for this usecase).
 class KvPoolWorker
 { 
-
 public:
 
   KvPoolWorker(const std::size_t core, const PoolId id) noexcept : m_poolId(id), m_run(true), m_channel(8192U), m_thread(&KvPoolWorker::run, this) 
@@ -59,135 +57,90 @@ private:
     });
   }
   
+
   void run ()
   {
-    auto doAdd = [](CacheMap& map, KvCommand& cmd) -> std::tuple<bool, std::string>
-    {
-      const auto& key = cmd.contents.items().begin().key();
-      auto& value = cmd.contents.items().begin().value(); 
-
-      const auto [ignore, added] = map.emplace(key, std::move(value));
-      return std::make_tuple(added, key);
-    };
-
     auto set = [this](CacheMap& map, KvCommand& cmd)
     {
-      const auto& key = cmd.contents.begin().key(); 
-      auto& value = cmd.contents.begin().value(); 
-      const auto [ignore, inserted] = map.insert_or_assign(key, std::move(value));
-      
-      send(cmd, PoolRequestResponse::keySet(inserted, key).dump());
+      auto [it, inserted] = map.set(cmd.contents);
+      send(cmd, PoolRequestResponse::keySet(inserted, it->first).dump());
     };
+
 
     auto setQ = [this](CacheMap& map, KvCommand& cmd)
     {
-      const auto& key = cmd.contents.begin().key(); 
       try
       {
-        auto& value = cmd.contents.begin().value(); 
-        map.insert_or_assign(key, std::move(value));  
+        map.setQ(cmd.contents);
       }
       catch(const std::exception& e)
       {
+        const auto& key = cmd.contents.begin().key();
         fcjson unknownErrRsp{{"KV_SETQ_RSP", {{"st", RequestStatus::Unknown}, {"k", std::move(key)}}}};
         send(cmd, unknownErrRsp.dump());
       }
     };
 
+
     auto get = [this](CacheMap& map, KvCommand& cmd)
     {
-      if (const auto it = map.find(cmd.contents) ; it != map.cend())
-      {
-        cachedpair pair = {{it->first, it->second}};
+      if (auto [exists, pair] = map.get(cmd.contents); exists)
         send(cmd, PoolRequestResponse::getFound(std::move(pair)).dump());
-      }
       else
         send(cmd, PoolRequestResponse::getNotFound(std::move(cmd.contents)).dump()); 
     };
 
-    auto add = [doAdd, this](CacheMap& map, KvCommand& cmd)
+
+    auto add = [this](CacheMap& map, KvCommand& cmd)
     {
-      auto [added, key] = doAdd(map, cmd);
+      auto [added, key] = map.add(cmd.contents);
       send(cmd, PoolRequestResponse::keyAdd(added, std::move(key)).dump()); 
     };
 
-    auto addQ = [doAdd, this](CacheMap& map, KvCommand& cmd)
+
+    auto addQ = [this](CacheMap& map, KvCommand& cmd)
     {
-      if (auto [added, key] = doAdd(map, cmd); !added)  // only respond if key not added
+      if (auto [added, key] = map.add(cmd.contents); !added)  // only respond if key not added
         send(cmd, PoolRequestResponse::keyAddQ(added, std::move(key)).dump()); 
     };
+
 
     auto remove = [this](CacheMap& map, KvCommand& cmd)
     {
       const auto& key = cmd.contents.get_ref<const std::string&>();
-      const auto nRemoved = map.erase(key);
-
-      send(cmd, PoolRequestResponse::keyRemoved(nRemoved, std::move(key)).dump()); 
+      const auto removed = map.remove(key);
+      send(cmd, PoolRequestResponse::keyRemoved(removed, std::move(key)).dump()); 
     };
+
 
     auto clear = [this](CacheMap& map, KvCommand& cmd)
     {
-      const std::size_t size = map.size();
-      bool valid = true;
-
-      try
-      {
-        map.clear();
-      }
-      catch (...)
-      {
-        valid = false;
-      }
-      
+      const auto[valid, size] = map.clear();
       cmd.cordinatedResponseHandler(std::make_any<std::tuple<bool, std::size_t>>(std::make_tuple(valid, size)));
     };
 
+
     auto serverInfo = [this](CacheMap& map, KvCommand& cmd)
     {
-      // does nothing, never called, but required for handlers array below
+      // does nothing, dealt with by ShHandler/KvHandler, but required for handlers array below
     };
+
 
     auto count = [this](CacheMap& map, KvCommand& cmd)
     {
-      cmd.cordinatedResponseHandler(std::make_any<std::size_t>(map.size()));
+      cmd.cordinatedResponseHandler(std::make_any<std::size_t>(map.count()));
     };
 
+    
     auto append = [this](CacheMap& map, KvCommand& cmd)
     {
-      RequestStatus status = RequestStatus::Ok;
-
+      RequestStatus status = map.append(cmd.contents);
       auto& key = cmd.contents.begin().key();
-      if (const auto it = map.find(key) ; it != map.cend())
-      {
-        const auto type = cmd.contents.begin().value().type();
-        switch (type)
-        {
-          case fcjson::value_t::array:
-          {
-            for (auto& item : cmd.contents.at(key))
-              it->second.insert(it->second.end(), std::move(item));
-          }
-          break;
-
-          case fcjson::value_t::object:
-            it->second.insert(cmd.contents.begin().value().begin(), cmd.contents.begin().value().end());
-          break;
-
-          case fcjson::value_t::string:
-            it->second.get_ref<fcjson::string_t&>().append(cmd.contents.begin().value());
-          break;
-
-          default:
-            status = RequestStatus::ValueTypeInvalid;
-          break;
-        }
-      }
-      else
-        status = RequestStatus::KeyNotExist;
 
       send(cmd, PoolRequestResponse::append(status, std::move(key)).dump());
     };
 
+    
     auto contains = [this](CacheMap& map, KvCommand& cmd)
     {
       if (map.contains(cmd.contents))
@@ -196,102 +149,32 @@ private:
         send(cmd, PoolRequestResponse::contains(RequestStatus::KeyNotExist, cmd.contents.get<std::string_view>()).dump());
     };
 
+    
     auto arrayMove = [this](CacheMap& map, KvCommand& cmd)
     {
       auto& key = cmd.contents.begin().key();
       auto& positions = cmd.contents.begin().value();
       
-      if (positions.size() != 2U && positions.size() != 1U)
-        send(cmd, PoolRequestResponse::arrayMove(RequestStatus::ValueSize, key).dump());
-      else
-      { 
-        if (auto it = map.find(key) ; it == map.cend())
-          send(cmd, PoolRequestResponse::arrayMove(RequestStatus::KeyNotExist, key).dump()); 
-        else  [[likely]]
-        {
-          if (auto& array = it->second; !array.is_array())
-            send(cmd, PoolRequestResponse::arrayMove(RequestStatus::ValueTypeInvalid, key).dump()); 
-          else if (array.empty())
-            send(cmd, PoolRequestResponse::arrayMove(RequestStatus::OutOfBounds, key).dump()); 
-          else
-          {
-            auto isIndexValidType = [](const json& array, const std::size_t index)
-            {
-              return array[index].is_number_unsigned();
-            };
-
-            if (positions.size() == 1U && !isIndexValidType(positions, 0U))
-              send(cmd, PoolRequestResponse::arrayMove(RequestStatus::ValueTypeInvalid, key).dump());
-            else if (positions.size() == 2U && (!isIndexValidType(positions, 0U) || !isIndexValidType(positions, 1U)))
-              send(cmd, PoolRequestResponse::arrayMove(RequestStatus::ValueTypeInvalid, key).dump());
-            else
-            {
-              const std::int64_t currPos = positions[0U];
-              const std::int64_t newPos = positions.size() == 1U ? array.size() : positions[1U].get<std::int64_t>(); // at the end if no position supplied
-
-              if (currPos < 0 || currPos > array.size() - 1 || newPos < 0)
-                send(cmd, PoolRequestResponse::arrayMove(RequestStatus::OutOfBounds, key).dump());
-              else if (currPos == newPos)
-                send(cmd, PoolRequestResponse::arrayMove(RequestStatus::Ok, key).dump());
-              else
-              {
-                array.insert(std::next(array.cbegin(), newPos), std::move(array[currPos]));
-                array.erase(currPos > newPos ? currPos+1 : currPos);
-
-                send(cmd, PoolRequestResponse::arrayMove(RequestStatus::Ok, key).dump());
-              }
-            }
-          }
-        }
-      }        
+      const auto status = map.arrayMove(cmd.contents);
+      send(cmd, PoolRequestResponse::arrayMove(status, key).dump());       
     };
+
 
     auto find = [this](CacheMap& map, KvCommand& cmd)
     {
-      // this is sent to all workers. Each runs the "path" search on all keys, then applies the condition on each result.
-      // the keys which pass the condition, are returned
-      
-      // KvHandler validates path syntax
-      auto& [opString, handler] = findConditions.getOperation(cmd.find.condition);
-
-      const auto haveRegex = !cmd.contents.at("keyrgx").get_ref<const std::string&>().empty();
-      fcjson::json_pointer path {cmd.contents.at("path")};
-      fcjson::const_reference value = cmd.contents.at(opString);
-      
-      std::vector<cachedkey> keys;
-      keys.reserve(100U);  // TODO
-
-      auto valueMatch = [&handler, &keys, &value, &path](std::pair<cachedkey, cachedvalue>& kv)
-      {
-        if (path.empty() && handler(kv.second, value))
-          return true;
-        else if (kv.second.contains(path) && handler(kv.second.at(path), value))
-          return true;
-        else
-          return false;
-      };
-
-      const std::regex keyRegex{cmd.contents.at("keyrgx").get_ref<const std::string&>()};
-      
-      for(auto& kv : map)
-      {
-        if (haveRegex)
-        {     
-          if (std::regex_match(kv.first, keyRegex) && valueMatch(kv))
-            keys.emplace_back(kv.first);
-        }
-        else if (valueMatch(kv))
-          keys.emplace_back(kv.first);
-      }
-
-      keys.shrink_to_fit();
-
+      auto keys = map.find(cmd.contents, cmd.find);
       cmd.cordinatedResponseHandler(std::make_any<std::vector<cachedkey>>(std::move(keys)));
     };
 
 
+    auto sessionNew = [this](CacheMap& map, KvCommand& cmd)
+    {
+      send(cmd, PoolRequestResponse::sessionStart(RequestStatus::Ok, cmd.shtk, cmd.contents.at("name")).dump()); 
+    };
+
+
     /*
-    auto renameKey = [](CacheMap& map, KvCommand& cmd)
+    auto renameKey = [](CacheMap2& map, KvCommand& cmd)
     {
       auto& existingKey = command->contents.begin().key();
       auto newKey = command->contents.begin().value().get<std::string_view>();
@@ -331,18 +214,33 @@ private:
       append,
       contains,
       arrayMove,
-      find
+      find,
+      sessionNew
     };
 
-    CacheMap map;
+
     KvCommand cmd;
+    Sessions sessions;
 
     try
     {
+      // create default session
+      sessions.start(defaultSessionToken);
+
       while (m_run)
       {
         cmd = std::move(m_channel.value_pop());
-        handlers[static_cast<const std::size_t>(cmd.type)](map, cmd);
+
+        if (cmd.type == KvQueryType::SessionNew)
+        {
+          auto cache = sessions.start(cmd.shtk);
+          handlers[static_cast<const std::size_t>(cmd.type)](cache->get(), cmd);
+        }
+        else if (auto cache = sessions.get(cmd.shtk); cache)
+          handlers[static_cast<const std::size_t>(cmd.type)](cache->get(), cmd);
+        else
+          send(cmd, createMessageResponse(QueryTypeToName.at(cmd.type) + "_RSP", RequestStatus::SessionNotExist).dump());
+      
         // TODO command = KvCommand{};
       }
     }
@@ -351,7 +249,7 @@ private:
       if (!m_channel.is_closed())
       {
         std::cout << "Pool Fiber Exception: " << fex.what() << '\n';
-        send(cmd, createErrorResponse(RequestStatus::Unknown).dump());;
+        send(cmd, createErrorResponse(RequestStatus::Unknown).dump());
       } 
     }
     catch (const std::exception& ex)
@@ -367,7 +265,6 @@ private:
   std::atomic_bool m_run; // TODO this doesn't need to be atomic, stop() just closes channel?
   std::jthread m_thread;
   boost::fibers::buffered_channel<KvCommand> m_channel;  
-  
 };
 
 }
