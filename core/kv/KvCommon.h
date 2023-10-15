@@ -41,6 +41,14 @@ enum class KvQueryType : std::uint8_t
   SessionSet,
   SessionSetQ,
   SessionGet,
+  SessionAdd,
+  SessionAddQ,
+  SessionRemove,
+  SessionClear,
+  SessionCount,
+  SessionAppend,
+  SessionContains,
+  SessionArrayMove,
   Max,
   Unknown,
 };
@@ -62,11 +70,19 @@ const std::map<const std::string_view, std::tuple<const KvQueryType, const fcjso
   {"KV_ARRAY_MOVE",   {KvQueryType::ArrayMove,    fcjson::value_t::object}},
   {"KV_FIND",         {KvQueryType::Find,         fcjson::value_t::object}},
   // session
-  {"SH_NEW",          {KvQueryType::SessionNew,   fcjson::value_t::object}},
-  {"SH_END",          {KvQueryType::SessionEnd,   fcjson::value_t::object}},
-  {"SH_SET",          {KvQueryType::SessionSet,   fcjson::value_t::object}},
-  {"SH_SETQ",         {KvQueryType::SessionSetQ,  fcjson::value_t::object}},
-  {"SH_GET",          {KvQueryType::SessionGet,   fcjson::value_t::object}}
+  {"SH_NEW",          {KvQueryType::SessionNew,       fcjson::value_t::object}},
+  {"SH_END",          {KvQueryType::SessionEnd,       fcjson::value_t::object}},
+  {"SH_SET",          {KvQueryType::SessionSet,       fcjson::value_t::object}},
+  {"SH_SETQ",         {KvQueryType::SessionSetQ,      fcjson::value_t::object}},
+  {"SH_GET",          {KvQueryType::SessionGet,       fcjson::value_t::object}},
+  {"SH_ADD",          {KvQueryType::SessionAdd,       fcjson::value_t::object}},
+  {"SH_ADDQ",         {KvQueryType::SessionAddQ,      fcjson::value_t::object}},
+  {"SH_RMV",          {KvQueryType::SessionRemove,    fcjson::value_t::object}},
+  {"SH_CLEAR",        {KvQueryType::SessionClear,     fcjson::value_t::object}},
+  {"SH_COUNT",        {KvQueryType::SessionCount,     fcjson::value_t::object}},
+  {"SH_APPEND",       {KvQueryType::SessionAppend,    fcjson::value_t::object}},
+  {"SH_CONTAINS",     {KvQueryType::SessionContains,  fcjson::value_t::object}},
+  {"SH_ARRAY_MOVE",   {KvQueryType::SessionArrayMove, fcjson::value_t::object}}
 };
 
 
@@ -86,11 +102,19 @@ const std::map<const KvQueryType, const std::string> QueryTypeToName =
   {KvQueryType::ArrayMove,      "KV_ARRAY_MOVE"},
   {KvQueryType::Find,           "KV_FIND"},
   // Session
-  {KvQueryType::SessionNew,     "SH_NEW"},
-  {KvQueryType::SessionEnd,     "SH_END"},
-  {KvQueryType::SessionSet,     "SH_SET"},
-  {KvQueryType::SessionSetQ,    "SH_SETQ"},
-  {KvQueryType::SessionGet,     "SH_GET"},
+  {KvQueryType::SessionNew,       "SH_NEW"},
+  {KvQueryType::SessionEnd,       "SH_END"},
+  {KvQueryType::SessionSet,       "SH_SET"},
+  {KvQueryType::SessionSetQ,      "SH_SETQ"},
+  {KvQueryType::SessionGet,       "SH_GET"},
+  {KvQueryType::SessionAdd,       "SH_ADD"},
+  {KvQueryType::SessionAddQ,      "SH_ADDQ"},
+  {KvQueryType::SessionRemove,    "SH_RMV"},
+  {KvQueryType::SessionClear,     "SH_CLEAR"},
+  {KvQueryType::SessionCount,     "SH_COUNT"},
+  {KvQueryType::SessionAppend,    "SH_APPEND"},
+  {KvQueryType::SessionContains,  "SH_CONTAINS"},
+  {KvQueryType::SessionArrayMove, "SH_ARRAY_MOVE"}
 };
 
 
@@ -130,10 +154,10 @@ struct PoolRequestResponse
     return rsp;
   }
 
-  static fcjson keyAddQ (const bool isAdded, std::string&& k)
+  static fcjson keyAddQ (std::string&& k)
   {
     fcjson rsp;
-    rsp["KV_ADDQ_RSP"]["st"] = isAdded ? KeySet : KeyExists;
+    rsp["KV_ADDQ_RSP"]["st"] = KeyExists;
     rsp["KV_ADDQ_RSP"]["k"] = std::move(k);
     return rsp;
   }
@@ -213,6 +237,61 @@ struct PoolRequestResponse
     rsp["SH_GET_RSP"]["k"] = std::move(key);
     return rsp;
   }
+  
+  static fcjson sessionKeyAdd (const SessionToken& tkn, const bool isAdded, std::string&& k)
+  {
+    fcjson rsp;
+    rsp["SH_ADD_RSP"]["st"] = isAdded ? KeySet : KeyExists;
+    rsp["SH_ADD_RSP"]["k"] = std::move(k);
+    rsp["SH_ADD_RSP"]["tkn"] = tkn;
+    return rsp;
+  }
+
+  static fcjson sessionKeyAddQ (const SessionToken& tkn, std::string&& k)
+  {
+    fcjson rsp;
+    rsp["SH_ADDQ_RSP"]["st"] = KeyExists;
+    rsp["SH_ADDQ_RSP"]["k"] = std::move(k);
+    rsp["SH_ADDQ_RSP"]["tkn"] = tkn;
+    return rsp;
+  }
+
+  static fcjson sessionRemove (const SessionToken& tkn, const bool removed, const std::string&& k)
+  {
+    fcjson rsp;
+    rsp["SH_RMV_RSP"]["st"] = removed ? KeyRemoved : KeyNotExist;
+    rsp["SH_RMV_RSP"]["k"] = k;
+    rsp["SH_RMV_RSP"]["tkn"] = tkn;
+    return rsp;
+  }
+
+  static fcjson sessionClear (const SessionToken& tkn, const bool cleared, const std::size_t count)
+  {
+    fcjson rsp;
+    rsp["SH_CLEAR_RSP"]["st"] = cleared ? Ok : Unknown;
+    rsp["SH_CLEAR_RSP"]["cnt"] = count;
+    rsp["SH_CLEAR_RSP"]["tkn"] = tkn;
+    return rsp;
+  }
+
+  static fcjson sessionCount (const SessionToken& tkn, const std::size_t count)
+  {
+    fcjson rsp;
+    rsp["SH_COUNT_RSP"]["st"] = Ok;
+    rsp["SH_COUNT_RSP"]["cnt"] = count;
+    rsp["SH_COUNT_RSP"]["tkn"] = tkn;
+    return rsp;
+  }
+
+  static fcjson sessionAppend (const SessionToken& tkn, const RequestStatus status, const std::string_view k)
+  {
+    fcjson rsp;
+    rsp["SH_APPEND_RSP"]["st"] = status;
+    rsp["SH_APPEND_RSP"]["k"] = k;
+    rsp["SH_APPEND_RSP"]["tkn"] = tkn;
+    return rsp;
+  }
+
 
   static PoolRequestResponse unknownError ()
   {
@@ -288,12 +367,6 @@ SessionToken createSessionToken(const SessionName& name)
 {
   return std::to_string(std::chrono::steady_clock::now().time_since_epoch().count()); // TODO TODO
 }
-
-
-// SessionPoolId createSessionPoolId(const SessionToken& t)
-// {
-//   return ((t[0U] + t[1U] + t[2U] + t[3U] + t[4U] + t[5U]) & 0xFFFFFFFF) % MaxPools;
-// }
 
 
 fc_always_inline bool valueTypeValid (const fcjson& value)
