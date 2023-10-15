@@ -39,9 +39,9 @@ public:
   }
 
 
-  void end (const SessionToken& token)
+  bool end (const SessionToken& token)
   {
-    m_sessions.erase(token);
+    return m_sessions.erase(token) != 0U;
   }
 
 

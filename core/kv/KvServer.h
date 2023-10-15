@@ -172,7 +172,7 @@ public:
                 {
                   if (commandName.size() >= 2)  [[likely]]
                   {
-                    if (commandName[0] == 'K' && commandName[1] == 'V')
+                    if ((commandName[0] == 'K' && commandName[1] == 'V') || (commandName[0] == 'S' && commandName[1] == 'H'))
                     {
                       auto [status, queryName] = m_kvHandler->handle(ws, std::move(request));
 

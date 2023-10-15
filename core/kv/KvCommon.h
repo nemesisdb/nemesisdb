@@ -37,6 +37,10 @@ enum class KvQueryType : std::uint8_t
   ArrayMove,
   Find,
   SessionNew,
+  SessionEnd,
+  SessionSet,
+  SessionSetQ,
+  SessionGet,
   Max,
   Unknown,
 };
@@ -57,7 +61,12 @@ const std::map<const std::string_view, std::tuple<const KvQueryType, const fcjso
   {"KV_CONTAINS",     {KvQueryType::Contains,     fcjson::value_t::array}},
   {"KV_ARRAY_MOVE",   {KvQueryType::ArrayMove,    fcjson::value_t::object}},
   {"KV_FIND",         {KvQueryType::Find,         fcjson::value_t::object}},
-  {"KV_SESSION_NEW",  {KvQueryType::SessionNew,   fcjson::value_t::object}}
+  // session
+  {"SH_NEW",          {KvQueryType::SessionNew,   fcjson::value_t::object}},
+  {"SH_END",          {KvQueryType::SessionEnd,   fcjson::value_t::object}},
+  {"SH_SET",          {KvQueryType::SessionSet,   fcjson::value_t::object}},
+  {"SH_SETQ",         {KvQueryType::SessionSetQ,  fcjson::value_t::object}},
+  {"SH_GET",          {KvQueryType::SessionGet,   fcjson::value_t::object}}
 };
 
 
@@ -76,19 +85,12 @@ const std::map<const KvQueryType, const std::string> QueryTypeToName =
   {KvQueryType::Contains,       "KV_CONTAINS"},
   {KvQueryType::ArrayMove,      "KV_ARRAY_MOVE"},
   {KvQueryType::Find,           "KV_FIND"},
-  {KvQueryType::SessionNew,     "KV_SESSION_NEW"},
-};
-
-
-enum class KvErrorCode
-{
-  None = 0,
-  KeyInvalidLength,
-  TypeInvalid,
-  QueryUnknown,
-  ExcessiveValues,
-  JsonParseError,
-  Unknown  
+  // Session
+  {KvQueryType::SessionNew,     "SH_NEW"},
+  {KvQueryType::SessionEnd,     "SH_END"},
+  {KvQueryType::SessionSet,     "SH_SET"},
+  {KvQueryType::SessionSetQ,    "SH_SETQ"},
+  {KvQueryType::SessionGet,     "SH_GET"},
 };
 
 
@@ -168,34 +170,49 @@ struct PoolRequestResponse
     return rsp;
   }
 
-  static fcjson sessionStart (const RequestStatus status, const SessionToken& token, const SessionName name)
+  static fcjson sessionNew (const RequestStatus status, const SessionToken& token, const SessionName name)
   {
     fcjson rsp;
-    rsp["KV_SESSION_START_RSP"]["st"] = status;
-    rsp["KV_SESSION_START_RSP"]["name"] = name;
-    rsp["KV_SESSION_START_RSP"]["shtk"] = token;    
+    rsp["SH_NEW_RSP"]["st"] = status;
+    rsp["SH_NEW_RSP"]["name"] = name;
+    rsp["SH_NEW_RSP"]["tkn"] = token;    
+    return rsp;
+  }
+  
+  static fcjson sessionEnd (const RequestStatus status, const SessionToken& token)
+  {
+    fcjson rsp;
+    rsp["SH_END_RSP"]["st"] = status;
+    rsp["SH_END_RSP"]["tkn"] = token;
+    return rsp;
+  }
+  
+  static fcjson sessionKeySet (const SessionToken& tkn, const bool isSet, const std::string_view k)
+  {
+    fcjson rsp;
+    rsp["KV_SESSION_SET_RSP"]["st"] = isSet ? KeySet : KeyUpdated;
+    rsp["KV_SESSION_SET_RSP"]["k"] = k;
+    rsp["KV_SESSION_SET_RSP"]["tkn"] = tkn;
     return rsp;
   }
 
-  
+  static fcjson sessionGetFound (const SessionToken& tkn, cachedpair pair)
+  {
+    fcjson rsp;    
+    rsp["SH_GET_RSP"] = std::move(pair);
+    rsp["SH_GET_RSP"]["tkn"] = tkn;
+    rsp["SH_GET_RSP"]["st"] = Ok;
+    return rsp;
+  }
 
-  
-
-  // static fcjson renameKey (fcjson pair)
-  // {
-  //   fcjson rsp;
-  //   rsp["KV_RNM_RSP"] = std::move(pair);
-  //   rsp["KV_RNM_RSP"]["st"] = KeySet;    
-  //   return rsp;
-  // }
-
-  // static fcjson renameKeyFail (const RequestStatus status, fcjson pair)
-  // {
-  //   fcjson rsp;
-  //   rsp["KV_RNM_RSP"] = std::move(pair);
-  //   rsp["KV_RNM_RSP"]["st"] = status;    
-  //   return rsp;
-  // }
+  static fcjson sessionGetNotFound (const SessionToken& tkn, cachedkey key)
+  {
+    fcjson rsp;
+    rsp["SH_GET_RSP"]["st"] = KeyNotExist;
+    rsp["SH_GET_RSP"]["tkn"] = tkn;
+    rsp["SH_GET_RSP"]["k"] = std::move(key);
+    return rsp;
+  }
 
   static PoolRequestResponse unknownError ()
   {

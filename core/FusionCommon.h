@@ -145,6 +145,7 @@ enum class RequestStatus
   KeySetClearFailed,
   KeyMoveFailed,
   SessionNotExist = 100,
+  SessionTokenInvalid,
   Unknown = 1000
 };
 

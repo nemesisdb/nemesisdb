@@ -66,7 +66,6 @@ private:
       send(cmd, PoolRequestResponse::keySet(inserted, it->first).dump());
     };
 
-
     auto setQ = [this](CacheMap& map, KvCommand& cmd)
     {
       try
@@ -154,9 +153,14 @@ private:
     {
       auto& key = cmd.contents.begin().key();
       auto& positions = cmd.contents.begin().value();
-      
-      const auto status = map.arrayMove(cmd.contents);
-      send(cmd, PoolRequestResponse::arrayMove(status, key).dump());       
+
+      if (!positions.is_array())
+        send(cmd, PoolRequestResponse::arrayMove(RequestStatus::ValueTypeInvalid, key).dump());
+      else
+      {
+        const auto status = map.arrayMove(cmd.contents);
+        send(cmd, PoolRequestResponse::arrayMove(status, key).dump());
+      }
     };
 
 
@@ -169,34 +173,44 @@ private:
 
     auto sessionNew = [this](CacheMap& map, KvCommand& cmd)
     {
-      send(cmd, PoolRequestResponse::sessionStart(RequestStatus::Ok, cmd.shtk, cmd.contents.at("name")).dump()); 
+      send(cmd, PoolRequestResponse::sessionNew(RequestStatus::Ok, cmd.shtk, cmd.contents.at("name")).dump()); 
     };
 
 
-    /*
-    auto renameKey = [](CacheMap2& map, KvCommand& cmd)
+    auto sessionEnd = [this](CacheMap& map, KvCommand& cmd)
     {
-      auto& existingKey = command->contents.begin().key();
-      auto newKey = command->contents.begin().value().get<std::string_view>();
-      
-      if (auto it = map.find(existingKey) ; it != map.end())
-      {
-        const auto [ignore, inserted] = map.emplace(newKey, std::move(it->second));
+      // handled below 
+    };
 
-        if (inserted)
-        {
-          map.erase(existingKey);
-          command.loop->defer([ws = command.ws, contents = std::move(command->contents)]{ ws->send(PoolRequestResponse::renameKey(std::move(contents)).dump(), kv::WsSendOpCode);});
-        }
-        else
-          command.loop->defer([ws = command.ws, contents = std::move(command->contents)]{ ws->send(PoolRequestResponse::renameKeyFail(RequestStatus::KeyExists, std::move(contents)).dump(), kv::WsSendOpCode);});
-      }
-      else
+
+    auto sessionSet = [this](CacheMap& map, KvCommand& cmd)
+    {
+      auto [it, inserted] = map.set(cmd.contents);
+      send(cmd, PoolRequestResponse::sessionKeySet(cmd.shtk, inserted, it->first).dump());
+    };
+
+    auto sessionSetQ = [this](CacheMap& map, KvCommand& cmd)
+    {
+      try
       {
-        command.loop->defer([ws = command.ws, contents = std::move(command->contents)]{ ws->send(PoolRequestResponse::renameKeyFail(RequestStatus::KeyNotExist, std::move(contents)).dump(), kv::WsSendOpCode);}) ;
+        map.setQ(cmd.contents);
+      }
+      catch(const std::exception& e)
+      {
+        const auto& key = cmd.contents.begin().key();
+        fcjson unknownErrRsp{{"SH_SETQ_RSP", {{"st", RequestStatus::Unknown}, {"tkn", cmd.shtk}}}};
+        send(cmd, unknownErrRsp.dump());
       }
     };
-    */
+
+
+    auto sessionGet = [this, &get](CacheMap& map, KvCommand& cmd)
+    {
+      if (auto [exists, pair] = map.get(cmd.contents); exists)
+        send(cmd, PoolRequestResponse::sessionGetFound(cmd.shtk, std::move(pair)).dump());
+      else
+        send(cmd, PoolRequestResponse::sessionGetNotFound(cmd.shtk, std::move(cmd.contents)).dump()); 
+    };
 
 
     // CAREFUL: these have to be in the order of KvQueryType enum
@@ -215,7 +229,11 @@ private:
       contains,
       arrayMove,
       find,
-      sessionNew
+      sessionNew,
+      sessionEnd,
+      sessionSet,
+      sessionSetQ,
+      sessionGet
     };
 
 
@@ -235,6 +253,11 @@ private:
         {
           auto cache = sessions.start(cmd.shtk);
           handlers[static_cast<const std::size_t>(cmd.type)](cache->get(), cmd);
+        }
+        else if (cmd.type == KvQueryType::SessionEnd)
+        {
+          auto status = sessions.end(cmd.shtk) ? RequestStatus::Ok : RequestStatus::SessionNotExist;
+          send(cmd, PoolRequestResponse::sessionEnd(status, cmd.shtk).dump());
         }
         else if (auto cache = sessions.get(cmd.shtk); cache)
           handlers[static_cast<const std::size_t>(cmd.type)](cache->get(), cmd);
