@@ -30,14 +30,6 @@ public:
   }
 
 
-  void setQ (fcjson& contents)
-  {
-    const auto& key = contents.begin().key(); 
-    auto& value = contents.begin().value(); 
-    m_map.insert_or_assign(key, std::move(value));
-  }
-
-
   auto get (fcjson& contents) const -> std::pair<bool, cachedpair>
   {
     if (const auto it = m_map.find(contents) ; it != m_map.cend())
@@ -52,8 +44,15 @@ public:
     const auto& key = contents.items().begin().key();
     auto& value = contents.items().begin().value(); 
 
-    const auto [ignore, added] = m_map.emplace(key, std::move(value));
+    const auto [ignore, added] = m_map.try_emplace(key, std::move(value));
     return std::make_tuple(added, key);
+  }
+
+
+  bool add (const cachedkey& key, cachedvalue&& value)
+  {
+    const auto [ignore, added] = m_map.try_emplace(key, std::move(value));
+    return added;
   }
 
 

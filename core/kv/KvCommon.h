@@ -194,6 +194,8 @@ struct PoolRequestResponse
     return rsp;
   }
 
+
+  // SESSION
   static fcjson sessionNew (const RequestStatus status, const SessionToken& token, const SessionName name)
   {
     fcjson rsp;
@@ -210,52 +212,7 @@ struct PoolRequestResponse
     rsp["SH_END_RSP"]["tkn"] = token;
     return rsp;
   }
-  
-  static fcjson sessionKeySet (const SessionToken& tkn, const bool isSet, const std::string_view k)
-  {
-    fcjson rsp;
-    rsp["KV_SESSION_SET_RSP"]["st"] = isSet ? KeySet : KeyUpdated;
-    rsp["KV_SESSION_SET_RSP"]["k"] = k;
-    rsp["KV_SESSION_SET_RSP"]["tkn"] = tkn;
-    return rsp;
-  }
-
-  static fcjson sessionGetFound (const SessionToken& tkn, cachedpair pair)
-  {
-    fcjson rsp;    
-    rsp["SH_GET_RSP"] = std::move(pair);
-    rsp["SH_GET_RSP"]["tkn"] = tkn;
-    rsp["SH_GET_RSP"]["st"] = Ok;
-    return rsp;
-  }
-
-  static fcjson sessionGetNotFound (const SessionToken& tkn, cachedkey key)
-  {
-    fcjson rsp;
-    rsp["SH_GET_RSP"]["st"] = KeyNotExist;
-    rsp["SH_GET_RSP"]["tkn"] = tkn;
-    rsp["SH_GET_RSP"]["k"] = std::move(key);
-    return rsp;
-  }
-  
-  static fcjson sessionKeyAdd (const SessionToken& tkn, const bool isAdded, std::string&& k)
-  {
-    fcjson rsp;
-    rsp["SH_ADD_RSP"]["st"] = isAdded ? KeySet : KeyExists;
-    rsp["SH_ADD_RSP"]["k"] = std::move(k);
-    rsp["SH_ADD_RSP"]["tkn"] = tkn;
-    return rsp;
-  }
-
-  static fcjson sessionKeyAddQ (const SessionToken& tkn, std::string&& k)
-  {
-    fcjson rsp;
-    rsp["SH_ADDQ_RSP"]["st"] = KeyExists;
-    rsp["SH_ADDQ_RSP"]["k"] = std::move(k);
-    rsp["SH_ADDQ_RSP"]["tkn"] = tkn;
-    return rsp;
-  }
-
+    
   static fcjson sessionRemove (const SessionToken& tkn, const bool removed, const std::string&& k)
   {
     fcjson rsp;

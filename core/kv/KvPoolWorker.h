@@ -70,7 +70,7 @@ private:
     {
       try
       {
-        map.setQ(cmd.contents);
+        map.set(cmd.contents);
       }
       catch(const std::exception& e)
       {
@@ -200,16 +200,25 @@ private:
 
     auto sessionSetQ = [this](CacheMap& map, KvCommand& cmd)
     {
-      try
+      fcjson rsp;
+      
+      for(auto& kv : cmd.contents.items())
       {
-        map.setQ(cmd.contents);
+        try
+        {
+          map.set(kv.key(), std::move(kv.value()));
+        }
+        catch(const std::exception& e)
+        {
+          rsp["SH_SETQ_RSP"]["keys"][kv.key()] = RequestStatus::Unknown;
+        }
       }
-      catch(const std::exception& e)
+
+      if (!rsp.is_null())
       {
-        const auto& key = cmd.contents.begin().key();
-        fcjson unknownErrRsp{{"SH_SETQ_RSP", {{"st", RequestStatus::Unknown}, {"tkn", cmd.shtk}}}};
-        send(cmd, unknownErrRsp.dump());
-      }
+        rsp["SH_SETQ_RSP"]["tkn"] = cmd.shtk;
+        send(cmd, rsp.dump());
+      }      
     };
 
 
@@ -232,15 +241,34 @@ private:
 
     auto sessionAdd = [this](CacheMap& map, KvCommand& cmd)
     {
-      auto [added, key] = map.add(cmd.contents);
-      send(cmd, PoolRequestResponse::sessionKeyAdd(cmd.shtk, added, std::move(key)).dump()); 
+      fcjson rsp;
+      rsp["SH_ADD_RSP"]["tkn"] = cmd.shtk;
+
+      for(auto& kv : cmd.contents.items())
+      {
+        const auto inserted = map.add(kv.key(), std::move(kv.value()));
+        rsp["SH_ADD_RSP"]["keys"][kv.key()] = inserted ? RequestStatus::KeySet : RequestStatus::KeyExists;
+      }
+
+      send(cmd, rsp.dump());
     };
 
 
     auto sessionAddQ = [this](CacheMap& map, KvCommand& cmd)
     {
-      if (auto [added, key] = map.add(cmd.contents); !added)  // only respond if key not added
-        send(cmd, PoolRequestResponse::sessionKeyAddQ(cmd.shtk, std::move(key)).dump()); 
+      fcjson rsp;
+
+      for(auto& kv : cmd.contents.items())
+      {
+        if (const auto inserted = map.add(kv.key(), std::move(kv.value())); !inserted)
+          rsp["SH_ADD_RSP"]["keys"][kv.key()] = RequestStatus::KeyExists;
+      }
+
+      if (!rsp.is_null())
+      {
+        rsp["SH_ADD_RSP"]["tkn"] = cmd.shtk;
+        send(cmd, rsp.dump());
+      }
     };
 
 
@@ -362,10 +390,7 @@ private:
           send(cmd, PoolRequestResponse::sessionEnd(status, cmd.shtk).dump());
         }
         else if (auto cache = sessions.get(cmd.shtk); cache)
-        {
-          std::cout << static_cast<std::uint8_t>(cmd.type) << '\n';
           handlers[static_cast<const std::size_t>(cmd.type)](cache->get(), cmd);
-        }
         else
           send(cmd, createMessageResponse(QueryTypeToName.at(cmd.type) + "_RSP", RequestStatus::SessionNotExist).dump());
       
