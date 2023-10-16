@@ -335,6 +335,54 @@ private:
     };
 
 
+    auto sessionFind = [this](CacheMap& map, KvCommand& cmd)
+    {
+      fcjson rsp;
+      rsp["SH_FIND_RSP"]["tkn"] = cmd.shtk;
+      rsp["SH_FIND_RSP"]["keys"] = fcjson::array();
+      
+      map.findNoRegEx(cmd.contents, cmd.find, rsp["SH_FIND_RSP"]["keys"]);
+
+      send(cmd, rsp.dump());
+    };
+
+
+    auto sessionUpdate = [this](CacheMap& map, KvCommand& cmd)
+    {
+      fcjson rsp;
+      rsp["SH_UPDATE_RSP"]["tkn"] = cmd.shtk;
+            
+      fcjson::iterator  itKey = cmd.contents.begin(),
+                        itPath = std::next(itKey, 1);
+
+      if (itKey.key() != "key")
+        std::swap(itKey, itPath);
+
+      bool pathValid = true;
+      fcjson::json_pointer path;
+
+      try
+      {
+        path = std::move(fcjson::json_pointer{itPath.key()});
+      }
+      catch (...)
+      {
+        pathValid = false;
+      }
+
+      RequestStatus status;
+
+      if (pathValid)
+        status = map.updateByPath(itKey.value(), path, std::move(itPath.value()));
+      else
+        status = RequestStatus::PathInvalid;  // rename to PathInvalid
+
+      rsp["SH_UPDATE_RSP"]["st"] = status;
+
+      send(cmd, rsp.dump());
+    };
+
+
     // CAREFUL: these have to be in the order of KvQueryType enum
     static const std::array<std::function<void(CacheMap&, KvCommand&)>, static_cast<std::size_t>(KvQueryType::Max)> handlers = 
     {      
@@ -363,7 +411,9 @@ private:
       sessionCount,
       sessionAppend,
       sessionContains,
-      sessionArrayMove
+      sessionArrayMove,
+      sessionFind,
+      sessionUpdate
     };
 
 

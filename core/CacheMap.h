@@ -124,7 +124,7 @@ public:
   };
 
 
-  bool contains (const fcjson& contents)
+  bool contains (const fcjson& contents)  //TODO why not: const cachedkey&
   {
     return m_map.contains(contents);
   };
@@ -183,9 +183,6 @@ public:
 
   auto find (const fcjson& contents, const KvFind& find)
   {
-    // this is sent to all workers. Each runs the "path" search on all keys, then applies the condition on each result.
-    // the keys which pass the condition, are returned
-    
     auto& [opString, handler] = findConditions.getOperation(find.condition);
 
     const auto haveRegex = !contents.at("keyrgx").get_ref<const std::string&>().empty();
@@ -205,7 +202,7 @@ public:
         return false;
     };
 
-    const std::regex keyRegex{contents.at("keyrgx").get_ref<const std::string&>()};
+    const std::regex keyRegex{!haveRegex ? "" : contents.at("keyrgx").get_ref<const std::string&>()};
     
     for(auto& kv : m_map)
     {
@@ -222,6 +219,55 @@ public:
 
     return std::move(keys);
   };
+
+
+  void findNoRegEx (const fcjson& contents, const KvFind& find, fcjson& keysArray)
+  {
+    auto& [opString, handler] = findConditions.getOperation(find.condition);
+
+    fcjson::json_pointer path {contents.at("path")};
+    fcjson::const_reference opValue = contents.at(opString);
+    
+    
+    auto valueMatch = [&handler, &opValue, &path](std::pair<cachedkey, cachedvalue>& kv)
+    {
+      std::cout << "kv: " << kv << '\n';
+      std::cout << "contains(path): " << kv.second.contains(path) << '\n';
+
+      // no path (non an object) but value match || (object with path match and operator match)
+      if ((path.empty() && handler(kv.second, opValue)) ||
+          (kv.second.contains(path) && handler(kv.second.at(path), opValue)))
+        return true;
+      else
+        return false;
+    };
+
+    std::cout << "path: " << path << '\n';
+
+    for(auto& kv : m_map)
+    {
+      if (valueMatch(kv))
+        keysArray.emplace_back(kv.first);
+    }
+  };
+
+
+  RequestStatus updateByPath (const cachedkey& key, const fcjson::json_pointer& path, fcjson&& value)
+  {
+    RequestStatus status = RequestStatus::Ok;
+    
+    if (const auto it = m_map.find(key) ; it != m_map.cend())
+    {
+      if (it->second.contains(path))
+        it->second[path] = std::move(value);
+      else
+        status = RequestStatus::PathNotExist;
+    }
+    else
+      status = RequestStatus::KeyNotExist;
+
+    return status;
+  }
 
 
 private:

@@ -62,7 +62,9 @@ private:
     std::bind(&KvHandler::sessionCount,     std::ref(*this), std::placeholders::_1, std::placeholders::_2),
     std::bind(&KvHandler::sessionAppend,    std::ref(*this), std::placeholders::_1, std::placeholders::_2),
     std::bind(&KvHandler::sessionContains,  std::ref(*this), std::placeholders::_1, std::placeholders::_2),
-    std::bind(&KvHandler::sessionArrayMove, std::ref(*this), std::placeholders::_1, std::placeholders::_2)
+    std::bind(&KvHandler::sessionArrayMove, std::ref(*this), std::placeholders::_1, std::placeholders::_2),
+    std::bind(&KvHandler::sessionFind,      std::ref(*this), std::placeholders::_1, std::placeholders::_2),
+    std::bind(&KvHandler::sessionUpdate,    std::ref(*this), std::placeholders::_1, std::placeholders::_2)
   };
 
 
@@ -393,7 +395,7 @@ private:
     else if (unknownKey || (cmdSize < 1U || cmdSize > 3U))
       ws->send(createErrorResponse(queryRspName, RequestStatus::CommandSyntax).dump(), WsSendOpCode);
     else if (havePath && (!cmd.at("path").is_string() || cmd.at("path").get_ref<const std::string&>().empty()))
-      ws->send(createErrorResponse(queryRspName, RequestStatus::FindPathInvalid).dump(), WsSendOpCode);
+      ws->send(createErrorResponse(queryRspName, RequestStatus::PathInvalid).dump(), WsSendOpCode);
     else if (haveRegex && (!cmd.at("keyrgx").is_string() || cmd.at("keyrgx").get_ref<const std::string&>().empty()))
       ws->send(createErrorResponse(queryRspName, RequestStatus::FindRegExInvalid).dump(), WsSendOpCode);
     else
@@ -731,6 +733,67 @@ private:
       ws->send(createMessageResponse(queryRspName, RequestStatus::ValueTypeInvalid, "keys").dump(), WsSendOpCode);
     else if (getSessionToken(ws, queryName, cmd, token))
       sessionSubmit(ws, token, queryType, queryName, queryRspName, std::move(cmd.at("keys")));
+  }
+
+
+  fc_always_inline void sessionFind(KvWebSocket * ws, fcjson&& json)
+  {
+    static const KvQueryType queryType = KvQueryType::SessionFind;
+    static const std::string_view queryName     = "SH_FIND";
+    static const std::string_view queryRspName  = "SH_FIND_RSP";
+
+    auto& cmd = json.at(queryName);
+    
+    SessionToken token;
+    if (getSessionToken(ws, queryRspName, cmd, token))
+    {
+      // getSessionToken() deletes the "tkn" so only path and operator should remain
+      if (cmd.size() != 2U)
+        ws->send(createMessageResponse(queryRspName, RequestStatus::CommandSyntax).dump(), WsSendOpCode);
+      else if (!cmd.contains("path"))
+        ws->send(createMessageResponse(queryRspName, RequestStatus::FindNoPath).dump(), WsSendOpCode);
+      else if (!cmd.at("path").is_string())
+        ws->send(createMessageResponse(queryRspName, RequestStatus::ValueTypeInvalid, "path").dump(), WsSendOpCode);
+      else
+      {
+        fcjson::const_iterator  itPath = cmd.cbegin(),
+                                itOp = std::next(cmd.cbegin(), 1);
+
+        if (cmd.cbegin().key() != "path")
+        {
+          itOp = cmd.cbegin(),
+          itPath = std::next(cmd.cbegin(), 1);
+        }
+
+        if (!findConditions.isValidOperator(itOp.key()))
+          ws->send(createErrorResponse(queryRspName, RequestStatus::FindNoOperator).dump(), WsSendOpCode);
+        else
+          sessionSubmit(ws, token, queryType, queryName, queryRspName, std::move(cmd));
+      }
+    }    
+  }
+
+
+  fc_always_inline void sessionUpdate(KvWebSocket * ws, fcjson&& json)
+  {
+    static const KvQueryType queryType = KvQueryType::SessionUpdate;
+    static const std::string_view queryName     = "SH_UPDATE";
+    static const std::string_view queryRspName  = "SH_UPDATE_RSP";
+
+    auto& cmd = json.at(queryName);
+    
+    SessionToken token;
+    if (getSessionToken(ws, queryRspName, cmd, token))
+    {
+      if (cmd.size() != 2U)
+        ws->send(createMessageResponse(queryRspName, RequestStatus::CommandSyntax).dump(), WsSendOpCode);
+      else if (!cmd.contains("key"))
+        ws->send(createMessageResponse(queryRspName, RequestStatus::KeyMissing).dump(), WsSendOpCode);
+      else if (!cmd.at("key").is_string())
+        ws->send(createMessageResponse(queryRspName, RequestStatus::ValueTypeInvalid, "key").dump(), WsSendOpCode);
+      else
+        sessionSubmit(ws, token, queryType, queryName, queryRspName, std::move(cmd));
+    }
   }
 
 
