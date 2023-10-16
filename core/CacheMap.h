@@ -12,6 +12,8 @@ namespace fusion { namespace core {
 class CacheMap
 {
   using Map = ankerl::unordered_dense::segmented_map<cachedkey, cachedvalue>;
+  using CacheMapIterator = Map::iterator;
+  using CacheMapConstIterator = Map::const_iterator;
 
 public:
 
@@ -19,6 +21,11 @@ public:
   {
     const auto& key = contents.begin().key();
     auto& value = contents.begin().value(); 
+    return m_map.insert_or_assign(key, std::move(value));
+  }
+
+  auto set (const cachedkey& key, cachedvalue&& value) -> std::pair<CacheMapIterator, bool>
+  {
     return m_map.insert_or_assign(key, std::move(value));
   }
 

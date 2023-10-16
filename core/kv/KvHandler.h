@@ -577,7 +577,7 @@ private:
     SessionToken token;
 
     if (getSessionToken(ws, queryRspName, cmd, token))
-      sessionSubmitPairs(ws, std::move(cmd), token, queryType, queryName, queryRspName);
+      sessionSubmit(ws, token, queryType, queryName, queryRspName, std::move(cmd));
   }
 
 
@@ -609,7 +609,7 @@ private:
     else if (!cmd.at("keys").is_array())
       ws->send(createMessageResponse(queryRspName, RequestStatus::ValueTypeInvalid, "keys").dump(), WsSendOpCode);
     else if (getSessionToken(ws, queryRspName, cmd, token))
-      sessionSubmitKeys(ws, std::move(cmd.at("keys")), token, queryType, queryName, queryRspName);
+      sessionSubmit(ws, token, queryType, queryName, queryRspName, std::move(cmd.at("keys")));
   }
 
 

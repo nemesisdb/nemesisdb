@@ -185,8 +185,16 @@ private:
 
     auto sessionSet = [this](CacheMap& map, KvCommand& cmd)
     {
-      auto [it, inserted] = map.set(cmd.contents);
-      send(cmd, PoolRequestResponse::sessionKeySet(cmd.shtk, inserted, it->first).dump());
+      fcjson rsp;
+      rsp["SH_SET_RSP"]["tkn"] = cmd.shtk;
+
+      for(auto& kv : cmd.contents.items())
+      {
+        auto [it, inserted] = map.set(kv.key(), std::move(kv.value()));
+        rsp["SH_SET_RSP"]["keys"][kv.key()] = inserted ? RequestStatus::KeySet : RequestStatus::KeyUpdated;
+      }
+
+      send(cmd, rsp.dump());
     };
 
 
@@ -207,10 +215,18 @@ private:
 
     auto sessionGet = [this, &get](CacheMap& map, KvCommand& cmd)
     {
-      if (auto [exists, pair] = map.get(cmd.contents); exists)
-        send(cmd, PoolRequestResponse::sessionGetFound(cmd.shtk, std::move(pair)).dump());
-      else
-        send(cmd, PoolRequestResponse::sessionGetNotFound(cmd.shtk, std::move(cmd.contents)).dump()); 
+      fcjson rsp;
+      rsp["SH_GET_RSP"]["tkn"] = cmd.shtk;
+
+      for(auto& item : cmd.contents.items())
+      {
+        if (auto [exists, pair] = map.get(item.value()); exists)
+          rsp["SH_GET_RSP"].emplace(std::move(pair.begin().key()), std::move(pair.begin().value()));
+        else
+          rsp["SH_GET_RSP"][item.value()] = fcjson{}; //null
+      }
+
+      send(cmd, rsp.dump());
     };
 
 
