@@ -258,7 +258,7 @@ private:
     {
       pool->execute(KvCommand{  .ws = ws,
                                 .type = queryType,
-                                .cordinatedResponseHandler = onPoolResponse,
+                                .syncResponseHandler = onPoolResponse,
                                 .shtk = defaultSessionToken});
     }
     
@@ -307,7 +307,7 @@ private:
     {
       pool->execute(KvCommand {.ws = ws,
                               .type = queryType,
-                              .cordinatedResponseHandler = onPoolResponse,
+                              .syncResponseHandler = onPoolResponse,
                               .shtk = defaultSessionToken});
     }
 
@@ -425,7 +425,7 @@ private:
                                   .loop = uWS::Loop::get(),
                                   .contents = s,
                                   .type = queryType,
-                                  .cordinatedResponseHandler = onResponse,
+                                  .syncResponseHandler = onResponse,
                                   .find = find,
                                   .shtk = defaultSessionToken});
       }
@@ -502,7 +502,7 @@ private:
                                         .loop = uWS::Loop::get(),
                                         .contents = std::move(cmd),
                                         .type = queryType,
-                                        .cordinatedResponseHandler = onResult,
+                                        .syncResponseHandler = onResult,
                                         .shtk = token});
 
     latch.wait();

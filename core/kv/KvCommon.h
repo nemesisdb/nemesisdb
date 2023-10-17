@@ -277,7 +277,7 @@ struct KvCommand
   uWS::Loop * loop; // TODO can this be moved to WsSession, only set once in .open handler? the uWS event loop, so we can defer() websocket calls on an event loop thread
   fcjson contents;  // json taken from the request, contents depends on the query
   KvQueryType type; 
-  std::function<void(std::any)> cordinatedResponseHandler; 
+  std::function<void(std::any)> syncResponseHandler; 
   KvFind find;
   SessionToken shtk;
 };

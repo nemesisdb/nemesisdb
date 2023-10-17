@@ -115,7 +115,7 @@ private:
     auto clear = [this](CacheMap& map, KvCommand& cmd)
     {
       const auto[valid, size] = map.clear();
-      cmd.cordinatedResponseHandler(std::make_any<std::tuple<bool, std::size_t>>(std::make_tuple(valid, size)));
+      cmd.syncResponseHandler(std::make_any<std::tuple<bool, std::size_t>>(std::make_tuple(valid, size)));
     };
 
 
@@ -127,7 +127,7 @@ private:
 
     auto count = [this](CacheMap& map, KvCommand& cmd)
     {
-      cmd.cordinatedResponseHandler(std::make_any<std::size_t>(map.count()));
+      cmd.syncResponseHandler(std::make_any<std::size_t>(map.count()));
     };
 
     
@@ -167,7 +167,7 @@ private:
     auto find = [this](CacheMap& map, KvCommand& cmd)
     {
       auto keys = map.find(cmd.contents, cmd.find);
-      cmd.cordinatedResponseHandler(std::make_any<std::vector<cachedkey>>(std::move(keys)));
+      cmd.syncResponseHandler(std::make_any<std::vector<cachedkey>>(std::move(keys)));
     };
 
 
@@ -449,7 +449,7 @@ private:
         else if (cmd.type == KvQueryType::SessionOpen)
         {
           const auto haveSession = sessions.contains(cmd.shtk);
-          cmd.cordinatedResponseHandler(std::any{haveSession});
+          cmd.syncResponseHandler(std::any{haveSession});
         }
         else if (auto cache = sessions.get(cmd.shtk); cache)
           handlers[static_cast<const std::size_t>(cmd.type)](cache->get(), cmd);
