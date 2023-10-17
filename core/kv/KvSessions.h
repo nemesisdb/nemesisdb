@@ -31,13 +31,19 @@ public:
 
   std::optional<std::reference_wrapper<CacheMap>> start (const SessionToken& token)
   {
-    if (m_sessions.contains(token))
-      return {};
-
-    m_sessions[token] = Session{.token = token};
-    return m_sessions.at(token).map;
+    if (auto seshIt = m_sessions.find(token) ; seshIt != m_sessions.cend())
+      return seshIt->second.map;
+    else
+    {
+      m_sessions[token] = Session{.token = token};
+      return m_sessions.at(token).map;
+    }
   }
 
+  bool contains (const SessionToken& token)
+  {
+    return m_sessions.contains(token);
+  }
 
   bool end (const SessionToken& token)
   {

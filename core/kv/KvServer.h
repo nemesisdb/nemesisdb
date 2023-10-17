@@ -151,7 +151,7 @@ public:
           {
             std::scoped_lock lck{m_sessionsMux};
             m_sessions.insert(ws);
-          },
+          },          
           .message = [this, serverStats](KvWebSocket * ws, std::string_view message, uWS::OpCode opCode)
           {   
             ++serverStats->queryCount;

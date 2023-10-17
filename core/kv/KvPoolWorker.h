@@ -183,6 +183,12 @@ private:
     };
 
 
+    auto sessionOpen = [this](CacheMap& map, KvCommand& cmd)
+    {
+      
+    };
+
+
     auto sessionSet = [this](CacheMap& map, KvCommand& cmd)
     {
       fcjson rsp;
@@ -401,6 +407,7 @@ private:
       find,
       sessionNew,
       sessionEnd,
+      sessionOpen,
       sessionSet,
       sessionSetQ,
       sessionGet,
@@ -438,6 +445,11 @@ private:
         {
           auto status = sessions.end(cmd.shtk) ? RequestStatus::Ok : RequestStatus::SessionNotExist;
           send(cmd, PoolRequestResponse::sessionEnd(status, cmd.shtk).dump());
+        }
+        else if (cmd.type == KvQueryType::SessionOpen)
+        {
+          const auto haveSession = sessions.contains(cmd.shtk);
+          cmd.cordinatedResponseHandler(std::any{haveSession});
         }
         else if (auto cache = sessions.get(cmd.shtk); cache)
           handlers[static_cast<const std::size_t>(cmd.type)](cache->get(), cmd);

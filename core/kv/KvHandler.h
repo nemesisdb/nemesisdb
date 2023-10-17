@@ -52,6 +52,7 @@ private:
     std::bind(&KvHandler::find,         std::ref(*this), std::placeholders::_1, std::placeholders::_2),
     std::bind(&KvHandler::sessionNew,   std::ref(*this), std::placeholders::_1, std::placeholders::_2),
     std::bind(&KvHandler::sessionEnd,   std::ref(*this), std::placeholders::_1, std::placeholders::_2),
+    std::bind(&KvHandler::sessionOpen,   std::ref(*this), std::placeholders::_1, std::placeholders::_2),
     std::bind(&KvHandler::sessionSet,   std::ref(*this), std::placeholders::_1, std::placeholders::_2),
     std::bind(&KvHandler::sessionSetQ,  std::ref(*this), std::placeholders::_1, std::placeholders::_2),
     std::bind(&KvHandler::sessionGet,   std::ref(*this), std::placeholders::_1, std::placeholders::_2),
@@ -475,13 +476,38 @@ private:
 
   fc_always_inline void sessionSubmit(KvWebSocket * ws, const SessionToken& token, const KvQueryType queryType, const std::string_view command, const std::string_view rspName, fcjson&& cmd = "")
   {
-    auto poolId = getPoolId(token);
+    const auto poolId = getPoolId(token);
     m_pools[poolId]->execute(KvCommand{ .ws = ws,
                                         .loop = uWS::Loop::get(),
                                         .contents = std::move(cmd),
                                         .type = queryType,                                        
                                         .shtk = token});
   } 
+
+
+  fc_always_inline std::any sessionSubmitSync(KvWebSocket * ws, const SessionToken& token, const KvQueryType queryType, const std::string_view command, const std::string_view rspName, fcjson&& cmd = "")
+  {
+    std::latch latch{1U};
+    std::any result;
+
+    auto onResult = [&latch, &result](auto r)
+    {
+      result = std::move(r);
+      latch.count_down();
+    };
+
+
+    const auto poolId = getPoolId(token);
+    m_pools[poolId]->execute(KvCommand{ .ws = ws,
+                                        .loop = uWS::Loop::get(),
+                                        .contents = std::move(cmd),
+                                        .type = queryType,
+                                        .cordinatedResponseHandler = onResult,
+                                        .shtk = token});
+
+    latch.wait();
+    return result;
+  }
 
 
   fc_always_inline void sessionSubmitPairs(KvWebSocket * ws, fcjson&& cmd, const SessionToken& token, const KvQueryType queryType, const std::string_view command, const std::string_view rspName)
@@ -534,6 +560,39 @@ private:
 
     auto& cmd = json.at(queryName);
 
+    if (cmd.size() != 1U && cmd.size() != 2U)
+      ws->send(createErrorResponse(queryRspName, RequestStatus::CommandSyntax).dump(), WsSendOpCode);
+    else if (!cmd.contains("name"))
+      ws->send(createErrorResponse(queryRspName, RequestStatus::ValueMissing, "name").dump(), WsSendOpCode);
+    else if (!cmd.at("name").is_string())
+      ws->send(createErrorResponse(queryRspName, RequestStatus::ValueTypeInvalid, "name").dump(), WsSendOpCode);
+    else
+    {
+      const bool shareable = cmd.value("shareable", false);
+      const auto token = createSessionToken(cmd.at("name"), shareable);
+      
+      PoolId poolId;
+      getPoolId(token, poolId);
+
+      // m_pools[poolId]->execute(KvCommand{.ws = ws,
+      //                                 .loop = uWS::Loop::get(),
+      //                                 .contents = {{"name", cmd.at("name")}},
+      //                                 .type = queryType,
+      //                                 .shtk = token});
+
+      sessionSubmit(ws, token, queryType, queryName, queryRspName, std::move(cmd));
+    } 
+  }
+
+
+  fc_always_inline void sessionOpen(KvWebSocket * ws, fcjson&& json)
+  {
+    static const KvQueryType queryType = KvQueryType::SessionOpen;
+    static const std::string_view queryName     = "SH_OPEN";
+    static const std::string_view queryRspName  = "SH_OPEN_RSP";
+
+    auto& cmd = json.at(queryName);
+
     if (cmd.size() != 1U)
       ws->send(createErrorResponse(queryRspName, RequestStatus::CommandSyntax).dump(), WsSendOpCode);
     else if (!cmd.contains("name"))
@@ -542,17 +601,26 @@ private:
       ws->send(createErrorResponse(queryRspName, RequestStatus::ValueTypeInvalid, "name").dump(), WsSendOpCode);
     else
     {
-      auto token = createSessionToken(cmd.at("name"));
-      
-      PoolId poolId;
-      getPoolId(token, poolId);
+      // ask the pool if the session token exists
 
-      m_pools[poolId]->execute(KvCommand{.ws = ws,
-                                      .loop = uWS::Loop::get(),
-                                      .contents = {{"name", cmd.at("name")}},
-                                      .type = queryType,
-                                      .shtk = token});
-    } 
+      // we don't need to check if the pool is shareable because if it isn't, the token will be completely different,
+      // so it'll either go to the wrong pool, and not exist even if it happens to go to the correct pool
+      const auto token = createSessionToken(cmd.at("name"), true);
+      
+      PoolId pool;
+      getPoolId(token, pool);
+
+      const auto result = sessionSubmitSync(ws, token, queryType, queryName, queryRspName);
+      
+      fcjson rsp;
+      
+      if (std::any_cast<bool>(result))
+        rsp[queryRspName]["tkn"] = token;
+      else
+        rsp[queryRspName]["tkn"] = fcjson{}; // null
+
+      ws->send(rsp.dump(), WsSendOpCode);
+    }
   }
 
 

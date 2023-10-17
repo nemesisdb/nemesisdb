@@ -4,6 +4,7 @@
 #include <map>
 #include <array>
 #include <any>
+#include <uuid_v4/uuid_v4.h>
 #include <nlohmann/json.hpp>
 #include <uwebsockets/App.h>
 #include <core/FusionCommon.h>
@@ -38,6 +39,7 @@ enum class KvQueryType : std::uint8_t
   Find,
   SessionNew,
   SessionEnd,
+  SessionOpen,
   SessionSet,
   SessionSetQ,
   SessionGet,
@@ -74,6 +76,7 @@ const std::map<const std::string_view, std::tuple<const KvQueryType, const fcjso
   // session
   {"SH_NEW",          {KvQueryType::SessionNew,       fcjson::value_t::object}},
   {"SH_END",          {KvQueryType::SessionEnd,       fcjson::value_t::object}},
+  {"SH_OPEN",         {KvQueryType::SessionOpen,      fcjson::value_t::object}},
   {"SH_SET",          {KvQueryType::SessionSet,       fcjson::value_t::object}},
   {"SH_SETQ",         {KvQueryType::SessionSetQ,      fcjson::value_t::object}},
   {"SH_GET",          {KvQueryType::SessionGet,       fcjson::value_t::object}},
@@ -108,6 +111,7 @@ const std::map<const KvQueryType, const std::string> QueryTypeToName =
   // Session
   {KvQueryType::SessionNew,       "SH_NEW"},
   {KvQueryType::SessionEnd,       "SH_END"},
+  {KvQueryType::SessionOpen,      "SH_OPEN"},
   {KvQueryType::SessionSet,       "SH_SET"},
   {KvQueryType::SessionSetQ,      "SH_SETQ"},
   {KvQueryType::SessionGet,       "SH_GET"},
@@ -326,9 +330,20 @@ static const std::array<std::function<void(const SessionToken&, SessionPoolId&)>
 };
 
 
-SessionToken createSessionToken(const SessionName& name)
+fc_always_inline SessionToken createSessionToken(const SessionName& name, const bool shareable = false)
 {
-  return std::to_string(std::chrono::steady_clock::now().time_since_epoch().count()); // TODO TODO
+  if (shareable)
+  {
+    static const std::size_t seed = 99194853094755497U;
+    const auto hash = std::hash<SessionName>{}(name);
+    return std::to_string((std::size_t)(hash | seed));
+  }
+  else
+  {
+    static UUIDv4::UUIDGenerator<std::mt19937_64> uuidGenerator; 
+    auto uuid = uuidGenerator.getUUID();
+    return std::to_string(uuid.hash());
+  }  
 }
 
 
