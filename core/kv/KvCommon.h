@@ -17,10 +17,8 @@ using kvhaKV_t = std::uint32_t;
 using PoolId = std::size_t;
 
 const uWS::OpCode WsSendOpCode = uWS::OpCode::TEXT;
-static const SessionToken defaultSessionToken = "-";
 
-
-static kvhaKV_t MaxPools = 1U;
+static PoolId MaxPools = 1U;
 
 enum class KvQueryType : std::uint8_t
 {  

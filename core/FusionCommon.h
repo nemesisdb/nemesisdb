@@ -172,20 +172,12 @@ bool isKeyValid(const std::string_view& k)
 }
 
 
-// Response if the original command is known.
-static fcjson createErrorResponse (const std::string_view commandRsp, const RequestStatus status, const std::string_view key = "")
+// Response when command known but response
+static fcjson createErrorResponse (const std::string_view commandRsp, const RequestStatus status, const SessionToken& tkn = "", const std::string_view msg = "")
 {
   fcjson rsp;
   rsp[commandRsp]["st"] = status;
-  rsp[commandRsp]["k"] = key;
-  return rsp;
-}
-
-// Response when command known but respose is not key specific, uses 'm' instead
-static fcjson createMessageResponse (const std::string_view commandRsp, const RequestStatus status, const std::string_view msg = "")
-{
-  fcjson rsp;
-  rsp[commandRsp]["st"] = status;
+  rsp[commandRsp]["tkn"] = tkn;
   rsp[commandRsp]["m"] = msg;
   return rsp;
 }
@@ -195,8 +187,8 @@ static fcjson createMessageResponse (const std::string_view commandRsp, const Re
 static fcjson createErrorResponse (const RequestStatus status, const std::string_view msg = "")
 {
   fcjson rsp;
-  rsp["KV_ERR"]["st"] = status;
-  rsp["KV_ERR"]["m"] = msg;
+  rsp["ERR"]["st"] = status;
+  rsp["ERR"]["m"] = msg;
   return rsp;
 }
 

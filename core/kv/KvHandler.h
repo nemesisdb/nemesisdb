@@ -172,7 +172,7 @@ private:
                                             .shtk = token});
       }
       else
-        ws->send(createMessageResponse(rspName, RequestStatus::ValueTypeInvalid, pair.key()).dump(), WsSendOpCode);
+        ws->send(createErrorResponse(rspName, RequestStatus::ValueTypeInvalid, pair.key()).dump(), WsSendOpCode);
     }
   }
 
@@ -192,7 +192,7 @@ private:
                                             .shtk = token});
       }
       else
-        ws->send(createMessageResponse(rspName, RequestStatus::KeyTypeInvalid).dump(), WsSendOpCode);
+        ws->send(createErrorResponse(rspName, RequestStatus::KeyTypeInvalid, token).dump(), WsSendOpCode);
     }
   }
 
@@ -318,9 +318,9 @@ private:
     SessionToken token;
 
     if (!cmd.contains("keys"))
-      ws->send(createMessageResponse(queryRspName, RequestStatus::KeyMissing).dump(), WsSendOpCode);
+      ws->send(createErrorResponse(queryRspName, RequestStatus::KeyMissing).dump(), WsSendOpCode);
     else if (!cmd.at("keys").is_array())
-      ws->send(createMessageResponse(queryRspName, RequestStatus::ValueTypeInvalid, "keys").dump(), WsSendOpCode);
+      ws->send(createErrorResponse(queryRspName, RequestStatus::ValueTypeInvalid, "keys").dump(), WsSendOpCode);
     else if (getSessionToken(ws, queryRspName, cmd, token))
       sessionSubmit(ws, token, queryType, queryName, queryRspName, std::move(cmd.at("keys")));
   }
@@ -364,9 +364,9 @@ private:
     SessionToken token;
 
     if (!cmd.contains("keys"))
-      ws->send(createMessageResponse(queryRspName, RequestStatus::KeyMissing).dump(), WsSendOpCode);
+      ws->send(createErrorResponse(queryRspName, RequestStatus::KeyMissing).dump(), WsSendOpCode);
     else if (!cmd.at("keys").is_array())
-      ws->send(createMessageResponse(queryRspName, RequestStatus::ValueTypeInvalid, "keys").dump(), WsSendOpCode);
+      ws->send(createErrorResponse(queryRspName, RequestStatus::ValueTypeInvalid, "keys").dump(), WsSendOpCode);
     else if (getSessionToken(ws, queryRspName, cmd, token))
       sessionSubmitKeys(ws, std::move(cmd.at("keys")), token, queryType, queryName, queryRspName);
   }
@@ -421,9 +421,9 @@ private:
     SessionToken token;
 
     if (!cmd.contains("keys"))
-      ws->send(createMessageResponse(queryRspName, RequestStatus::KeyMissing).dump(), WsSendOpCode);
+      ws->send(createErrorResponse(queryRspName, RequestStatus::KeyMissing).dump(), WsSendOpCode);
     else if (!cmd.at("keys").is_array())
-      ws->send(createMessageResponse(queryRspName, RequestStatus::ValueTypeInvalid, "keys").dump(), WsSendOpCode);
+      ws->send(createErrorResponse(queryRspName, RequestStatus::ValueTypeInvalid, "keys").dump(), WsSendOpCode);
     else if (getSessionToken(ws, queryName, cmd, token))
       sessionSubmit(ws, token, queryType, queryName, queryRspName, std::move(cmd.at("keys")));
   }
@@ -439,9 +439,9 @@ private:
     SessionToken token;
 
     if (!cmd.contains("keys"))
-      ws->send(createMessageResponse(queryRspName, RequestStatus::KeyMissing).dump(), WsSendOpCode);
+      ws->send(createErrorResponse(queryRspName, RequestStatus::KeyMissing).dump(), WsSendOpCode);
     else if (!cmd.at("keys").is_object())
-      ws->send(createMessageResponse(queryRspName, RequestStatus::ValueTypeInvalid, "keys").dump(), WsSendOpCode);
+      ws->send(createErrorResponse(queryRspName, RequestStatus::ValueTypeInvalid, "keys").dump(), WsSendOpCode);
     else if (getSessionToken(ws, queryName, cmd, token))
       sessionSubmit(ws, token, queryType, queryName, queryRspName, std::move(cmd.at("keys")));
   }
@@ -460,11 +460,11 @@ private:
     {
       // getSessionToken() deletes the "tkn" so only path and operator should remain
       if (cmd.size() != 2U)
-        ws->send(createMessageResponse(queryRspName, RequestStatus::CommandSyntax).dump(), WsSendOpCode);
+        ws->send(createErrorResponse(queryRspName, RequestStatus::CommandSyntax).dump(), WsSendOpCode);
       else if (!cmd.contains("path"))
-        ws->send(createMessageResponse(queryRspName, RequestStatus::FindNoPath).dump(), WsSendOpCode);
+        ws->send(createErrorResponse(queryRspName, RequestStatus::FindNoPath).dump(), WsSendOpCode);
       else if (!cmd.at("path").is_string())
-        ws->send(createMessageResponse(queryRspName, RequestStatus::ValueTypeInvalid, "path").dump(), WsSendOpCode);
+        ws->send(createErrorResponse(queryRspName, RequestStatus::ValueTypeInvalid, "path").dump(), WsSendOpCode);
       else
       {
         fcjson::const_iterator  itPath = cmd.cbegin(),
@@ -497,11 +497,11 @@ private:
     if (getSessionToken(ws, queryRspName, cmd, token))
     {
       if (cmd.size() != 2U)
-        ws->send(createMessageResponse(queryRspName, RequestStatus::CommandSyntax).dump(), WsSendOpCode);
+        ws->send(createErrorResponse(queryRspName, RequestStatus::CommandSyntax).dump(), WsSendOpCode);
       else if (!cmd.contains("key"))
-        ws->send(createMessageResponse(queryRspName, RequestStatus::KeyMissing).dump(), WsSendOpCode);
+        ws->send(createErrorResponse(queryRspName, RequestStatus::KeyMissing).dump(), WsSendOpCode);
       else if (!cmd.at("key").is_string())
-        ws->send(createMessageResponse(queryRspName, RequestStatus::ValueTypeInvalid, "key").dump(), WsSendOpCode);
+        ws->send(createErrorResponse(queryRspName, RequestStatus::ValueTypeInvalid, "key").dump(), WsSendOpCode);
       else
         sessionSubmit(ws, token, queryType, queryName, queryRspName, std::move(cmd));
     }

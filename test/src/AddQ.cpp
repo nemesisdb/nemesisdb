@@ -10,7 +10,7 @@ using namespace fusion::test;
 
 TEST_F(FusionTest, AddNew)
 {
-	const std::vector<TestData> data = 
+	std::vector<TestData> data = 
 	{
 		{TestData { .request = R"({ "KV_ADDQ":{"string1":"asda"}} )"_json}},
 		{TestData { .request = R"({ "KV_ADDQ":{"integer1":1}} )"_json}},
@@ -24,14 +24,15 @@ TEST_F(FusionTest, AddNew)
 
 	for(auto& d : data)
 		tc.test(d);
-
-	tc.test(TestData {.request = R"({ "KV_COUNT":{} })"_json, .expected = {R"({ "KV_COUNT_RSP":{"cnt":3, "st":1} } )"_json} });
+	
+	TestData count {.request = R"({ "KV_COUNT":{} })"_json, .expected = {R"({ "KV_COUNT_RSP":{"cnt":3, "st":1} } )"_json} };
+	tc.test(count);
 }
 
 
 TEST_F(FusionTest, AddToExisting)
 {
-	const std::vector<TestData> data = 
+	std::vector<TestData> data = 
 	{
 		{TestData { .request = R"({ "KV_ADDQ":{"string1":"asda"}} )"_json}},
 		{TestData { .request = R"({ "KV_ADDQ":{"integer1":1}} )"_json}},
@@ -47,11 +48,11 @@ TEST_F(FusionTest, AddToExisting)
 		tc.test(d);
 
 	// now attempt to overwrite
-	const std::vector<TestData> update = 
+	std::vector<TestData> update = 
 	{
-		{TestData { .request = R"({ "KV_ADDQ":{"string1":"asda"}} )"_json,	.expected = {R"({ "KV_ADDQ_RSP":{ "st":23, "k":"string1" } })"_json} }},
-		{TestData { .request = R"({ "KV_ADDQ":{"integer1":1}} )"_json,			.expected = {R"({ "KV_ADDQ_RSP":{ "st":23, "k":"integer1" } })"_json} }},
-		{TestData { .request = R"({ "KV_ADDQ":{"decimal1":1.5}} )"_json,		.expected = {R"({ "KV_ADDQ_RSP":{ "st":23, "k":"decimal1" } })"_json} }}
+		{TestData { .request = R"({ "KV_ADD":{"string1":"asda"}} )"_json,	.expected = {R"({ "KV_ADD_RSP":{ "keys":{"string1":23} } })"_json} }},
+		{TestData { .request = R"({ "KV_ADD":{"integer1":1}} )"_json,			.expected = {R"({ "KV_ADD_RSP":{ "keys":{"integer1":23} } })"_json} }},
+		{TestData { .request = R"({ "KV_ADD":{"decimal1":1.5}} )"_json,		.expected = {R"({ "KV_ADD_RSP":{ "keys":{"decimal1":23} } })"_json} }}
 	};
 
 	for(auto& d : update)
@@ -59,11 +60,11 @@ TEST_F(FusionTest, AddToExisting)
 }
 
 
-TEST_F(FusionTest, KeyShort)
+TEST_F(FusionTest, NoKeys)
 {
-	const std::vector<TestData> data = 
+	std::vector<TestData> data = 
 	{
-		{TestData { .request = R"({ "KV_ADDQ":{"short":["a", "b"] } })"_json,	.expected = {R"({ "KV_ADDQ_RSP":{ "st":25, "k":"short" } })"_json} }}
+		{TestData { .request = R"({ "KV_ADDQ":{ } })"_json,	.expected = {R"({ "KV_ADDQ_RSP":{ "keys":{} } })"_json} }}
 	};
 
 
@@ -78,9 +79,9 @@ TEST_F(FusionTest, KeyShort)
 
 TEST_F(FusionTest, IncorrectCommandType)
 {
-	const std::vector<TestData> data = 
+	std::vector<TestData> data = 
 	{
-		{TestData { .request = R"({ "KV_ADDQ":[] })"_json,	.expected = {R"({ "KV_ADDQ_RSP":{ "st":12, "k":"" } })"_json} }}
+		{TestData { .request = R"({ "KV_ADDQ":[] })"_json,	.expected = {R"({"KV_ADDQ_RSP":{"m":"","st":12}})"_json} }}
 	};
 
 

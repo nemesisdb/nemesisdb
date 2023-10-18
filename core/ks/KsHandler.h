@@ -91,11 +91,11 @@ private:
     auto& cmd = json.at(queryName);
 
     if (!cmd.contains("name"))
-      ws->send(createMessageResponse(queryRspName, RequestStatus::ValueMissing, "name").dump(), WsSendOpCode);
+      ws->send(createErrorResponse(queryRspName, RequestStatus::ValueMissing, "name").dump(), WsSendOpCode);
     else if (!cmd.at("name").is_string())
-      ws->send(createMessageResponse(queryRspName, RequestStatus::ValueTypeInvalid, "name").dump(), WsSendOpCode);
+      ws->send(createErrorResponse(queryRspName, RequestStatus::ValueTypeInvalid, "name").dump(), WsSendOpCode);
     else if (cmd.at("name").get_ref<const std::string&>().empty())
-      ws->send(createMessageResponse(queryRspName, RequestStatus::KeySetNameInvalid, "name").dump(), WsSendOpCode);
+      ws->send(createErrorResponse(queryRspName, RequestStatus::KeySetNameInvalid, "name").dump(), WsSendOpCode);
     else
     {
       const auto status = m_ks->create(cmd.at("name")) ? RequestStatus::KeySetCreated : RequestStatus::KeySetExists;
@@ -126,11 +126,11 @@ private:
     auto& cmd = json.at(queryName);
 
     if (cmd.size() != 2U)
-      ws->send(createMessageResponse(queryRspName, RequestStatus::CommandSyntax).dump(), WsSendOpCode);
+      ws->send(createErrorResponse(queryRspName, RequestStatus::CommandSyntax).dump(), WsSendOpCode);
     else if (!cmd.contains("k") || !cmd.contains("ks"))
-      ws->send(createMessageResponse(queryRspName, RequestStatus::ValueMissing).dump(), WsSendOpCode);
+      ws->send(createErrorResponse(queryRspName, RequestStatus::ValueMissing).dump(), WsSendOpCode);
     else if (!cmd.at("k").is_array())
-      ws->send(createMessageResponse(queryRspName, RequestStatus::ValueTypeInvalid, "k").dump(), WsSendOpCode);
+      ws->send(createErrorResponse(queryRspName, RequestStatus::ValueTypeInvalid, "k").dump(), WsSendOpCode);
     else
     {
       auto status = RequestStatus::Ok;
@@ -154,7 +154,7 @@ private:
     fcjson rsp;
 
     if (cmd.empty())
-      ws->send(createMessageResponse(queryRspName, RequestStatus::ValueMissing).dump(), WsSendOpCode);
+      ws->send(createErrorResponse(queryRspName, RequestStatus::ValueMissing).dump(), WsSendOpCode);
     else
     {
       for (auto& item : cmd.items())
@@ -186,9 +186,9 @@ private:
     auto& cmd = json.at(queryName);
 
     if (!cmd.contains("ks") || !cmd.contains("k"))
-      ws->send(createMessageResponse(queryRspName, RequestStatus::ValueMissing).dump(), WsSendOpCode);
+      ws->send(createErrorResponse(queryRspName, RequestStatus::ValueMissing).dump(), WsSendOpCode);
     else if (!cmd.at("ks").is_string() || !cmd.at("k").is_string())
-      ws->send(createMessageResponse(queryRspName, RequestStatus::ValueTypeInvalid).dump(), WsSendOpCode);
+      ws->send(createErrorResponse(queryRspName, RequestStatus::ValueTypeInvalid).dump(), WsSendOpCode);
     else
     {
       const auto status = m_ks->removeKey(cmd.at("ks"), cmd.at("k"));
@@ -206,9 +206,9 @@ private:
     auto& cmd = json.at(queryName);
 
     if (!cmd.contains("ks"))
-      ws->send(createMessageResponse(queryRspName, RequestStatus::ValueMissing).dump(), WsSendOpCode);
+      ws->send(createErrorResponse(queryRspName, RequestStatus::ValueMissing).dump(), WsSendOpCode);
     else if (!cmd.at("ks").is_string())
-      ws->send(createMessageResponse(queryRspName, RequestStatus::ValueTypeInvalid).dump(), WsSendOpCode);
+      ws->send(createErrorResponse(queryRspName, RequestStatus::ValueTypeInvalid).dump(), WsSendOpCode);
     else
     {
       const auto status = m_ks->clearSet(cmd.at("ks"));
@@ -226,9 +226,9 @@ private:
     auto& cmd = json.at(queryName);
 
     if (!cmd.contains("ks"))
-      ws->send(createMessageResponse(queryRspName, RequestStatus::ValueMissing).dump(), WsSendOpCode);
+      ws->send(createErrorResponse(queryRspName, RequestStatus::ValueMissing).dump(), WsSendOpCode);
     else if (!cmd.at("ks").is_string())
-      ws->send(createMessageResponse(queryRspName, RequestStatus::ValueTypeInvalid).dump(), WsSendOpCode);
+      ws->send(createErrorResponse(queryRspName, RequestStatus::ValueTypeInvalid).dump(), WsSendOpCode);
     else
     {
       const auto status = m_ks->deleteSet(cmd.at("ks"));
@@ -246,7 +246,7 @@ private:
     auto& cmd = json.at(queryName);
 
     if (!cmd.empty())
-      ws->send(createMessageResponse(queryRspName, RequestStatus::CommandSyntax).dump(), WsSendOpCode);
+      ws->send(createErrorResponse(queryRspName, RequestStatus::CommandSyntax).dump(), WsSendOpCode);
     else
     {
       const auto status = m_ks->clear();
@@ -264,9 +264,9 @@ private:
     auto& cmd = json.at(queryName);
 
     if (!cmd.contains("ks"))
-      ws->send(createMessageResponse(queryRspName, RequestStatus::ValueMissing).dump(), WsSendOpCode);
+      ws->send(createErrorResponse(queryRspName, RequestStatus::ValueMissing).dump(), WsSendOpCode);
     else if (!cmd.at("ks").is_string())
-      ws->send(createMessageResponse(queryRspName, RequestStatus::ValueTypeInvalid).dump(), WsSendOpCode);
+      ws->send(createErrorResponse(queryRspName, RequestStatus::ValueTypeInvalid).dump(), WsSendOpCode);
     else
     {    
       const RequestStatus status = m_ks->contains(cmd.at("ks")) ? RequestStatus::KeySetExists : RequestStatus::KeySetNotExist;
@@ -284,9 +284,9 @@ private:
     auto& cmd = json.at(queryName);
 
     if (!cmd.contains("ks") || !cmd.contains("k"))
-      ws->send(createMessageResponse(queryRspName, RequestStatus::ValueMissing).dump(), WsSendOpCode);
+      ws->send(createErrorResponse(queryRspName, RequestStatus::ValueMissing).dump(), WsSendOpCode);
     else if (!cmd.at("k").is_string() || !cmd.at("ks").is_string())
-      ws->send(createMessageResponse(queryRspName, RequestStatus::ValueTypeInvalid).dump(), WsSendOpCode);
+      ws->send(createErrorResponse(queryRspName, RequestStatus::ValueTypeInvalid).dump(), WsSendOpCode);
     else
     {
       const auto status = m_ks->contains(cmd.at("ks"), cmd.at("k"));
@@ -304,9 +304,9 @@ private:
     auto& cmd = json.at(queryName);
 
     if (!cmd.contains("sourceKs") || !cmd.contains("targetKs") || !cmd.contains("k"))
-      ws->send(createMessageResponse(queryRspName, RequestStatus::ValueMissing).dump(), WsSendOpCode);
+      ws->send(createErrorResponse(queryRspName, RequestStatus::ValueMissing).dump(), WsSendOpCode);
     else if (!cmd.at("k").is_string() || !cmd.at("sourceKs").is_string() || !cmd.at("targetKs").is_string())
-      ws->send(createMessageResponse(queryRspName, RequestStatus::ValueTypeInvalid).dump(), WsSendOpCode);
+      ws->send(createErrorResponse(queryRspName, RequestStatus::ValueTypeInvalid).dump(), WsSendOpCode);
     else
     {
       const auto& source = cmd.at("sourceKs");
