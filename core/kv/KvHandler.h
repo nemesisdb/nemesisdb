@@ -51,7 +51,7 @@ private:
     std::bind(&KvHandler::count,            std::ref(*this), std::placeholders::_1, std::placeholders::_2),
     std::bind(&KvHandler::append,           std::ref(*this), std::placeholders::_1, std::placeholders::_2),
     std::bind(&KvHandler::contains,         std::ref(*this), std::placeholders::_1, std::placeholders::_2),
-    std::bind(&KvHandler::arrayMove,        std::ref(*this), std::placeholders::_1, std::placeholders::_2),
+    //std::bind(&KvHandler::arrayMove,        std::ref(*this), std::placeholders::_1, std::placeholders::_2),
     std::bind(&KvHandler::find,             std::ref(*this), std::placeholders::_1, std::placeholders::_2),
     std::bind(&KvHandler::update,           std::ref(*this), std::placeholders::_1, std::placeholders::_2)
   };
@@ -289,8 +289,12 @@ private:
     auto& cmd = json.at(queryName);
     SessionToken token;
 
-    if (getSessionToken(ws, queryRspName, cmd, token))
-      sessionSubmit(ws, token, queryType, queryName, queryRspName, std::move(cmd));
+    if (!cmd.contains("keys"))
+      ws->send(createErrorResponse(queryRspName, RequestStatus::KeyMissing).dump(), WsSendOpCode);
+    else if (!cmd.at("keys").is_object())
+      ws->send(createErrorResponse(queryRspName, RequestStatus::ValueTypeInvalid, "keys").dump(), WsSendOpCode);
+    else if (getSessionToken(ws, queryRspName, cmd, token))
+      sessionSubmit(ws, token, queryType, queryName, queryRspName, std::move(cmd.at("keys")));
   }
 
 
@@ -303,8 +307,12 @@ private:
     auto& cmd = json.at(queryName);
     SessionToken token;
 
-    if (getSessionToken(ws, queryRspName, cmd, token))
-      sessionSubmit(ws, token, queryType, queryName, queryRspName, std::move(cmd));
+    if (!cmd.contains("keys"))
+      ws->send(createErrorResponse(queryRspName, RequestStatus::KeyMissing).dump(), WsSendOpCode);
+    else if (!cmd.at("keys").is_object())
+      ws->send(createErrorResponse(queryRspName, RequestStatus::ValueTypeInvalid, "keys").dump(), WsSendOpCode);
+    else if (getSessionToken(ws, queryRspName, cmd, token))
+      sessionSubmit(ws, token, queryType, queryName, queryRspName, std::move(cmd.at("keys")));
   }
 
 
@@ -335,8 +343,12 @@ private:
     auto& cmd = json.at(queryName);
     SessionToken token;
 
-    if (getSessionToken(ws, queryRspName, cmd, token))
-      sessionSubmit(ws, token, queryType, queryName, queryRspName, std::move(cmd));
+    if (!cmd.contains("keys"))
+      ws->send(createErrorResponse(queryRspName, RequestStatus::KeyMissing).dump(), WsSendOpCode);
+    else if (!cmd.at("keys").is_object())
+      ws->send(createErrorResponse(queryRspName, RequestStatus::ValueTypeInvalid, "keys").dump(), WsSendOpCode);
+    else if (getSessionToken(ws, queryRspName, cmd, token))
+      sessionSubmit(ws, token, queryType, queryName, queryRspName, std::move(cmd.at("keys")));
   }
 
 
@@ -349,8 +361,12 @@ private:
     auto& cmd = json.at(queryName);
     SessionToken token;
 
-    if (getSessionToken(ws, queryRspName, cmd, token))
-      sessionSubmit(ws, token, queryType, queryName, queryRspName, std::move(cmd));
+    if (!cmd.contains("keys"))
+      ws->send(createErrorResponse(queryRspName, RequestStatus::KeyMissing).dump(), WsSendOpCode);
+    else if (!cmd.at("keys").is_object())
+      ws->send(createErrorResponse(queryRspName, RequestStatus::ValueTypeInvalid, "keys").dump(), WsSendOpCode);
+    else if (getSessionToken(ws, queryRspName, cmd, token))
+      sessionSubmit(ws, token, queryType, queryName, queryRspName, std::move(cmd.at("keys")));
   }
 
 
@@ -429,22 +445,22 @@ private:
   }
 
 
-  fc_always_inline void arrayMove(KvWebSocket * ws, fcjson&& json)
-  {
-    static const KvQueryType queryType = KvQueryType::SessionArrayMove;
-    static const std::string queryName     = QueryTypeToName.at(queryType);
-    static const std::string queryRspName  = queryName +"_RSP";
+  // fc_always_inline void arrayMove(KvWebSocket * ws, fcjson&& json)
+  // {
+  //   static const KvQueryType queryType = KvQueryType::SessionArrayMove;
+  //   static const std::string queryName     = QueryTypeToName.at(queryType);
+  //   static const std::string queryRspName  = queryName +"_RSP";
 
-    auto& cmd = json.at(queryName);
-    SessionToken token;
+  //   auto& cmd = json.at(queryName);
+  //   SessionToken token;
 
-    if (!cmd.contains("keys"))
-      ws->send(createErrorResponse(queryRspName, RequestStatus::KeyMissing).dump(), WsSendOpCode);
-    else if (!cmd.at("keys").is_object())
-      ws->send(createErrorResponse(queryRspName, RequestStatus::ValueTypeInvalid, "keys").dump(), WsSendOpCode);
-    else if (getSessionToken(ws, queryName, cmd, token))
-      sessionSubmit(ws, token, queryType, queryName, queryRspName, std::move(cmd.at("keys")));
-  }
+  //   if (!cmd.contains("keys"))
+  //     ws->send(createErrorResponse(queryRspName, RequestStatus::KeyMissing).dump(), WsSendOpCode);
+  //   else if (!cmd.at("keys").is_object())
+  //     ws->send(createErrorResponse(queryRspName, RequestStatus::ValueTypeInvalid, "keys").dump(), WsSendOpCode);
+  //   else if (getSessionToken(ws, queryName, cmd, token))
+  //     sessionSubmit(ws, token, queryType, queryName, queryRspName, std::move(cmd.at("keys")));
+  // }
 
 
   fc_always_inline void find(KvWebSocket * ws, fcjson&& json)

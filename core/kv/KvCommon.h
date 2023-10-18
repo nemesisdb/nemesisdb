@@ -35,7 +35,7 @@ enum class KvQueryType : std::uint8_t
   SessionCount,
   SessionAppend,
   SessionContains,
-  SessionArrayMove,
+  //SessionArrayMove,
   SessionFind,
   SessionUpdate,
   Max,
@@ -60,7 +60,7 @@ const std::map<const std::string_view, std::tuple<const KvQueryType, const fcjso
   {"KV_COUNT",        {KvQueryType::SessionCount,     fcjson::value_t::object}},
   {"KV_APPEND",       {KvQueryType::SessionAppend,    fcjson::value_t::object}},
   {"KV_CONTAINS",     {KvQueryType::SessionContains,  fcjson::value_t::object}},
-  {"KV_ARRAY_MOVE",   {KvQueryType::SessionArrayMove, fcjson::value_t::object}},
+  //{"KV_ARRAY_MOVE",   {KvQueryType::SessionArrayMove, fcjson::value_t::object}},
   {"KV_FIND",         {KvQueryType::SessionFind,      fcjson::value_t::object}},
   {"KV_UPDATE",       {KvQueryType::SessionUpdate,    fcjson::value_t::object}}
 };
@@ -83,7 +83,7 @@ const std::map<const KvQueryType, const std::string> QueryTypeToName =
   {KvQueryType::SessionCount,     "KV_COUNT"},
   {KvQueryType::SessionAppend,    "KV_APPEND"},
   {KvQueryType::SessionContains,  "KV_CONTAINS"},
-  {KvQueryType::SessionArrayMove, "KV_ARRAY_MOVE"},
+  //{KvQueryType::SessionArrayMove, "KV_ARRAY_MOVE"},
   {KvQueryType::SessionFind,      "KV_FIND"},
   {KvQueryType::SessionUpdate,    "KV_UPDATE"}
 };

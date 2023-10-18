@@ -170,6 +170,12 @@ struct TestClient
 		}
 	}
 
+	void test (TestData&& data)
+	{		
+		TestData td = std::move(data);
+		test(td);
+	}
+
 
 	private:
 		bool createSession ()

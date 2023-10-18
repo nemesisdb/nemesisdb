@@ -242,24 +242,24 @@ private:
     };
 
 
-    auto sessionArrayMove = [this](CacheMap& map, KvCommand& cmd)
-    {
-      fcjson rsp;
-      rsp["KV_ARRAY_MOVE_RSP"]["tkn"] = cmd.shtk;
+    // auto sessionArrayMove = [this](CacheMap& map, KvCommand& cmd)
+    // {
+    //   fcjson rsp;
+    //   rsp["KV_ARRAY_MOVE_RSP"]["tkn"] = cmd.shtk;
 
-      for (auto& item : cmd.contents.items())
-      {
-        if (!item.value().is_array())
-          rsp["KV_ARRAY_MOVE_RSP"][item.key()] = RequestStatus::ValueTypeInvalid;
-        else
-        {
-          const auto status = map.arrayMove(fcjson {{item.key(), std::move(item.value())}});
-          rsp["KV_ARRAY_MOVE_RSP"][item.key()] = status;
-        }
-      }
+    //   for (auto& item : cmd.contents.items())
+    //   {
+    //     if (!item.value().is_array())
+    //       rsp["KV_ARRAY_MOVE_RSP"][item.key()] = RequestStatus::ValueTypeInvalid;
+    //     else
+    //     {
+    //       const auto status = map.arrayMove(fcjson {{item.key(), std::move(item.value())}});
+    //       rsp["KV_ARRAY_MOVE_RSP"][item.key()] = status;
+    //     }
+    //   }
 
-      send(cmd, rsp.dump());
-    };
+    //   send(cmd, rsp.dump());
+    // };
 
 
     auto sessionFind = [this](CacheMap& map, KvCommand& cmd)
@@ -326,7 +326,7 @@ private:
       sessionCount,
       sessionAppend,
       sessionContains,
-      sessionArrayMove,
+      //sessionArrayMove,
       sessionFind,
       sessionUpdate
     };
