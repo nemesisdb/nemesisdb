@@ -13,30 +13,17 @@
 namespace fusion { namespace core { namespace kv {
 
 
-using kvhash_t = std::uint32_t;
+using kvhaKV_t = std::uint32_t;
 using PoolId = std::size_t;
 
 const uWS::OpCode WsSendOpCode = uWS::OpCode::TEXT;
 static const SessionToken defaultSessionToken = "-";
 
 
-static kvhash_t MaxPools = 1U;
+static kvhaKV_t MaxPools = 1U;
 
 enum class KvQueryType : std::uint8_t
 {  
-  Set,
-  SetQ,
-  Get,
-  Add,
-  AddQ,
-  Remove,
-  Clear,
-  ServerInfo,
-  Count,
-  Append,
-  Contains,
-  ArrayMove,
-  Find,
   SessionNew,
   SessionEnd,
   SessionOpen,
@@ -59,72 +46,48 @@ enum class KvQueryType : std::uint8_t
 
 
 const std::map<const std::string_view, std::tuple<const KvQueryType, const fcjson::value_t>> QueryNameToType = 
-{
-  {"KV_SET",          {KvQueryType::Set,          fcjson::value_t::object}},
-  {"KV_SETQ",         {KvQueryType::SetQ,         fcjson::value_t::object}},
-  {"KV_GET",          {KvQueryType::Get,          fcjson::value_t::array}},
-  {"KV_ADD",          {KvQueryType::Add,          fcjson::value_t::object}},
-  {"KV_ADDQ",         {KvQueryType::AddQ,         fcjson::value_t::object}},
-  {"KV_RMV",          {KvQueryType::Remove,       fcjson::value_t::array}},
-  {"KV_CLEAR",        {KvQueryType::Clear,        fcjson::value_t::object}},
-  {"KV_COUNT",        {KvQueryType::Count,        fcjson::value_t::object}},
-  {"KV_SERVER_INFO",  {KvQueryType::ServerInfo,   fcjson::value_t::object}},
-  {"KV_APPEND",       {KvQueryType::Append,       fcjson::value_t::object}},
-  {"KV_CONTAINS",     {KvQueryType::Contains,     fcjson::value_t::array}},
-  {"KV_ARRAY_MOVE",   {KvQueryType::ArrayMove,    fcjson::value_t::object}},
-  {"KV_FIND",         {KvQueryType::Find,         fcjson::value_t::object}},
+{  
   // session
   {"SH_NEW",          {KvQueryType::SessionNew,       fcjson::value_t::object}},
   {"SH_END",          {KvQueryType::SessionEnd,       fcjson::value_t::object}},
   {"SH_OPEN",         {KvQueryType::SessionOpen,      fcjson::value_t::object}},
-  {"SH_SET",          {KvQueryType::SessionSet,       fcjson::value_t::object}},
-  {"SH_SETQ",         {KvQueryType::SessionSetQ,      fcjson::value_t::object}},
-  {"SH_GET",          {KvQueryType::SessionGet,       fcjson::value_t::object}},
-  {"SH_ADD",          {KvQueryType::SessionAdd,       fcjson::value_t::object}},
-  {"SH_ADDQ",         {KvQueryType::SessionAddQ,      fcjson::value_t::object}},
-  {"SH_RMV",          {KvQueryType::SessionRemove,    fcjson::value_t::object}},
-  {"SH_CLEAR",        {KvQueryType::SessionClear,     fcjson::value_t::object}},
-  {"SH_COUNT",        {KvQueryType::SessionCount,     fcjson::value_t::object}},
-  {"SH_APPEND",       {KvQueryType::SessionAppend,    fcjson::value_t::object}},
-  {"SH_CONTAINS",     {KvQueryType::SessionContains,  fcjson::value_t::object}},
-  {"SH_ARRAY_MOVE",   {KvQueryType::SessionArrayMove, fcjson::value_t::object}},
-  {"SH_FIND",         {KvQueryType::SessionFind,      fcjson::value_t::object}},
-  {"SH_UPDATE",       {KvQueryType::SessionUpdate,    fcjson::value_t::object}}
+  // 
+  {"KV_SET",          {KvQueryType::SessionSet,       fcjson::value_t::object}},
+  {"KV_SETQ",         {KvQueryType::SessionSetQ,      fcjson::value_t::object}},
+  {"KV_GET",          {KvQueryType::SessionGet,       fcjson::value_t::object}},
+  {"KV_ADD",          {KvQueryType::SessionAdd,       fcjson::value_t::object}},
+  {"KV_ADDQ",         {KvQueryType::SessionAddQ,      fcjson::value_t::object}},
+  {"KV_RMV",          {KvQueryType::SessionRemove,    fcjson::value_t::object}},
+  {"KV_CLEAR",        {KvQueryType::SessionClear,     fcjson::value_t::object}},
+  {"KV_COUNT",        {KvQueryType::SessionCount,     fcjson::value_t::object}},
+  {"KV_APPEND",       {KvQueryType::SessionAppend,    fcjson::value_t::object}},
+  {"KV_CONTAINS",     {KvQueryType::SessionContains,  fcjson::value_t::object}},
+  {"KV_ARRAY_MOVE",   {KvQueryType::SessionArrayMove, fcjson::value_t::object}},
+  {"KV_FIND",         {KvQueryType::SessionFind,      fcjson::value_t::object}},
+  {"KV_UPDATE",       {KvQueryType::SessionUpdate,    fcjson::value_t::object}}
 };
 
 
 const std::map<const KvQueryType, const std::string> QueryTypeToName = 
 {
-  {KvQueryType::Set,            "KV_SET"},
-  {KvQueryType::SetQ,           "KV_SETQ"},
-  {KvQueryType::Get,            "KV_GET"},
-  {KvQueryType::Add,            "KV_ADD"},
-  {KvQueryType::AddQ,           "KV_ADDQ"},
-  {KvQueryType::Remove,         "KV_RMV"},
-  {KvQueryType::Clear,          "KV_CLEAR"},
-  {KvQueryType::Count,          "KV_COUNT"},
-  {KvQueryType::ServerInfo,     "KV_SERVER_INFO"},
-  {KvQueryType::Append,         "KV_APPEND"},
-  {KvQueryType::Contains,       "KV_CONTAINS"},
-  {KvQueryType::ArrayMove,      "KV_ARRAY_MOVE"},
-  {KvQueryType::Find,           "KV_FIND"},
   // Session
   {KvQueryType::SessionNew,       "SH_NEW"},
   {KvQueryType::SessionEnd,       "SH_END"},
   {KvQueryType::SessionOpen,      "SH_OPEN"},
-  {KvQueryType::SessionSet,       "SH_SET"},
-  {KvQueryType::SessionSetQ,      "SH_SETQ"},
-  {KvQueryType::SessionGet,       "SH_GET"},
-  {KvQueryType::SessionAdd,       "SH_ADD"},
-  {KvQueryType::SessionAddQ,      "SH_ADDQ"},
-  {KvQueryType::SessionRemove,    "SH_RMV"},
-  {KvQueryType::SessionClear,     "SH_CLEAR"},
-  {KvQueryType::SessionCount,     "SH_COUNT"},
-  {KvQueryType::SessionAppend,    "SH_APPEND"},
-  {KvQueryType::SessionContains,  "SH_CONTAINS"},
-  {KvQueryType::SessionArrayMove, "SH_ARRAY_MOVE"},
-  {KvQueryType::SessionFind,      "SH_FIND"},
-  {KvQueryType::SessionUpdate,    "SH_UPDATE"}
+  //
+  {KvQueryType::SessionSet,       "KV_SET"},
+  {KvQueryType::SessionSetQ,      "KV_SETQ"},
+  {KvQueryType::SessionGet,       "KV_GET"},
+  {KvQueryType::SessionAdd,       "KV_ADD"},
+  {KvQueryType::SessionAddQ,      "KV_ADDQ"},
+  {KvQueryType::SessionRemove,    "KV_RMV"},
+  {KvQueryType::SessionClear,     "KV_CLEAR"},
+  {KvQueryType::SessionCount,     "KV_COUNT"},
+  {KvQueryType::SessionAppend,    "KV_APPEND"},
+  {KvQueryType::SessionContains,  "KV_CONTAINS"},
+  {KvQueryType::SessionArrayMove, "KV_ARRAY_MOVE"},
+  {KvQueryType::SessionFind,      "KV_FIND"},
+  {KvQueryType::SessionUpdate,    "KV_UPDATE"}
 };
 
 
@@ -211,7 +174,7 @@ struct PoolRequestResponse
     fcjson rsp;
     rsp["SH_NEW_RSP"]["st"] = status;
     rsp["SH_NEW_RSP"]["name"] = name;
-    rsp["SH_NEW_RSP"]["tkn"] = token;    
+    rsp["SH_NEW_RSP"]["tkn"] = token;
     return rsp;
   }
   
@@ -226,36 +189,36 @@ struct PoolRequestResponse
   static fcjson sessionRemove (const SessionToken& tkn, const bool removed, const std::string&& k)
   {
     fcjson rsp;
-    rsp["SH_RMV_RSP"]["st"] = removed ? KeyRemoved : KeyNotExist;
-    rsp["SH_RMV_RSP"]["k"] = k;
-    rsp["SH_RMV_RSP"]["tkn"] = tkn;
+    rsp["KV_RMV_RSP"]["st"] = removed ? KeyRemoved : KeyNotExist;
+    rsp["KV_RMV_RSP"]["k"] = k;
+    rsp["KV_RMV_RSP"]["tkn"] = tkn;
     return rsp;
   }
 
   static fcjson sessionClear (const SessionToken& tkn, const bool cleared, const std::size_t count)
   {
     fcjson rsp;
-    rsp["SH_CLEAR_RSP"]["st"] = cleared ? Ok : Unknown;
-    rsp["SH_CLEAR_RSP"]["cnt"] = count;
-    rsp["SH_CLEAR_RSP"]["tkn"] = tkn;
+    rsp["KV_CLEAR_RSP"]["st"] = cleared ? Ok : Unknown;
+    rsp["KV_CLEAR_RSP"]["cnt"] = count;
+    rsp["KV_CLEAR_RSP"]["tkn"] = tkn;
     return rsp;
   }
 
   static fcjson sessionCount (const SessionToken& tkn, const std::size_t count)
   {
     fcjson rsp;
-    rsp["SH_COUNT_RSP"]["st"] = Ok;
-    rsp["SH_COUNT_RSP"]["cnt"] = count;
-    rsp["SH_COUNT_RSP"]["tkn"] = tkn;
+    rsp["KV_COUNT_RSP"]["st"] = Ok;
+    rsp["KV_COUNT_RSP"]["cnt"] = count;
+    rsp["KV_COUNT_RSP"]["tkn"] = tkn;
     return rsp;
   }
 
   static fcjson sessionAppend (const SessionToken& tkn, const RequestStatus status, const std::string_view k)
   {
     fcjson rsp;
-    rsp["SH_APPEND_RSP"]["st"] = status;
-    rsp["SH_APPEND_RSP"]["k"] = k;
-    rsp["SH_APPEND_RSP"]["tkn"] = tkn;
+    rsp["KV_APPEND_RSP"]["st"] = status;
+    rsp["KV_APPEND_RSP"]["k"] = k;
+    rsp["KV_APPEND_RSP"]["tkn"] = tkn;
     return rsp;
   }
 

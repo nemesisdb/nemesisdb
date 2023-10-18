@@ -81,96 +81,6 @@ private:
     };
 
 
-    auto get = [this](CacheMap& map, KvCommand& cmd)
-    {
-      if (auto [exists, pair] = map.get(cmd.contents); exists)
-        send(cmd, PoolRequestResponse::getFound(std::move(pair)).dump());
-      else
-        send(cmd, PoolRequestResponse::getNotFound(std::move(cmd.contents)).dump()); 
-    };
-
-
-    auto add = [this](CacheMap& map, KvCommand& cmd)
-    {
-      auto [added, key] = map.add(cmd.contents);
-      send(cmd, PoolRequestResponse::keyAdd(added, std::move(key)).dump()); 
-    };
-
-
-    auto addQ = [this](CacheMap& map, KvCommand& cmd)
-    {
-      if (auto [added, key] = map.add(cmd.contents); !added)  // only respond if key not added
-        send(cmd, PoolRequestResponse::keyAddQ(std::move(key)).dump()); 
-    };
-
-
-    auto remove = [this](CacheMap& map, KvCommand& cmd)
-    {
-      const auto& key = cmd.contents.get_ref<const std::string&>();
-      const auto removed = map.remove(key);
-      send(cmd, PoolRequestResponse::keyRemoved(removed, std::move(key)).dump()); 
-    };
-
-
-    auto clear = [this](CacheMap& map, KvCommand& cmd)
-    {
-      const auto[valid, size] = map.clear();
-      cmd.syncResponseHandler(std::make_any<std::tuple<bool, std::size_t>>(std::make_tuple(valid, size)));
-    };
-
-
-    auto serverInfo = [this](CacheMap& map, KvCommand& cmd)
-    {
-      // does nothing, dealt with by ShHandler/KvHandler, but required for handlers array below
-    };
-
-
-    auto count = [this](CacheMap& map, KvCommand& cmd)
-    {
-      cmd.syncResponseHandler(std::make_any<std::size_t>(map.count()));
-    };
-
-    
-    auto append = [this](CacheMap& map, KvCommand& cmd)
-    {
-      RequestStatus status = map.append(cmd.contents);
-      auto& key = cmd.contents.begin().key();
-
-      send(cmd, PoolRequestResponse::append(status, std::move(key)).dump());
-    };
-
-    
-    auto contains = [this](CacheMap& map, KvCommand& cmd)
-    {
-      if (map.contains(cmd.contents))
-        send(cmd, PoolRequestResponse::contains(RequestStatus::KeyExists, cmd.contents.get<std::string_view>()).dump());
-      else
-        send(cmd, PoolRequestResponse::contains(RequestStatus::KeyNotExist, cmd.contents.get<std::string_view>()).dump());
-    };
-
-    
-    auto arrayMove = [this](CacheMap& map, KvCommand& cmd)
-    {
-      auto& key = cmd.contents.begin().key();
-      auto& positions = cmd.contents.begin().value();
-
-      if (!positions.is_array())
-        send(cmd, PoolRequestResponse::arrayMove(RequestStatus::ValueTypeInvalid, key).dump());
-      else
-      {
-        const auto status = map.arrayMove(cmd.contents);
-        send(cmd, PoolRequestResponse::arrayMove(status, key).dump());
-      }
-    };
-
-
-    auto find = [this](CacheMap& map, KvCommand& cmd)
-    {
-      auto keys = map.find(cmd.contents, cmd.find);
-      cmd.syncResponseHandler(std::make_any<std::vector<cachedkey>>(std::move(keys)));
-    };
-
-
     auto sessionNew = [this](CacheMap& map, KvCommand& cmd)
     {
       send(cmd, PoolRequestResponse::sessionNew(RequestStatus::Ok, cmd.shtk, cmd.contents.at("name")).dump()); 
@@ -228,7 +138,7 @@ private:
     };
 
 
-    auto sessionGet = [this, &get](CacheMap& map, KvCommand& cmd)
+    auto sessionGet = [this](CacheMap& map, KvCommand& cmd)
     {
       fcjson rsp;
       rsp["SH_GET_RSP"]["tkn"] = cmd.shtk;
@@ -391,20 +301,7 @@ private:
 
     // CAREFUL: these have to be in the order of KvQueryType enum
     static const std::array<std::function<void(CacheMap&, KvCommand&)>, static_cast<std::size_t>(KvQueryType::Max)> handlers = 
-    {      
-      set,
-      setQ,
-      get,
-      add,
-      addQ,
-      remove,
-      clear,
-      serverInfo,
-      count,
-      append,
-      contains,
-      arrayMove,
-      find,
+    {    
       sessionNew,
       sessionEnd,
       sessionOpen,
