@@ -60,27 +60,6 @@ private:
 
   void run ()
   {
-    auto set = [this](CacheMap& map, KvCommand& cmd)
-    {
-      auto [it, inserted] = map.set(cmd.contents);
-      send(cmd, PoolRequestResponse::keySet(inserted, it->first).dump());
-    };
-
-    auto setQ = [this](CacheMap& map, KvCommand& cmd)
-    {
-      try
-      {
-        map.set(cmd.contents);
-      }
-      catch(const std::exception& e)
-      {
-        const auto& key = cmd.contents.begin().key();
-        fcjson unknownErrRsp{{"KV_SETQ_RSP", {{"st", RequestStatus::Unknown}, {"k", std::move(key)}}}};
-        send(cmd, unknownErrRsp.dump());
-      }
-    };
-
-
     auto sessionNew = [this](CacheMap& map, KvCommand& cmd)
     {
       send(cmd, PoolRequestResponse::sessionNew(RequestStatus::Ok, cmd.shtk, cmd.contents.at("name")).dump()); 
