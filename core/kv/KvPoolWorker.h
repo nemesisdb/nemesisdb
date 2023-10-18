@@ -185,7 +185,7 @@ private:
 
     auto sessionOpen = [this](CacheMap& map, KvCommand& cmd)
     {
-      
+      // handled below
     };
 
 
