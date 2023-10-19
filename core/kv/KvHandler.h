@@ -384,7 +384,7 @@ private:
     else if (!cmd.at("keys").is_array())
       ws->send(createErrorResponse(queryRspName, RequestStatus::ValueTypeInvalid, "keys").dump(), WsSendOpCode);
     else if (getSessionToken(ws, queryRspName, cmd, token))
-      sessionSubmitKeys(ws, std::move(cmd.at("keys")), token, queryType, queryName, queryRspName);
+      sessionSubmit(ws, token, queryType, queryName, queryRspName, std::move(cmd.at("keys")));
   }
 
 

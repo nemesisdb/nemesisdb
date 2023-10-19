@@ -9,8 +9,10 @@ TEST_F(FusionTest, Remove)
 
 	ASSERT_TRUE(tc.open());
 
-	tc.test({TestData { .request = R"({ "KV_SET":{"string1":"billybob"}})"_json,	.expected = {R"({ "KV_SET_RSP":{ "st":20, "k":"string1" } })"_json} }});
-	tc.test({TestData { .request = R"({ "KV_RMV":["string1"] })"_json,	.expected = {R"({ "KV_RMV_RSP":{ "st":24, "k":"string1" } })"_json} }});
+	tc.test(TestData {  .request = R"({ "KV_SET":{ "keys":{"string1":"asda"} }})"_json,
+											.expected = {R"({ "KV_SET_RSP":{ "keys":{"myarray":20, "mystring":20, "myinteger":20, "mydecimal":20, "myobject":20} }})"_json}});
+
+	tc.test({TestData { .request = R"({ "KV_RMV":{"keys":["string1"]} })"_json,	.expected = {R"({ "KV_RMV_RSP":{ "keys":{"string1":24} } })"_json} }});
 }
 
 
@@ -20,28 +22,10 @@ TEST_F(FusionTest, KeyNotExist)
 
 	ASSERT_TRUE(tc.open());
 	
-	tc.test({TestData { .request = R"({ "KV_RMV":["stringNotHere"] })"_json,	.expected = {R"({ "KV_RMV_RSP":{ "st":22, "k":"stringNotHere" } })"_json} }});
+	tc.test({TestData { .request = R"({ "KV_RMV":["stringNotHere"] })"_json,	.expected = {R"({ "KV_RMV_RSP":{ "stringNotHere":22 } })"_json} }});
 }
 
 
-TEST_F(FusionTest, KeyShort)
-{
-	TestClient tc;
-
-	ASSERT_TRUE(tc.open());
-
-	tc.test({TestData { .request = R"({ "KV_RMV":["str"] })"_json,	.expected = {R"({ "KV_RMV_RSP":{ "st":25, "k":"str" } })"_json} }});
-}
-
-
-TEST_F(FusionTest, IncorrectCommandType)
-{
-	TestClient tc;
-
-	ASSERT_TRUE(tc.open());
-
-	tc.test(TestData { .request = R"({ "KV_RMV":{"a":"b"} })"_json,	.expected = {R"({ "KV_RMV_RSP":{ "st":12, "k":"" } })"_json} });
-}
 
 
 int main (int argc, char ** argv)

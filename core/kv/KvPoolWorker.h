@@ -124,10 +124,13 @@ private:
 
       for(auto& item : cmd.contents.items())
       {
-        if (auto [exists, pair] = map.get(item.value()); exists)
-          rsp["KV_GET_RSP"].emplace(std::move(pair.begin().key()), std::move(pair.begin().value()));
-        else
-          rsp["KV_GET_RSP"][item.value()] = fcjson{}; //null
+        if (item.value().is_string()) [[likely]]
+        {
+          if (auto [exists, pair] = map.get(item.value()); exists)
+            rsp["KV_GET_RSP"].emplace(std::move(pair.begin().key()), std::move(pair.begin().value()));
+          else
+            rsp["KV_GET_RSP"][item.value()] = fcjson{}; //null
+        }        
       }
 
       send(cmd, rsp.dump());
@@ -180,9 +183,19 @@ private:
 
     auto sessionRemove = [this](CacheMap& map, KvCommand& cmd)
     {
-      const auto& key = cmd.contents.get_ref<const std::string&>();
-      const auto removed = map.remove(key);
-      send(cmd, PoolRequestResponse::sessionRemove(cmd.shtk, removed, std::move(key)).dump());
+      fcjson rsp;
+      rsp["KV_RMV_RSP"]["tkn"] = cmd.shtk;
+
+      for(auto& key : cmd.contents.items())
+      {
+        if (key.value().is_string())
+        {
+          const auto removed = map.remove(key.value().get_ref<const cachedkey&>());
+          rsp["KV_RMV_RSP"][key.value()] = removed ? RequestStatus::KeyRemoved : RequestStatus::KeyNotExist;
+        }
+      }
+
+      send(cmd, rsp.dump());
     };
 
 
