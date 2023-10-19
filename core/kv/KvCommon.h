@@ -25,6 +25,7 @@ enum class KvQueryType : std::uint8_t
   SessionNew,
   SessionEnd,
   SessionOpen,
+  SessionInfo,
   SessionSet,
   SessionSetQ,
   SessionGet,
@@ -49,6 +50,7 @@ const std::map<const std::string_view, std::tuple<const KvQueryType, const fcjso
   {"SH_NEW",          {KvQueryType::SessionNew,       fcjson::value_t::object}},
   {"SH_END",          {KvQueryType::SessionEnd,       fcjson::value_t::object}},
   {"SH_OPEN",         {KvQueryType::SessionOpen,      fcjson::value_t::object}},
+  {"SH_INFO",         {KvQueryType::SessionInfo,      fcjson::value_t::object}},
   // 
   {"KV_SET",          {KvQueryType::SessionSet,       fcjson::value_t::object}},
   {"KV_SETQ",         {KvQueryType::SessionSetQ,      fcjson::value_t::object}},
@@ -72,6 +74,7 @@ const std::map<const KvQueryType, const std::string> QueryTypeToName =
   {KvQueryType::SessionNew,       "SH_NEW"},
   {KvQueryType::SessionEnd,       "SH_END"},
   {KvQueryType::SessionOpen,      "SH_OPEN"},
+  {KvQueryType::SessionInfo,      "SH_INFO"},
   //
   {KvQueryType::SessionSet,       "KV_SET"},
   {KvQueryType::SessionSetQ,      "KV_SETQ"},
@@ -108,6 +111,26 @@ struct PoolRequestResponse
     fcjson rsp;
     rsp["SH_END_RSP"]["st"] = status;
     rsp["SH_END_RSP"]["tkn"] = token;
+    return rsp;
+  }
+
+  static fcjson sessionInfo (const RequestStatus status, const SessionToken& token)
+  {
+    fcjson rsp;
+    rsp["SH_INFO_RSP"]["st"] = status;
+    rsp["SH_INFO_RSP"]["tkn"] = token;
+    rsp["SH_INFO_RSP"]["shared"] = fcjson{};
+    rsp["SH_INFO_RSP"]["keyCnt"] = fcjson{};
+    
+    return rsp;
+  }
+
+  static fcjson sessionInfo (const RequestStatus status, const SessionToken& token, const bool shared, const std::size_t keyCount)
+  {
+    fcjson rsp = sessionInfo(status, token);
+    rsp["SH_INFO_RSP"]["shared"] = shared;
+    rsp["SH_INFO_RSP"]["keyCnt"] = keyCount;
+    
     return rsp;
   }
     

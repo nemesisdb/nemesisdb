@@ -22,6 +22,7 @@ private:
   {
     SessionToken token;
     CacheMap map;
+    bool shared{false};
   };
 
   using SessionsMap = ankerl::unordered_dense::segmented_map<SessionToken, Session>;
@@ -29,13 +30,13 @@ private:
 
 public:
 
-  std::optional<std::reference_wrapper<CacheMap>> start (const SessionToken& token)
+  std::optional<std::reference_wrapper<CacheMap>> start (const SessionToken& token, const bool shared)
   {
     if (auto seshIt = m_sessions.find(token) ; seshIt != m_sessions.cend())
       return seshIt->second.map;
     else
     {
-      m_sessions[token] = Session{.token = token};
+      m_sessions[token] = Session{.token = token, .shared = shared};
       return m_sessions.at(token).map;
     }
   }
@@ -51,7 +52,7 @@ public:
   }
 
 
-  std::optional<std::reference_wrapper<CacheMap>> get (const SessionToken& token)
+  std::optional<std::reference_wrapper<CacheMap>> getMap (const SessionToken& token)
   {
     if (auto it = m_sessions.find(token) ; it == m_sessions.end())
       return {};
@@ -59,6 +60,13 @@ public:
       return {it->second.map};
   }
 
+  std::optional<std::reference_wrapper<const Session>> get (const SessionToken& token)
+  {
+    if (auto it = m_sessions.find(token) ; it == m_sessions.end())
+      return {};
+    else
+      return {it->second};
+  }
 
 private:
 

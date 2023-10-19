@@ -81,7 +81,7 @@ public:
   };
 
 
-  std::size_t count()
+  std::size_t count() const
   {
     return m_map.size();
   }

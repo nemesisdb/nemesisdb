@@ -77,6 +77,11 @@ private:
       // handled below
     };
 
+    auto sessionInfo = [this](CacheMap& map, KvCommand& cmd)
+    {
+      // handled below
+    };
+
 
     auto sessionSet = [this](CacheMap& map, KvCommand& cmd)
     {
@@ -308,6 +313,7 @@ private:
       sessionNew,
       sessionEnd,
       sessionOpen,
+      sessionInfo,
       sessionSet,
       sessionSetQ,
       sessionGet,
@@ -335,7 +341,9 @@ private:
 
         if (cmd.type == KvQueryType::SessionNew)
         {
-          auto cache = sessions.start(cmd.shtk);
+          const bool shared = cmd.contents.value("shared", false);
+          auto cache = sessions.start(cmd.shtk, shared);
+
           handlers[static_cast<const std::size_t>(cmd.type)](cache->get(), cmd);
         }
         else if (cmd.type == KvQueryType::SessionEnd)
@@ -348,9 +356,21 @@ private:
           const auto haveSession = sessions.contains(cmd.shtk);
           cmd.syncResponseHandler(std::any{haveSession});
         }
+        else if (cmd.type == KvQueryType::SessionInfo)
+        {
+          if (auto sesh = sessions.get(cmd.shtk); sesh)
+          {
+            const auto shared = sesh->get().shared;
+            const auto keyCount = sesh->get().map.count();
+            
+            send(cmd, PoolRequestResponse::sessionInfo(RequestStatus::Ok, cmd.shtk, shared, keyCount).dump());
+          }
+          else
+            send(cmd, PoolRequestResponse::sessionInfo(RequestStatus::SessionNotExist, cmd.shtk).dump());
+        }
         else
         {
-          if (auto cache = sessions.get(cmd.shtk); cache)
+          if (auto cache = sessions.getMap(cmd.shtk); cache)
             handlers[static_cast<const std::size_t>(cmd.type)](cache->get(), cmd);
           else
             send(cmd, createErrorResponse(QueryTypeToName.at(cmd.type) + "_RSP", RequestStatus::SessionNotExist, cmd.shtk).dump());

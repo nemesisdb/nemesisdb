@@ -41,6 +41,7 @@ private:
     std::bind(&KvHandler::sessionNew,       std::ref(*this), std::placeholders::_1, std::placeholders::_2),
     std::bind(&KvHandler::sessionEnd,       std::ref(*this), std::placeholders::_1, std::placeholders::_2),
     std::bind(&KvHandler::sessionOpen,      std::ref(*this), std::placeholders::_1, std::placeholders::_2),
+    std::bind(&KvHandler::sessionInfo,      std::ref(*this), std::placeholders::_1, std::placeholders::_2),
     std::bind(&KvHandler::set,              std::ref(*this), std::placeholders::_1, std::placeholders::_2),
     std::bind(&KvHandler::setQ,             std::ref(*this), std::placeholders::_1, std::placeholders::_2),
     std::bind(&KvHandler::get,              std::ref(*this), std::placeholders::_1, std::placeholders::_2),
@@ -217,7 +218,7 @@ private:
       ws->send(createErrorResponse(queryRspName, RequestStatus::ValueTypeInvalid, "name").dump(), WsSendOpCode);
     else
     {
-      const bool shareable = cmd.value("shareable", false);
+      const bool shareable = cmd.value("shared", false);
       const auto token = createSessionToken(cmd.at("name"), shareable);
       
       PoolId poolId = getPoolId(token);
@@ -228,9 +229,9 @@ private:
 
   fc_always_inline void sessionOpen(KvWebSocket * ws, fcjson&& json)
   {
-    static const KvQueryType queryType = KvQueryType::SessionOpen;
-    static const std::string queryName     = QueryTypeToName.at(queryType);
-    static const std::string queryRspName  = queryName +"_RSP";
+    static const KvQueryType queryType      = KvQueryType::SessionOpen;
+    static const std::string queryName      = QueryTypeToName.at(queryType);
+    static const std::string queryRspName   = queryName +"_RSP";
 
     auto& cmd = json.at(queryName);
 
@@ -261,6 +262,26 @@ private:
         rsp[queryRspName]["tkn"] = fcjson{}; // null
 
       ws->send(rsp.dump(), WsSendOpCode);
+    }
+  }
+
+
+  fc_always_inline void sessionInfo(KvWebSocket * ws, fcjson&& json)
+  {
+    static const KvQueryType queryType      = KvQueryType::SessionInfo;
+    static const std::string queryName      = QueryTypeToName.at(queryType);
+    static const std::string queryRspName   = queryName +"_RSP";
+
+    auto& cmd = json.at(queryName);
+
+    if (cmd.size() != 1U)
+      ws->send(createErrorResponse(queryRspName, RequestStatus::CommandSyntax).dump(), WsSendOpCode);
+    else
+    {
+      SessionToken token;
+    
+      if (getSessionToken(ws, queryName, json.at(queryName), token))
+        sessionSubmit(ws, token, queryType, queryName, queryRspName);
     }
   }
 
