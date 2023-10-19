@@ -95,6 +95,12 @@ struct FindConditions
   }
 
 
+  Condition getOperator(const std::string& opString)
+  {
+    return OpStringToOp.at(opString);
+  }
+
+
   const std::tuple<const std::string, ConditionOperator>& getOperation (const Condition cond)
   {
     return ConditionToOp.at(cond);
@@ -135,6 +141,7 @@ enum class RequestStatus
   OutOfBounds,
   FindNoPath = 60,
   FindNoOperator,
+  FindInvalidOperator,
   FindRegExInvalid,
   KeySetCreated = 80,
   KeySetExists,

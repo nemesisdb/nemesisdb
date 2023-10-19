@@ -125,7 +125,7 @@ private:
     m_pools[poolId]->execute(KvCommand{ .ws = ws,
                                         .loop = uWS::Loop::get(),
                                         .contents = std::move(cmd),
-                                        .type = queryType,                                        
+                                        .type = queryType,
                                         .shtk = token});
   } 
 
@@ -486,16 +486,23 @@ private:
         fcjson::const_iterator  itPath = cmd.cbegin(),
                                 itOp = std::next(cmd.cbegin(), 1);
 
-        if (cmd.cbegin().key() != "path")
-        {
-          itOp = cmd.cbegin(),
-          itPath = std::next(cmd.cbegin(), 1);
-        }
+        if (itPath.key() != "path")
+          std::swap(itOp, itPath);
 
         if (!findConditions.isValidOperator(itOp.key()))
-          ws->send(createErrorResponse(queryRspName, RequestStatus::FindNoOperator).dump(), WsSendOpCode);
+          ws->send(createErrorResponse(queryRspName, RequestStatus::FindInvalidOperator).dump(), WsSendOpCode);
         else
-          sessionSubmit(ws, token, queryType, queryName, queryRspName, std::move(cmd));
+        {
+          const auto poolId = getPoolId(token);
+          KvFind findData { .condition = findConditions.getOperator(itOp.key())};
+          
+          m_pools[poolId]->execute(KvCommand{ .ws = ws,
+                                              .loop = uWS::Loop::get(),
+                                              .contents = std::move(cmd),
+                                              .type = queryType,
+                                              .find = findData,
+                                              .shtk = token});
+        }          
       }
     }    
   }

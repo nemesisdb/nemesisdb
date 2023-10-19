@@ -228,12 +228,8 @@ public:
     fcjson::json_pointer path {contents.at("path")};
     fcjson::const_reference opValue = contents.at(opString);
     
-    
     auto valueMatch = [&handler, &opValue, &path](std::pair<cachedkey, cachedvalue>& kv)
     {
-      std::cout << "kv: " << kv << '\n';
-      std::cout << "contains(path): " << kv.second.contains(path) << '\n';
-
       // no path (non an object) but value match || (object with path match and operator match)
       if ((path.empty() && handler(kv.second, opValue)) ||
           (kv.second.contains(path) && handler(kv.second.at(path), opValue)))
@@ -241,8 +237,6 @@ public:
       else
         return false;
     };
-
-    std::cout << "path: " << path << '\n';
 
     for(auto& kv : m_map)
     {
