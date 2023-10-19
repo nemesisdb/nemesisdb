@@ -7,6 +7,7 @@
 #include <set>
 #include <tuple>
 #include <latch>
+#include <thread>
 #include <uwebsockets/App.h>
 #include <core/kv/KvCommon.h>
 #include <core/kv/KvPoolWorker.h>
@@ -22,7 +23,7 @@ namespace fusion { namespace core { namespace kv {
 class KvServer
 {
 public:
-  KvServer() : m_fusionClose(false)
+  KvServer() : m_run(true)
   {
 
   }
@@ -43,7 +44,7 @@ public:
 
   void stop()
   {
-    m_fusionClose = true;
+    m_run = false;
 
     {
       std::scoped_lock lck{m_sessionsMux};
@@ -201,7 +202,7 @@ public:
 
             // when we shutdown (stop()), have to call ws->end() other uWS doesn't return.
             // but when we call ws->end(), this lambda is called, so we need to avoid mutex deadlock with this flag
-            if (!m_fusionClose)
+            if (!m_run)
             {
               std::scoped_lock lck{m_sessionsMux};
               m_sessions.erase(ws);
@@ -244,6 +245,32 @@ public:
 
     if (listenSuccess != nIoThreads)
       std::cout << "Failed to listen on " << ip << ":"  << port << std::endl;
+    else
+    {
+      std::cout << "Noice\n";
+      
+      m_monitor = std::move(std::jthread{[this]
+      {
+        std::chrono::seconds period {5};
+        std::chrono::steady_clock::time_point nextCheck = std::chrono::steady_clock::now() + period;
+
+        while (m_run)
+        {
+          std::this_thread::sleep_for(std::chrono::seconds{1});
+
+          std::cout << "Monitor checking\n";
+
+          if (m_run && std::chrono::steady_clock::now() >= nextCheck)
+          {
+            std::cout << "Monitor triggered\n";
+            
+            m_kvHandler->monitor();
+
+            nextCheck = std::chrono::steady_clock::now() + period;
+          }
+        }
+      }});
+    }
     
 
     #ifndef FC_UNIT_TEST
@@ -259,7 +286,8 @@ public:
     ks::KsHandler * m_ksHandler;
     std::mutex m_socketsMux;
     std::mutex m_sessionsMux;
-    std::atomic_bool m_fusionClose; // true if fusion has triggered a close
+    std::atomic_bool m_run; // true if fusion has triggered a close
+    std::jthread m_monitor;
 };
 
 

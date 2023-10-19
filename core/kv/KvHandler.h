@@ -93,6 +93,13 @@ public:
   }
 
 
+  void monitor ()
+  {
+    for(auto& pool : m_pools)
+      pool->execute(KvCommand{.type = KvQueryType::InternalSessionMonitor});
+  }
+
+
 private:
   
 
@@ -208,7 +215,7 @@ private:
 
     auto& cmd = json.at(queryName);
 
-    if (cmd.size() != 1U && cmd.size() != 2U)
+    if (cmd.size() < 1U || cmd.size() > 3U)
       ws->send(createErrorResponse(queryRspName, RequestStatus::CommandSyntax).dump(), WsSendOpCode);
     else if (!cmd.contains("name"))
       ws->send(createErrorResponse(queryRspName, RequestStatus::ValueMissing, "name").dump(), WsSendOpCode);
@@ -218,11 +225,29 @@ private:
       ws->send(createErrorResponse(queryRspName, RequestStatus::ValueTypeInvalid, "name").dump(), WsSendOpCode);
     else
     {
-      const bool shareable = cmd.value("shared", false);
-      const auto token = createSessionToken(cmd.at("name"), shareable);
-      
-      PoolId poolId = getPoolId(token);
-      sessionSubmit(ws, token, queryType, queryName, queryRspName, std::move(cmd));
+      bool expiryValid = true, sharedValid = true;
+
+      if (cmd.contains("expiry"))
+        expiryValid = cmd.at("expiry").contains("duration") && cmd.at("expiry").at("duration").is_number_unsigned();
+      else
+        cmd["expiry"]["duration"] = 0U;
+
+      if (cmd.contains("shared"))
+        sharedValid = cmd.at("shared").is_boolean();
+      else
+        cmd["shared"] = false;
+
+      if (!expiryValid)
+        ws->send(createErrorResponse(queryRspName, RequestStatus::CommandSyntax, "expiry").dump(), WsSendOpCode);
+      else if (!sharedValid)
+        ws->send(createErrorResponse(queryRspName, RequestStatus::CommandSyntax, "shared").dump(), WsSendOpCode);
+      else
+      {
+        const auto token = createSessionToken(cmd.at("name"), cmd["shared"] == true);
+        
+        PoolId poolId = getPoolId(token);
+        sessionSubmit(ws, token, queryType, queryName, queryRspName, std::move(cmd));
+      }
     } 
   }
 

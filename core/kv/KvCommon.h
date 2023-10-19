@@ -21,7 +21,7 @@ const uWS::OpCode WsSendOpCode = uWS::OpCode::TEXT;
 static PoolId MaxPools = 1U;
 
 enum class KvQueryType : std::uint8_t
-{  
+{ 
   SessionNew,
   SessionEnd,
   SessionOpen,
@@ -36,10 +36,10 @@ enum class KvQueryType : std::uint8_t
   SessionCount,
   SessionAppend,
   SessionContains,
-  //SessionArrayMove,
   SessionFind,
   SessionUpdate,
   Max,
+  InternalSessionMonitor,
   Unknown,
 };
 

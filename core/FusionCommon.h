@@ -5,6 +5,7 @@
 #include <mutex>
 #include <ostream>
 #include <thread>
+#include <chrono>
 #include <uwebsockets/App.h>
 
 namespace fusion { namespace core {
@@ -20,9 +21,8 @@ static const std::size_t FUSION_KV_MAXPAYLOAD = 2U * 1024U * 1024U;
 
 static const std::size_t MinKeySize = 6U; // characters, not bytes. See createPoolIndex() if changing this
 
+
 using SessionPoolId = std::size_t;
-
-
 using fcjson = nlohmann::ordered_json;
 
 // kv
@@ -33,6 +33,11 @@ using cachedpair = nlohmann::ordered_json;
 // session
 using SessionToken = std::string;
 using SessionName = std::string;
+using SessionClock = std::chrono::steady_clock;
+using SessionExpireTime = SessionClock::time_point;
+using SessionDuration = std::chrono::seconds;
+
+
 
 struct WsSession
 {

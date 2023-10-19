@@ -58,6 +58,12 @@ private:
   }
   
 
+  void checkExpiredSessions(Sessions& session)
+  {
+    
+  }
+
+
   void run ()
   {
     auto sessionNew = [this](CacheMap& map, KvCommand& cmd)
@@ -77,13 +83,14 @@ private:
       // handled below
     };
 
+
     auto sessionInfo = [this](CacheMap& map, KvCommand& cmd)
     {
       // handled below
     };
 
 
-    auto sessionSet = [this](CacheMap& map, KvCommand& cmd)
+    auto set = [this](CacheMap& map, KvCommand& cmd)
     {
       fcjson rsp;
       rsp["KV_SET_RSP"]["tkn"] = cmd.shtk;
@@ -98,7 +105,7 @@ private:
     };
 
 
-    auto sessionSetQ = [this](CacheMap& map, KvCommand& cmd)
+    auto setQ = [this](CacheMap& map, KvCommand& cmd)
     {
       fcjson rsp;
       
@@ -122,7 +129,7 @@ private:
     };
 
 
-    auto sessionGet = [this](CacheMap& map, KvCommand& cmd)
+    auto get = [this](CacheMap& map, KvCommand& cmd)
     {
       fcjson rsp;
       rsp["KV_GET_RSP"]["tkn"] = cmd.shtk;
@@ -142,7 +149,7 @@ private:
     };
 
 
-    auto sessionAdd = [this](CacheMap& map, KvCommand& cmd)
+    auto add = [this](CacheMap& map, KvCommand& cmd)
     {
       fcjson rsp;
       rsp["KV_ADD_RSP"]["tkn"] = cmd.shtk;
@@ -160,7 +167,7 @@ private:
     };
 
 
-    auto sessionAddQ = [this](CacheMap& map, KvCommand& cmd)
+    auto addQ = [this](CacheMap& map, KvCommand& cmd)
     {
       fcjson rsp;
 
@@ -186,7 +193,7 @@ private:
     };
 
 
-    auto sessionRemove = [this](CacheMap& map, KvCommand& cmd)
+    auto remove = [this](CacheMap& map, KvCommand& cmd)
     {
       fcjson rsp;
       rsp["KV_RMV_RSP"]["tkn"] = cmd.shtk;
@@ -204,20 +211,20 @@ private:
     };
 
 
-    auto sessionClear = [this](CacheMap& map, KvCommand& cmd)
+    auto clear = [this](CacheMap& map, KvCommand& cmd)
     {
       const auto[valid, size] = map.clear();
       send(cmd, PoolRequestResponse::sessionClear(cmd.shtk, valid, size).dump());
     };
 
 
-    auto sessionCount = [this](CacheMap& map, KvCommand& cmd)
+    auto count = [this](CacheMap& map, KvCommand& cmd)
     {
       send(cmd, PoolRequestResponse::sessionCount(cmd.shtk, map.count()).dump());
     };
 
 
-    auto sessionAppend = [this](CacheMap& map, KvCommand& cmd)
+    auto append = [this](CacheMap& map, KvCommand& cmd)
     {
       RequestStatus status = map.append(cmd.contents);
       auto& key = cmd.contents.begin().key();
@@ -226,7 +233,7 @@ private:
     };
 
 
-    auto sessionContains = [this](CacheMap& map, KvCommand& cmd)
+    auto contains = [this](CacheMap& map, KvCommand& cmd)
     {
       fcjson rsp;
       rsp["KV_CONTAINS_RSP"]["st"] = RequestStatus::Ok;
@@ -239,27 +246,29 @@ private:
     };
 
 
-    // auto sessionArrayMove = [this](CacheMap& map, KvCommand& cmd)
-    // {
-    //   fcjson rsp;
-    //   rsp["KV_ARRAY_MOVE_RSP"]["tkn"] = cmd.shtk;
+    /*
+    auto sessionArrayMove = [this](CacheMap& map, KvCommand& cmd)
+    {
+      fcjson rsp;
+      rsp["KV_ARRAY_MOVE_RSP"]["tkn"] = cmd.shtk;
 
-    //   for (auto& item : cmd.contents.items())
-    //   {
-    //     if (!item.value().is_array())
-    //       rsp["KV_ARRAY_MOVE_RSP"][item.key()] = RequestStatus::ValueTypeInvalid;
-    //     else
-    //     {
-    //       const auto status = map.arrayMove(fcjson {{item.key(), std::move(item.value())}});
-    //       rsp["KV_ARRAY_MOVE_RSP"][item.key()] = status;
-    //     }
-    //   }
+      for (auto& item : cmd.contents.items())
+      {
+        if (!item.value().is_array())
+          rsp["KV_ARRAY_MOVE_RSP"][item.key()] = RequestStatus::ValueTypeInvalid;
+        else
+        {
+          const auto status = map.arrayMove(fcjson {{item.key(), std::move(item.value())}});
+          rsp["KV_ARRAY_MOVE_RSP"][item.key()] = status;
+        }
+      }
 
-    //   send(cmd, rsp.dump());
-    // };
+      send(cmd, rsp.dump());
+    };
+    */
 
 
-    auto sessionFind = [this](CacheMap& map, KvCommand& cmd)
+    auto find = [this](CacheMap& map, KvCommand& cmd)
     {
       fcjson rsp;
       rsp["KV_FIND_RSP"]["tkn"] = cmd.shtk;
@@ -271,7 +280,7 @@ private:
     };
 
 
-    auto sessionUpdate = [this](CacheMap& map, KvCommand& cmd)
+    auto update = [this](CacheMap& map, KvCommand& cmd)
     {
       fcjson rsp;
       rsp["KV_UPDATE_RSP"]["tkn"] = cmd.shtk;
@@ -314,19 +323,18 @@ private:
       sessionEnd,
       sessionOpen,
       sessionInfo,
-      sessionSet,
-      sessionSetQ,
-      sessionGet,
-      sessionAdd,
-      sessionAddQ,
-      sessionRemove,
-      sessionClear,
-      sessionCount,
-      sessionAppend,
-      sessionContains,
-      //sessionArrayMove,
-      sessionFind,
-      sessionUpdate
+      set,
+      setQ,
+      get,
+      add,
+      addQ,
+      remove,
+      clear,
+      count,
+      append,
+      contains,
+      find,
+      update
     };
 
 
@@ -341,9 +349,9 @@ private:
 
         if (cmd.type == KvQueryType::SessionNew)
         {
-          const bool shared = cmd.contents.value("shared", false);
-          auto cache = sessions.start(cmd.shtk, shared);
+          SessionDuration duration {cmd.contents.at("expiry").at("duration").get<SessionDuration::rep>()};
 
+          auto cache = sessions.start(cmd.shtk, cmd.contents.at("shared") == true, duration);
           handlers[static_cast<const std::size_t>(cmd.type)](cache->get(), cmd);
         }
         else if (cmd.type == KvQueryType::SessionEnd)
@@ -368,10 +376,14 @@ private:
           else
             send(cmd, PoolRequestResponse::sessionInfo(RequestStatus::SessionNotExist, cmd.shtk).dump());
         }
-        else
+        else if (cmd.type == KvQueryType::InternalSessionMonitor)
         {
-          if (auto cache = sessions.getMap(cmd.shtk); cache)
-            handlers[static_cast<const std::size_t>(cmd.type)](cache->get(), cmd);
+          sessions.removeExpired();
+        }
+        else  [[likely]]
+        {
+          if (auto map = sessions.getMap(cmd.shtk); map)
+            handlers[static_cast<const std::size_t>(cmd.type)](map->get(), cmd);
           else
             send(cmd, createErrorResponse(QueryTypeToName.at(cmd.type) + "_RSP", RequestStatus::SessionNotExist, cmd.shtk).dump());
         }
