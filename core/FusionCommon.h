@@ -135,7 +135,7 @@ enum class RequestStatus
   KeyLengthInvalid,
   KeyMissing,
   KeyTypeInvalid,
-  ValueMissing = 40,  // NOTE not actually used
+  ValueMissing = 40,
   ValueTypeInvalid,
   ValueSize,
   OutOfBounds,
