@@ -100,6 +100,7 @@ struct TestData
 {
 	json request;
 	std::vector<json> expected;
+	bool requiresToken {true};
 };
 
 
@@ -131,17 +132,24 @@ struct TestClient
 		}
 	};
 
-
-	bool open (const std::string host = "127.0.0.1", const int port = 1987)
+	bool openNoSession (const std::string host = "127.0.0.1", const int port = 1987)
 	{
 		ws = client.openQueryWebSocket(host, port, "/", std::bind(&TestClient::onMessage, std::ref(*this), std::placeholders::_1));
 		return ws != nullptr;
 	}
 
+	bool open (const std::string host = "127.0.0.1", const int port = 1987)
+	{
+		return openNoSession(host, port) && createSession();
+	}
 
-	void test (const TestData& td)
+
+	void test (TestData& td)
 	{		
 		responses.clear();
+
+		if (td.requiresToken && td.request.begin().value().is_object())
+			td.request.begin().value().insert(token.cbegin(), token.cend());
 
 		if (!td.expected.empty())	// this is for SETQ and ADDQ which only response on error
 			latch = std::make_unique<std::latch>(td.expected.size());
@@ -153,23 +161,52 @@ struct TestClient
 		
 		latch.reset();
 
-		// short path
-		if (td.expected.size() == 1)
-			EXPECT_TRUE(td.expected[0] == responses[0]) << responses[0];			
-		else
+		for (auto& rsp : responses)
 		{
-			for (auto& rsp : responses)
-				EXPECT_TRUE(std::any_of(td.expected.cbegin(), td.expected.cend(), [&rsp](auto& expected){ return expected == rsp; })) << rsp;
+			if (td.requiresToken)
+				rsp.begin().value().erase("tkn");
+
+			EXPECT_TRUE(std::any_of(td.expected.cbegin(), td.expected.cend(), [&rsp](auto& expected){ return expected == rsp; })) << rsp;
 		}
 	}
 
+	void test (TestData&& data)
+	{		
+		TestData td = std::move(data);
+		test(td);
+	}
 
-	Ioc ioc;
-	Client client;
-	WebSocketSession ws;
-	std::unique_ptr<std::latch> latch;
-	std::vector<json> responses;
-	std::mutex responsesMux;
+
+	private:
+		bool createSession ()
+		{
+			latch = std::make_unique<std::latch>(1);
+
+			json sesh{{"SH_NEW", {{"name","test"}}}};
+			ws->send(sesh.dump());
+
+			latch->wait();
+			latch.reset();
+
+			auto& rsp = responses[0];
+
+			if (rsp.contains("SH_NEW_RSP") && rsp["SH_NEW_RSP"]["st"] == 1)
+			{
+				token["tkn"] = rsp["SH_NEW_RSP"]["tkn"];
+				return true;
+			}
+			return false;			
+		}
+
+
+	public:
+		Ioc ioc;
+		Client client;
+		WebSocketSession ws;
+		std::unique_ptr<std::latch> latch;
+		std::vector<json> responses;
+		std::mutex responsesMux;
+		json token;
 };
 
 }

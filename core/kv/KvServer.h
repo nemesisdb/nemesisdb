@@ -186,7 +186,7 @@ public:
                     {
                       auto [status, queryName] = m_ksHandler->handle(ws, std::move(request));
                       if (status != RequestStatus::Ok)
-                        ws->send(createMessageResponse(queryName+"_RSP", status).dump(), kv::WsSendOpCode);
+                        ws->send(createErrorResponse(queryName+"_RSP", status).dump(), kv::WsSendOpCode);
                     }
                   }
                   else

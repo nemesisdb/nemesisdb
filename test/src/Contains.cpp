@@ -9,7 +9,7 @@ TEST_F(FusionTest, NoResult)
 
 	ASSERT_TRUE(tc.open());
 
-	tc.test({TestData { .request = R"({ "KV_CONTAINS":["somekey"] })"_json,	.expected = {R"({ "KV_CONTAINS_RSP":{ "st":22, "k":"somekey" } })"_json} }});
+	tc.test({TestData { .request = R"({ "KV_CONTAINS":{"keys":["somekey"]} })"_json,	.expected = {R"({ "KV_CONTAINS_RSP":{ "keys":{"somekey":false}, "st":1 } })"_json} }});
 }
 
 
@@ -19,9 +19,9 @@ TEST_F(FusionTest, OneResult)
 
 	ASSERT_TRUE(tc.open());
 	
-	tc.test({TestData { .request = R"({ "KV_CONTAINS":["somekey"] })"_json,	.expected = {R"({ "KV_CONTAINS_RSP":{ "st":22, "k":"somekey" } })"_json} }});
-  tc.test({TestData { .request = R"({ "KV_SET":{"somekey":"billybob"}})"_json,	.expected = {R"({ "KV_SET_RSP":{ "st":20, "k":"somekey" } })"_json} }});
-	tc.test({TestData { .request = R"({ "KV_CONTAINS":["somekey"] })"_json,	.expected = {R"({ "KV_CONTAINS_RSP":{ "st":23, "k":"somekey" } })"_json} }});
+	tc.test({TestData { .request = R"({ "KV_CONTAINS":{"keys":["somekey"]} })"_json,	.expected = {R"({ "KV_CONTAINS_RSP":{ "keys":{"somekey":false}, "st":1 } })"_json} }});
+  tc.test({TestData { .request = R"({ "KV_SET":{"keys":{"somekey":"billybob"}}})"_json,	.expected = {R"({ "KV_SET_RSP":{ "keys":{"somekey":20} } })"_json} }});
+	tc.test({TestData { .request = R"({ "KV_CONTAINS":{"keys":["somekey"]} })"_json,	.expected = {R"({ "KV_CONTAINS_RSP":{ "keys":{"somekey":true}, "st":1 } })"_json} }});
 }
 
 
@@ -31,35 +31,11 @@ TEST_F(FusionTest, MultipleResults)
 
 	ASSERT_TRUE(tc.open());
 	
-	tc.test({TestData { .request = R"({ "KV_CONTAINS":["somekey", "anotherkey"] })"_json,	.expected = { R"({ "KV_CONTAINS_RSP":{"st":22, "k":"somekey"} })"_json,
-                                                                                                      R"({ "KV_CONTAINS_RSP":{"st":22, "k":"anotherkey"} })"_json} }});
-
-  tc.test({TestData { .request = R"({ "KV_SET":{"somekey":"billybob", "anotherkey":"blah"}})"_json,	.expected = { R"({ "KV_SET_RSP":{ "st":20, "k":"somekey" } })"_json,
-                                                                                                                    R"({ "KV_SET_RSP":{ "st":20, "k":"anotherkey" } })"_json} }});
-
-	tc.test({TestData { .request = R"({ "KV_CONTAINS":["somekey", "anotherkey"] })"_json,	.expected = { R"({ "KV_CONTAINS_RSP":{ "st":23, "k":"somekey" } })"_json,
-                                                                                                      R"({ "KV_CONTAINS_RSP":{ "st":23, "k":"anotherkey" } })"_json} }});
+	tc.test({TestData { .request = R"({ "KV_CONTAINS":{"keys":["somekey","anotherkey"]} })"_json,	.expected = {R"({ "KV_CONTAINS_RSP":{ "keys":{"somekey":false, "anotherkey":false}, "st":1 } })"_json }}});
+  tc.test({TestData { .request = R"({ "KV_SET":{"keys":{"somekey":"tesco", "anotherkey":"asda"}}})"_json,	.expected = {R"({ "KV_SET_RSP":{ "keys":{"somekey":20, "anotherkey":20} } })"_json} }});
+	tc.test({TestData { .request = R"({ "KV_CONTAINS":{"keys":["somekey","anotherkey"]} })"_json,	.expected = {R"({ "KV_CONTAINS_RSP":{ "keys":{"somekey":true, "anotherkey":true}, "st":1 } })"_json }}});
 }
 
-
-TEST_F(FusionTest, ShortKey)
-{
-	TestClient tc;
-
-	ASSERT_TRUE(tc.open());
-
-  tc.test({TestData { .request = R"({ "KV_CONTAINS":["short"] })"_json,	.expected = {R"({ "KV_CONTAINS_RSP":{ "st":25, "k":"short" } })"_json} }});
-}
-
-
-TEST_F(FusionTest, IncorrectCommandType)
-{
-	TestClient tc;
-
-	ASSERT_TRUE(tc.open());
-
-	tc.test(TestData { .request = R"({ "KV_CONTAINS":{"a":"b"} })"_json,	.expected = {R"({ "KV_CONTAINS_RSP":{ "st":12, "k":"" } })"_json} });
-}
 
 
 int main (int argc, char ** argv)

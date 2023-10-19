@@ -60,117 +60,6 @@ private:
 
   void run ()
   {
-    auto set = [this](CacheMap& map, KvCommand& cmd)
-    {
-      auto [it, inserted] = map.set(cmd.contents);
-      send(cmd, PoolRequestResponse::keySet(inserted, it->first).dump());
-    };
-
-    auto setQ = [this](CacheMap& map, KvCommand& cmd)
-    {
-      try
-      {
-        map.set(cmd.contents);
-      }
-      catch(const std::exception& e)
-      {
-        const auto& key = cmd.contents.begin().key();
-        fcjson unknownErrRsp{{"KV_SETQ_RSP", {{"st", RequestStatus::Unknown}, {"k", std::move(key)}}}};
-        send(cmd, unknownErrRsp.dump());
-      }
-    };
-
-
-    auto get = [this](CacheMap& map, KvCommand& cmd)
-    {
-      if (auto [exists, pair] = map.get(cmd.contents); exists)
-        send(cmd, PoolRequestResponse::getFound(std::move(pair)).dump());
-      else
-        send(cmd, PoolRequestResponse::getNotFound(std::move(cmd.contents)).dump()); 
-    };
-
-
-    auto add = [this](CacheMap& map, KvCommand& cmd)
-    {
-      auto [added, key] = map.add(cmd.contents);
-      send(cmd, PoolRequestResponse::keyAdd(added, std::move(key)).dump()); 
-    };
-
-
-    auto addQ = [this](CacheMap& map, KvCommand& cmd)
-    {
-      if (auto [added, key] = map.add(cmd.contents); !added)  // only respond if key not added
-        send(cmd, PoolRequestResponse::keyAddQ(std::move(key)).dump()); 
-    };
-
-
-    auto remove = [this](CacheMap& map, KvCommand& cmd)
-    {
-      const auto& key = cmd.contents.get_ref<const std::string&>();
-      const auto removed = map.remove(key);
-      send(cmd, PoolRequestResponse::keyRemoved(removed, std::move(key)).dump()); 
-    };
-
-
-    auto clear = [this](CacheMap& map, KvCommand& cmd)
-    {
-      const auto[valid, size] = map.clear();
-      cmd.syncResponseHandler(std::make_any<std::tuple<bool, std::size_t>>(std::make_tuple(valid, size)));
-    };
-
-
-    auto serverInfo = [this](CacheMap& map, KvCommand& cmd)
-    {
-      // does nothing, dealt with by ShHandler/KvHandler, but required for handlers array below
-    };
-
-
-    auto count = [this](CacheMap& map, KvCommand& cmd)
-    {
-      cmd.syncResponseHandler(std::make_any<std::size_t>(map.count()));
-    };
-
-    
-    auto append = [this](CacheMap& map, KvCommand& cmd)
-    {
-      RequestStatus status = map.append(cmd.contents);
-      auto& key = cmd.contents.begin().key();
-
-      send(cmd, PoolRequestResponse::append(status, std::move(key)).dump());
-    };
-
-    
-    auto contains = [this](CacheMap& map, KvCommand& cmd)
-    {
-      if (map.contains(cmd.contents))
-        send(cmd, PoolRequestResponse::contains(RequestStatus::KeyExists, cmd.contents.get<std::string_view>()).dump());
-      else
-        send(cmd, PoolRequestResponse::contains(RequestStatus::KeyNotExist, cmd.contents.get<std::string_view>()).dump());
-    };
-
-    
-    auto arrayMove = [this](CacheMap& map, KvCommand& cmd)
-    {
-      auto& key = cmd.contents.begin().key();
-      auto& positions = cmd.contents.begin().value();
-
-      if (!positions.is_array())
-        send(cmd, PoolRequestResponse::arrayMove(RequestStatus::ValueTypeInvalid, key).dump());
-      else
-      {
-        const auto status = map.arrayMove(cmd.contents);
-        send(cmd, PoolRequestResponse::arrayMove(status, key).dump());
-      }
-    };
-
-
-    auto find = [this](CacheMap& map, KvCommand& cmd)
-    {
-      auto keys = map.find(cmd.contents, cmd.find);
-      cmd.syncResponseHandler(std::make_any<std::vector<cachedkey>>(std::move(keys)));
-    };
-
-
     auto sessionNew = [this](CacheMap& map, KvCommand& cmd)
     {
       send(cmd, PoolRequestResponse::sessionNew(RequestStatus::Ok, cmd.shtk, cmd.contents.at("name")).dump()); 
@@ -188,16 +77,21 @@ private:
       // handled below
     };
 
+    auto sessionInfo = [this](CacheMap& map, KvCommand& cmd)
+    {
+      // handled below
+    };
+
 
     auto sessionSet = [this](CacheMap& map, KvCommand& cmd)
     {
       fcjson rsp;
-      rsp["SH_SET_RSP"]["tkn"] = cmd.shtk;
+      rsp["KV_SET_RSP"]["tkn"] = cmd.shtk;
 
       for(auto& kv : cmd.contents.items())
       {
         auto [it, inserted] = map.set(kv.key(), std::move(kv.value()));
-        rsp["SH_SET_RSP"]["keys"][kv.key()] = inserted ? RequestStatus::KeySet : RequestStatus::KeyUpdated;
+        rsp["KV_SET_RSP"]["keys"][kv.key()] = inserted ? RequestStatus::KeySet : RequestStatus::KeyUpdated;
       }
 
       send(cmd, rsp.dump());
@@ -216,29 +110,32 @@ private:
         }
         catch(const std::exception& e)
         {
-          rsp["SH_SETQ_RSP"]["keys"][kv.key()] = RequestStatus::Unknown;
+          rsp["KV_SETQ_RSP"]["keys"][kv.key()] = RequestStatus::Unknown;
         }
       }
 
       if (!rsp.is_null())
       {
-        rsp["SH_SETQ_RSP"]["tkn"] = cmd.shtk;
+        rsp["KV_SETQ_RSP"]["tkn"] = cmd.shtk;
         send(cmd, rsp.dump());
       }      
     };
 
 
-    auto sessionGet = [this, &get](CacheMap& map, KvCommand& cmd)
+    auto sessionGet = [this](CacheMap& map, KvCommand& cmd)
     {
       fcjson rsp;
-      rsp["SH_GET_RSP"]["tkn"] = cmd.shtk;
+      rsp["KV_GET_RSP"]["tkn"] = cmd.shtk;
 
       for(auto& item : cmd.contents.items())
       {
-        if (auto [exists, pair] = map.get(item.value()); exists)
-          rsp["SH_GET_RSP"].emplace(std::move(pair.begin().key()), std::move(pair.begin().value()));
-        else
-          rsp["SH_GET_RSP"][item.value()] = fcjson{}; //null
+        if (item.value().is_string()) [[likely]]
+        {
+          if (auto [exists, pair] = map.get(item.value()); exists)
+            rsp["KV_GET_RSP"].emplace(std::move(pair.begin().key()), std::move(pair.begin().value()));
+          else
+            rsp["KV_GET_RSP"][item.value()] = fcjson{}; //null
+        }        
       }
 
       send(cmd, rsp.dump());
@@ -248,12 +145,15 @@ private:
     auto sessionAdd = [this](CacheMap& map, KvCommand& cmd)
     {
       fcjson rsp;
-      rsp["SH_ADD_RSP"]["tkn"] = cmd.shtk;
+      rsp["KV_ADD_RSP"]["tkn"] = cmd.shtk;
+
+      if (cmd.contents.empty())
+        rsp["KV_ADD_RSP"]["keys"] = fcjson::object();
 
       for(auto& kv : cmd.contents.items())
       {
         const auto inserted = map.add(kv.key(), std::move(kv.value()));
-        rsp["SH_ADD_RSP"]["keys"][kv.key()] = inserted ? RequestStatus::KeySet : RequestStatus::KeyExists;
+        rsp["KV_ADD_RSP"]["keys"][kv.key()] = inserted ? RequestStatus::KeySet : RequestStatus::KeyExists;
       }
 
       send(cmd, rsp.dump());
@@ -264,25 +164,43 @@ private:
     {
       fcjson rsp;
 
-      for(auto& kv : cmd.contents.items())
+      if (cmd.contents.empty())
       {
-        if (const auto inserted = map.add(kv.key(), std::move(kv.value())); !inserted)
-          rsp["SH_ADD_RSP"]["keys"][kv.key()] = RequestStatus::KeyExists;
-      }
-
-      if (!rsp.is_null())
-      {
-        rsp["SH_ADD_RSP"]["tkn"] = cmd.shtk;
+        rsp["KV_ADDQ_RSP"]["keys"] = fcjson::object();
         send(cmd, rsp.dump());
+      }
+      else
+      {
+        for(auto& kv : cmd.contents.items())
+        {
+          if (const auto inserted = map.add(kv.key(), std::move(kv.value())); !inserted)
+            rsp["KV_ADDQ_RSP"]["keys"][kv.key()] = RequestStatus::KeyExists;
+        }
+
+        if (!rsp.is_null())
+        {
+          rsp["KV_ADDQ_RSP"]["tkn"] = cmd.shtk;
+          send(cmd, rsp.dump());
+        }
       }
     };
 
 
     auto sessionRemove = [this](CacheMap& map, KvCommand& cmd)
     {
-      const auto& key = cmd.contents.get_ref<const std::string&>();
-      const auto removed = map.remove(key);
-      send(cmd, PoolRequestResponse::sessionRemove(cmd.shtk, removed, std::move(key)).dump());
+      fcjson rsp;
+      rsp["KV_RMV_RSP"]["tkn"] = cmd.shtk;
+
+      for(auto& key : cmd.contents.items())
+      {
+        if (key.value().is_string())
+        {
+          const auto removed = map.remove(key.value().get_ref<const cachedkey&>());
+          rsp["KV_RMV_RSP"][key.value()] = removed ? RequestStatus::KeyRemoved : RequestStatus::KeyNotExist;
+        }
+      }
+
+      send(cmd, rsp.dump());
     };
 
 
@@ -311,43 +229,43 @@ private:
     auto sessionContains = [this](CacheMap& map, KvCommand& cmd)
     {
       fcjson rsp;
-      rsp["SH_CONTAINS_RSP"]["st"] = RequestStatus::Ok;
-      rsp["SH_CONTAINS_RSP"]["tkn"] = cmd.shtk;
+      rsp["KV_CONTAINS_RSP"]["st"] = RequestStatus::Ok;
+      rsp["KV_CONTAINS_RSP"]["tkn"] = cmd.shtk;
 
       for (auto& item : cmd.contents.items())
-        rsp["SH_CONTAINS_RSP"]["keys"][item.value()] = map.contains(item.value());
+        rsp["KV_CONTAINS_RSP"]["keys"][item.value()] = map.contains(item.value());
 
       send(cmd, rsp.dump());
     };
 
 
-    auto sessionArrayMove = [this](CacheMap& map, KvCommand& cmd)
-    {
-      fcjson rsp;
-      rsp["SH_ARRAY_MOVE_RSP"]["tkn"] = cmd.shtk;
+    // auto sessionArrayMove = [this](CacheMap& map, KvCommand& cmd)
+    // {
+    //   fcjson rsp;
+    //   rsp["KV_ARRAY_MOVE_RSP"]["tkn"] = cmd.shtk;
 
-      for (auto& item : cmd.contents.items())
-      {
-        if (!item.value().is_array())
-          rsp["SH_ARRAY_MOVE_RSP"][item.key()] = RequestStatus::ValueTypeInvalid;
-        else
-        {
-          const auto status = map.arrayMove(fcjson {{item.key(), std::move(item.value())}});
-          rsp["SH_ARRAY_MOVE_RSP"][item.key()] = status;
-        }
-      }
+    //   for (auto& item : cmd.contents.items())
+    //   {
+    //     if (!item.value().is_array())
+    //       rsp["KV_ARRAY_MOVE_RSP"][item.key()] = RequestStatus::ValueTypeInvalid;
+    //     else
+    //     {
+    //       const auto status = map.arrayMove(fcjson {{item.key(), std::move(item.value())}});
+    //       rsp["KV_ARRAY_MOVE_RSP"][item.key()] = status;
+    //     }
+    //   }
 
-      send(cmd, rsp.dump());
-    };
+    //   send(cmd, rsp.dump());
+    // };
 
 
     auto sessionFind = [this](CacheMap& map, KvCommand& cmd)
     {
       fcjson rsp;
-      rsp["SH_FIND_RSP"]["tkn"] = cmd.shtk;
-      rsp["SH_FIND_RSP"]["keys"] = fcjson::array();
+      rsp["KV_FIND_RSP"]["tkn"] = cmd.shtk;
+      rsp["KV_FIND_RSP"]["keys"] = fcjson::array();
       
-      map.findNoRegEx(cmd.contents, cmd.find, rsp["SH_FIND_RSP"]["keys"]);
+      map.findNoRegEx(cmd.contents, cmd.find, rsp["KV_FIND_RSP"]["keys"]);
 
       send(cmd, rsp.dump());
     };
@@ -356,7 +274,7 @@ private:
     auto sessionUpdate = [this](CacheMap& map, KvCommand& cmd)
     {
       fcjson rsp;
-      rsp["SH_UPDATE_RSP"]["tkn"] = cmd.shtk;
+      rsp["KV_UPDATE_RSP"]["tkn"] = cmd.shtk;
             
       fcjson::iterator  itKey = cmd.contents.begin(),
                         itPath = std::next(itKey, 1);
@@ -383,7 +301,7 @@ private:
       else
         status = RequestStatus::PathInvalid;  // rename to PathInvalid
 
-      rsp["SH_UPDATE_RSP"]["st"] = status;
+      rsp["KV_UPDATE_RSP"]["st"] = status;
 
       send(cmd, rsp.dump());
     };
@@ -391,23 +309,11 @@ private:
 
     // CAREFUL: these have to be in the order of KvQueryType enum
     static const std::array<std::function<void(CacheMap&, KvCommand&)>, static_cast<std::size_t>(KvQueryType::Max)> handlers = 
-    {      
-      set,
-      setQ,
-      get,
-      add,
-      addQ,
-      remove,
-      clear,
-      serverInfo,
-      count,
-      append,
-      contains,
-      arrayMove,
-      find,
+    {    
       sessionNew,
       sessionEnd,
       sessionOpen,
+      sessionInfo,
       sessionSet,
       sessionSetQ,
       sessionGet,
@@ -418,7 +324,7 @@ private:
       sessionCount,
       sessionAppend,
       sessionContains,
-      sessionArrayMove,
+      //sessionArrayMove,
       sessionFind,
       sessionUpdate
     };
@@ -426,9 +332,6 @@ private:
 
     KvCommand cmd;
     Sessions sessions;
-
-    // create default session
-    sessions.start(defaultSessionToken);
 
     while (m_run)
     {
@@ -438,7 +341,9 @@ private:
 
         if (cmd.type == KvQueryType::SessionNew)
         {
-          auto cache = sessions.start(cmd.shtk);
+          const bool shared = cmd.contents.value("shared", false);
+          auto cache = sessions.start(cmd.shtk, shared);
+
           handlers[static_cast<const std::size_t>(cmd.type)](cache->get(), cmd);
         }
         else if (cmd.type == KvQueryType::SessionEnd)
@@ -451,10 +356,25 @@ private:
           const auto haveSession = sessions.contains(cmd.shtk);
           cmd.syncResponseHandler(std::any{haveSession});
         }
-        else if (auto cache = sessions.get(cmd.shtk); cache)
-          handlers[static_cast<const std::size_t>(cmd.type)](cache->get(), cmd);
+        else if (cmd.type == KvQueryType::SessionInfo)
+        {
+          if (auto sesh = sessions.get(cmd.shtk); sesh)
+          {
+            const auto shared = sesh->get().shared;
+            const auto keyCount = sesh->get().map.count();
+            
+            send(cmd, PoolRequestResponse::sessionInfo(RequestStatus::Ok, cmd.shtk, shared, keyCount).dump());
+          }
+          else
+            send(cmd, PoolRequestResponse::sessionInfo(RequestStatus::SessionNotExist, cmd.shtk).dump());
+        }
         else
-          send(cmd, createMessageResponse(QueryTypeToName.at(cmd.type) + "_RSP", RequestStatus::SessionNotExist).dump());
+        {
+          if (auto cache = sessions.getMap(cmd.shtk); cache)
+            handlers[static_cast<const std::size_t>(cmd.type)](cache->get(), cmd);
+          else
+            send(cmd, createErrorResponse(QueryTypeToName.at(cmd.type) + "_RSP", RequestStatus::SessionNotExist, cmd.shtk).dump());
+        }
       
         // TODO command = KvCommand{};
       }
