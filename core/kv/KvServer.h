@@ -46,12 +46,20 @@ public:
   {
     m_run = false;
 
+    if (m_monitor.joinable())
     {
-      std::scoped_lock lck{m_sessionsMux};
-      for (auto ws : m_sessions)
+      std::cout << "joining monitor\n";
+      m_monitor.join();
+      std::cout << "joined monitor\n";
+    }
+      
+
+    {
+      std::scoped_lock lck{m_wsSessionsMux};
+      for (auto ws : m_wsSessions)
         ws->end(1000); 
 
-      m_sessions.clear();
+      m_wsSessions.clear();
     }
 
     {
@@ -121,8 +129,6 @@ public:
     kv::MaxPools = std::max<std::size_t>(1U, nCores - nIoThreads);
 
     m_kvHandler = new kv::KvHandler {kv::MaxPools, nCores - kv::MaxPools, keySets};
-    m_ksHandler = new ks::KsHandler {keySets};
-
     
     #ifndef FC_UNIT_TEST
     std::cout << "Fusion Max Cores: " << FUSION_MAX_CORES << '\n'
@@ -150,8 +156,8 @@ public:
           
           .open = [this](KvWebSocket * ws)
           {
-            std::scoped_lock lck{m_sessionsMux};
-            m_sessions.insert(ws);
+            std::scoped_lock lck{m_wsSessionsMux};
+            m_wsSessions.insert(ws);
           },          
           .message = [this, serverStats](KvWebSocket * ws, std::string_view message, uWS::OpCode opCode)
           {   
@@ -171,8 +177,17 @@ public:
                   ws->send(createErrorResponse(commandName + "_RSP", RequestStatus::CommandMultiple).dump(), kv::WsSendOpCode);
                 else
                 {
+                  auto [status, queryName] = m_kvHandler->handle(ws, std::move(request));
+
+                  if (status == RequestStatus::CommandType)
+                    ws->send(createErrorResponse(queryName+"_RSP", status).dump(), kv::WsSendOpCode);
+                  else if (status != RequestStatus::Ok)
+                    ws->send(createErrorResponse(status, queryName).dump(), kv::WsSendOpCode);
+
+                  /*
                   if (commandName.size() >= 2)  [[likely]]
                   {
+                    
                     if ((commandName[0] == 'K' && commandName[1] == 'V') || (commandName[0] == 'S' && commandName[1] == 'H'))
                     {
                       auto [status, queryName] = m_kvHandler->handle(ws, std::move(request));
@@ -188,10 +203,11 @@ public:
                       auto [status, queryName] = m_ksHandler->handle(ws, std::move(request));
                       if (status != RequestStatus::Ok)
                         ws->send(createErrorResponse(queryName+"_RSP", status).dump(), kv::WsSendOpCode);
-                    }
+                    }                    
                   }
                   else
                     ws->send(createErrorResponse(commandName + "_RSP", RequestStatus::CommandNotExist).dump(), kv::WsSendOpCode);
+                  */
                 }                
               }
             }
@@ -200,12 +216,12 @@ public:
           {
             ws->getUserData()->connected->store(false);
 
-            // when we shutdown (stop()), have to call ws->end() other uWS doesn't return.
+            // when we shutdown, we have to call ws->end() to close each client otherwise uWS loop doesn't return,
             // but when we call ws->end(), this lambda is called, so we need to avoid mutex deadlock with this flag
-            if (!m_run)
+            if (m_run)
             {
-              std::scoped_lock lck{m_sessionsMux};
-              m_sessions.erase(ws);
+              std::scoped_lock lck{m_wsSessionsMux};
+              m_wsSessions.erase(ws);
             }
           }
         })
@@ -232,7 +248,10 @@ public:
 
       if (thread)
       {
-        m_threads.push_back(thread);
+        {
+          std::scoped_lock mtx{m_threadsMux};
+          m_threads.push_back(thread);
+        }
         
         if (!setThreadAffinity(thread->native_handle(), core))
           std::cout << "Failed to assign io thread to core " << core << '\n';    
@@ -247,8 +266,6 @@ public:
       std::cout << "Failed to listen on " << ip << ":"  << port << std::endl;
     else
     {
-      std::cout << "Noice\n";
-      
       m_monitor = std::move(std::jthread{[this]
       {
         std::chrono::seconds period {5};
@@ -269,6 +286,8 @@ public:
             nextCheck = std::chrono::steady_clock::now() + period;
           }
         }
+
+        //std::cout << "Monitor bye\n";
       }});
     }
     
@@ -278,14 +297,15 @@ public:
     #endif
   }
 
+
   private:
     std::vector<std::jthread *> m_threads;
     std::vector<us_listen_socket_t *> m_sockets;
-    std::set<KvWebSocket *> m_sessions;
+    std::set<KvWebSocket *> m_wsSessions;
     kv::KvHandler * m_kvHandler;
-    ks::KsHandler * m_ksHandler;
     std::mutex m_socketsMux;
-    std::mutex m_sessionsMux;
+    std::mutex m_wsSessionsMux;
+    std::mutex m_threadsMux;
     std::atomic_bool m_run; // true if fusion has triggered a close
     std::jthread m_monitor;
 };

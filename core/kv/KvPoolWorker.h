@@ -16,10 +16,9 @@
 
 namespace fusion { namespace core { namespace kv {
 
-// A number of KvPoolWorker are created (MaxPools), which is typically hardware_concurrency() minus the number of IO threads.
+
+// A number of KvPoolWorker are created (MaxPools), which is hardware_concurrency() minus the number of IO threads.
 // A pool worker runs in a thread which is assigned to a core. Each pool worker has a dedicated map which stores the key/values. 
-// A key is hashed and then modulode with MaxPools which determines which pool worker handles that key.
-// The hash is just a simple addition of the first N characters in the key (rather than std::hash, which is a bit heavy for this usecase).
 class KvPoolWorker
 { 
 public:
@@ -57,12 +56,6 @@ private:
     });
   }
   
-
-  void checkExpiredSessions(Sessions& session)
-  {
-    
-  }
-
 
   void run ()
   {
