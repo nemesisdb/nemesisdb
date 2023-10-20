@@ -36,7 +36,7 @@ using SessionName = std::string;
 using SessionClock = std::chrono::steady_clock;
 using SessionExpireTime = SessionClock::time_point;
 using SessionDuration = std::chrono::seconds;
-
+using SessionExpireTimeUnit = std::chrono::seconds;
 
 
 struct WsSession
@@ -185,11 +185,25 @@ bool isKeyValid(const std::string_view& k)
 
 
 // Response when command known but response
-static fcjson createErrorResponse (const std::string_view commandRsp, const RequestStatus status, const SessionToken& tkn = "", const std::string_view msg = "")
+static fcjson createErrorResponse (const std::string_view commandRsp, const RequestStatus status, const SessionToken& tkn, const std::string_view msg)
 {
   fcjson rsp;
   rsp[commandRsp]["st"] = status;
-  rsp[commandRsp]["tkn"] = tkn;
+  
+  if (tkn.empty())
+    rsp[commandRsp]["tkn"] = fcjson{};
+  else
+    rsp[commandRsp]["tkn"] = tkn;
+
+  rsp[commandRsp]["m"] = msg;
+  return rsp;
+}
+
+static fcjson createErrorResponse (const std::string_view commandRsp, const RequestStatus status, const std::string_view msg = "")
+{
+  fcjson rsp;
+  rsp[commandRsp]["st"] = status;
+  rsp[commandRsp]["tkn"] = fcjson{};
   rsp[commandRsp]["m"] = msg;
   return rsp;
 }

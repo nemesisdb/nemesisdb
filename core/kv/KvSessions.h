@@ -39,8 +39,9 @@ private:
   struct ExpiryTracking
   {
     SessionToken token;
-    SessionExpireTime time;
+    SessionExpireTime time{};
   };
+  
 
   struct ExpiryTrackingCmp
   {

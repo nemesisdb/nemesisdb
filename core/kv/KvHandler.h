@@ -222,7 +222,7 @@ private:
     else if (!cmd.at("name").is_string())
       ws->send(createErrorResponse(queryRspName, RequestStatus::ValueTypeInvalid, "name").dump(), WsSendOpCode);
     else if (cmd.at("name").get_ref<const std::string&>().empty())
-      ws->send(createErrorResponse(queryRspName, RequestStatus::ValueTypeInvalid, "name").dump(), WsSendOpCode);
+      ws->send(createErrorResponse(queryRspName, RequestStatus::ValueSize, "name").dump(), WsSendOpCode);
     else
     {
       bool expiryValid = true, sharedValid = true;

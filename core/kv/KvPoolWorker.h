@@ -362,9 +362,11 @@ private:
           if (auto sesh = sessions.get(cmd.shtk); sesh)
           {
             const auto shared = sesh->get().shared;
+            const auto expires = sesh->get().expires;
+            const auto expireTime = std::chrono::time_point_cast<SessionExpireTimeUnit>(sesh->get().expireInfo.time).time_since_epoch();
             const auto keyCount = sesh->get().map.count();
             
-            send(cmd, PoolRequestResponse::sessionInfo(RequestStatus::Ok, cmd.shtk, shared, keyCount).dump());
+            send(cmd, PoolRequestResponse::sessionInfo(RequestStatus::Ok, cmd.shtk, shared, expires, expireTime, keyCount).dump());
           }
           else
             send(cmd, PoolRequestResponse::sessionInfo(RequestStatus::SessionNotExist, cmd.shtk).dump());

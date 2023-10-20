@@ -100,7 +100,8 @@ struct TestData
 {
 	json request;
 	std::vector<json> expected;
-	bool requiresToken {true};
+	bool checkToken{false};
+	json token;
 };
 
 
@@ -134,12 +135,14 @@ struct TestClient
 
 	bool openNoSession (const std::string host = "127.0.0.1", const int port = 1987)
 	{
+		removeTokenInRsp = false;
 		ws = client.openQueryWebSocket(host, port, "/", std::bind(&TestClient::onMessage, std::ref(*this), std::placeholders::_1));
 		return ws != nullptr;
 	}
 
 	bool open (const std::string host = "127.0.0.1", const int port = 1987)
 	{
+		removeTokenInRsp = true;
 		return openNoSession(host, port) && createSession();
 	}
 
@@ -148,7 +151,7 @@ struct TestClient
 	{		
 		responses.clear();
 
-		if (td.requiresToken && td.request.begin().value().is_object())
+		if (!token.is_null() && td.request.begin().value().is_object())
 			td.request.begin().value().insert(token.cbegin(), token.cend());
 
 		if (!td.expected.empty())	// this is for SETQ and ADDQ which only response on error
@@ -163,12 +166,21 @@ struct TestClient
 
 		for (auto& rsp : responses)
 		{
-			if (td.requiresToken)
-				rsp.begin().value().erase("tkn");
+			// we always erase the token because setting that in TestData each time is tedious
+			// so instead we grab it out of the response
+			if (rsp.begin().value().contains("tkn"))
+			{
+				if (!rsp.begin().value().at("tkn").is_null())
+					td.token["tkn"] = rsp.begin().value().at("tkn");
+
+				if (!td.checkToken)
+					rsp.begin().value().erase("tkn");
+			}
 
 			EXPECT_TRUE(std::any_of(td.expected.cbegin(), td.expected.cend(), [&rsp](auto& expected){ return expected == rsp; })) << rsp;
 		}
 	}
+
 
 	void test (TestData&& data)
 	{		
@@ -195,7 +207,7 @@ struct TestClient
 				token["tkn"] = rsp["SH_NEW_RSP"]["tkn"];
 				return true;
 			}
-			return false;			
+			return false;
 		}
 
 
@@ -207,6 +219,7 @@ struct TestClient
 		std::vector<json> responses;
 		std::mutex responsesMux;
 		json token;
+		bool removeTokenInRsp{false};
 };
 
 }

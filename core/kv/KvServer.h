@@ -47,12 +47,7 @@ public:
     m_run = false;
 
     if (m_monitor.joinable())
-    {
-      std::cout << "joining monitor\n";
       m_monitor.join();
-      std::cout << "joined monitor\n";
-    }
-      
 
     {
       std::scoped_lock lck{m_wsSessionsMux};
@@ -241,6 +236,7 @@ public:
       std::cout << "Failed to listen on " << ip << ":"  << port << std::endl;
     else
     {
+      #ifndef FC_UNIT_TEST_NOMONITOR
       m_monitor = std::move(std::jthread{[this]
       {
         std::chrono::seconds period {5};
@@ -250,20 +246,14 @@ public:
         {
           std::this_thread::sleep_for(std::chrono::seconds{1});
 
-          std::cout << "Monitor checking\n";
-
           if (m_run && std::chrono::steady_clock::now() >= nextCheck)
           {
-            std::cout << "Monitor triggered\n";
-            
             m_kvHandler->monitor();
-
             nextCheck = std::chrono::steady_clock::now() + period;
           }
-        }
-
-        //std::cout << "Monitor bye\n";
+        }        
       }});
+      #endif
     }
     
 
