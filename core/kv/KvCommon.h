@@ -125,13 +125,14 @@ struct PoolRequestResponse
     return rsp;
   }
 
-  static fcjson sessionInfo (const RequestStatus status, const SessionToken& token, const bool shared, bool expires, SessionExpireTimeUnit expireTime, const std::size_t keyCount)
+  static fcjson sessionInfo (const RequestStatus status, const SessionToken& token, const bool shared, bool expires, const SessionDuration duration, SessionExpireTimeUnit expireTime, const std::size_t keyCount)
   {
     fcjson rsp = sessionInfo(status, token);
     rsp["SH_INFO_RSP"]["shared"] = shared;
-    rsp["SH_INFO_RSP"]["expiry"]["expires"] = expires;
-    rsp["SH_INFO_RSP"]["expiry"]["time"] = expireTime.count();
     rsp["SH_INFO_RSP"]["keyCnt"] = keyCount;
+    rsp["SH_INFO_RSP"]["expiry"]["expires"] = expires;
+    rsp["SH_INFO_RSP"]["expiry"]["duration"] = duration.count();
+    rsp["SH_INFO_RSP"]["expiry"]["time"] = expireTime.count();
     
     return rsp;
   }

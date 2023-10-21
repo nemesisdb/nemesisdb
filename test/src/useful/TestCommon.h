@@ -100,8 +100,11 @@ struct TestData
 {
 	json request;
 	std::vector<json> expected;
+	std::vector<json> actual;
+	std::size_t nResponses{1};
 	bool checkToken{false};
-	json token;
+	bool checkResponses{true};
+	json token;	
 };
 
 
@@ -154,16 +157,22 @@ struct TestClient
 		if (!token.is_null() && td.request.begin().value().is_object())
 			td.request.begin().value().insert(token.cbegin(), token.cend());
 
-		if (!td.expected.empty())	// this is for SETQ and ADDQ which only response on error
-			latch = std::make_unique<std::latch>(td.expected.size());
+		// expected responses are the JSON (TestData::expected) or a count (TestData::nResponses)
+		// this can be 0 because SETQ/ADDQ only response on error
+		const auto expected = td.expected.empty() ? td.nResponses : td.expected.size();
+
+		if (expected)
+			latch = std::make_unique<std::latch>(expected);
 
 		ws->send(td.request.dump());
 		
-		if (!td.expected.empty())
+		if (expected)
 			latch->wait();
 		
 		latch.reset();
 
+
+		// even if checkResponses is false, we still do this to grab the token
 		for (auto& rsp : responses)
 		{
 			// we always erase the token because setting that in TestData each time is tedious
@@ -177,8 +186,11 @@ struct TestClient
 					rsp.begin().value().erase("tkn");
 			}
 
-			EXPECT_TRUE(std::any_of(td.expected.cbegin(), td.expected.cend(), [&rsp](auto& expected){ return expected == rsp; })) << rsp;
+			if (td.checkResponses)
+				EXPECT_TRUE(std::any_of(td.expected.cbegin(), td.expected.cend(), [&rsp](auto& expected){ return expected == rsp; })) << rsp;
 		}
+
+		td.actual = std::move(responses);
 	}
 
 

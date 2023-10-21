@@ -22,6 +22,7 @@ private:
   struct ExpireInfo
   {
     SessionExpireTime time;
+    SessionDuration duration;
   };
 
 
@@ -41,7 +42,7 @@ private:
     SessionToken token;
     SessionExpireTime time{};
   };
-  
+
 
   struct ExpiryTrackingCmp
   {
@@ -66,7 +67,7 @@ public:
       if (duration != SessionDuration::zero())
       {
         auto expireTime = SessionClock::now() + duration;
-        ExpireInfo expire {.time = expireTime};
+        ExpireInfo expire {.time = expireTime, .duration = duration};
         m_sessions[token] = Session{.token = token, .expireInfo = std::move(expire), .shared = shared, .expires = true};
 
         m_expiry.emplace(std::make_pair(expireTime, ExpiryTracking{.token = token, .time = expireTime}));
