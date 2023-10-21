@@ -101,7 +101,7 @@ struct TestData
 	json request;
 	std::vector<json> expected;
 	std::vector<json> actual;
-	std::size_t nResponses{1};
+	std::size_t nResponses{0};
 	bool checkToken{false};
 	bool checkResponses{true};
 	json token;	
@@ -152,7 +152,10 @@ struct TestClient
 
 	void test (TestData& td)
 	{		
+		ASSERT_FALSE(td.expected.size() && td.nResponses) << "Set either expected or nResponses";
+
 		responses.clear();
+		td.actual.clear();
 
 		if (!token.is_null() && td.request.begin().value().is_object())
 			td.request.begin().value().insert(token.cbegin(), token.cend());
@@ -167,30 +170,31 @@ struct TestClient
 		ws->send(td.request.dump());
 		
 		if (expected)
-			latch->wait();
-		
-		latch.reset();
-
-
-		// even if checkResponses is false, we still do this to grab the token
-		for (auto& rsp : responses)
 		{
-			// we always erase the token because setting that in TestData each time is tedious
-			// so instead we grab it out of the response
-			if (rsp.begin().value().contains("tkn"))
-			{
-				if (!rsp.begin().value().at("tkn").is_null())
-					td.token["tkn"] = rsp.begin().value().at("tkn");
+			latch->wait();
+			latch.reset();
 
-				if (!td.checkToken)
-					rsp.begin().value().erase("tkn");
+			// even if checkResponses is false, we still do this to grab the token
+			for (auto& rsp : responses)
+			{
+				// we always erase the token because setting that in TestData each time is tedious
+				// so instead we grab it out of the response
+				if (rsp.begin().value().contains("tkn"))
+				{
+					if (!rsp.begin().value().at("tkn").is_null())
+						td.token["tkn"] = rsp.begin().value().at("tkn");
+
+					// only remove tkn if responses are checked
+					if (!td.checkToken && td.checkResponses)
+						rsp.begin().value().erase("tkn");
+				}
+
+				if (td.checkResponses)
+					EXPECT_TRUE(std::any_of(td.expected.cbegin(), td.expected.cend(), [&rsp](auto& expected){ return expected == rsp; })) << rsp;
 			}
 
-			if (td.checkResponses)
-				EXPECT_TRUE(std::any_of(td.expected.cbegin(), td.expected.cend(), [&rsp](auto& expected){ return expected == rsp; })) << rsp;
+			td.actual = std::move(responses);
 		}
-
-		td.actual = std::move(responses);
 	}
 
 
