@@ -4,3 +4,5 @@ server/Release/bin/*
 releases/*
 package/staging/*
 test/bin/*
+clients/Release/bin/*
+clients/Debug/bin/*

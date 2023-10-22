@@ -19,11 +19,11 @@ static const std::size_t FUSION_MAX_CORES = 8U;
 static const std::size_t FUSION_KV_MINPAYLOAD = 64U;
 static const std::size_t FUSION_KV_MAXPAYLOAD = 2U * 1024U * 1024U;
 
-static const std::size_t MinKeySize = 6U; // characters, not bytes. See createPoolIndex() if changing this
 
-
-using SessionPoolId = std::size_t;
+// general
 using fcjson = nlohmann::ordered_json;
+using FusionClock = std::chrono::steady_clock;
+using FusionTimePoint = FusionClock::time_point;
 
 // kv
 using cachedkey = std::string;
@@ -31,6 +31,7 @@ using cachedvalue = nlohmann::ordered_json;
 using cachedpair = nlohmann::ordered_json;
 
 // session
+using SessionPoolId = std::size_t;
 using SessionToken = std::string;
 using SessionName = std::string;
 using SessionClock = std::chrono::steady_clock;
@@ -172,16 +173,16 @@ static inline bool setThreadAffinity(const std::thread::native_handle_type handl
 }
 
 
-bool isKeyValid(const cachedkey& k)
-{
-  return k.size() >= MinKeySize;
-}
+// bool isKeyValid(const cachedkey& k)
+// {
+//   return k.size() >= MinKeySize;
+// }
 
 
-bool isKeyValid(const std::string_view& k)
-{
-  return k.size() >= MinKeySize;
-}
+// bool isKeyValid(const std::string_view& k)
+// {
+//   return k.size() >= MinKeySize;
+// }
 
 
 // Response when command known but response

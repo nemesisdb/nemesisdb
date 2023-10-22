@@ -203,31 +203,6 @@ struct ServerStats
 } * serverStats;
 
 
-static const std::array<std::function<bool(const std::string_view&, PoolId&)>, 2U> PoolIndexers =
-{
-  [](const std::string_view& k, PoolId& id) -> bool
-  {
-    if (isKeyValid(k))
-    {
-      id = ((k[0U] + k[1U] + k[2U] + k[3U] + k[4U] + k[5U]) & 0xFFFFFFFF) % MaxPools;
-      return true;
-    }
-
-    return false;
-  },
-
-  [](const std::string_view& k, PoolId& id) -> bool
-  {
-    if (isKeyValid(k))
-    {
-      id = 0U;
-      return true;
-    }
-
-    return false;
-  }
-};
-
 
 static const std::array<std::function<void(const SessionToken&, SessionPoolId&)>, 2U> SessionIndexers =
 {

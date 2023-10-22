@@ -19,7 +19,6 @@ class KvHandler
 {
 public:
   KvHandler(const std::size_t nPools, const std::size_t coreOffset, ks::Sets * ks) :
-    m_createPoolId(nPools == 1U ? PoolIndexers[1U] : PoolIndexers[0U]),
     m_createSessionPoolId(nPools == 1U ? SessionIndexers[1U] : SessionIndexers[0U]),
     m_ks(ks)
   {
@@ -121,7 +120,7 @@ private:
     else
     {
       t = std::move(cmd.at("tkn"));
-      cmd.erase("tkn");
+      cmd.erase("tkn"); // TODO this can probably be removed now
       return true;
     } 
   }
@@ -579,7 +578,6 @@ private:
 
 private:
   std::vector<KvPoolWorker *> m_pools;
-  std::function<bool(const std::string_view&, PoolId&)> m_createPoolId;
   std::function<void(const SessionToken&, SessionPoolId&)> m_createSessionPoolId;
   ks::Sets * m_ks;
 };
