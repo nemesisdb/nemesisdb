@@ -11,7 +11,7 @@
 
 
 ## Repo Access
-- Setup keys for GitLab (see Keys profile settings on GitLab)
+- Setup keys for GitLab (see Profile->Keys settings on GitLab)
 - [Generate](https://docs.gitlab.com/ee/user/ssh.html#generate-an-ssh-key-pair) a SSH key pair
 - [Add](https://docs.gitlab.com/ee/user/ssh.html#add-an-ssh-key-to-your-gitlab-account) to GitLab
 
@@ -33,4 +33,12 @@
 - select working folder as fusion repo
 - install extensions: C/C++, C++ extension pack, cmake-tool, git-rename
 - scan for kits, select GCC
-- build fusionserver
+- build nemesisdb
+
+
+## Docs
+Docusaurus requires nodejs. Installing from apt gave an old version so installed from binary:
+
+- Download: https://nodejs.org/en/download/current
+  - **Make sure to get 'Current' rather than LTS**
+- Instructions: https://github.com/nodejs/help/wiki/Installation
