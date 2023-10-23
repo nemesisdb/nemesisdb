@@ -1,6 +1,9 @@
 #ifndef FC_TEST_COMMON_H
 #define FC_TEST_COMMON_H
 
+
+#define FC_UNIT_TEST_NOMONITOR
+
 #include <thread>
 #include <gtest/gtest.h>
 #include <core/FusionConfig.h>

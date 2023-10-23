@@ -40,16 +40,6 @@ public:
   };
 
 
-  auto add (fcjson& contents) -> std::tuple<bool, std::string>
-  {
-    const auto& key = contents.items().begin().key();
-    auto& value = contents.items().begin().value(); 
-
-    const auto [ignore, added] = m_map.try_emplace(key, std::move(value));
-    return std::make_tuple(added, key);
-  }
-
-
   bool add (const cachedkey& key, cachedvalue&& value)
   {
     const auto [ignore, added] = m_map.try_emplace(key, std::move(value));

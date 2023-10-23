@@ -40,7 +40,7 @@ TEST_F(FusionTest, PathNotString)
 
 	ASSERT_TRUE(tc.open());
 
-	tc.test({TestData { .request = R"({ "KV_FIND":{ "path":[], ">":5 } })"_json,	.expected = {R"({ "KV_FIND_RSP":{ "st":41, "m":"" } })"_json} }});
+	tc.test({TestData { .request = R"({ "KV_FIND":{ "path":[], ">":5 } })"_json,	.expected = {R"({ "KV_FIND_RSP":{ "st":41, "m":"path" } })"_json} }});
 }
 
 
