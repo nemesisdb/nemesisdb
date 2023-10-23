@@ -173,18 +173,6 @@ static inline bool setThreadAffinity(const std::thread::native_handle_type handl
 }
 
 
-// bool isKeyValid(const cachedkey& k)
-// {
-//   return k.size() >= MinKeySize;
-// }
-
-
-// bool isKeyValid(const std::string_view& k)
-// {
-//   return k.size() >= MinKeySize;
-// }
-
-
 // Response when command known but response
 static njson createErrorResponse (const std::string_view commandRsp, const RequestStatus status, const SessionToken& tkn, const std::string_view msg)
 {
