@@ -83,6 +83,12 @@ private:
     };
 
 
+    auto sessionInfoAll = [this](CacheMap& map, KvCommand& cmd)
+    {
+      // handled below
+    };
+
+
     auto set = [this](CacheMap& map, KvCommand& cmd)
     {
       fcjson rsp;
@@ -316,6 +322,7 @@ private:
       sessionEnd,
       sessionOpen,
       sessionInfo,
+      sessionInfoAll,
       set,
       setQ,
       get,
@@ -342,9 +349,10 @@ private:
 
         if (cmd.type == KvQueryType::SessionNew)
         {
-          SessionDuration duration {cmd.contents.at("expiry").at("duration").get<SessionDuration::rep>()};
+          const SessionDuration duration {cmd.contents.at("expiry").at("duration").get<SessionDuration::rep>()};
+          const bool deleteOnExpire = cmd.contents.at("expiry").at("deleteSession");
 
-          auto cache = sessions.start(cmd.shtk, cmd.contents.at("shared") == true, duration);
+          auto cache = sessions.start(cmd.shtk, cmd.contents.at("shared") == true, duration, deleteOnExpire);
           handlers[static_cast<const std::size_t>(cmd.type)](cache->get(), cmd);
         }
         else if (cmd.type == KvQueryType::SessionEnd)
@@ -363,14 +371,20 @@ private:
           {
             const auto shared = sesh->get().shared;
             const auto expires = sesh->get().expires;
+            const auto deleteSesion = sesh->get().expireInfo.deleteOnExpire;
             const auto expireTime = std::chrono::time_point_cast<SessionExpireTimeUnit>(sesh->get().expireInfo.time).time_since_epoch();
             const auto duration = sesh->get().expireInfo.duration;
             const auto keyCount = sesh->get().map.count();
             
-            send(cmd, PoolRequestResponse::sessionInfo(RequestStatus::Ok, cmd.shtk, shared, expires, duration, expireTime, keyCount).dump());
+            send(cmd, PoolRequestResponse::sessionInfo(RequestStatus::Ok, cmd.shtk, shared, expires, deleteSesion, duration, expireTime, keyCount).dump());
           }
           else
             send(cmd, PoolRequestResponse::sessionInfo(RequestStatus::SessionNotExist, cmd.shtk).dump());
+        }
+        else if (cmd.type == KvQueryType::SessionInfoAll)
+        {
+          std::tuple<const std::size_t, const std::size_t> rsp {std::make_tuple(sessions.countSessions(), sessions.countKeys())};
+          cmd.syncResponseHandler(std::any{std::move(rsp)});
         }
         else if (cmd.type == KvQueryType::InternalSessionMonitor)
         {

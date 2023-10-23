@@ -23,6 +23,7 @@ private:
   {
     SessionExpireTime time;
     SessionDuration duration;
+    bool deleteOnExpire;
   };
 
 
@@ -41,6 +42,7 @@ private:
   {
     SessionToken token;
     SessionExpireTime time{};
+    bool deleteOnExpire{true};
   };
 
 
@@ -58,7 +60,7 @@ private:
 
 public:
 
-  std::optional<std::reference_wrapper<CacheMap>> start (const SessionToken& token, const bool shared, const SessionDuration duration)
+  std::optional<std::reference_wrapper<CacheMap>> start (const SessionToken& token, const bool shared, const SessionDuration duration, const bool deleteOnExpire)
   {
     if (auto seshIt = m_sessions.find(token) ; seshIt != m_sessions.cend())
       return seshIt->second.map;
@@ -67,10 +69,11 @@ public:
       if (duration != SessionDuration::zero())
       {
         auto expireTime = SessionClock::now() + duration;
-        ExpireInfo expire {.time = expireTime, .duration = duration};
+
+        ExpireInfo expire {.time = expireTime, .duration = duration, .deleteOnExpire = deleteOnExpire};
         m_sessions[token] = Session{.token = token, .expireInfo = std::move(expire), .shared = shared, .expires = true};
 
-        m_expiry.emplace(std::make_pair(expireTime, ExpiryTracking{.token = token, .time = expireTime}));
+        m_expiry.emplace(std::make_pair(expireTime, ExpiryTracking{.token = token, .time = expireTime, .deleteOnExpire = deleteOnExpire}));
       }
       else
         m_sessions[token] = Session{.token = token, .shared = shared, .expires = false};
@@ -89,6 +92,23 @@ public:
   bool end (const SessionToken& token)
   {
     return m_sessions.erase(token) != 0U;
+  }
+
+  
+  SessionsMap::size_type countSessions() const
+  {
+    return m_sessions.size();
+  }
+
+
+  std::size_t countKeys() const
+  {
+    std::size_t count = 0 ;
+    std::for_each(m_sessions.cbegin(), m_sessions.cend(), [&count](const auto& pair)
+    {
+      count += pair.second.map.count();
+    });
+    return count;
   }
 
 
@@ -116,10 +136,13 @@ public:
 
     if (itExpired != m_expiry.end() || (itExpired == m_expiry.end() && !m_expiry.empty()))
     {
-      std::cout << std::distance(m_expiry.begin(), itExpired) << " sessions expired\n";
-
       for (auto it = m_expiry.cbegin() ; it != itExpired; ++it)
-        m_sessions.erase(it->second.token);
+      {
+        if (it->second.deleteOnExpire)
+          m_sessions.erase(it->second.token);
+        else
+          m_sessions.at(it->second.token).map.clear();
+      }
 
       m_expiry.erase(m_expiry.begin(), itExpired);
     }

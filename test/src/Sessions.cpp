@@ -66,6 +66,21 @@ TEST_F(FusionTest, New_ExpiryWrongType)
 }
 
 
+TEST_F(FusionTest, New_ExpiryClearNotSet)
+{
+	TestClient tc;
+
+	ASSERT_TRUE(tc.openNoSession());
+
+  // not shared
+  TestData sesh1 {  .request =  R"({ "SH_NEW":{ "name":"sesh1", "shared":false, "expiry":{"duration":10} }})"_json,
+									  .expected = {R"({ "SH_NEW_RSP":{"st":13, "m":"expiry", "tkn":null}})"_json},
+                    .checkToken = true};
+
+  tc.test(sesh1);
+}
+
+
 //happy
 TEST_F(FusionTest, New_SharedNotSet)
 {
@@ -79,7 +94,7 @@ TEST_F(FusionTest, New_SharedNotSet)
   tc.token = sesh1.token;
 
   TestData sesh1Check {   .request =  R"({ "SH_INFO":{ }})"_json,
-									        .expected = {R"({ "SH_INFO_RSP":{"st":1, "shared":false, "expiry":{"expires":false, "time":0},"keyCnt":0}})"_json}};
+									        .expected = {R"({ "SH_INFO_RSP":{"st":1, "shared":false, "keyCnt":0, "expiry":{"expires":false, "time":0}}})"_json}};
   
   ASSERT_EQ(sesh1.token, sesh1Check.token);
 
@@ -100,7 +115,7 @@ TEST_F(FusionTest, New_SharedSet)
   tc.token = sesh1.token;
 
   TestData sesh1Check {   .request =  R"({ "SH_INFO":{ }})"_json,
-									        .expected = {R"({ "SH_INFO_RSP":{"st":1, "shared":false, "expiry":{"expires":false, "time":0}, "keyCnt":0}})"_json}};
+									        .expected = {R"({ "SH_INFO_RSP":{"st":1, "shared":false, "keyCnt":0, "expiry":{"expires":false, "time":0, "duration":0, "deleteSession":true}}})"_json}};
   
   ASSERT_EQ(sesh1.token, sesh1Check.token);
 
@@ -111,7 +126,7 @@ TEST_F(FusionTest, New_SharedSet)
   tc.token = sesh2.token;
 
   TestData sesh2Check {   .request =  R"({ "SH_INFO":{ }})"_json,
-									        .expected = {R"({ "SH_INFO_RSP":{"st":1, "shared":true, "expiry":{"expires":false, "time":0}, "keyCnt":0}})"_json}};
+									        .expected = {R"({ "SH_INFO_RSP":{"st":1, "shared":true, "keyCnt":0, "expiry":{"expires":false, "time":0, "duration":0, "deleteSession":true}}})"_json}};
   
   ASSERT_EQ(sesh2.token, sesh2Check.token);
 
@@ -126,8 +141,8 @@ TEST_F(FusionTest, New_ExpirySet)
 	ASSERT_TRUE(tc.openNoSession());
 
   // not shared
-  TestData sesh1 {  .request =  R"({ "SH_NEW":{ "name":"sesh1", "shared":false, "expiry":{"duration":10} }})"_json,
-									  .nResponses = 1,
+  TestData sesh1 {  .request =  R"({ "SH_NEW":{ "name":"sesh1", "shared":false, "expiry":{"duration":10, "deleteSession":true} }})"_json,
+									   .nResponses = 1,
                     .checkResponses = false};
 
   tc.test(sesh1);
@@ -145,7 +160,9 @@ TEST_F(FusionTest, New_ExpirySet)
   ASSERT_TRUE(sesh1Info.actual[0]["SH_INFO_RSP"].contains("expiry"));
   ASSERT_TRUE(sesh1Info.actual[0]["SH_INFO_RSP"]["expiry"].contains("duration"));
   ASSERT_EQ(sesh1Info.actual[0]["SH_INFO_RSP"]["expiry"]["duration"], 10);
+  ASSERT_EQ(sesh1Info.actual[0]["SH_INFO_RSP"]["expiry"]["deleteSession"], true);
 }
+
 
 
 TEST_F(FusionTest, New_TwoSesh)
@@ -218,6 +235,34 @@ TEST_F(FusionTest, New_TwoSesh)
   ASSERT_EQ(sesh2Info.actual[0]["SH_INFO_RSP"]["keyCnt"], 3);
 }
 
+
+TEST_F(FusionTest, New_ExpiryClearOnly)
+{
+	TestClient tc;
+
+	ASSERT_TRUE(tc.openNoSession());
+
+  TestData sesh1 {  .request =  R"({ "SH_NEW":{ "name":"sesh1", "shared":false, "expiry":{"duration":10, "deleteSession":false} }})"_json,
+									  .nResponses = 1,
+                    .checkResponses = false};
+
+  tc.test(sesh1);
+
+  tc.token = sesh1.token;
+
+  TestData sesh1Info {.request =  R"({ "SH_INFO":{ }})"_json,
+									    .nResponses = 1,
+                      .checkResponses = false};
+  
+  tc.test(sesh1Info);
+
+  ASSERT_EQ(sesh1.token, sesh1Info.token);
+  ASSERT_FALSE(sesh1Info.actual.empty());
+  ASSERT_TRUE(sesh1Info.actual[0]["SH_INFO_RSP"].contains("expiry"));
+  ASSERT_TRUE(sesh1Info.actual[0]["SH_INFO_RSP"]["expiry"].contains("duration"));
+  ASSERT_EQ(sesh1Info.actual[0]["SH_INFO_RSP"]["expiry"]["duration"], 10);
+  ASSERT_EQ(sesh1Info.actual[0]["SH_INFO_RSP"]["expiry"]["deleteSession"], false);
+}
 
 
 

@@ -26,6 +26,7 @@ enum class KvQueryType : std::uint8_t
   SessionEnd,
   SessionOpen,
   SessionInfo,
+  SessionInfoAll,
   SessionSet,
   SessionSetQ,
   SessionGet,
@@ -51,6 +52,7 @@ const std::map<const std::string_view, std::tuple<const KvQueryType, const fcjso
   {"SH_END",          {KvQueryType::SessionEnd,       fcjson::value_t::object}},
   {"SH_OPEN",         {KvQueryType::SessionOpen,      fcjson::value_t::object}},
   {"SH_INFO",         {KvQueryType::SessionInfo,      fcjson::value_t::object}},
+  {"SH_INFO_ALL",     {KvQueryType::SessionInfoAll,   fcjson::value_t::object}},
   // 
   {"KV_SET",          {KvQueryType::SessionSet,       fcjson::value_t::object}},
   {"KV_SETQ",         {KvQueryType::SessionSetQ,      fcjson::value_t::object}},
@@ -75,6 +77,7 @@ const std::map<const KvQueryType, const std::string> QueryTypeToName =
   {KvQueryType::SessionEnd,       "SH_END"},
   {KvQueryType::SessionOpen,      "SH_OPEN"},
   {KvQueryType::SessionInfo,      "SH_INFO"},
+  {KvQueryType::SessionInfoAll,   "SH_INFO_ALL"},
   //
   {KvQueryType::SessionSet,       "KV_SET"},
   {KvQueryType::SessionSetQ,      "KV_SETQ"},
@@ -125,7 +128,7 @@ struct PoolRequestResponse
     return rsp;
   }
 
-  static fcjson sessionInfo (const RequestStatus status, const SessionToken& token, const bool shared, const bool expires, const SessionDuration duration, SessionExpireTimeUnit expireTime, const std::size_t keyCount)
+  static fcjson sessionInfo (const RequestStatus status, const SessionToken& token, const bool shared, const bool expires, const bool deleteOnExpire, const SessionDuration duration, SessionExpireTimeUnit expireTime, const std::size_t keyCount)
   {
     fcjson rsp = sessionInfo(status, token);
     rsp["SH_INFO_RSP"]["shared"] = shared;
@@ -133,6 +136,7 @@ struct PoolRequestResponse
     rsp["SH_INFO_RSP"]["expiry"]["expires"] = expires;
     rsp["SH_INFO_RSP"]["expiry"]["duration"] = duration.count();
     rsp["SH_INFO_RSP"]["expiry"]["time"] = expireTime.count();
+    rsp["SH_INFO_RSP"]["expiry"]["deleteSession"] = deleteOnExpire;
     return rsp;
   }
     
@@ -218,9 +222,9 @@ static const std::array<std::function<void(const SessionToken&, SessionPoolId&)>
 };
 
 
-fc_always_inline SessionToken createSessionToken(const SessionName& name, const bool shareable = false)
+fc_always_inline SessionToken createSessionToken(const SessionName& name, const bool shared)
 {
-  if (shareable)
+  if (shared)
   {
     static const std::size_t seed = 99194853094755497U;
     const auto hash = std::hash<SessionName>{}(name);
@@ -229,9 +233,9 @@ fc_always_inline SessionToken createSessionToken(const SessionName& name, const 
   else
   {
     static UUIDv4::UUIDGenerator<std::mt19937_64> uuidGenerator; 
-    auto uuid = uuidGenerator.getUUID();
+    const auto uuid = uuidGenerator.getUUID();
     return std::to_string(uuid.hash());
-  }  
+  }
 }
 
 

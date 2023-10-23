@@ -6,7 +6,7 @@
 #include <core/FusionConfig.h>
 #include <core/FusionCommon.h>
 #include <core/kv/KvServer.h>
-#include <fusion/client/client.hpp>
+#include <clients/utils/Client.hpp>
 
 
 namespace fusion { namespace test {

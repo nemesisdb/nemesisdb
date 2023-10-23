@@ -41,6 +41,7 @@ private:
     std::bind(&KvHandler::sessionEnd,       std::ref(*this), std::placeholders::_1, std::placeholders::_2),
     std::bind(&KvHandler::sessionOpen,      std::ref(*this), std::placeholders::_1, std::placeholders::_2),
     std::bind(&KvHandler::sessionInfo,      std::ref(*this), std::placeholders::_1, std::placeholders::_2),
+    std::bind(&KvHandler::sessionInfoAll,   std::ref(*this), std::placeholders::_1, std::placeholders::_2),
     std::bind(&KvHandler::set,              std::ref(*this), std::placeholders::_1, std::placeholders::_2),
     std::bind(&KvHandler::setQ,             std::ref(*this), std::placeholders::_1, std::placeholders::_2),
     std::bind(&KvHandler::get,              std::ref(*this), std::placeholders::_1, std::placeholders::_2),
@@ -162,6 +163,37 @@ private:
   }
 
 
+  fc_always_inline std::vector<std::any> sessionSubmitSync(KvWebSocket * ws, const KvQueryType queryType, const std::string_view command, const std::string_view rspName, fcjson&& cmd = "")
+  {
+    std::latch latch{static_cast<std::ptrdiff_t>(m_pools.size())};
+    std::vector<std::any> results;
+    std::mutex resultsMux;
+
+    auto onResult = [&latch, &results, &resultsMux](auto r)
+    {
+      {
+        std::scoped_lock lck{resultsMux};
+        results.emplace_back(std::move(r));
+      }
+      
+      latch.count_down();
+    };
+
+
+    for (auto& pool : m_pools)
+    {
+      pool->execute(KvCommand{  .ws = ws,
+                                .loop = uWS::Loop::get(),
+                                .contents = std::move(cmd),
+                                .type = queryType,
+                                .syncResponseHandler = onResult});
+    }
+    
+    latch.wait();
+    return results;
+  }
+
+
   fc_always_inline void sessionSubmitPairs(KvWebSocket * ws, fcjson&& cmd, const SessionToken& token, const KvQueryType queryType, const std::string_view command, const std::string_view rspName)
   {
     const auto poolId = getPoolId(token);
@@ -227,15 +259,24 @@ private:
       bool expiryValid = true, sharedValid = true;
 
       if (cmd.contains("expiry"))
-        expiryValid = cmd.at("expiry").contains("duration") && cmd.at("expiry").at("duration").is_number_unsigned();
+      {
+        const auto& expiry = cmd.at("expiry");
+        expiryValid = expiry.contains("duration") && expiry.at("duration").is_number_unsigned() &&
+                      expiry.contains("deleteSession") && expiry.at("deleteSession").is_boolean();
+      }        
       else
+      {
         cmd["expiry"]["duration"] = 0U;
+        cmd["expiry"]["deleteSession"] = true;
+      }
+        
 
       if (cmd.contains("shared"))
         sharedValid = cmd.at("shared").is_boolean();
       else
         cmd["shared"] = false;
 
+      
       if (!expiryValid)
         ws->send(createErrorResponse(queryRspName, RequestStatus::CommandSyntax, "expiry").dump(), WsSendOpCode);
       else if (!sharedValid)
@@ -306,6 +347,37 @@ private:
     
       if (getSessionToken(ws, queryName, json.at(queryName), token))
         sessionSubmit(ws, token, queryType, queryName, queryRspName);
+    }
+  }
+
+
+  fc_always_inline void sessionInfoAll(KvWebSocket * ws, fcjson&& json)
+  {
+    static const KvQueryType queryType      = KvQueryType::SessionInfoAll;
+    static const std::string queryName      = QueryTypeToName.at(queryType);
+    static const std::string queryRspName   = queryName +"_RSP";
+
+    auto& cmd = json.at(queryName);
+
+    if (!cmd.empty())
+      ws->send(createErrorResponse(queryRspName, RequestStatus::CommandSyntax).dump(), WsSendOpCode);
+    else
+    {
+      auto results = sessionSubmitSync(ws, queryType, queryName, queryRspName);
+      
+      std::size_t totalSesh{0}, totalKeys{0};
+      for(auto& result : results)
+      {
+        auto [sessions, keys] = std::any_cast<std::tuple<const std::size_t, const std::size_t>>(result);
+        totalSesh += sessions;
+        totalKeys += keys;
+      }
+
+      fcjson rsp;
+      rsp[queryRspName]["totalSessions"] = totalSesh;
+      rsp[queryRspName]["totalKeys"] = totalKeys;
+
+      ws->send(rsp.dump(), WsSendOpCode);
     }
   }
 
