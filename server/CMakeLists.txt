@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.20)
-project(fusion VERSION 0.1.0 LANGUAGES CXX)
+project(nemesisdb VERSION 0.1.0 LANGUAGES CXX)
 
 include_directories("../")
 include_directories("../vcpkg/installed/x64-linux/include")
@@ -25,10 +25,10 @@ set(CMAKE_GENERATOR_PLATFORM x64)
 set(CPACK_PROJECT_NAME ${PROJECT_NAME})
 set(CPACK_PROJECT_VERSION ${PROJECT_VERSION})
 
-add_executable(fusionserver server.cpp)
+add_executable(nemesisdb server.cpp)
 
-target_compile_features(fusionserver PUBLIC cxx_std_20)
-target_link_libraries(fusionserver PRIVATE "-Wl,-z,stack-size=2097152" -luSockets -lz -lboost_fiber -lboost_context -lboost_program_options)
-#target_link_libraries(fusionserver PRIVATE "-Wl,-z,stack-size=2097152" -lboost_fiber -lboost_context -lboost_program_options)
+target_compile_features(nemesisdb PUBLIC cxx_std_20)
+target_link_libraries(nemesisdb PRIVATE "-Wl,-z,stack-size=2097152" -luSockets -lz -lboost_fiber -lboost_context -lboost_program_options)
+#target_link_libraries(nemesisdb PRIVATE "-Wl,-z,stack-size=2097152" -lboost_fiber -lboost_context -lboost_program_options)
 
 #include(CPack)
