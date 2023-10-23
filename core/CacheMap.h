@@ -30,10 +30,9 @@ public:
   }
 
 
-  // TODO try this with: auto get(cachedkey&)
-  auto get (fcjson& contents) const -> std::pair<bool, cachedpair>
+  auto get (const cachedkey& key) const -> std::pair<bool, cachedpair>
   {
-    if (const auto it = m_map.find(contents) ; it != m_map.cend())
+    if (const auto it = m_map.find(key) ; it != m_map.cend())
       return std::make_pair(true, cachedpair {{it->first, it->second}});
     else
       return std::make_pair(false, cachedpair{});

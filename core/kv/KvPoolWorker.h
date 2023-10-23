@@ -137,7 +137,7 @@ private:
       {
         if (item.value().is_string()) [[likely]]
         {
-          if (auto [exists, pair] = map.get(item.value()); exists)
+          if (auto [exists, pair] = map.get(item.value().get_ref<const cachedkey&>()); exists)
             rsp["KV_GET_RSP"].emplace(std::move(pair.begin().key()), std::move(pair.begin().value()));
           else
             rsp["KV_GET_RSP"][item.value()] = fcjson{}; //null
