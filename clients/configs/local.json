@@ -1,0 +1,18 @@
+{  
+  "Local":
+  {
+    "fusionIp":"127.0.0.1",
+    "fusionPort":1987,
+    "nClients":1,
+    "valueSize":50,
+    "set":
+    {
+      "max":5,
+      "setq": false
+    },
+    "get":
+    {
+      "enabled": true
+    }
+  }
+}

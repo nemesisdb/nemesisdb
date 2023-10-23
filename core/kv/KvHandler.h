@@ -19,7 +19,6 @@ class KvHandler
 {
 public:
   KvHandler(const std::size_t nPools, const std::size_t coreOffset, ks::Sets * ks) :
-    m_createPoolId(nPools == 1U ? PoolIndexers[1U] : PoolIndexers[0U]),
     m_createSessionPoolId(nPools == 1U ? SessionIndexers[1U] : SessionIndexers[0U]),
     m_ks(ks)
   {
@@ -42,6 +41,7 @@ private:
     std::bind(&KvHandler::sessionEnd,       std::ref(*this), std::placeholders::_1, std::placeholders::_2),
     std::bind(&KvHandler::sessionOpen,      std::ref(*this), std::placeholders::_1, std::placeholders::_2),
     std::bind(&KvHandler::sessionInfo,      std::ref(*this), std::placeholders::_1, std::placeholders::_2),
+    std::bind(&KvHandler::sessionInfoAll,   std::ref(*this), std::placeholders::_1, std::placeholders::_2),
     std::bind(&KvHandler::set,              std::ref(*this), std::placeholders::_1, std::placeholders::_2),
     std::bind(&KvHandler::setQ,             std::ref(*this), std::placeholders::_1, std::placeholders::_2),
     std::bind(&KvHandler::get,              std::ref(*this), std::placeholders::_1, std::placeholders::_2),
@@ -93,6 +93,13 @@ public:
   }
 
 
+  void monitor ()
+  {
+    for(auto& pool : m_pools)
+      pool->execute(KvCommand{.type = KvQueryType::InternalSessionMonitor});
+  }
+
+
 private:
   
 
@@ -114,7 +121,7 @@ private:
     else
     {
       t = std::move(cmd.at("tkn"));
-      cmd.erase("tkn");
+      cmd.erase("tkn"); // TODO this can probably be removed now
       return true;
     } 
   }
@@ -153,6 +160,37 @@ private:
 
     latch.wait();
     return result;
+  }
+
+
+  fc_always_inline std::vector<std::any> sessionSubmitSync(KvWebSocket * ws, const KvQueryType queryType, const std::string_view command, const std::string_view rspName, fcjson&& cmd = "")
+  {
+    std::latch latch{static_cast<std::ptrdiff_t>(m_pools.size())};
+    std::vector<std::any> results;
+    std::mutex resultsMux;
+
+    auto onResult = [&latch, &results, &resultsMux](auto r)
+    {
+      {
+        std::scoped_lock lck{resultsMux};
+        results.emplace_back(std::move(r));
+      }
+      
+      latch.count_down();
+    };
+
+
+    for (auto& pool : m_pools)
+    {
+      pool->execute(KvCommand{  .ws = ws,
+                                .loop = uWS::Loop::get(),
+                                .contents = std::move(cmd),
+                                .type = queryType,
+                                .syncResponseHandler = onResult});
+    }
+    
+    latch.wait();
+    return results;
   }
 
 
@@ -208,21 +246,48 @@ private:
 
     auto& cmd = json.at(queryName);
 
-    if (cmd.size() != 1U && cmd.size() != 2U)
+    if (cmd.size() < 1U || cmd.size() > 3U)
       ws->send(createErrorResponse(queryRspName, RequestStatus::CommandSyntax).dump(), WsSendOpCode);
     else if (!cmd.contains("name"))
       ws->send(createErrorResponse(queryRspName, RequestStatus::ValueMissing, "name").dump(), WsSendOpCode);
     else if (!cmd.at("name").is_string())
       ws->send(createErrorResponse(queryRspName, RequestStatus::ValueTypeInvalid, "name").dump(), WsSendOpCode);
     else if (cmd.at("name").get_ref<const std::string&>().empty())
-      ws->send(createErrorResponse(queryRspName, RequestStatus::ValueTypeInvalid, "name").dump(), WsSendOpCode);
+      ws->send(createErrorResponse(queryRspName, RequestStatus::ValueSize, "name").dump(), WsSendOpCode);
     else
     {
-      const bool shareable = cmd.value("shared", false);
-      const auto token = createSessionToken(cmd.at("name"), shareable);
+      bool expiryValid = true, sharedValid = true;
+
+      if (cmd.contains("expiry"))
+      {
+        const auto& expiry = cmd.at("expiry");
+        expiryValid = expiry.contains("duration") && expiry.at("duration").is_number_unsigned() &&
+                      expiry.contains("deleteSession") && expiry.at("deleteSession").is_boolean();
+      }        
+      else
+      {
+        cmd["expiry"]["duration"] = 0U;
+        cmd["expiry"]["deleteSession"] = true;
+      }
+        
+
+      if (cmd.contains("shared"))
+        sharedValid = cmd.at("shared").is_boolean();
+      else
+        cmd["shared"] = false;
+
       
-      PoolId poolId = getPoolId(token);
-      sessionSubmit(ws, token, queryType, queryName, queryRspName, std::move(cmd));
+      if (!expiryValid)
+        ws->send(createErrorResponse(queryRspName, RequestStatus::CommandSyntax, "expiry").dump(), WsSendOpCode);
+      else if (!sharedValid)
+        ws->send(createErrorResponse(queryRspName, RequestStatus::CommandSyntax, "shared").dump(), WsSendOpCode);
+      else
+      {
+        const auto token = createSessionToken(cmd.at("name"), cmd["shared"] == true);
+        
+        PoolId poolId = getPoolId(token);
+        sessionSubmit(ws, token, queryType, queryName, queryRspName, std::move(cmd));
+      }
     } 
   }
 
@@ -282,6 +347,37 @@ private:
     
       if (getSessionToken(ws, queryName, json.at(queryName), token))
         sessionSubmit(ws, token, queryType, queryName, queryRspName);
+    }
+  }
+
+
+  fc_always_inline void sessionInfoAll(KvWebSocket * ws, fcjson&& json)
+  {
+    static const KvQueryType queryType      = KvQueryType::SessionInfoAll;
+    static const std::string queryName      = QueryTypeToName.at(queryType);
+    static const std::string queryRspName   = queryName +"_RSP";
+
+    auto& cmd = json.at(queryName);
+
+    if (!cmd.empty())
+      ws->send(createErrorResponse(queryRspName, RequestStatus::CommandSyntax).dump(), WsSendOpCode);
+    else
+    {
+      auto results = sessionSubmitSync(ws, queryType, queryName, queryRspName);
+      
+      std::size_t totalSesh{0}, totalKeys{0};
+      for(auto& result : results)
+      {
+        auto [sessions, keys] = std::any_cast<std::tuple<const std::size_t, const std::size_t>>(result);
+        totalSesh += sessions;
+        totalKeys += keys;
+      }
+
+      fcjson rsp;
+      rsp[queryRspName]["totalSessions"] = totalSesh;
+      rsp[queryRspName]["totalKeys"] = totalKeys;
+
+      ws->send(rsp.dump(), WsSendOpCode);
     }
   }
 
@@ -554,7 +650,6 @@ private:
 
 private:
   std::vector<KvPoolWorker *> m_pools;
-  std::function<bool(const std::string_view&, PoolId&)> m_createPoolId;
   std::function<void(const SessionToken&, SessionPoolId&)> m_createSessionPoolId;
   ks::Sets * m_ks;
 };

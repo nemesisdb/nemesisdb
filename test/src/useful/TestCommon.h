@@ -6,7 +6,7 @@
 #include <core/FusionConfig.h>
 #include <core/FusionCommon.h>
 #include <core/kv/KvServer.h>
-#include <fusion/client/client.hpp>
+#include <clients/utils/Client.hpp>
 
 
 namespace fusion { namespace test {
@@ -100,7 +100,11 @@ struct TestData
 {
 	json request;
 	std::vector<json> expected;
-	bool requiresToken {true};
+	std::vector<json> actual;
+	std::size_t nResponses{0};
+	bool checkToken{false};
+	bool checkResponses{true};
+	json token;	
 };
 
 
@@ -134,41 +138,65 @@ struct TestClient
 
 	bool openNoSession (const std::string host = "127.0.0.1", const int port = 1987)
 	{
+		removeTokenInRsp = false;
 		ws = client.openQueryWebSocket(host, port, "/", std::bind(&TestClient::onMessage, std::ref(*this), std::placeholders::_1));
 		return ws != nullptr;
 	}
 
 	bool open (const std::string host = "127.0.0.1", const int port = 1987)
 	{
+		removeTokenInRsp = true;
 		return openNoSession(host, port) && createSession();
 	}
 
 
 	void test (TestData& td)
 	{		
-		responses.clear();
+		ASSERT_FALSE(td.expected.size() && td.nResponses) << "Set either expected or nResponses";
 
-		if (td.requiresToken && td.request.begin().value().is_object())
+		responses.clear();
+		td.actual.clear();
+
+		if (!token.is_null() && td.request.begin().value().is_object())
 			td.request.begin().value().insert(token.cbegin(), token.cend());
 
-		if (!td.expected.empty())	// this is for SETQ and ADDQ which only response on error
-			latch = std::make_unique<std::latch>(td.expected.size());
+		// expected responses are the JSON (TestData::expected) or a count (TestData::nResponses)
+		// this can be 0 because SETQ/ADDQ only response on error
+		const auto expected = td.expected.empty() ? td.nResponses : td.expected.size();
+
+		if (expected)
+			latch = std::make_unique<std::latch>(expected);
 
 		ws->send(td.request.dump());
 		
-		if (!td.expected.empty())
-			latch->wait();
-		
-		latch.reset();
-
-		for (auto& rsp : responses)
+		if (expected)
 		{
-			if (td.requiresToken)
-				rsp.begin().value().erase("tkn");
+			latch->wait();
+			latch.reset();
 
-			EXPECT_TRUE(std::any_of(td.expected.cbegin(), td.expected.cend(), [&rsp](auto& expected){ return expected == rsp; })) << rsp;
+			// even if checkResponses is false, we still do this to grab the token
+			for (auto& rsp : responses)
+			{
+				// we always erase the token because setting that in TestData each time is tedious
+				// so instead we grab it out of the response
+				if (rsp.begin().value().contains("tkn"))
+				{
+					if (!rsp.begin().value().at("tkn").is_null())
+						td.token["tkn"] = rsp.begin().value().at("tkn");
+
+					// only remove tkn if responses are checked
+					if (!td.checkToken && td.checkResponses)
+						rsp.begin().value().erase("tkn");
+				}
+
+				if (td.checkResponses)
+					EXPECT_TRUE(std::any_of(td.expected.cbegin(), td.expected.cend(), [&rsp](auto& expected){ return expected == rsp; })) << rsp;
+			}
+
+			td.actual = std::move(responses);
 		}
 	}
+
 
 	void test (TestData&& data)
 	{		
@@ -195,7 +223,7 @@ struct TestClient
 				token["tkn"] = rsp["SH_NEW_RSP"]["tkn"];
 				return true;
 			}
-			return false;			
+			return false;
 		}
 
 
@@ -207,6 +235,7 @@ struct TestClient
 		std::vector<json> responses;
 		std::mutex responsesMux;
 		json token;
+		bool removeTokenInRsp{false};
 };
 
 }

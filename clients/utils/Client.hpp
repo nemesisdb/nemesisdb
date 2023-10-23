@@ -1,5 +1,5 @@
-#ifndef FUSION_CLIENT_H
-#define FUSION_CLIENT_H
+#ifndef _FC_TEST_WSCLIENT_H
+#define _FC_TEST_WSCLIENT_H
 
 
 #include <boost/asio.hpp>
@@ -10,6 +10,7 @@
 #include <functional>
 #include <iostream>
 
+// TODO can replace server with uWebSockets
 
 namespace fusion { namespace client {
 

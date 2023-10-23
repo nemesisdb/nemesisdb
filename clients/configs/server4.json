@@ -1,0 +1,24 @@
+{  
+  "Send":
+  {
+    "clients":
+    [
+      "20.0.21.78"
+    ],
+    "config":
+    {
+      "fusionIp":"10.0.0.11",
+      "fusionPort":1987,
+      "nClients":2,
+      "set":
+      {
+        "max": 50000,
+        "setq": true
+      },
+      "get":
+      {
+        "enabled": true
+      }
+    }
+  }
+}

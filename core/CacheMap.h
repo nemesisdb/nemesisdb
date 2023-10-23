@@ -30,6 +30,7 @@ public:
   }
 
 
+  // TODO try this with: auto get(cachedkey&)
   auto get (fcjson& contents) const -> std::pair<bool, cachedpair>
   {
     if (const auto it = m_map.find(contents) ; it != m_map.cend())
