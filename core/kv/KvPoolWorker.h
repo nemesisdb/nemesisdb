@@ -1,5 +1,5 @@
-#ifndef _FC_KVPOOL_
-#define _FC_KVPOOL_
+#ifndef _FC_KVPOOLWORKER_
+#define _FC_KVPOOLWORKER_
 
 #include <string_view>
 #include <thread>
@@ -14,7 +14,7 @@
 #include <core/kv/KvSessions.h>
 
 
-namespace fusion { namespace core { namespace kv {
+namespace nemesis { namespace core { namespace kv {
 
 
 // A number of KvPoolWorker are created (MaxPools), which is hardware_concurrency() minus the number of IO threads.
@@ -91,7 +91,7 @@ private:
 
     auto set = [this](CacheMap& map, KvCommand& cmd)
     {
-      fcjson rsp;
+      njson rsp;
       rsp["KV_SET_RSP"]["tkn"] = cmd.shtk;
 
       for(auto& kv : cmd.contents.items())
@@ -106,7 +106,7 @@ private:
 
     auto setQ = [this](CacheMap& map, KvCommand& cmd)
     {
-      fcjson rsp;
+      njson rsp;
       
       for(auto& kv : cmd.contents.items())
       {
@@ -130,7 +130,7 @@ private:
 
     auto get = [this](CacheMap& map, KvCommand& cmd)
     {
-      fcjson rsp;
+      njson rsp;
       rsp["KV_GET_RSP"]["tkn"] = cmd.shtk;
 
       for(auto& item : cmd.contents.items())
@@ -140,7 +140,7 @@ private:
           if (auto [exists, pair] = map.get(item.value().get_ref<const cachedkey&>()); exists)
             rsp["KV_GET_RSP"].emplace(std::move(pair.begin().key()), std::move(pair.begin().value()));
           else
-            rsp["KV_GET_RSP"][item.value()] = fcjson{}; //null
+            rsp["KV_GET_RSP"][item.value()] = njson{}; //null
         }        
       }
 
@@ -150,11 +150,11 @@ private:
 
     auto add = [this](CacheMap& map, KvCommand& cmd)
     {
-      fcjson rsp;
+      njson rsp;
       rsp["KV_ADD_RSP"]["tkn"] = cmd.shtk;
 
       if (cmd.contents.empty())
-        rsp["KV_ADD_RSP"]["keys"] = fcjson::object();
+        rsp["KV_ADD_RSP"]["keys"] = njson::object();
 
       for(auto& kv : cmd.contents.items())
       {
@@ -168,11 +168,11 @@ private:
 
     auto addQ = [this](CacheMap& map, KvCommand& cmd)
     {
-      fcjson rsp;
+      njson rsp;
 
       if (cmd.contents.empty())
       {
-        rsp["KV_ADDQ_RSP"]["keys"] = fcjson::object();
+        rsp["KV_ADDQ_RSP"]["keys"] = njson::object();
         send(cmd, rsp.dump());
       }
       else
@@ -194,7 +194,7 @@ private:
 
     auto remove = [this](CacheMap& map, KvCommand& cmd)
     {
-      fcjson rsp;
+      njson rsp;
       rsp["KV_RMV_RSP"]["tkn"] = cmd.shtk;
 
       for(auto& key : cmd.contents.items())
@@ -234,7 +234,7 @@ private:
 
     auto contains = [this](CacheMap& map, KvCommand& cmd)
     {
-      fcjson rsp;
+      njson rsp;
       rsp["KV_CONTAINS_RSP"]["st"] = RequestStatus::Ok;
       rsp["KV_CONTAINS_RSP"]["tkn"] = cmd.shtk;
 
@@ -248,7 +248,7 @@ private:
     /*
     auto sessionArrayMove = [this](CacheMap& map, KvCommand& cmd)
     {
-      fcjson rsp;
+      njson rsp;
       rsp["KV_ARRAY_MOVE_RSP"]["tkn"] = cmd.shtk;
 
       for (auto& item : cmd.contents.items())
@@ -257,7 +257,7 @@ private:
           rsp["KV_ARRAY_MOVE_RSP"][item.key()] = RequestStatus::ValueTypeInvalid;
         else
         {
-          const auto status = map.arrayMove(fcjson {{item.key(), std::move(item.value())}});
+          const auto status = map.arrayMove(njson {{item.key(), std::move(item.value())}});
           rsp["KV_ARRAY_MOVE_RSP"][item.key()] = status;
         }
       }
@@ -269,9 +269,9 @@ private:
 
     auto find = [this](CacheMap& map, KvCommand& cmd)
     {
-      fcjson rsp;
+      njson rsp;
       rsp["KV_FIND_RSP"]["tkn"] = cmd.shtk;
-      rsp["KV_FIND_RSP"]["keys"] = fcjson::array();
+      rsp["KV_FIND_RSP"]["keys"] = njson::array();
       
       map.findNoRegEx(cmd.contents, cmd.find, rsp["KV_FIND_RSP"]["keys"]);
 
@@ -281,21 +281,21 @@ private:
 
     auto update = [this](CacheMap& map, KvCommand& cmd)
     {
-      fcjson rsp;
+      njson rsp;
       rsp["KV_UPDATE_RSP"]["tkn"] = cmd.shtk;
             
-      fcjson::iterator  itKey = cmd.contents.begin(),
+      njson::iterator  itKey = cmd.contents.begin(),
                         itPath = std::next(itKey, 1);
 
       if (itKey.key() != "key")
         std::swap(itKey, itPath);
 
       bool pathValid = true;
-      fcjson::json_pointer path;
+      njson::json_pointer path;
 
       try
       {
-        path = std::move(fcjson::json_pointer{itPath.key()});
+        path = std::move(njson::json_pointer{itPath.key()});
       }
       catch (...)
       {

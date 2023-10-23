@@ -1,21 +1,21 @@
-#ifndef FC_TEST_COMMON_H
-#define FC_TEST_COMMON_H
+#ifndef NDB_TEST_COMMON_H
+#define NDB_TEST_COMMON_H
 
 
-#define FC_UNIT_TEST_NOMONITOR
+#define NDB_UNIT_TEST_NOMONITOR
 
 #include <thread>
 #include <gtest/gtest.h>
-#include <core/FusionConfig.h>
-#include <core/FusionCommon.h>
+#include <core/NemesisConfig.h>
+#include <core/NemesisCommon.h>
 #include <core/kv/KvServer.h>
 #include <clients/utils/Client.hpp>
 
 
-namespace fusion { namespace test {
+namespace nemesis { namespace test {
 
-using namespace fusion::core;
-using namespace fusion::core::kv;
+using namespace nemesis::core;
+using namespace nemesis::core::kv;
 using namespace fusion::client;
 
 namespace asio = boost::asio;
@@ -24,7 +24,7 @@ namespace asio = boost::asio;
 class KvTestServer  : public ::testing::Test
 {
 public:
-  KvTestServer(FusionConfig config = FusionConfig { R"({ "version":1, "kv":{ "ip":"127.0.0.1", "port":1987, "maxPayload":1024 } })"_json}) : m_config(config)
+  KvTestServer(NemesisConfig config = NemesisConfig { R"({ "version":1, "kv":{ "ip":"127.0.0.1", "port":1987, "maxPayload":1024 } })"_json}) : m_config(config)
   {
 
   }
@@ -42,8 +42,8 @@ public:
 	}
 
 private:
-  FusionConfig m_config;
-  fusion::core::kv::KvServer m_server;
+  NemesisConfig m_config;
+  nemesis::core::kv::KvServer m_server;
 };
 
 class FusionTest : public fusion::test::KvTestServer

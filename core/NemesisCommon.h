@@ -1,5 +1,5 @@
-#ifndef FC_CORE_FUSIONCOMMON_H
-#define FC_CORE_FUSIONCOMMON_H
+#ifndef NDB_CORE_FUSIONCOMMON_H
+#define NDB_CORE_FUSIONCOMMON_H
 
 #include <string_view>
 #include <mutex>
@@ -8,22 +8,22 @@
 #include <chrono>
 #include <uwebsockets/App.h>
 
-namespace fusion { namespace core {
+namespace nemesis { namespace core {
 
 #define fc_always_inline inline __attribute__((always_inline))
 
-static const char * FUSION_VERSION = "0.2.6";
-static const std::size_t FUSION_CONFIG_VERSION = 1U;
-static const std::size_t FUSION_MAX_CORES = 8U;
+static const char * NEMESIS_VERSION = "0.2.6";
+static const std::size_t NEMESIS_CONFIG_VERSION = 1U;
+static const std::size_t NEMESIS_MAX_CORES = 8U;
 
-static const std::size_t FUSION_KV_MINPAYLOAD = 64U;
-static const std::size_t FUSION_KV_MAXPAYLOAD = 2U * 1024U * 1024U;
+static const std::size_t NEMESIS_KV_MINPAYLOAD = 64U;
+static const std::size_t NEMESIS_KV_MAXPAYLOAD = 2U * 1024U * 1024U;
 
 
 // general
-using fcjson = nlohmann::ordered_json;
-using FusionClock = std::chrono::steady_clock;
-using FusionTimePoint = FusionClock::time_point;
+using njson = nlohmann::ordered_json;
+using NemesisClock = std::chrono::steady_clock;
+using NemesisTimePoint = NemesisClock::time_point;
 
 // kv
 using cachedkey = std::string;
@@ -72,16 +72,16 @@ struct FindConditions
 {
   enum class Condition { Equals, GT, GTE, LT, LTE  };
 
-  using ConditionOperator = std::function<bool(const fcjson&, const fcjson&)>;
+  using ConditionOperator = std::function<bool(const njson&, const njson&)>;
 
 
   const std::map<Condition, std::tuple<const std::string, ConditionOperator>> ConditionToOp = 
   {
-    {Condition::Equals,   {"==",  [](const fcjson& a, const fcjson& b){ return a == b; }} },
-    {Condition::GT,       {">",   [](const fcjson& a, const fcjson& b){ return a > b; }} },
-    {Condition::GTE,      {">=",  [](const fcjson& a, const fcjson& b){ return a >= b; }} },
-    {Condition::LT,       {"<",   [](const fcjson& a, const fcjson& b){ return a < b; }} },
-    {Condition::LTE,      {"<=",  [](const fcjson& a, const fcjson& b){ return a <= b; }} }
+    {Condition::Equals,   {"==",  [](const njson& a, const njson& b){ return a == b; }} },
+    {Condition::GT,       {">",   [](const njson& a, const njson& b){ return a > b; }} },
+    {Condition::GTE,      {">=",  [](const njson& a, const njson& b){ return a >= b; }} },
+    {Condition::LT,       {"<",   [](const njson& a, const njson& b){ return a < b; }} },
+    {Condition::LTE,      {"<=",  [](const njson& a, const njson& b){ return a <= b; }} }
   };
 
   
@@ -186,13 +186,13 @@ static inline bool setThreadAffinity(const std::thread::native_handle_type handl
 
 
 // Response when command known but response
-static fcjson createErrorResponse (const std::string_view commandRsp, const RequestStatus status, const SessionToken& tkn, const std::string_view msg)
+static njson createErrorResponse (const std::string_view commandRsp, const RequestStatus status, const SessionToken& tkn, const std::string_view msg)
 {
-  fcjson rsp;
+  njson rsp;
   rsp[commandRsp]["st"] = status;
   
   if (tkn.empty())
-    rsp[commandRsp]["tkn"] = fcjson{};
+    rsp[commandRsp]["tkn"] = njson{};
   else
     rsp[commandRsp]["tkn"] = tkn;
 
@@ -200,20 +200,20 @@ static fcjson createErrorResponse (const std::string_view commandRsp, const Requ
   return rsp;
 }
 
-static fcjson createErrorResponse (const std::string_view commandRsp, const RequestStatus status, const std::string_view msg = "")
+static njson createErrorResponse (const std::string_view commandRsp, const RequestStatus status, const std::string_view msg = "")
 {
-  fcjson rsp;
+  njson rsp;
   rsp[commandRsp]["st"] = status;
-  rsp[commandRsp]["tkn"] = fcjson{};
+  rsp[commandRsp]["tkn"] = njson{};
   rsp[commandRsp]["m"] = msg;
   return rsp;
 }
 
 
 // Response is the original command is unknown.
-static fcjson createErrorResponse (const RequestStatus status, const std::string_view msg = "")
+static njson createErrorResponse (const RequestStatus status, const std::string_view msg = "")
 {
-  fcjson rsp;
+  njson rsp;
   rsp["ERR"]["st"] = status;
   rsp["ERR"]["m"] = msg;
   return rsp;

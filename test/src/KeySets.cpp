@@ -1,5 +1,5 @@
 #include "useful/TestCommon.h"
-#include <core/FusionCommon.h>
+#include <core/NemesisCommon.h>
 
 using namespace fusion::test;
 

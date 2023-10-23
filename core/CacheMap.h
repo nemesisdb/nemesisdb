@@ -3,10 +3,10 @@
 
 #include <regex>
 #include <ankerl/unordered_dense.h>
-#include <core/FusionCommon.h>
+#include <core/NemesisConfig.h>
 
 
-namespace fusion { namespace core {
+namespace nemesis { namespace core {
 
 
 class CacheMap
@@ -17,7 +17,7 @@ class CacheMap
 
 public:
 
-  auto set (fcjson& contents) -> std::pair<Map::iterator, bool>
+  auto set (njson& contents) -> std::pair<Map::iterator, bool>
   {
     const auto& key = contents.begin().key();
     auto& value = contents.begin().value(); 
@@ -77,7 +77,7 @@ public:
   }
 
   
-  auto append (fcjson& contents)
+  auto append (njson& contents)
   {
     RequestStatus status = RequestStatus::Ok;
 
@@ -86,19 +86,19 @@ public:
     {
       switch (contents.begin().value().type())
       {
-        case fcjson::value_t::array:
+        case njson::value_t::array:
         {
           for (auto& item : contents.at(key))
             it->second.insert(it->second.end(), std::move(item));
         }
         break;
 
-        case fcjson::value_t::object:
+        case njson::value_t::object:
           it->second.insert(contents.begin().value().begin(), contents.begin().value().end());
         break;
 
-        case fcjson::value_t::string:
-          it->second.get_ref<fcjson::string_t&>().append(contents.begin().value());
+        case njson::value_t::string:
+          it->second.get_ref<njson::string_t&>().append(contents.begin().value());
         break;
 
         default:
@@ -114,13 +114,13 @@ public:
   };
 
 
-  bool contains (const fcjson& contents)  //TODO why not: const cachedkey&
+  bool contains (const njson& contents)  //TODO why not: const cachedkey&
   {
     return m_map.contains(contents);
   };
 
       
-  RequestStatus arrayMove (const fcjson& contents)
+  RequestStatus arrayMove (const njson& contents)
   {
     auto& key = contents.begin().key();
     auto& positions = contents.begin().value();
@@ -171,13 +171,13 @@ public:
   };
 
 
-  auto find (const fcjson& contents, const KvFind& find)
+  auto find (const njson& contents, const KvFind& find)
   {
     auto& [opString, handler] = findConditions.getOperation(find.condition);
 
     const auto haveRegex = !contents.at("keyrgx").get_ref<const std::string&>().empty();
-    fcjson::json_pointer path {contents.at("path")};
-    fcjson::const_reference value = contents.at(opString);
+    njson::json_pointer path {contents.at("path")};
+    njson::const_reference value = contents.at(opString);
     
     std::vector<cachedkey> keys;
     keys.reserve(100U);  // TODO
@@ -211,12 +211,12 @@ public:
   };
 
 
-  void findNoRegEx (const fcjson& contents, const KvFind& find, fcjson& keysArray)
+  void findNoRegEx (const njson& contents, const KvFind& find, njson& keysArray)
   {
     auto& [opString, handler] = findConditions.getOperation(find.condition);
 
-    fcjson::json_pointer path {contents.at("path")};
-    fcjson::const_reference opValue = contents.at(opString);
+    njson::json_pointer path {contents.at("path")};
+    njson::const_reference opValue = contents.at(opString);
     
     auto valueMatch = [&handler, &opValue, &path](std::pair<cachedkey, cachedvalue>& kv)
     {
@@ -236,7 +236,7 @@ public:
   };
 
 
-  RequestStatus updateByPath (const cachedkey& key, const fcjson::json_pointer& path, fcjson&& value)
+  RequestStatus updateByPath (const cachedkey& key, const njson::json_pointer& path, njson&& value)
   {
     RequestStatus status = RequestStatus::Ok;
     
@@ -256,7 +256,7 @@ public:
 
 private:
 
-  auto doAdd (fcjson& contents) -> std::tuple<bool, std::string>
+  auto doAdd (njson& contents) -> std::tuple<bool, std::string>
   {
     const auto& key = contents.items().begin().key();
     auto& value = contents.items().begin().value(); 

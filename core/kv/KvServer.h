@@ -1,5 +1,5 @@
-#ifndef FC_CORE_KVSERVER_H
-#define FC_CORE_KVSERVER_H
+#ifndef NDB_CORE_KVSERVER_H
+#define NDB_CORE_KVSERVER_H
 
 
 #include <functional>
@@ -14,10 +14,10 @@
 #include <core/kv/KvHandler.h>
 #include <core/ks/KsHandler.h>  
 #include <core/ks/KsSets.h>
-#include <core/FusionConfig.h>
+#include <core/NemesisConfig.h>
 
 
-namespace fusion { namespace core { namespace kv {
+namespace nemesis { namespace core { namespace kv {
 
 
 class KvServer
@@ -83,7 +83,7 @@ public:
   }
 
 
-  void run (FusionConfig& config)
+  void run (NemesisConfig& config)
   {
     // cores => io threads
     static const std::map<std::size_t, std::size_t> CoresToIoThreads =
@@ -111,7 +111,7 @@ public:
     int port = config.cfg["kv"]["port"];
     
 
-    const auto nCores = std::min<std::size_t>(std::thread::hardware_concurrency(), FUSION_MAX_CORES);
+    const auto nCores = std::min<std::size_t>(std::thread::hardware_concurrency(), NEMESIS_MAX_CORES);
 
     if (nCores < 1U || nCores > 256U)
     {
@@ -125,8 +125,8 @@ public:
 
     m_kvHandler = new kv::KvHandler {kv::MaxPools, nCores - kv::MaxPools, keySets};
     
-    #ifndef FC_UNIT_TEST
-    std::cout << "Fusion Max Cores: " << FUSION_MAX_CORES << '\n'
+    #ifndef NDB_UNIT_TEST
+    std::cout << "Nemesis Max Cores: " << NEMESIS_MAX_CORES << '\n'
               << "Available Cores: "  << std::thread::hardware_concurrency() << '\n';
     //std::cout << "I/O Threads: "    << nIoThreads << '\n'
     //          << "Pools: "            << kv::MaxPools << '\n';
@@ -162,7 +162,7 @@ public:
               ws->send(createErrorResponse(RequestStatus::OpCodeInvalid).dump(), kv::WsSendOpCode);
             else
             {
-              if (auto request = fcjson::parse(message, nullptr, false); request.is_discarded()) // TODO change parse() to accept()?
+              if (auto request = njson::parse(message, nullptr, false); request.is_discarded()) // TODO change parse() to accept()?
                 ws->send(createErrorResponse(RequestStatus::JsonInvalid).dump(), kv::WsSendOpCode);
               else
               {
@@ -236,7 +236,7 @@ public:
       std::cout << "Failed to listen on " << ip << ":"  << port << std::endl;
     else
     {
-      #ifndef FC_UNIT_TEST_NOMONITOR
+      #ifndef NDB_UNIT_TEST_NOMONITOR
       m_monitor = std::move(std::jthread{[this]
       {
         std::chrono::seconds period {5};
@@ -257,7 +257,7 @@ public:
     }
     
 
-    #ifndef FC_UNIT_TEST
+    #ifndef NDB_UNIT_TEST
     std::cout << "Ready\n";
     #endif
   }

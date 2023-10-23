@@ -13,7 +13,7 @@
 //#include <core/Common.h>
 
 
-namespace fusion { namespace test {
+namespace nemesis { namespace test {
 
 namespace asio = boost::asio;
 namespace beast = boost::beast;
