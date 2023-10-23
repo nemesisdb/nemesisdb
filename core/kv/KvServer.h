@@ -126,8 +126,8 @@ public:
     m_kvHandler = new kv::KvHandler {kv::MaxPools, nCores - kv::MaxPools, keySets};
     
     #ifndef NDB_UNIT_TEST
-    std::cout << "Nemesis Max Cores: " << NEMESIS_MAX_CORES << '\n'
-              << "Available Cores: "  << std::thread::hardware_concurrency() << '\n';
+    std::cout << "Available Cores: "  << std::thread::hardware_concurrency() << '\n'
+              << "NemesisDB Max Cores: " << NEMESIS_MAX_CORES << '\n';
     //std::cout << "I/O Threads: "    << nIoThreads << '\n'
     //          << "Pools: "            << kv::MaxPools << '\n';
     #endif

@@ -9,8 +9,8 @@ fi
 
 # staging dir is where we put files in the appropriate dir structure before creating package
 
-packageName=fusioncache_$1_amd64
-installDir=staging/$packageName/usr/local/bin/fusioncache
+packageName=nemesisdb_$1_amd64
+installDir=staging/$packageName/usr/local/bin/nemesisdb
 controlFileDir=staging/$packageName/DEBIAN
 controlFilePath=$controlFileDir/control
 
@@ -28,17 +28,18 @@ mkdir -p ../releases
 
 echo Creating control file
 
-echo "Package: fusioncache" > $controlFilePath
+echo "Package: nemesisdb" > $controlFilePath
 echo "Version: $1" >> $controlFilePath
 echo "Architecture: amd64" >> $controlFilePath
-echo "Maintainer: FusionCache <contact@fusioncache.io>" >> $controlFilePath
-echo "Homepage: https://fusioncache.io" >> $controlFilePath
-echo "Description: FusionCache" >> $controlFilePath
+#echo "Maintainer: NemesisDB <contact@nemesisdb.io>" >> $controlFilePath
+echo "Maintainer: NemesisDB" >> $controlFilePath
+echo "Homepage: https://nemesisdb.io" >> $controlFilePath
+echo "Description: NemesisDB" >> $controlFilePath
 echo " JSON cache." >> $controlFilePath
 
 
 echo Copying server binary
-cp ../server/Release/bin/fusionserver $installDir
+cp ../server/Release/bin/nemesisdb $installDir
 
 echo Copying server config
 cp ../server/configs/default.json $installDir
