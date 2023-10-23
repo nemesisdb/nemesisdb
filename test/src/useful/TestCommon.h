@@ -21,6 +21,9 @@ using namespace fusion::client;
 namespace asio = boost::asio;
 
 
+using testjson = nlohmann::json;
+
+
 class KvTestServer  : public ::testing::Test
 {
 public:
@@ -46,10 +49,11 @@ private:
   nemesis::core::kv::KvServer m_server;
 };
 
-class FusionTest : public fusion::test::KvTestServer
+
+class NemesisTest : public nemesis::test::KvTestServer
 {
 public:
-  FusionTest()
+  NemesisTest()
   {
 
   }
@@ -57,7 +61,7 @@ public:
 
 
 
-using Server = fusion::test::KvTestServer;
+using Server = nemesis::test::KvTestServer;
 
 
 struct Ioc
@@ -101,13 +105,13 @@ struct Ioc
 
 struct TestData
 {
-	json request;
-	std::vector<json> expected;
-	std::vector<json> actual;
+	testjson request;
+	std::vector<testjson> expected;
+	std::vector<testjson> actual;
 	std::size_t nResponses{0};
 	bool checkToken{false};
 	bool checkResponses{true};
-	json token;	
+	testjson token;	
 };
 
 
@@ -132,7 +136,7 @@ struct TestClient
 		{
 			{
 				std::scoped_lock lck{responsesMux};
-				responses.emplace_back (json::parse(response.msg));
+				responses.emplace_back (njson::parse(response.msg));
 			}
 			
 			latch->count_down();
@@ -213,7 +217,7 @@ struct TestClient
 		{
 			latch = std::make_unique<std::latch>(1);
 
-			json sesh{{"SH_NEW", {{"name","test"}}}};
+			njson sesh{{"SH_NEW", {{"name","test"}}}};
 			ws->send(sesh.dump());
 
 			latch->wait();
@@ -235,9 +239,9 @@ struct TestClient
 		Client client;
 		WebSocketSession ws;
 		std::unique_ptr<std::latch> latch;
-		std::vector<json> responses;
+		std::vector<testjson> responses;
 		std::mutex responsesMux;
-		json token;
+		testjson token;
 		bool removeTokenInRsp{false};
 };
 

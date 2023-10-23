@@ -10,7 +10,7 @@ include_directories("../../unordered_dense/include")
 link_directories("../../vcpkg/installed/x64-linux/lib")
 
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/../bin/)
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DFC_UNIT_TEST -march=native") 
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DNDB_UNIT_TEST -march=native") 
 
 
 add_executable(test_set Set.cpp)

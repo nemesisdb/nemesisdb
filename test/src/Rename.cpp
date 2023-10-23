@@ -1,9 +1,9 @@
 #include "useful/TestCommon.h"
 
-using namespace fusion::test;
+using namespace nemesis::test;
 
 
-// TEST_F(FusionTest, Rename)
+// TEST_F(NemesisTest, Rename)
 // {
 // 	TestClient tc;
 
@@ -15,7 +15,7 @@ using namespace fusion::test;
 
 
 
-// TEST_F(FusionTest, KeyNotExist)
+// TEST_F(NemesisTest, KeyNotExist)
 // {
 // 	TestClient tc;
 
@@ -25,7 +25,7 @@ using namespace fusion::test;
 // }
 
 
-// TEST_F(FusionTest, KeyShort)
+// TEST_F(NemesisTest, KeyShort)
 // {
 // 	TestClient tc;
 
@@ -35,7 +35,7 @@ using namespace fusion::test;
 // }
 
 
-// TEST_F(FusionTest, IncorrectCommandType)
+// TEST_F(NemesisTest, IncorrectCommandType)
 // {
 // 	TestClient tc;
 

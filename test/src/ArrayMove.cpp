@@ -1,9 +1,9 @@
 #include "useful/TestCommon.h"
 
-using namespace fusion::test;
+using namespace nemesis::test;
 
 
-// TEST_F(FusionTest, KeyNotExist)
+// TEST_F(NemesisTest, KeyNotExist)
 // {
 // 	TestClient tc;
 
@@ -13,7 +13,7 @@ using namespace fusion::test;
 // }
 
 
-// TEST_F(FusionTest, EmptyArrayTwoPositions)
+// TEST_F(NemesisTest, EmptyArrayTwoPositions)
 // {
 // 	TestClient tc;
 
@@ -24,7 +24,7 @@ using namespace fusion::test;
 // }
 
 
-// TEST_F(FusionTest, EmptyArrayOnePositions)
+// TEST_F(NemesisTest, EmptyArrayOnePositions)
 // {
 // 	TestClient tc;
 
@@ -35,7 +35,7 @@ using namespace fusion::test;
 // }
 
 
-// TEST_F(FusionTest, OneItem)
+// TEST_F(NemesisTest, OneItem)
 // {
 // 	TestClient tc;
 
@@ -46,7 +46,7 @@ using namespace fusion::test;
 // }
 
 
-// TEST_F(FusionTest, TwoItemsPositionsEqual)
+// TEST_F(NemesisTest, TwoItemsPositionsEqual)
 // {
 // 	TestClient tc;
 
@@ -58,7 +58,7 @@ using namespace fusion::test;
 // }
 
 
-// TEST_F(FusionTest, TwoItemsMoveFirst)
+// TEST_F(NemesisTest, TwoItemsMoveFirst)
 // {
 // 	TestClient tc;
 
@@ -70,7 +70,7 @@ using namespace fusion::test;
 // }
 
 
-// TEST_F(FusionTest, TwoItemsMoveLastToStart)
+// TEST_F(NemesisTest, TwoItemsMoveLastToStart)
 // {
 // 	TestClient tc;
 
@@ -82,7 +82,7 @@ using namespace fusion::test;
 // }
 
 
-// TEST_F(FusionTest, ThreeItemsMoveSecondToFirst)
+// TEST_F(NemesisTest, ThreeItemsMoveSecondToFirst)
 // {
 // 	TestClient tc;
 
@@ -94,7 +94,7 @@ using namespace fusion::test;
 // }
 
 
-// TEST_F(FusionTest, ThreeItemsMoveLastToFirst)
+// TEST_F(NemesisTest, ThreeItemsMoveLastToFirst)
 // {
 // 	TestClient tc;
 
@@ -106,7 +106,7 @@ using namespace fusion::test;
 // }
 
 
-// TEST_F(FusionTest, ThreeItemsMoveLastToSecond)
+// TEST_F(NemesisTest, ThreeItemsMoveLastToSecond)
 // {
 // 	TestClient tc;
 
@@ -118,7 +118,7 @@ using namespace fusion::test;
 // }
 
 
-// TEST_F(FusionTest, OneItemNoNewMove)
+// TEST_F(NemesisTest, OneItemNoNewMove)
 // {
 // 	TestClient tc;
 
@@ -130,7 +130,7 @@ using namespace fusion::test;
 // }
 
 
-// TEST_F(FusionTest, TwoItemsNoNewMoveFirst)
+// TEST_F(NemesisTest, TwoItemsNoNewMoveFirst)
 // {
 // 	TestClient tc;
 
@@ -142,7 +142,7 @@ using namespace fusion::test;
 // }
 
 
-// TEST_F(FusionTest, TwoItemsNoNewMoveLast)
+// TEST_F(NemesisTest, TwoItemsNoNewMoveLast)
 // {
 // 	TestClient tc;
 
@@ -154,7 +154,7 @@ using namespace fusion::test;
 // }
 
 
-// TEST_F(FusionTest, MoreItemsNoNewMoveFirst)
+// TEST_F(NemesisTest, MoreItemsNoNewMoveFirst)
 // {
 // 	TestClient tc;
 
@@ -166,7 +166,7 @@ using namespace fusion::test;
 // }
 
 
-// TEST_F(FusionTest, MoreItemsNoNewMoveMid)
+// TEST_F(NemesisTest, MoreItemsNoNewMoveMid)
 // {
 // 	TestClient tc;
 
@@ -178,7 +178,7 @@ using namespace fusion::test;
 // }
 
 
-// TEST_F(FusionTest, ObjectItemsMove)
+// TEST_F(NemesisTest, ObjectItemsMove)
 // {
 // 	TestClient tc;
 
@@ -190,7 +190,7 @@ using namespace fusion::test;
 // }
 
 
-// TEST_F(FusionTest, MultipleKeysObjectItemsMove)
+// TEST_F(NemesisTest, MultipleKeysObjectItemsMove)
 // {
 // 	TestClient tc;
 
@@ -210,7 +210,7 @@ using namespace fusion::test;
 // }
 
 
-// TEST_F(FusionTest, InvalidPositionType)
+// TEST_F(NemesisTest, InvalidPositionType)
 // {
 // 	TestClient tc;
 
@@ -222,7 +222,7 @@ using namespace fusion::test;
 // }
 
 
-// TEST_F(FusionTest, IncorrectCommandType)
+// TEST_F(NemesisTest, IncorrectCommandType)
 // {
 // 	TestClient tc;
 

@@ -11,8 +11,6 @@
 
 namespace nemesis { namespace core {
 
-using json = nlohmann::json;
-
 
 struct NemesisConfig
 {
@@ -21,12 +19,12 @@ struct NemesisConfig
 
   }
 
-  NemesisConfig(json&& config) : cfg(std::move(config)), valid(true)
+  NemesisConfig(njson&& config) : cfg(std::move(config)), valid(true)
   {
 
   }
 
-  json cfg;
+  njson cfg;
   bool valid;
 
 } ;
@@ -44,11 +42,11 @@ inline bool isValid (std::function<bool()> isValidCheck, const std::string_view 
 void readConfig(NemesisConfig& config, std::filesystem::path path)
 {
   std::ifstream configStream{path};
-  json cfg;
+  njson cfg;
 
   config = NemesisConfig{};
 
-  if (cfg = json::parse(configStream, nullptr, false); cfg.is_discarded())
+  if (cfg = njson::parse(configStream, nullptr, false); cfg.is_discarded())
     std::cout << "Config file not valid JSON\n";
   else
   {

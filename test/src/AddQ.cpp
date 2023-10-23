@@ -1,6 +1,6 @@
 #include "useful/TestCommon.h"
 
-using namespace fusion::test;
+using namespace nemesis::test;
 
 
 //
@@ -8,7 +8,7 @@ using namespace fusion::test;
 //
 
 
-TEST_F(FusionTest, AddNew)
+TEST_F(NemesisTest, AddNew)
 {
 	std::vector<TestData> data = 
 	{
@@ -30,7 +30,7 @@ TEST_F(FusionTest, AddNew)
 }
 
 
-TEST_F(FusionTest, AddToExisting)
+TEST_F(NemesisTest, AddToExisting)
 {
 	std::vector<TestData> data = 
 	{
@@ -60,7 +60,7 @@ TEST_F(FusionTest, AddToExisting)
 }
 
 
-TEST_F(FusionTest, NoKeys)
+TEST_F(NemesisTest, NoKeys)
 {
 	std::vector<TestData> data = 
 	{
@@ -77,7 +77,7 @@ TEST_F(FusionTest, NoKeys)
 }
 
 
-TEST_F(FusionTest, IncorrectCommandType)
+TEST_F(NemesisTest, IncorrectCommandType)
 {
 	std::vector<TestData> data = 
 	{

@@ -1,10 +1,10 @@
 #include "useful/TestCommon.h"
 #include <core/NemesisCommon.h>
 
-using namespace fusion::test;
+using namespace nemesis::test;
 
 
-// TEST_F(FusionTest, FirstQuery)
+// TEST_F(NemesisTest, FirstQuery)
 // {
 // 	TestClient tc;
 
@@ -17,7 +17,7 @@ using namespace fusion::test;
 // }
 
 
-// TEST_F(FusionTest, AfterQueries)
+// TEST_F(NemesisTest, AfterQueries)
 // {
 // 	TestClient tc;
 
@@ -32,7 +32,7 @@ using namespace fusion::test;
 // }
 
 
-// TEST_F(FusionTest, IncorrectCommandType)
+// TEST_F(NemesisTest, IncorrectCommandType)
 // {
 // 	TestClient tc;
 

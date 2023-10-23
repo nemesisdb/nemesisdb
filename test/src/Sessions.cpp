@@ -2,11 +2,11 @@
 
 #include "useful/TestCommon.h"
 
-using namespace fusion::test;
+using namespace nemesis::test;
 
 // errors
 
-TEST_F(FusionTest, New_NoName)
+TEST_F(NemesisTest, New_NoName)
 {
 	TestClient tc;
 
@@ -18,7 +18,7 @@ TEST_F(FusionTest, New_NoName)
 }
 
 
-TEST_F(FusionTest, New_NameEmpty)
+TEST_F(NemesisTest, New_NameEmpty)
 {
 	TestClient tc;
 
@@ -30,7 +30,7 @@ TEST_F(FusionTest, New_NameEmpty)
 }
 
 
-TEST_F(FusionTest, New_NameNotString)
+TEST_F(NemesisTest, New_NameNotString)
 {
 	TestClient tc;
 
@@ -42,7 +42,7 @@ TEST_F(FusionTest, New_NameNotString)
 }
 
 
-TEST_F(FusionTest, New_SharedWrongType)
+TEST_F(NemesisTest, New_SharedWrongType)
 {
 	TestClient tc;
 
@@ -54,7 +54,7 @@ TEST_F(FusionTest, New_SharedWrongType)
 }
 
 
-TEST_F(FusionTest, New_ExpiryWrongType)
+TEST_F(NemesisTest, New_ExpiryWrongType)
 {
 	TestClient tc;
 
@@ -66,7 +66,7 @@ TEST_F(FusionTest, New_ExpiryWrongType)
 }
 
 
-TEST_F(FusionTest, New_ExpiryClearNotSet)
+TEST_F(NemesisTest, New_ExpiryClearNotSet)
 {
 	TestClient tc;
 
@@ -82,7 +82,7 @@ TEST_F(FusionTest, New_ExpiryClearNotSet)
 
 
 //happy
-TEST_F(FusionTest, New_SharedNotSet)
+TEST_F(NemesisTest, New_SharedNotSet)
 {
 	TestClient tc;
 
@@ -102,7 +102,7 @@ TEST_F(FusionTest, New_SharedNotSet)
 }
 
 
-TEST_F(FusionTest, New_SharedSet)
+TEST_F(NemesisTest, New_SharedSet)
 {
 	TestClient tc;
 
@@ -134,7 +134,7 @@ TEST_F(FusionTest, New_SharedSet)
 }
 
 
-TEST_F(FusionTest, New_ExpirySet)
+TEST_F(NemesisTest, New_ExpirySet)
 {
 	TestClient tc;
 
@@ -165,7 +165,7 @@ TEST_F(FusionTest, New_ExpirySet)
 
 
 
-TEST_F(FusionTest, New_TwoSesh)
+TEST_F(NemesisTest, New_TwoSesh)
 {
 	TestClient tc1, tc2;
 
@@ -236,7 +236,7 @@ TEST_F(FusionTest, New_TwoSesh)
 }
 
 
-TEST_F(FusionTest, New_ExpiryClearOnly)
+TEST_F(NemesisTest, New_ExpiryClearOnly)
 {
 	TestClient tc;
 

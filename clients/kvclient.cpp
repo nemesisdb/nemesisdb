@@ -7,7 +7,7 @@
 #include <boost/program_options.hpp>
 #include <nlohmann/json.hpp>
 #include <core/kv/KvCommon.h>
-#include <core/NemesisConfig.h>
+#include <core/NemesisCommon.h>
 #include "utils/Client.hpp"
 #include "utils/HandlerWebSocketServer.h"
 
@@ -19,9 +19,6 @@ using namespace std::chrono;
 
 
 namespace po = boost::program_options;
-
-using json = nlohmann::ordered_json;
-
 
 enum class Mode
 {
@@ -35,7 +32,7 @@ enum class Mode
 std::latch latch{1};
 std::string receiveIp;
 std::filesystem::path configPath;
-json config;
+njson config;
 Mode mode = Mode::None;
 std::size_t valueSize = 0;
 
@@ -139,7 +136,7 @@ bool parseConfig (const int argc, char ** argv)
         std::cout << "Root must have only one key: Local or SendConfig\n";
       else
       {
-        auto validateLocal = [&isValid](json& config)
+        auto validateLocal = [&isValid](njson& config)
         {
           bool valid =  isValid( [&]{ return config.contains("fusionIp") && config.contains("fusionPort") && config.contains("nClients") && config.contains("valueSize") && config.contains("set") && config.contains("get") ; },
                                  "Config must contain ip, port, nClients and either datafiles or set and get") &&
@@ -189,7 +186,7 @@ struct TestClient
   };
 
 
-  TestClient(json& conf) : config(conf)
+  TestClient(njson& conf) : config(conf)
   {
   }
 
@@ -262,7 +259,7 @@ struct TestClient
     fusion::client::Client client {*ioc.ioc};
     if (auto ws = client.openQueryWebSocket(config["fusionIp"], config["fusionPort"], "/", onResponse); ws)
     {
-      json sesh{{"SH_NEW", {{"name","test"}}}};
+      njson sesh{{"SH_NEW", {{"name","test"}}}};
       ws->send(sesh.dump());
 
       latch.wait();
@@ -308,7 +305,7 @@ struct TestClient
 
         for (auto& kv : data)
         {
-          json query;
+          njson query;
           query[queryName]["tkn"] = token;
           query[queryName]["keys"] = {{kv.first, kv.second}};
 
@@ -357,7 +354,7 @@ struct TestClient
           if (i++ == max)
             break;
           
-          json query;
+          njson query;
           query["KV_GET"]["tkn"] = token;
           query["KV_GET"]["keys"] = {std::move(kv.first)};
 
@@ -381,13 +378,13 @@ struct TestClient
 private:
   Ioc ioc;
   std::map<std::string, nemesis::core::njson> data;
-  json config;
+  njson config;
   std::chrono::microseconds setDuration, getDuration;
   SessionToken token;
 };
 
 
-void runLocal(json& config)
+void runLocal(njson& config)
 {
   const auto doingGet = config.contains("get") && config["get"]["enabled"];
   const std::size_t nClients = config["nClients"];
@@ -464,10 +461,10 @@ int main (int argc, char ** argv)
   {
     std::latch haveConfig{1};
 
-    json config;
+    njson config;
     auto onSession = [&config, &haveConfig](std::string msg)
     {
-      config = json::parse(msg);
+      config = njson::parse(msg);
       haveConfig.count_down();
     };
 
@@ -482,7 +479,7 @@ int main (int argc, char ** argv)
     };
     while (ioc->stopped());
 
-    fusion::test::HandlerWebSocketServer ws {ioc, std::make_shared<fusion::test::HandlerWebSocketServer::SessionHandler>(onSession)};
+    nemesis::test::HandlerWebSocketServer ws {ioc, std::make_shared<nemesis::test::HandlerWebSocketServer::SessionHandler>(onSession)};
     
     ws.start(receiveIp, 1987, 1'000'000U);
 

@@ -1,11 +1,11 @@
 #include "useful/TestCommon.h"
 
-using namespace fusion::test;
+using namespace nemesis::test;
 
 
 
 
-TEST_F(FusionTest, SetVarious)
+TEST_F(NemesisTest, SetVarious)
 {
 	TestClient tc;
 
@@ -17,7 +17,7 @@ TEST_F(FusionTest, SetVarious)
 }
 
 
-TEST_F(FusionTest, Overwrite)
+TEST_F(NemesisTest, Overwrite)
 {
 	TestClient tc;
 

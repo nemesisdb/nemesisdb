@@ -139,7 +139,7 @@ public:
           return RequestStatus::OutOfBounds; 
         else
         {
-          auto isIndexValidType = [](const json& array, const std::size_t index)
+          auto isIndexValidType = [](const njson& array, const std::size_t index)
           {
             return array[index].is_number_unsigned();
           };
