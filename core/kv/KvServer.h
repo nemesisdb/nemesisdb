@@ -7,9 +7,13 @@
 #include <set>
 #include <tuple>
 #include <latch>
+#include <thread>
+#include <uwebsockets/App.h>
 #include <core/kv/KvCommon.h>
 #include <core/kv/KvPoolWorker.h>
 #include <core/kv/KvHandler.h>
+#include <core/ks/KsHandler.h>  
+#include <core/ks/KsSets.h>
 #include <core/FusionConfig.h>
 
 
@@ -19,7 +23,7 @@ namespace fusion { namespace core { namespace kv {
 class KvServer
 {
 public:
-  KvServer() : m_fusionClose(false)
+  KvServer() : m_run(true)
   {
 
   }
@@ -40,14 +44,17 @@ public:
 
   void stop()
   {
-    m_fusionClose = true;
+    m_run = false;
+
+    if (m_monitor.joinable())
+      m_monitor.join();
 
     {
-      std::scoped_lock lck{m_sessionsMux};
-      for (auto ws : m_sessions)
+      std::scoped_lock lck{m_wsSessionsMux};
+      for (auto ws : m_wsSessions)
         ws->end(1000); 
 
-      m_sessions.clear();
+      m_wsSessions.clear();
     }
 
     {
@@ -64,10 +71,10 @@ public:
 
     m_threads.clear();
 
-    if (m_handlers)
-      delete m_handlers;
+    if (m_kvHandler)
+      delete m_kvHandler;
 
-    m_handlers = nullptr;
+    m_kvHandler = nullptr;
 
     if (kv::serverStats)
       delete kv::serverStats;
@@ -85,6 +92,7 @@ public:
       {2, 1},
       {4, 3},
       {8, 6},
+      {10, 8},
       {12, 10},
       {16, 12},
       {18, 15},
@@ -96,6 +104,7 @@ public:
     };
     
     kv::serverStats = new kv::ServerStats;
+    auto keySets = new ks::Sets;
 
     unsigned int maxPayload = config.cfg["kv"]["maxPayload"];
     std::string ip = config.cfg["kv"]["ip"];
@@ -114,13 +123,13 @@ public:
     
     kv::MaxPools = std::max<std::size_t>(1U, nCores - nIoThreads);
 
-    m_handlers = new kv::KvHandler {kv::MaxPools, nCores - kv::MaxPools};
+    m_kvHandler = new kv::KvHandler {kv::MaxPools, nCores - kv::MaxPools, keySets};
     
     #ifndef FC_UNIT_TEST
     std::cout << "Fusion Max Cores: " << FUSION_MAX_CORES << '\n'
               << "Available Cores: "  << std::thread::hardware_concurrency() << '\n';
-    /*std::cout << "I/O Threads: "    << nIoThreads << '\n'     // TODO remove
-              << "Pools: "            << kv::MaxPools << '\n';  // TODO remove */
+    //std::cout << "I/O Threads: "    << nIoThreads << '\n'
+    //          << "Pools: "            << kv::MaxPools << '\n';
     #endif
     
     std::size_t listenSuccess{0U};
@@ -131,7 +140,7 @@ public:
     {
       auto * thread = new std::jthread([this, ip, port, &listenSuccessRef, &startLatch, maxPayload, serverStats = kv::serverStats]()
       {
-        auto wsApp = uWS::App().ws<kv::KvSession>("/*",
+        auto wsApp = uWS::App().ws<WsSession>("/*",
         {
           .compression = uWS::DISABLED,
           .maxPayloadLength = maxPayload,
@@ -140,43 +149,49 @@ public:
           // handlers
           .upgrade = nullptr,
           
-          .open = [this](kv::KvWebSocket * ws)
+          .open = [this](KvWebSocket * ws)
           {
-            std::scoped_lock lck{m_sessionsMux};
-            m_sessions.insert(ws);
-          },
-          .message = [this, serverStats](kv::KvWebSocket * ws, std::string_view message, uWS::OpCode opCode)
+            std::scoped_lock lck{m_wsSessionsMux};
+            m_wsSessions.insert(ws);
+          },          
+          .message = [this, serverStats](KvWebSocket * ws, std::string_view message, uWS::OpCode opCode)
           {   
             ++serverStats->queryCount;
 
             if (opCode != uWS::OpCode::TEXT)
-              ws->send(kv::createErrorResponse(kv::KvRequestStatus::OpCodeInvalid).dump(), kv::WsSendOpCode);
+              ws->send(createErrorResponse(RequestStatus::OpCodeInvalid).dump(), kv::WsSendOpCode);
             else
             {
-              if (auto request = kv::kvjson::parse(message, nullptr, false); request.is_discarded()) // TODO change parse() to accept?
-                ws->send(kv::createErrorResponse(kv::KvRequestStatus::JsonInvalid).dump(), kv::WsSendOpCode);
+              if (auto request = fcjson::parse(message, nullptr, false); request.is_discarded()) // TODO change parse() to accept()?
+                ws->send(createErrorResponse(RequestStatus::JsonInvalid).dump(), kv::WsSendOpCode);
               else
               {
-                if (auto [status, queryName] = m_handlers->handle(ws, std::move(request)) ; status != KvRequestStatus::Ok)
+                const auto& commandName = request.cbegin().key();
+
+                if (request.size() != 1U)
+                  ws->send(createErrorResponse(commandName + "_RSP", RequestStatus::CommandMultiple).dump(), kv::WsSendOpCode);
+                else
                 {
-                  if (status == KvRequestStatus::CommandType)
+                  auto [status, queryName] = m_kvHandler->handle(ws, std::move(request));
+
+                  if (status == RequestStatus::CommandType)
                     ws->send(createErrorResponse(queryName+"_RSP", status).dump(), kv::WsSendOpCode);
-                  else
+                  else if (status != RequestStatus::Ok)
                     ws->send(createErrorResponse(status, queryName).dump(), kv::WsSendOpCode);
                 }
               }
             }
           },
-          .close = [this](kv::KvWebSocket * ws, int /*code*/, std::string_view /*message*/)
+          .close = [this](KvWebSocket * ws, int /*code*/, std::string_view /*message*/)
           {
             ws->getUserData()->connected->store(false);
 
-            // when we shutdown (stop()), have to call ws->end() other uWS doesn't return.
+            // when we shutdown, we have to call ws->end() to close each client otherwise uWS loop doesn't return,
             // but when we call ws->end(), this lambda is called, so we need to avoid mutex deadlock with this flag
-            if (!m_fusionClose)
+            if (m_run)
             {
-              std::scoped_lock lck{m_sessionsMux};
-              m_sessions.erase(ws);
+              std::scoped_lock lck{m_wsSessionsMux};
+              m_wsSessions.erase(ws);
             }
           }
         })
@@ -203,7 +218,10 @@ public:
 
       if (thread)
       {
-        m_threads.push_back(thread);
+        {
+          std::scoped_lock mtx{m_threadsMux};
+          m_threads.push_back(thread);
+        }
         
         if (!setThreadAffinity(thread->native_handle(), core))
           std::cout << "Failed to assign io thread to core " << core << '\n';    
@@ -216,6 +234,27 @@ public:
 
     if (listenSuccess != nIoThreads)
       std::cout << "Failed to listen on " << ip << ":"  << port << std::endl;
+    else
+    {
+      #ifndef FC_UNIT_TEST_NOMONITOR
+      m_monitor = std::move(std::jthread{[this]
+      {
+        std::chrono::seconds period {5};
+        std::chrono::steady_clock::time_point nextCheck = std::chrono::steady_clock::now() + period;
+
+        while (m_run)
+        {
+          std::this_thread::sleep_for(std::chrono::seconds{1});
+
+          if (m_run && std::chrono::steady_clock::now() >= nextCheck)
+          {
+            m_kvHandler->monitor();
+            nextCheck = std::chrono::steady_clock::now() + period;
+          }
+        }        
+      }});
+      #endif
+    }
     
 
     #ifndef FC_UNIT_TEST
@@ -223,14 +262,17 @@ public:
     #endif
   }
 
+
   private:
     std::vector<std::jthread *> m_threads;
     std::vector<us_listen_socket_t *> m_sockets;
-    std::set<KvWebSocket *> m_sessions;
-    kv::KvHandler * m_handlers;
+    std::set<KvWebSocket *> m_wsSessions;
+    kv::KvHandler * m_kvHandler;
     std::mutex m_socketsMux;
-    std::mutex m_sessionsMux;
-    std::atomic_bool m_fusionClose; // true if fusion has triggered a close
+    std::mutex m_wsSessionsMux;
+    std::mutex m_threadsMux;
+    std::atomic_bool m_run; // true if fusion has triggered a close
+    std::jthread m_monitor;
 };
 
 

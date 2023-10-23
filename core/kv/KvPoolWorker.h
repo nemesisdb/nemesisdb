@@ -8,31 +8,26 @@
 #include <boost/fiber/fiber.hpp>
 #include <boost/fiber/buffered_channel.hpp>
 #include <ankerl/unordered_dense.h>
-#include <core/kv/KvCommon.h>
 #include <concurrentqueue/concurrentqueue.h>
+#include <core/CacheMap.h>
+#include <core/kv/KvCommon.h>
+#include <core/kv/KvSessions.h>
 
 
 namespace fusion { namespace core { namespace kv {
 
-using CacheMap = ankerl::unordered_dense::segmented_map<cachedkey, cachedvalue>;
 
-
-// A number of KvPoolWorker are created (MaxPools), which is typically hardware_concurrency() minus the number of IO threads.
+// A number of KvPoolWorker are created (MaxPools), which is hardware_concurrency() minus the number of IO threads.
 // A pool worker runs in a thread which is assigned to a core. Each pool worker has a dedicated map which stores the key/values. 
-// A key is hashed and then modulode with MaxPools which determines which pool worker handles that key.
-// The hash is just a simple addition of the first N characters in the key (rather than std::hash, which is a bit heavy for this usecase).
 class KvPoolWorker
 { 
-
 public:
 
   KvPoolWorker(const std::size_t core, const PoolId id) noexcept : m_poolId(id), m_run(true), m_channel(8192U), m_thread(&KvPoolWorker::run, this) 
   {
     if (!setThreadAffinity(m_thread.native_handle(), core))
       std::cout << "Failed to assign KvPoolWorker thread: " << core << '\n';
-    //else
-      //std::cout << "Assigned KvPoolWorker thread: " << core << '\n';
-
+    
     //setThreadRealtime(m_thread.native_handle(), 25);
   }
 
@@ -61,266 +56,273 @@ private:
     });
   }
   
+
   void run ()
   {
-    auto doAdd = [](CacheMap& map, KvCommand& cmd) -> std::tuple<bool, std::string>
+    auto sessionNew = [this](CacheMap& map, KvCommand& cmd)
     {
-      const auto& key = cmd.contents.items().begin().key();
-      auto& value = cmd.contents.items().begin().value(); 
-
-      const auto [ignore, added] = map.emplace(key, std::move(value));
-      return std::make_tuple(added, key);
+      send(cmd, PoolRequestResponse::sessionNew(RequestStatus::Ok, cmd.shtk, cmd.contents.at("name")).dump()); 
     };
+
+
+    auto sessionEnd = [this](CacheMap& map, KvCommand& cmd)
+    {
+      // handled below 
+    };
+
+
+    auto sessionOpen = [this](CacheMap& map, KvCommand& cmd)
+    {
+      // handled below
+    };
+
+
+    auto sessionInfo = [this](CacheMap& map, KvCommand& cmd)
+    {
+      // handled below
+    };
+
+
+    auto sessionInfoAll = [this](CacheMap& map, KvCommand& cmd)
+    {
+      // handled below
+    };
+
 
     auto set = [this](CacheMap& map, KvCommand& cmd)
     {
-      const auto& key = cmd.contents.begin().key(); 
-      auto& value = cmd.contents.begin().value(); 
-      const auto [ignore, inserted] = map.insert_or_assign(key, std::move(value));
-      
-      send(cmd, PoolRequestResponse::keySet(inserted, key).dump());
+      fcjson rsp;
+      rsp["KV_SET_RSP"]["tkn"] = cmd.shtk;
+
+      for(auto& kv : cmd.contents.items())
+      {
+        auto [it, inserted] = map.set(kv.key(), std::move(kv.value()));
+        rsp["KV_SET_RSP"]["keys"][kv.key()] = inserted ? RequestStatus::KeySet : RequestStatus::KeyUpdated;
+      }
+
+      send(cmd, rsp.dump());
     };
+
 
     auto setQ = [this](CacheMap& map, KvCommand& cmd)
     {
-      const auto& key = cmd.contents.begin().key(); 
-      try
+      fcjson rsp;
+      
+      for(auto& kv : cmd.contents.items())
       {
-        auto& value = cmd.contents.begin().value(); 
-        map.insert_or_assign(key, std::move(value));  
+        try
+        {
+          map.set(kv.key(), std::move(kv.value()));
+        }
+        catch(const std::exception& e)
+        {
+          rsp["KV_SETQ_RSP"]["keys"][kv.key()] = RequestStatus::Unknown;
+        }
       }
-      catch(const std::exception& e)
+
+      if (!rsp.is_null())
       {
-        kvjson unknownErrRsp{{"KV_SETQ_RSP", {{"st", KvRequestStatus::Unknown}, {"k", std::move(key)}}}};
-        send(cmd, unknownErrRsp.dump());
-      }
+        rsp["KV_SETQ_RSP"]["tkn"] = cmd.shtk;
+        send(cmd, rsp.dump());
+      }      
     };
+
 
     auto get = [this](CacheMap& map, KvCommand& cmd)
     {
-      if (const auto it = map.find(cmd.contents) ; it != map.cend())
+      fcjson rsp;
+      rsp["KV_GET_RSP"]["tkn"] = cmd.shtk;
+
+      for(auto& item : cmd.contents.items())
       {
-        cachedpair pair = {{it->first, it->second}};
-        send(cmd, PoolRequestResponse::getFound(std::move(pair)).dump());
+        if (item.value().is_string()) [[likely]]
+        {
+          if (auto [exists, pair] = map.get(item.value()); exists)
+            rsp["KV_GET_RSP"].emplace(std::move(pair.begin().key()), std::move(pair.begin().value()));
+          else
+            rsp["KV_GET_RSP"][item.value()] = fcjson{}; //null
+        }        
+      }
+
+      send(cmd, rsp.dump());
+    };
+
+
+    auto add = [this](CacheMap& map, KvCommand& cmd)
+    {
+      fcjson rsp;
+      rsp["KV_ADD_RSP"]["tkn"] = cmd.shtk;
+
+      if (cmd.contents.empty())
+        rsp["KV_ADD_RSP"]["keys"] = fcjson::object();
+
+      for(auto& kv : cmd.contents.items())
+      {
+        const auto inserted = map.add(kv.key(), std::move(kv.value()));
+        rsp["KV_ADD_RSP"]["keys"][kv.key()] = inserted ? RequestStatus::KeySet : RequestStatus::KeyExists;
+      }
+
+      send(cmd, rsp.dump());
+    };
+
+
+    auto addQ = [this](CacheMap& map, KvCommand& cmd)
+    {
+      fcjson rsp;
+
+      if (cmd.contents.empty())
+      {
+        rsp["KV_ADDQ_RSP"]["keys"] = fcjson::object();
+        send(cmd, rsp.dump());
       }
       else
-        send(cmd, PoolRequestResponse::getNotFound(std::move(cmd.contents)).dump()); 
+      {
+        for(auto& kv : cmd.contents.items())
+        {
+          if (const auto inserted = map.add(kv.key(), std::move(kv.value())); !inserted)
+            rsp["KV_ADDQ_RSP"]["keys"][kv.key()] = RequestStatus::KeyExists;
+        }
+
+        if (!rsp.is_null())
+        {
+          rsp["KV_ADDQ_RSP"]["tkn"] = cmd.shtk;
+          send(cmd, rsp.dump());
+        }
+      }
     };
 
-    auto add = [doAdd, this](CacheMap& map, KvCommand& cmd)
-    {
-      auto [added, key] = doAdd(map, cmd);
-      send(cmd, PoolRequestResponse::keyAdd(added, std::move(key)).dump()); 
-    };
-
-    auto addQ = [doAdd, this](CacheMap& map, KvCommand& cmd)
-    {
-      if (auto [added, key] = doAdd(map, cmd); !added)  // only respond if key not added
-        send(cmd, PoolRequestResponse::keyAddQ(added, std::move(key)).dump()); 
-    };
 
     auto remove = [this](CacheMap& map, KvCommand& cmd)
     {
-      const auto& key = cmd.contents.get_ref<const std::string&>();
-      const auto nRemoved = map.erase(key);
+      fcjson rsp;
+      rsp["KV_RMV_RSP"]["tkn"] = cmd.shtk;
 
-      send(cmd, PoolRequestResponse::keyRemoved(nRemoved, std::move(key)).dump()); 
+      for(auto& key : cmd.contents.items())
+      {
+        if (key.value().is_string())
+        {
+          const auto removed = map.remove(key.value().get_ref<const cachedkey&>());
+          rsp["KV_RMV_RSP"][key.value()] = removed ? RequestStatus::KeyRemoved : RequestStatus::KeyNotExist;
+        }
+      }
+
+      send(cmd, rsp.dump());
     };
+
 
     auto clear = [this](CacheMap& map, KvCommand& cmd)
     {
-      const std::size_t size = map.size();
-      bool valid = true;
-
-      try
-      {
-        map.clear();
-      }
-      catch (...)
-      {
-        valid = false;
-      }
-      
-      cmd.cordinatedResponseHandler(std::make_any<std::tuple<bool, std::size_t>>(std::make_tuple(valid, size)));
+      const auto[valid, size] = map.clear();
+      send(cmd, PoolRequestResponse::sessionClear(cmd.shtk, valid, size).dump());
     };
 
-    auto serverInfo = [this](CacheMap& map, KvCommand& cmd)
-    {
-      // does nothing, never called, but required for handlers array below
-    };
 
     auto count = [this](CacheMap& map, KvCommand& cmd)
     {
-      cmd.cordinatedResponseHandler(std::make_any<std::size_t>(map.size()));
+      send(cmd, PoolRequestResponse::sessionCount(cmd.shtk, map.count()).dump());
     };
+
 
     auto append = [this](CacheMap& map, KvCommand& cmd)
     {
-      KvRequestStatus status = KvRequestStatus::Ok;
-
+      RequestStatus status = map.append(cmd.contents);
       auto& key = cmd.contents.begin().key();
-      if (const auto it = map.find(key) ; it != map.cend())
-      {
-        const auto type = cmd.contents.begin().value().type();
-        switch (type)
-        {
-          case kvjson::value_t::array:
-          {
-            for (auto& item : cmd.contents.at(key))
-              it->second.insert(it->second.end(), std::move(item));
-          }
-          break;
 
-          case kvjson::value_t::object:
-            it->second.insert(cmd.contents.begin().value().begin(), cmd.contents.begin().value().end());
-          break;
-
-          case kvjson::value_t::string:
-            it->second.get_ref<kvjson::string_t&>().append(cmd.contents.begin().value());
-          break;
-
-          default:
-            status = KvRequestStatus::ValueTypeInvalid;
-          break;
-        }
-      }
-      else
-        status = KvRequestStatus::KeyNotExist;
-
-      send(cmd, PoolRequestResponse::append(status, std::move(key)).dump());
+      send(cmd, PoolRequestResponse::sessionAppend(cmd.shtk, status, std::move(key)).dump());
     };
+
 
     auto contains = [this](CacheMap& map, KvCommand& cmd)
     {
-      if (map.contains(cmd.contents))
-        send(cmd, PoolRequestResponse::contains(KvRequestStatus::KeyExists, cmd.contents.get<std::string_view>()).dump());
-      else
-        send(cmd, PoolRequestResponse::contains(KvRequestStatus::KeyNotExist, cmd.contents.get<std::string_view>()).dump());
-    };
+      fcjson rsp;
+      rsp["KV_CONTAINS_RSP"]["st"] = RequestStatus::Ok;
+      rsp["KV_CONTAINS_RSP"]["tkn"] = cmd.shtk;
 
-    auto arrayMove = [this](CacheMap& map, KvCommand& cmd)
-    {
-      auto& key = cmd.contents.begin().key();
-      auto& positions = cmd.contents.begin().value();
-      
-      if (positions.size() != 2U && positions.size() != 1U)
-        send(cmd, PoolRequestResponse::arrayMove(KvRequestStatus::ValueSize, key).dump());
-      else
-      { 
-        if (auto it = map.find(key) ; it == map.cend())
-          send(cmd, PoolRequestResponse::arrayMove(KvRequestStatus::KeyNotExist, key).dump()); 
-        else  [[likely]]
-        {
-          if (auto& array = it->second; !array.is_array())
-            send(cmd, PoolRequestResponse::arrayMove(KvRequestStatus::ValueTypeInvalid, key).dump()); 
-          else if (array.empty())
-            send(cmd, PoolRequestResponse::arrayMove(KvRequestStatus::OutOfBounds, key).dump()); 
-          else
-          {
-            auto isIndexValidType = [](const json& array, const std::size_t index)
-            {
-              return array[index].is_number_unsigned();
-            };
+      for (auto& item : cmd.contents.items())
+        rsp["KV_CONTAINS_RSP"]["keys"][item.value()] = map.contains(item.value());
 
-            if (positions.size() == 1U && !isIndexValidType(positions, 0U))
-              send(cmd, PoolRequestResponse::arrayMove(KvRequestStatus::ValueTypeInvalid, key).dump());
-            else if (positions.size() == 2U && (!isIndexValidType(positions, 0U) || !isIndexValidType(positions, 1U)))
-              send(cmd, PoolRequestResponse::arrayMove(KvRequestStatus::ValueTypeInvalid, key).dump());
-            else
-            {
-              const std::int64_t currPos = positions[0U];
-              const std::int64_t newPos = positions.size() == 1U ? array.size() : positions[1U].get<std::int64_t>(); // at the end if no position supplied
-
-              if (currPos < 0 || currPos > array.size() - 1 || newPos < 0)
-                send(cmd, PoolRequestResponse::arrayMove(KvRequestStatus::OutOfBounds, key).dump());
-              else if (currPos == newPos)
-                send(cmd, PoolRequestResponse::arrayMove(KvRequestStatus::Ok, key).dump());
-              else
-              {
-                array.insert(std::next(array.cbegin(), newPos), std::move(array[currPos]));
-                array.erase(currPos > newPos ? currPos+1 : currPos);
-
-                send(cmd, PoolRequestResponse::arrayMove(KvRequestStatus::Ok, key).dump());
-              }
-            }
-          }
-        }
-      }        
-    };
-
-    auto find = [this](CacheMap& map, KvCommand& cmd)
-    {
-      // this is sent to all workers. Each runs the "path" search on all keys, then applies the condition on each result.
-      // the keys which pass the condition, are returned
-      
-      // KvHandler validates path syntax
-      auto& [opString, handler] = findConditions.getOperation(cmd.find.condition);
-
-      const auto haveRegex = !cmd.contents.at("keyrgx").get_ref<const std::string&>().empty();
-      kvjson::json_pointer path {cmd.contents.at("path")};
-      kvjson::const_reference value = cmd.contents.at(opString);
-      
-      std::vector<cachedkey> keys;
-      keys.reserve(100U);  // TODO
-
-      auto valueMatch = [&handler, &keys, &value, &path](std::pair<cachedkey, cachedvalue>& kv)
-      {
-        if (path.empty() && handler(kv.second, value))
-          return true;
-        else if (kv.second.contains(path) && handler(kv.second.at(path), value))
-          return true;
-        else
-          return false;
-      };
-
-      const std::regex keyRegex{cmd.contents.at("keyrgx").get_ref<const std::string&>()};
-      
-      for(auto& kv : map)
-      {
-        if (haveRegex)
-        {     
-          if (std::regex_match(kv.first, keyRegex) && valueMatch(kv))
-            keys.emplace_back(kv.first);
-        }
-        else if (valueMatch(kv))
-          keys.emplace_back(kv.first);
-      }
-
-      keys.shrink_to_fit();
-
-      cmd.cordinatedResponseHandler(std::make_any<std::vector<cachedkey>>(std::move(keys)));
+      send(cmd, rsp.dump());
     };
 
 
     /*
-    auto renameKey = [](CacheMap& map, KvCommand& cmd)
+    auto sessionArrayMove = [this](CacheMap& map, KvCommand& cmd)
     {
-      auto& existingKey = command->contents.begin().key();
-      auto newKey = command->contents.begin().value().get<std::string_view>();
-      
-      if (auto it = map.find(existingKey) ; it != map.end())
-      {
-        const auto [ignore, inserted] = map.emplace(newKey, std::move(it->second));
+      fcjson rsp;
+      rsp["KV_ARRAY_MOVE_RSP"]["tkn"] = cmd.shtk;
 
-        if (inserted)
-        {
-          map.erase(existingKey);
-          command.loop->defer([ws = command.ws, contents = std::move(command->contents)]{ ws->send(PoolRequestResponse::renameKey(std::move(contents)).dump(), kv::WsSendOpCode);});
-        }
-        else
-          command.loop->defer([ws = command.ws, contents = std::move(command->contents)]{ ws->send(PoolRequestResponse::renameKeyFail(KvRequestStatus::KeyExists, std::move(contents)).dump(), kv::WsSendOpCode);});
-      }
-      else
+      for (auto& item : cmd.contents.items())
       {
-        command.loop->defer([ws = command.ws, contents = std::move(command->contents)]{ ws->send(PoolRequestResponse::renameKeyFail(KvRequestStatus::KeyNotExist, std::move(contents)).dump(), kv::WsSendOpCode);}) ;
+        if (!item.value().is_array())
+          rsp["KV_ARRAY_MOVE_RSP"][item.key()] = RequestStatus::ValueTypeInvalid;
+        else
+        {
+          const auto status = map.arrayMove(fcjson {{item.key(), std::move(item.value())}});
+          rsp["KV_ARRAY_MOVE_RSP"][item.key()] = status;
+        }
       }
+
+      send(cmd, rsp.dump());
     };
     */
 
 
+    auto find = [this](CacheMap& map, KvCommand& cmd)
+    {
+      fcjson rsp;
+      rsp["KV_FIND_RSP"]["tkn"] = cmd.shtk;
+      rsp["KV_FIND_RSP"]["keys"] = fcjson::array();
+      
+      map.findNoRegEx(cmd.contents, cmd.find, rsp["KV_FIND_RSP"]["keys"]);
+
+      send(cmd, rsp.dump());
+    };
+
+
+    auto update = [this](CacheMap& map, KvCommand& cmd)
+    {
+      fcjson rsp;
+      rsp["KV_UPDATE_RSP"]["tkn"] = cmd.shtk;
+            
+      fcjson::iterator  itKey = cmd.contents.begin(),
+                        itPath = std::next(itKey, 1);
+
+      if (itKey.key() != "key")
+        std::swap(itKey, itPath);
+
+      bool pathValid = true;
+      fcjson::json_pointer path;
+
+      try
+      {
+        path = std::move(fcjson::json_pointer{itPath.key()});
+      }
+      catch (...)
+      {
+        pathValid = false;
+      }
+
+      RequestStatus status;
+
+      if (pathValid)
+        status = map.updateByPath(itKey.value(), path, std::move(itPath.value()));
+      else
+        status = RequestStatus::PathInvalid;  // rename to PathInvalid
+
+      rsp["KV_UPDATE_RSP"]["st"] = status;
+
+      send(cmd, rsp.dump());
+    };
+
+
     // CAREFUL: these have to be in the order of KvQueryType enum
     static const std::array<std::function<void(CacheMap&, KvCommand&)>, static_cast<std::size_t>(KvQueryType::Max)> handlers = 
-    {      
+    {    
+      sessionNew,
+      sessionEnd,
+      sessionOpen,
+      sessionInfo,
+      sessionInfoAll,
       set,
       setQ,
       get,
@@ -328,38 +330,89 @@ private:
       addQ,
       remove,
       clear,
-      serverInfo,
       count,
       append,
       contains,
-      arrayMove,
-      find
+      find,
+      update
     };
 
-    CacheMap map;
-    KvCommand cmd;
 
-    try
+    KvCommand cmd;
+    Sessions sessions;
+
+    while (m_run)
     {
-      while (m_run)
+      try
       {
         cmd = std::move(m_channel.value_pop());
-        handlers[static_cast<const std::size_t>(cmd.type)](map, cmd);
+
+        if (cmd.type == KvQueryType::SessionNew)
+        {
+          const SessionDuration duration {cmd.contents.at("expiry").at("duration").get<SessionDuration::rep>()};
+          const bool deleteOnExpire = cmd.contents.at("expiry").at("deleteSession");
+
+          auto cache = sessions.start(cmd.shtk, cmd.contents.at("shared") == true, duration, deleteOnExpire);
+          handlers[static_cast<const std::size_t>(cmd.type)](cache->get(), cmd);
+        }
+        else if (cmd.type == KvQueryType::SessionEnd)
+        {
+          auto status = sessions.end(cmd.shtk) ? RequestStatus::Ok : RequestStatus::SessionNotExist;
+          send(cmd, PoolRequestResponse::sessionEnd(status, cmd.shtk).dump());
+        }
+        else if (cmd.type == KvQueryType::SessionOpen)
+        {
+          const auto haveSession = sessions.contains(cmd.shtk);
+          cmd.syncResponseHandler(std::any{haveSession});
+        }
+        else if (cmd.type == KvQueryType::SessionInfo)
+        {
+          if (auto sesh = sessions.get(cmd.shtk); sesh)
+          {
+            const auto shared = sesh->get().shared;
+            const auto expires = sesh->get().expires;
+            const auto deleteSesion = sesh->get().expireInfo.deleteOnExpire;
+            const auto expireTime = std::chrono::time_point_cast<SessionExpireTimeUnit>(sesh->get().expireInfo.time).time_since_epoch();
+            const auto duration = sesh->get().expireInfo.duration;
+            const auto keyCount = sesh->get().map.count();
+            
+            send(cmd, PoolRequestResponse::sessionInfo(RequestStatus::Ok, cmd.shtk, shared, expires, deleteSesion, duration, expireTime, keyCount).dump());
+          }
+          else
+            send(cmd, PoolRequestResponse::sessionInfo(RequestStatus::SessionNotExist, cmd.shtk).dump());
+        }
+        else if (cmd.type == KvQueryType::SessionInfoAll)
+        {
+          std::tuple<const std::size_t, const std::size_t> rsp {std::make_tuple(sessions.countSessions(), sessions.countKeys())};
+          cmd.syncResponseHandler(std::any{std::move(rsp)});
+        }
+        else if (cmd.type == KvQueryType::InternalSessionMonitor)
+        {
+          sessions.removeExpired();
+        }
+        else  [[likely]]
+        {
+          if (auto map = sessions.getMap(cmd.shtk); map)
+            handlers[static_cast<const std::size_t>(cmd.type)](map->get(), cmd);
+          else
+            send(cmd, createErrorResponse(QueryTypeToName.at(cmd.type) + "_RSP", RequestStatus::SessionNotExist, cmd.shtk).dump());
+        }
+      
         // TODO command = KvCommand{};
       }
-    }
-    catch (const boost::fibers::fiber_error& fex)
-    {
-      if (!m_channel.is_closed())
+      catch (const boost::fibers::fiber_error& fex)
       {
-        std::cout << "Pool Fiber Exception: " << fex.what() << '\n';
-        send(cmd, createErrorResponse(KvRequestStatus::Unknown).dump());;
-      } 
-    }
-    catch (const std::exception& ex)
-    {
-      std::cout << "Pool Exception: " << ex.what() << '\n';
-      send(cmd, createErrorResponse(KvRequestStatus::Unknown).dump());
+        if (!m_channel.is_closed())
+        {
+          std::cout << "Pool Fiber Exception: " << fex.what() << '\n';
+          send(cmd, createErrorResponse(RequestStatus::Unknown).dump());
+        } 
+      }
+      catch (const std::exception& ex)
+      {
+        std::cout << "Pool Exception: " << ex.what() << '\n';
+        send(cmd, createErrorResponse(RequestStatus::Unknown).dump());
+      }
     }
   }
 
@@ -369,7 +422,6 @@ private:
   std::atomic_bool m_run; // TODO this doesn't need to be atomic, stop() just closes channel?
   std::jthread m_thread;
   boost::fibers::buffered_channel<KvCommand> m_channel;  
-  
 };
 
 }

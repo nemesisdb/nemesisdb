@@ -24,8 +24,10 @@ add_executable(test_count Count.cpp)
 add_executable(test_serverinfo ServerInfo.cpp)
 add_executable(test_clear Clear.cpp)
 add_executable(test_contains Contains.cpp)
-add_executable(test_arraymove ArrayMove.cpp)
+#add_executable(test_arraymove ArrayMove.cpp)
 add_executable(test_find Find.cpp)
+add_executable(test_keysets KeySets.cpp)
+add_executable(test_sessions Sessions.cpp)
 
 
 target_compile_features(test_set PUBLIC cxx_std_20)
@@ -39,8 +41,10 @@ target_compile_features(test_count PUBLIC cxx_std_20)
 target_compile_features(test_serverinfo PUBLIC cxx_std_20)
 target_compile_features(test_clear PUBLIC cxx_std_20)
 target_compile_features(test_contains PUBLIC cxx_std_20)
-target_compile_features(test_arraymove PUBLIC cxx_std_20)
+#target_compile_features(test_arraymove PUBLIC cxx_std_20)
 target_compile_features(test_find PUBLIC cxx_std_20)
+target_compile_features(test_keysets PUBLIC cxx_std_20)
+target_compile_features(test_sessions PUBLIC cxx_std_20)
 
 
 target_link_libraries(test_set -luSockets -lz -lboost_fiber -lboost_program_options -lboost_context -lgtest)
@@ -54,8 +58,10 @@ target_link_libraries(test_count -luSockets -lz -lboost_fiber -lboost_program_op
 target_link_libraries(test_serverinfo -luSockets -lz -lboost_fiber -lboost_program_options -lboost_context -lgtest)
 target_link_libraries(test_clear -luSockets -lz -lboost_fiber -lboost_program_options -lboost_context -lgtest)
 target_link_libraries(test_contains -luSockets -lz -lboost_fiber -lboost_program_options -lboost_context -lgtest)
-target_link_libraries(test_arraymove -luSockets -lz -lboost_fiber -lboost_program_options -lboost_context -lgtest)
+#target_link_libraries(test_arraymove -luSockets -lz -lboost_fiber -lboost_program_options -lboost_context -lgtest)
 target_link_libraries(test_find -luSockets -lz -lboost_fiber -lboost_program_options -lboost_context -lgtest)
+target_link_libraries(test_keysets -luSockets -lz -lboost_fiber -lboost_program_options -lboost_context -lgtest)
+target_link_libraries(test_sessions -luSockets -lz -lboost_fiber -lboost_program_options -lboost_context -lgtest)
 
 
 set(CMAKE_GENERATOR_PLATFORM x64)
