@@ -1,9 +1,9 @@
 #include "useful/TestCommon.h"
 
-using namespace fusion::test;
+using namespace nemesis::test;
 
 
-TEST_F(FusionTest, NoResult)
+TEST_F(NemesisTest, NoResult)
 {
 	TestClient tc;
 
@@ -13,7 +13,7 @@ TEST_F(FusionTest, NoResult)
 }
 
 
-TEST_F(FusionTest, OneResult)
+TEST_F(NemesisTest, OneResult)
 {
 	TestClient tc;
 
@@ -25,7 +25,7 @@ TEST_F(FusionTest, OneResult)
 }
 
 
-TEST_F(FusionTest, MultipleResults)
+TEST_F(NemesisTest, MultipleResults)
 {
 	TestClient tc;
 

@@ -13,7 +13,7 @@
 //#include <core/Common.h>
 
 
-namespace fusion { namespace test {
+namespace nemesis { namespace test {
 
 namespace asio = boost::asio;
 namespace beast = boost::beast;
@@ -159,7 +159,7 @@ private:
                   ws->set_option(websocket::stream_base::timeout::suggested(beast::role_type::server));
                   ws->set_option(websocket::stream_base::decorator([](websocket::response_type& res)
                   {
-                    res.set(http::field::server, std::string("FusionCache"));
+                    res.set(http::field::server, std::string("NemesisDB"));
                   }));
 
                   ws->auto_fragment(false);
@@ -201,7 +201,7 @@ private:
   void sendResponse(AwaitableTcpStream& stream, const http::status status, const bool closeSocket = false)
   { 
     http::response<http::string_body> res {std::piecewise_construct, std::make_tuple(""), std::make_tuple(status, 11U)};
-    res.set(http::field::server, "FusionCache");
+    res.set(http::field::server, "NemesisDB");
     res.set(http::field::content_type, "application/text");
     res.prepare_payload();
     res.keep_alive(false);

@@ -6,14 +6,14 @@
 #include <chrono>
 #include <map>
 #include <ankerl/unordered_dense.h>
-#include <core/FusionCommon.h>
+#include <core/NemesisCommon.h>
 #include <core/CacheMap.h>
 #include <core/kv/KvCommon.h>
 
 
-namespace fusion { namespace core { namespace kv {
+namespace nemesis { namespace core { namespace kv {
 
-using namespace fusion::core;
+using namespace nemesis::core;
 
 
 class Sessions

@@ -1,5 +1,5 @@
-#ifndef FC_CORE_KSHANDLERS_H
-#define FC_CORE_KSHANDLERS_H
+#ifndef NDB_CORE_KSHANDLERS_H
+#define NDB_CORE_KSHANDLERS_H
 
 
 #include <functional>
@@ -7,11 +7,11 @@
 #include <tuple>
 #include <latch>
 #include <array>
-#include <core/FusionCommon.h>
+#include <core/NemesisCommon.h>
 #include <core/ks/KsSets.h>
 
 
-namespace fusion { namespace core { namespace ks {
+namespace nemesis { namespace core { namespace ks {
 
 
 class KsHandler
@@ -30,7 +30,7 @@ public:
 // private:
   
 //   // CAREFUL: these have to be in the order of KsQueryType enum
-//   const std::array<std::function<void(KvWebSocket *, fcjson&&)>, static_cast<std::size_t>(KsQueryType::Max)> Handlers = 
+//   const std::array<std::function<void(KvWebSocket *, njson&&)>, static_cast<std::size_t>(KsQueryType::Max)> Handlers = 
 //   {
 //     std::bind(&KsHandler::create,         std::ref(*this), std::placeholders::_1, std::placeholders::_2),
 //     std::bind(&KsHandler::list,           std::ref(*this), std::placeholders::_1, std::placeholders::_2),
@@ -47,7 +47,7 @@ public:
 
 // public:
 
-//   std::tuple<RequestStatus,std::string> handle(KvWebSocket * ws, fcjson&& json)
+//   std::tuple<RequestStatus,std::string> handle(KvWebSocket * ws, njson&& json)
 //   {
 //     RequestStatus status = RequestStatus::Ok;
 
@@ -82,7 +82,7 @@ public:
 
 // private:
 
-//   fc_always_inline void create(KvWebSocket * ws, fcjson&& json)
+//   fc_always_inline void create(KvWebSocket * ws, njson&& json)
 //   {
 //     static const KsQueryType queryType = KsQueryType::Create;
 //     static const std::string_view queryName     = "KS_CREATE";
@@ -99,12 +99,12 @@ public:
 //     else
 //     {
 //       const auto status = m_ks->create(cmd.at("name")) ? RequestStatus::KeySetCreated : RequestStatus::KeySetExists;
-//       ws->send(fcjson {{queryRspName, {{"st", status}, {"name", cmd.at("name")}}}}.dump(), WsSendOpCode);
+//       ws->send(njson {{queryRspName, {{"st", status}, {"name", cmd.at("name")}}}}.dump(), WsSendOpCode);
 //     }
 //   }
 
 
-//   fc_always_inline void list(KvWebSocket * ws, fcjson&& json)
+//   fc_always_inline void list(KvWebSocket * ws, njson&& json)
 //   {
 //     static const KsQueryType queryType = KsQueryType::List;
 //     static const std::string_view queryName     = "KS_LIST";
@@ -113,11 +113,11 @@ public:
 //     auto& cmd = json.at(queryName);
 
 //     auto list = m_ks->list();
-//     ws->send(fcjson {{queryRspName, {{"st", RequestStatus::Ok}, {"list", std::move(list)}}}}.dump(), WsSendOpCode);
+//     ws->send(njson {{queryRspName, {{"st", RequestStatus::Ok}, {"list", std::move(list)}}}}.dump(), WsSendOpCode);
 //   }
 
 
-//   fc_always_inline void addKey(KvWebSocket * ws, fcjson&& json)
+//   fc_always_inline void addKey(KvWebSocket * ws, njson&& json)
 //   {
 //     static const KsQueryType queryType = KsQueryType::AddKey;
 //     static const std::string_view queryName     = "KS_ADD_KEY";
@@ -138,12 +138,12 @@ public:
 //       if (!cmd.at("k").empty())
 //         status = m_ks->addKeys(cmd.at("ks"), cmd.at("k"));
       
-//       ws->send(fcjson {{queryRspName, {{"st", status}, {"ks", cmd.at("ks")}}}}.dump(), WsSendOpCode);
+//       ws->send(njson {{queryRspName, {{"st", status}, {"ks", cmd.at("ks")}}}}.dump(), WsSendOpCode);
 //     }
 //   }
 
 
-//   fc_always_inline void get(KvWebSocket * ws, fcjson&& json)
+//   fc_always_inline void get(KvWebSocket * ws, njson&& json)
 //   {
 //     static const KsQueryType queryType = KsQueryType::Get;
 //     static const std::string_view queryName     = "KS_GET";
@@ -151,7 +151,7 @@ public:
 
 //     auto& cmd = json.at(queryName);
 
-//     fcjson rsp;
+//     njson rsp;
 
 //     if (cmd.empty())
 //       ws->send(createErrorResponse(queryRspName, RequestStatus::ValueMissing).dump(), WsSendOpCode);
@@ -164,7 +164,7 @@ public:
 //           // this is an array, so cmd.items().key() is the index, and value() is the ... value
 //           auto& ksName = item.value();
 
-//           fcjson keys = fcjson::array();
+//           njson keys = njson::array();
           
 //           m_ks->getSet(ksName, keys);
 //           rsp[queryRspName][ksName] = std::move(keys);
@@ -177,7 +177,7 @@ public:
 //   }
 
 
-//   fc_always_inline void rmvKey(KvWebSocket * ws, fcjson&& json)
+//   fc_always_inline void rmvKey(KvWebSocket * ws, njson&& json)
 //   {
 //     static const KsQueryType queryType = KsQueryType::RemoveKey;
 //     static const std::string_view queryName     = "KS_RMV_KEY";
@@ -192,12 +192,12 @@ public:
 //     else
 //     {
 //       const auto status = m_ks->removeKey(cmd.at("ks"), cmd.at("k"));
-//       ws->send(fcjson {{queryRspName, {{"st", status}, {"ks", cmd.at("ks")}, {"k", cmd.at("k")}}}}.dump(), WsSendOpCode);
+//       ws->send(njson {{queryRspName, {{"st", status}, {"ks", cmd.at("ks")}, {"k", cmd.at("k")}}}}.dump(), WsSendOpCode);
 //     }    
 //   }
 
 
-//   fc_always_inline void clearSet(KvWebSocket * ws, fcjson&& json)
+//   fc_always_inline void clearSet(KvWebSocket * ws, njson&& json)
 //   {
 //     static const KsQueryType queryType = KsQueryType::ClearSet;
 //     static const std::string_view queryName     = "KS_CLEAR_SET";
@@ -212,12 +212,12 @@ public:
 //     else
 //     {
 //       const auto status = m_ks->clearSet(cmd.at("ks"));
-//       ws->send(fcjson {{queryRspName, {{"st", status}, {"ks", cmd.at("ks")}}}}.dump(), WsSendOpCode);
+//       ws->send(njson {{queryRspName, {{"st", status}, {"ks", cmd.at("ks")}}}}.dump(), WsSendOpCode);
 //     }
 //   }
   
 
-//   fc_always_inline void deleteSet(KvWebSocket * ws, fcjson&& json)
+//   fc_always_inline void deleteSet(KvWebSocket * ws, njson&& json)
 //   {
 //     static const KsQueryType queryType = KsQueryType::DeleteSet;
 //     static const std::string_view queryName     = "KS_DELETE_SET";
@@ -232,12 +232,12 @@ public:
 //     else
 //     {
 //       const auto status = m_ks->deleteSet(cmd.at("ks"));
-//       ws->send(fcjson {{queryRspName, {{"st", status}, {"ks", cmd.at("ks")}}}}.dump(), WsSendOpCode);
+//       ws->send(njson {{queryRspName, {{"st", status}, {"ks", cmd.at("ks")}}}}.dump(), WsSendOpCode);
 //     }
 //   }
 
 
-//   fc_always_inline void deleteAllSets(KvWebSocket * ws, fcjson&& json)
+//   fc_always_inline void deleteAllSets(KvWebSocket * ws, njson&& json)
 //   {
 //     static const KsQueryType queryType = KsQueryType::DeleteSet;
 //     static const std::string_view queryName     = "KS_DELETE_ALL";
@@ -250,12 +250,12 @@ public:
 //     else
 //     {
 //       const auto status = m_ks->clear();
-//       ws->send(fcjson {{queryRspName, {{"st", status}}}}.dump(), WsSendOpCode);
+//       ws->send(njson {{queryRspName, {{"st", status}}}}.dump(), WsSendOpCode);
 //     }
 //   }
 
 
-//   fc_always_inline void setExists(KvWebSocket * ws, fcjson&& json)
+//   fc_always_inline void setExists(KvWebSocket * ws, njson&& json)
 //   {
 //     static const KsQueryType queryType = KsQueryType::SetExists;
 //     static const std::string_view queryName     = "KS_SET_EXISTS";
@@ -270,12 +270,12 @@ public:
 //     else
 //     {    
 //       const RequestStatus status = m_ks->contains(cmd.at("ks")) ? RequestStatus::KeySetExists : RequestStatus::KeySetNotExist;
-//       ws->send(fcjson {{queryRspName, {{"st", status}, {"ks", cmd.at("ks")}}}}.dump(), WsSendOpCode);
+//       ws->send(njson {{queryRspName, {{"st", status}, {"ks", cmd.at("ks")}}}}.dump(), WsSendOpCode);
 //     } 
 //   }
 
   
-//   fc_always_inline void keyExists(KvWebSocket * ws, fcjson&& json)
+//   fc_always_inline void keyExists(KvWebSocket * ws, njson&& json)
 //   {
 //     static const KsQueryType queryType = KsQueryType::KeyExists;
 //     static const std::string_view queryName     = "KS_KEY_EXISTS";
@@ -290,12 +290,12 @@ public:
 //     else
 //     {
 //       const auto status = m_ks->contains(cmd.at("ks"), cmd.at("k"));
-//       ws->send(fcjson {{queryRspName, {{"st", status}, {"ks", cmd.at("ks")}, {"k", cmd.at("k")}}}}.dump(), WsSendOpCode);
+//       ws->send(njson {{queryRspName, {{"st", status}, {"ks", cmd.at("ks")}, {"k", cmd.at("k")}}}}.dump(), WsSendOpCode);
 //     } 
 //   }
 
   
-//   fc_always_inline void moveKey(KvWebSocket * ws, fcjson&& json)
+//   fc_always_inline void moveKey(KvWebSocket * ws, njson&& json)
 //   {
 //     static const KsQueryType queryType = KsQueryType::MoveKey;
 //     static const std::string_view queryName     = "KS_MOVE_KEY";
@@ -313,7 +313,7 @@ public:
 //       const auto& target = cmd.at("targetKs");
 
 //       const RequestStatus status = m_ks->move(source, target, cmd.at("k"));
-//       ws->send(fcjson {{queryRspName, {{"st", status}, {"sourceKs", cmd.at("sourceKs")}, {"targetKs", cmd.at("targetKs")}, {"k", cmd.at("k")}}}}.dump(), WsSendOpCode);
+//       ws->send(njson {{queryRspName, {{"st", status}, {"sourceKs", cmd.at("sourceKs")}, {"targetKs", cmd.at("targetKs")}, {"k", cmd.at("k")}}}}.dump(), WsSendOpCode);
 //     }
 //   }
 

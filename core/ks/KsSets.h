@@ -1,5 +1,5 @@
-#ifndef FC_CORE_KSSETS_H
-#define FC_CORE_KSSETS_H
+#ifndef NDB_CORE_KSSETS_H
+#define NDB_CORE_KSSETS_H
 
 
 #include <vector>
@@ -9,9 +9,9 @@
 #include <core/kv/KvCommon.h>
 
 
-namespace fusion { namespace core { namespace ks {
+namespace nemesis { namespace core { namespace ks {
 
-using namespace fusion::core::kv;
+using namespace nemesis::core::kv;
 
 // Used to group keys into a single set. 
 // A KeySet can be used in commands to restrict which keys are affected.
@@ -39,7 +39,7 @@ public:
   // }
 
 
-  // RequestStatus addKeys (const ksname& name, const fcjson& keyArray)
+  // RequestStatus addKeys (const ksname& name, const njson& keyArray)
   // {
   //   std::scoped_lock lck{m_mux};
 
@@ -71,14 +71,14 @@ public:
   // }
 
 
-  // fc_always_inline bool getSet (const ksname& name, fcjson& set)
+  // fc_always_inline bool getSet (const ksname& name, njson& set)
   // {
   //   std::scoped_lock lck{m_mux};
 
   //   if (auto it = m_sets.find(name) ; it != m_sets.cend())
   //   {
   //     // json lib uses vector as array container, so can pre-size using this constructor
-  //     set = fcjson(it->second.size(), "");
+  //     set = njson(it->second.size(), "");
   //     auto itKey = it->second.cbegin();
 
   //     for (auto& s : set.items())
@@ -214,11 +214,11 @@ public:
   // }
 
   
-  // fcjson list() const
+  // njson list() const
   // {
   //   std::scoped_lock lck{m_mux};
     
-  //   fcjson list = fcjson::array();
+  //   njson list = njson::array();
     
   //   std::for_each(m_sets.cbegin(), m_sets.cend(), [&list](const auto& pair) { list.emplace_back(pair.first); });
 

@@ -7,21 +7,18 @@
 #include <boost/program_options.hpp>
 #include <nlohmann/json.hpp>
 #include <core/kv/KvCommon.h>
-#include <core/FusionCommon.h>
+#include <core/NemesisCommon.h>
 #include "utils/Client.hpp"
 #include "utils/HandlerWebSocketServer.h"
 
 
 using namespace fusion::client;
-using namespace fusion::core;
-using namespace fusion::core::kv;
+using namespace nemesis::core;
+using namespace nemesis::core::kv;
 using namespace std::chrono;
 
 
 namespace po = boost::program_options;
-
-using json = nlohmann::ordered_json;
-
 
 enum class Mode
 {
@@ -35,7 +32,7 @@ enum class Mode
 std::latch latch{1};
 std::string receiveIp;
 std::filesystem::path configPath;
-json config;
+njson config;
 Mode mode = Mode::None;
 std::size_t valueSize = 0;
 
@@ -44,7 +41,7 @@ struct Ioc
 {
   Ioc(const std::size_t core) : Ioc()
   {
-    fusion::core::setThreadAffinity(thread.native_handle(), core);
+    nemesis::core::setThreadAffinity(thread.native_handle(), core);
   }
 
   Ioc() : ioc(std::make_shared<asio::io_context>(1))
@@ -133,13 +130,13 @@ bool parseConfig (const int argc, char ** argv)
       };
 
       std::ifstream cfgStream {configPath};
-      config = fusion::core::fcjson::parse(cfgStream);
+      config = nemesis::core::njson::parse(cfgStream);
 
       if (config.size() != 1U)
         std::cout << "Root must have only one key: Local or SendConfig\n";
       else
       {
-        auto validateLocal = [&isValid](json& config)
+        auto validateLocal = [&isValid](njson& config)
         {
           bool valid =  isValid( [&]{ return config.contains("fusionIp") && config.contains("fusionPort") && config.contains("nClients") && config.contains("valueSize") && config.contains("set") && config.contains("get") ; },
                                  "Config must contain ip, port, nClients and either datafiles or set and get") &&
@@ -189,7 +186,7 @@ struct TestClient
   };
 
 
-  TestClient(json& conf) : config(conf)
+  TestClient(njson& conf) : config(conf)
   {
   }
 
@@ -210,12 +207,12 @@ struct TestClient
       return createUuid().str();
     };
     
-    auto createValue = [valueIndex]() -> fusion::core::fcjson
+    auto createValue = [valueIndex]() -> nemesis::core::njson
     {
       static std::random_device dev;
       static std::mt19937 rng(dev());
 
-      fusion::core::fcjson value;
+      nemesis::core::njson value;
 
       static const std::array<const std::string_view, 3U> strings =
       {
@@ -247,13 +244,13 @@ struct TestClient
   bool createSession ()
   {
     std::latch latch{1};
-    fcjson rsp;
+    njson rsp;
 
     auto onResponse = [&latch, &rsp](fusion::client::Response r)
     {
       if (r.connected)
       {
-        rsp = fcjson::parse(std::move(r.msg));
+        rsp = njson::parse(std::move(r.msg));
         latch.count_down();
       }
     };
@@ -262,7 +259,7 @@ struct TestClient
     fusion::client::Client client {*ioc.ioc};
     if (auto ws = client.openQueryWebSocket(config["fusionIp"], config["fusionPort"], "/", onResponse); ws)
     {
-      json sesh{{"SH_NEW", {{"name","test"}}}};
+      njson sesh{{"SH_NEW", {{"name","test"}}}};
       ws->send(sesh.dump());
 
       latch.wait();
@@ -304,11 +301,11 @@ struct TestClient
         const auto queryName = setq ? "KV_SETQ" : "KV_SET";
         std::size_t nSent{0};
 
-        FusionTimePoint start = FusionClock::now();
+        NemesisTimePoint start = NemesisClock::now();
 
         for (auto& kv : data)
         {
-          json query;
+          njson query;
           query[queryName]["tkn"] = token;
           query[queryName]["keys"] = {{kv.first, kv.second}};
 
@@ -321,7 +318,7 @@ struct TestClient
         if (!setq)
           done.wait();
 
-        return std::chrono::duration_cast<std::chrono::microseconds>(FusionClock::now()-start);
+        return std::chrono::duration_cast<std::chrono::microseconds>(NemesisClock::now()-start);
       }
       else
         std::cout << "Could not connect to " << config["fusionIp"] << ":" << config["fusionPort"] << '\n';
@@ -349,7 +346,7 @@ struct TestClient
       fusion::client::Client client {*ioc.ioc};
       if (auto ws = client.openQueryWebSocket(config["fusionIp"], config["fusionPort"], "/", onResponse); ws)
       {
-        auto start = FusionClock::now();
+        auto start = NemesisClock::now();
 
         std::size_t i = 0;    
         for (auto& kv : data)
@@ -357,7 +354,7 @@ struct TestClient
           if (i++ == max)
             break;
           
-          json query;
+          njson query;
           query["KV_GET"]["tkn"] = token;
           query["KV_GET"]["keys"] = {std::move(kv.first)};
 
@@ -367,7 +364,7 @@ struct TestClient
         }
 
         done.wait();
-        return std::chrono::duration_cast<std::chrono::microseconds>(FusionClock::now()-start);
+        return std::chrono::duration_cast<std::chrono::microseconds>(NemesisClock::now()-start);
       }
       else
         return std::chrono::microseconds{};
@@ -380,14 +377,14 @@ struct TestClient
 
 private:
   Ioc ioc;
-  std::map<std::string, fusion::core::fcjson> data;
-  json config;
+  std::map<std::string, nemesis::core::njson> data;
+  njson config;
   std::chrono::microseconds setDuration, getDuration;
   SessionToken token;
 };
 
 
-void runLocal(json& config)
+void runLocal(njson& config)
 {
   const auto doingGet = config.contains("get") && config["get"]["enabled"];
   const std::size_t nClients = config["nClients"];
@@ -464,10 +461,10 @@ int main (int argc, char ** argv)
   {
     std::latch haveConfig{1};
 
-    json config;
+    njson config;
     auto onSession = [&config, &haveConfig](std::string msg)
     {
-      config = json::parse(msg);
+      config = njson::parse(msg);
       haveConfig.count_down();
     };
 
@@ -482,7 +479,7 @@ int main (int argc, char ** argv)
     };
     while (ioc->stopped());
 
-    fusion::test::HandlerWebSocketServer ws {ioc, std::make_shared<fusion::test::HandlerWebSocketServer::SessionHandler>(onSession)};
+    nemesis::test::HandlerWebSocketServer ws {ioc, std::make_shared<nemesis::test::HandlerWebSocketServer::SessionHandler>(onSession)};
     
     ws.start(receiveIp, 1987, 1'000'000U);
 

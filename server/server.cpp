@@ -5,15 +5,15 @@
 #include <mutex>
 #include <latch>
 #include <filesystem>
-#include <core/FusionConfig.h>
-#include <core/FusionCommon.h>
+#include <core/NemesisConfig.h>
+#include <core/NemesisCommon.h>
 #include <core/kv/KvCommon.h>
 #include <core/kv/KvHandler.h>
 #include <core/kv/KvServer.h>
 
 
-using namespace fusion::core;
-namespace kv = fusion::core::kv;
+using namespace nemesis::core;
+namespace kv = nemesis::core::kv;
 
 std::latch run{1U};
 
@@ -27,7 +27,7 @@ inline void kvSigHandle(int param)
 
 int main (int argc, char ** argv)
 {
-  std::cout << "Fusion v" << FUSION_VERSION << " starting\n";
+  std::cout << "NemesisDB v" << NEMESIS_VERSION << " starting\n";
 
   std::cout << "Registering signals\n";
   signal(SIGINT,  kvSigHandle);
@@ -35,7 +35,7 @@ int main (int argc, char ** argv)
   signal(SIGKILL, kvSigHandle); // docker kill 
 
 
-  FusionConfig config;
+  NemesisConfig config;
 
   #ifndef NDEBUG
     config.cfg["version"] = 1;
@@ -43,7 +43,7 @@ int main (int argc, char ** argv)
     config.cfg["kv"]["port"] = 1987;
     config.cfg["kv"]["maxPayload"] = 1024U;
   #else
-    if (fusion::core::readConfig(config, argc, argv); !config.valid)
+    if (nemesis::core::readConfig(config, argc, argv); !config.valid)
       return 0;
   #endif
 

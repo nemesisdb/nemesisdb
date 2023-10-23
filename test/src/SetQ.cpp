@@ -1,13 +1,13 @@
 #include "useful/TestCommon.h"
 
-using namespace fusion::test;
+using namespace nemesis::test;
 
 //
 // Limited on what we can do because SETQ doesn't respond unless there's an error.
 //
 
 
-TEST_F(FusionTest, SetQ)
+TEST_F(NemesisTest, SetQ)
 {
 	TestClient tc;
 

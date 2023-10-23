@@ -8,7 +8,7 @@
 #include "WebSocketServer.h"
 
 
-namespace fusion { namespace test {
+namespace nemesis { namespace test {
 
   class HandlerWebSocketServer
   {

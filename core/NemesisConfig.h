@@ -1,32 +1,30 @@
-#ifndef FC_CORE_FUSIONCONFIG_H
-#define FC_CORE_FUSIONCONFIG_H
+#ifndef NDB_CORE_FUSIONCONFIG_H
+#define NDB_CORE_FUSIONCONFIG_H
 
 #include <string_view>
 #include <mutex>
 #include <fstream>
 #include <boost/program_options.hpp>
 #include <nlohmann/json.hpp>
-#include <core/FusionCommon.h>
+#include <core/NemesisCommon.h>
 
 
-namespace fusion { namespace core {
-
-using json = nlohmann::json;
+namespace nemesis { namespace core {
 
 
-struct FusionConfig
+struct NemesisConfig
 {
-  FusionConfig() : valid(false)
+  NemesisConfig() : valid(false)
   {
 
   }
 
-  FusionConfig(json&& config) : cfg(std::move(config)), valid(true)
+  NemesisConfig(njson&& config) : cfg(std::move(config)), valid(true)
   {
 
   }
 
-  json cfg;
+  njson cfg;
   bool valid;
 
 } ;
@@ -41,20 +39,20 @@ inline bool isValid (std::function<bool()> isValidCheck, const std::string_view 
 };
 
 
-void readConfig(FusionConfig& config, std::filesystem::path path)
+void readConfig(NemesisConfig& config, std::filesystem::path path)
 {
   std::ifstream configStream{path};
-  json cfg;
+  njson cfg;
 
-  config = FusionConfig{};
+  config = NemesisConfig{};
 
-  if (cfg = json::parse(configStream, nullptr, false); cfg.is_discarded())
+  if (cfg = njson::parse(configStream, nullptr, false); cfg.is_discarded())
     std::cout << "Config file not valid JSON\n";
   else
   {
     bool valid = false;
     valid = isValid([&cfg](){ return cfg.contains("version") && cfg.at("version").is_number_unsigned(); }, "Require version as an unsigned int") &&
-            isValid([&cfg](){ return cfg.at("version") == fusion::core::FUSION_CONFIG_VERSION; }, "Config version not compatible") &&
+            isValid([&cfg](){ return cfg.at("version") == nemesis::core::NEMESIS_CONFIG_VERSION; }, "Config version not compatible") &&
             isValid([&cfg](){ return cfg.contains("kv") && cfg.at("kv").is_object(); }, "Require kv section as an object");
     
     if (valid)
@@ -62,16 +60,16 @@ void readConfig(FusionConfig& config, std::filesystem::path path)
       const auto& kvCfg = cfg.at("kv");
       valid = isValid([&kvCfg](){ return kvCfg.contains("ip") && kvCfg.contains("port") && kvCfg.contains("maxPayload"); }, "kv section requires ip, port and maxPayload") &&
               isValid([&kvCfg](){ return kvCfg.at("ip").is_string() && kvCfg.at("port").is_number_unsigned() && kvCfg.at("maxPayload").is_number_unsigned(); }, "kv::ip must string, kv::port and kv::maxPayload must be unsigned integer") &&
-              isValid([&kvCfg](){ return kvCfg.at("maxPayload") >= fusion::core::FUSION_KV_MINPAYLOAD; }, "kv::maxPayload below minimum") &&
-              isValid([&kvCfg](){ return kvCfg.at("maxPayload") <= fusion::core::FUSION_KV_MAXPAYLOAD; }, "kv::maxPayload exceeds maximum");
+              isValid([&kvCfg](){ return kvCfg.at("maxPayload") >= nemesis::core::NEMESIS_KV_MINPAYLOAD; }, "kv::maxPayload below minimum") &&
+              isValid([&kvCfg](){ return kvCfg.at("maxPayload") <= nemesis::core::NEMESIS_KV_MAXPAYLOAD; }, "kv::maxPayload exceeds maximum");
     
-      config = FusionConfig{std::move(cfg)};
+      config = NemesisConfig{std::move(cfg)};
     }
   }
 }
 
 
-void readConfig (FusionConfig& config, const int argc, char ** argv)
+void readConfig (NemesisConfig& config, const int argc, char ** argv)
 {
   namespace po = boost::program_options;
 

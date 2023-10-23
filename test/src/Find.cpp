@@ -1,10 +1,10 @@
 #include "useful/TestCommon.h"
 
-using namespace fusion::test;
+using namespace nemesis::test;
 
 // Error cases
 
-TEST_F(FusionTest, NoOperator)
+TEST_F(NemesisTest, NoOperator)
 {
 	TestClient tc;
 
@@ -14,7 +14,7 @@ TEST_F(FusionTest, NoOperator)
 }
 
 
-TEST_F(FusionTest, NoOpNoPath)
+TEST_F(NemesisTest, NoOpNoPath)
 {
 	TestClient tc;
 
@@ -24,7 +24,7 @@ TEST_F(FusionTest, NoOpNoPath)
 }
 
 
-TEST_F(FusionTest, EmptyPath)
+TEST_F(NemesisTest, EmptyPath)
 {
 	TestClient tc;
 
@@ -34,7 +34,7 @@ TEST_F(FusionTest, EmptyPath)
 }
 
 
-TEST_F(FusionTest, PathNotString)
+TEST_F(NemesisTest, PathNotString)
 {
 	TestClient tc;
 
@@ -44,7 +44,7 @@ TEST_F(FusionTest, PathNotString)
 }
 
 
-TEST_F(FusionTest, SwapOrder)
+TEST_F(NemesisTest, SwapOrder)
 {
 	TestClient tc;
 
@@ -55,7 +55,7 @@ TEST_F(FusionTest, SwapOrder)
 }
 
 
-TEST_F(FusionTest, InvalidOp)
+TEST_F(NemesisTest, InvalidOp)
 {
 	TestClient tc;
 
@@ -69,7 +69,7 @@ TEST_F(FusionTest, InvalidOp)
 //regex errors
 
 
-// TEST_F(FusionTest, RegexNoOp)
+// TEST_F(NemesisTest, RegexNoOp)
 // {
 // 	TestClient tc;
 
@@ -79,7 +79,7 @@ TEST_F(FusionTest, InvalidOp)
 // }
 
 
-// TEST_F(FusionTest, RegexEmpty)
+// TEST_F(NemesisTest, RegexEmpty)
 // {
 // 	TestClient tc;
 
@@ -92,7 +92,7 @@ TEST_F(FusionTest, InvalidOp)
 
 //Happy cases
 
-TEST_F(FusionTest, NoData)
+TEST_F(NemesisTest, NoData)
 {
 	TestClient tc;
 
@@ -102,7 +102,7 @@ TEST_F(FusionTest, NoData)
 }
 
 
-TEST_F(FusionTest, RootStringEq)
+TEST_F(NemesisTest, RootStringEq)
 {
 	TestClient tc;
 
@@ -113,7 +113,7 @@ TEST_F(FusionTest, RootStringEq)
 }
 
 
-TEST_F(FusionTest, RootObjectEq)
+TEST_F(NemesisTest, RootObjectEq)
 {
 	TestClient tc;
 
@@ -124,7 +124,7 @@ TEST_F(FusionTest, RootObjectEq)
 }
 
 
-TEST_F(FusionTest, RootArrayEq)
+TEST_F(NemesisTest, RootArrayEq)
 {
 	TestClient tc;
 
@@ -135,7 +135,7 @@ TEST_F(FusionTest, RootArrayEq)
 }
 
 
-TEST_F(FusionTest, RootDecimalEq)
+TEST_F(NemesisTest, RootDecimalEq)
 {
 	TestClient tc;
 
@@ -148,7 +148,7 @@ TEST_F(FusionTest, RootDecimalEq)
 
 // NOTE: the order of keys in the "k" array is important. Make sure they are in the correct order for the purposes of the test
 
-TEST_F(FusionTest, RootIntegerLt)
+TEST_F(NemesisTest, RootIntegerLt)
 {
 	TestClient tc;
 
@@ -161,7 +161,7 @@ TEST_F(FusionTest, RootIntegerLt)
 }
 
 
-TEST_F(FusionTest, NestedStringEq)
+TEST_F(NemesisTest, NestedStringEq)
 {
 	TestClient tc;
 
@@ -172,7 +172,7 @@ TEST_F(FusionTest, NestedStringEq)
 }
 
 
-TEST_F(FusionTest, NestedIntEq)
+TEST_F(NemesisTest, NestedIntEq)
 {
 	TestClient tc;
 
@@ -185,7 +185,7 @@ TEST_F(FusionTest, NestedIntEq)
 }
 
 
-TEST_F(FusionTest, NestedIntLt)
+TEST_F(NemesisTest, NestedIntLt)
 {
 	TestClient tc;
 
@@ -198,7 +198,7 @@ TEST_F(FusionTest, NestedIntLt)
 }
 
 
-TEST_F(FusionTest, NestedArrayEq)
+TEST_F(NemesisTest, NestedArrayEq)
 {
 	TestClient tc;
 
@@ -211,7 +211,7 @@ TEST_F(FusionTest, NestedArrayEq)
 }
 
 
-TEST_F(FusionTest, DeepNestedString)
+TEST_F(NemesisTest, DeepNestedString)
 {
 	TestClient tc;
 
@@ -222,7 +222,7 @@ TEST_F(FusionTest, DeepNestedString)
 }
 
 
-TEST_F(FusionTest, DeepNestedIntGt)
+TEST_F(NemesisTest, DeepNestedIntGt)
 {
 	TestClient tc;
 
@@ -237,7 +237,7 @@ TEST_F(FusionTest, DeepNestedIntGt)
 
 
 /*
-// TEST_F(FusionTest, RegExNoPath)
+// TEST_F(NemesisTest, RegExNoPath)
 // {
 // 	TestClient tc;
 
@@ -250,7 +250,7 @@ TEST_F(FusionTest, DeepNestedIntGt)
 // }
 
 
-// TEST_F(FusionTest, RegExAndPath)
+// TEST_F(NemesisTest, RegExAndPath)
 // {
 // 	TestClient tc;
 

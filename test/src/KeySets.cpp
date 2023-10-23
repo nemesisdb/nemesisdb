@@ -1,10 +1,10 @@
 #include "useful/TestCommon.h"
-#include <core/FusionCommon.h>
+#include <core/NemesisCommon.h>
 
-using namespace fusion::test;
+using namespace nemesis::test;
 
 // create
-// TEST_F(FusionTest, KsCreate_NameErrors)
+// TEST_F(NemesisTest, KsCreate_NameErrors)
 // {
 // 	TestClient tc;
 
@@ -16,7 +16,7 @@ using namespace fusion::test;
 // }
 
 
-// TEST_F(FusionTest, KsCreate_Ok)
+// TEST_F(NemesisTest, KsCreate_Ok)
 // {
 // 	TestClient tc;
 
@@ -26,7 +26,7 @@ using namespace fusion::test;
 // }
 
 
-// TEST_F(FusionTest, KsCreate_Duplicate)
+// TEST_F(NemesisTest, KsCreate_Duplicate)
 // {
 // 	TestClient tc;
 
@@ -38,7 +38,7 @@ using namespace fusion::test;
 
 
 // // list
-// TEST_F(FusionTest, KsList_Ok)
+// TEST_F(NemesisTest, KsList_Ok)
 // {
 // 	TestClient tc;
 
@@ -51,7 +51,7 @@ using namespace fusion::test;
 // }
 
 
-// TEST_F(FusionTest, KsList_Empty)
+// TEST_F(NemesisTest, KsList_Empty)
 // {
 // 	TestClient tc;
 
@@ -62,7 +62,7 @@ using namespace fusion::test;
 
 
 // //add
-// TEST_F(FusionTest, KsAddKey_NotArray)
+// TEST_F(NemesisTest, KsAddKey_NotArray)
 // {
 // 	TestClient tc;
 
@@ -72,7 +72,7 @@ using namespace fusion::test;
 // }
 
 
-// TEST_F(FusionTest, KsAddKey_MissingValues)
+// TEST_F(NemesisTest, KsAddKey_MissingValues)
 // {
 // 	TestClient tc;
 
@@ -84,7 +84,7 @@ using namespace fusion::test;
 // }
 
 
-// TEST_F(FusionTest, KsAddKey_NoKeys)
+// TEST_F(NemesisTest, KsAddKey_NoKeys)
 // {
 // 	TestClient tc;
 
@@ -96,7 +96,7 @@ using namespace fusion::test;
 
 
 // //get
-// TEST_F(FusionTest, KsGet_NotArray)
+// TEST_F(NemesisTest, KsGet_NotArray)
 // {
 // 	TestClient tc;
 
@@ -106,7 +106,7 @@ using namespace fusion::test;
 // }
 
 
-// TEST_F(FusionTest, KsGet_EmptyKs)
+// TEST_F(NemesisTest, KsGet_EmptyKs)
 // {
 // 	TestClient tc;
 
@@ -116,7 +116,7 @@ using namespace fusion::test;
 // }
 
 
-// TEST_F(FusionTest, KsGet_KsNotString)
+// TEST_F(NemesisTest, KsGet_KsNotString)
 // {
 // 	TestClient tc;
 
@@ -127,7 +127,7 @@ using namespace fusion::test;
 // }
 
 
-// TEST_F(FusionTest, KsGet_KsNotExist)
+// TEST_F(NemesisTest, KsGet_KsNotExist)
 // {
 // 	TestClient tc;
 
@@ -141,7 +141,7 @@ using namespace fusion::test;
 // }
 
 
-// TEST_F(FusionTest, KsGet_KsExist)
+// TEST_F(NemesisTest, KsGet_KsExist)
 // {
 // 	TestClient tc;
 
@@ -157,7 +157,7 @@ using namespace fusion::test;
 // }
 
 
-// TEST_F(FusionTest, KsGet_OneKs)
+// TEST_F(NemesisTest, KsGet_OneKs)
 // {
 // 	TestClient tc;
 
@@ -173,7 +173,7 @@ using namespace fusion::test;
 // }
 
 
-// TEST_F(FusionTest, KsGet_TwoKs)
+// TEST_F(NemesisTest, KsGet_TwoKs)
 // {
 // 	TestClient tc;
 
@@ -193,7 +193,7 @@ using namespace fusion::test;
 // }
 
 // // remove key
-// TEST_F(FusionTest, KsRmvKey_MissingValue)
+// TEST_F(NemesisTest, KsRmvKey_MissingValue)
 // {
 // 	TestClient tc;
 
@@ -206,7 +206,7 @@ using namespace fusion::test;
 // }
 
 
-// TEST_F(FusionTest, KsRmvKey_InvalidTypes)
+// TEST_F(NemesisTest, KsRmvKey_InvalidTypes)
 // {
 // 	TestClient tc;
 
@@ -217,7 +217,7 @@ using namespace fusion::test;
 // }
 
 
-// TEST_F(FusionTest, KsRmvKey_KsNotExist)
+// TEST_F(NemesisTest, KsRmvKey_KsNotExist)
 // {
 // 	TestClient tc;
 
@@ -227,7 +227,7 @@ using namespace fusion::test;
 // }
 
 
-// TEST_F(FusionTest, KsRmvKey_KeyNotExist)
+// TEST_F(NemesisTest, KsRmvKey_KeyNotExist)
 // {
 // 	TestClient tc;
 
@@ -241,7 +241,7 @@ using namespace fusion::test;
 // }
 
 
-// TEST_F(FusionTest, KsRmvKey_Remove)
+// TEST_F(NemesisTest, KsRmvKey_Remove)
 // {
 // 	TestClient tc;
 
@@ -258,7 +258,7 @@ using namespace fusion::test;
 
 
 // clear set
-// TEST_F(FusionTest, KsClearSet_Invalid)
+// TEST_F(NemesisTest, KsClearSet_Invalid)
 // {
 // 	TestClient tc;
 
@@ -269,7 +269,7 @@ using namespace fusion::test;
 // }
 
 
-// TEST_F(FusionTest, KsClearSet_SetNotExist)
+// TEST_F(NemesisTest, KsClearSet_SetNotExist)
 // {
 // 	TestClient tc;
 
@@ -279,7 +279,7 @@ using namespace fusion::test;
 // }
 
 
-// TEST_F(FusionTest, KsClearSet_Ok)
+// TEST_F(NemesisTest, KsClearSet_Ok)
 // {
 // 	TestClient tc;
 
@@ -296,7 +296,7 @@ using namespace fusion::test;
 
 
 // delete set
-// TEST_F(FusionTest, KsDeleteSet_Invalid)
+// TEST_F(NemesisTest, KsDeleteSet_Invalid)
 // {
 // 	TestClient tc;
 
@@ -307,7 +307,7 @@ using namespace fusion::test;
 // }
 
 
-// TEST_F(FusionTest, KsDeleteSet_SetNotExist)
+// TEST_F(NemesisTest, KsDeleteSet_SetNotExist)
 // {
 // 	TestClient tc;
 
@@ -317,7 +317,7 @@ using namespace fusion::test;
 // }
 
 
-// TEST_F(FusionTest, KsDeleteSet_Ok)
+// TEST_F(NemesisTest, KsDeleteSet_Ok)
 // {
 // 	TestClient tc;
 
@@ -330,7 +330,7 @@ using namespace fusion::test;
 // }
 
 
-// TEST_F(FusionTest, KsDeleteSet_Invalid)
+// TEST_F(NemesisTest, KsDeleteSet_Invalid)
 // {
 // 	TestClient tc;
 
@@ -340,7 +340,7 @@ using namespace fusion::test;
 // }
 
 
-// TEST_F(FusionTest, KsDeleteSet_Ok)
+// TEST_F(NemesisTest, KsDeleteSet_Ok)
 // {
 // 	TestClient tc;
 
@@ -358,7 +358,7 @@ using namespace fusion::test;
 
 
 // set exists
-// TEST_F(FusionTest, KsSetExists_Invalid)
+// TEST_F(NemesisTest, KsSetExists_Invalid)
 // {
 // 	TestClient tc;
 
@@ -369,7 +369,7 @@ using namespace fusion::test;
 // }
 
 
-// TEST_F(FusionTest, KsSetExists_NotExist)
+// TEST_F(NemesisTest, KsSetExists_NotExist)
 // {
 // 	TestClient tc;
 
@@ -379,7 +379,7 @@ using namespace fusion::test;
 // }
 
 
-// TEST_F(FusionTest, KsSetExists_Exist)
+// TEST_F(NemesisTest, KsSetExists_Exist)
 // {
 // 	TestClient tc;
 
@@ -392,7 +392,7 @@ using namespace fusion::test;
 
 
 // key exists
-// TEST_F(FusionTest, KsSetExists_Invalid)
+// TEST_F(NemesisTest, KsSetExists_Invalid)
 // {
 // 	TestClient tc;
 
@@ -406,7 +406,7 @@ using namespace fusion::test;
 // }
 
 
-// TEST_F(FusionTest, KsSetExists_KsNotExists)
+// TEST_F(NemesisTest, KsSetExists_KsNotExists)
 // {
 // 	TestClient tc;
 
@@ -416,7 +416,7 @@ using namespace fusion::test;
 // }
 
 
-// TEST_F(FusionTest, KsSetExists_KeyNotExists)
+// TEST_F(NemesisTest, KsSetExists_KeyNotExists)
 // {
 // 	TestClient tc;
 
@@ -427,7 +427,7 @@ using namespace fusion::test;
 // }
 
 
-// TEST_F(FusionTest, KsSetExists_KeyExists)
+// TEST_F(NemesisTest, KsSetExists_KeyExists)
 // {
 // 	TestClient tc;
 
@@ -447,7 +447,7 @@ using namespace fusion::test;
 
 
 // move key
-TEST_F(FusionTest, KsMove_Invalid)
+TEST_F(NemesisTest, KsMove_Invalid)
 {
 	TestClient tc;
 
@@ -464,7 +464,7 @@ TEST_F(FusionTest, KsMove_Invalid)
 }
 
 
-TEST_F(FusionTest, KsMove_EmptyValues)
+TEST_F(NemesisTest, KsMove_EmptyValues)
 {
 	TestClient tc;
 
@@ -474,7 +474,7 @@ TEST_F(FusionTest, KsMove_EmptyValues)
 }
 
 
-TEST_F(FusionTest, KsMove_SourceNotExist)
+TEST_F(NemesisTest, KsMove_SourceNotExist)
 {
 	TestClient tc;
 
@@ -487,7 +487,7 @@ TEST_F(FusionTest, KsMove_SourceNotExist)
 }
 
 
-TEST_F(FusionTest, KsMove_TargetNotExist)
+TEST_F(NemesisTest, KsMove_TargetNotExist)
 {
 	TestClient tc;
 
@@ -500,7 +500,7 @@ TEST_F(FusionTest, KsMove_TargetNotExist)
 }
 
 
-TEST_F(FusionTest, KsMove_KeyNotExist)
+TEST_F(NemesisTest, KsMove_KeyNotExist)
 {
 	TestClient tc;
 
@@ -513,7 +513,7 @@ TEST_F(FusionTest, KsMove_KeyNotExist)
 }
 
 
-TEST_F(FusionTest, KsMove_KeyMoved)
+TEST_F(NemesisTest, KsMove_KeyMoved)
 {
 	TestClient tc;
 

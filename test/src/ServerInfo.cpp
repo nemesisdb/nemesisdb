@@ -1,29 +1,29 @@
 #include "useful/TestCommon.h"
-#include <core/FusionCommon.h>
+#include <core/NemesisCommon.h>
 
-using namespace fusion::test;
+using namespace nemesis::test;
 
 
-// TEST_F(FusionTest, FirstQuery)
+// TEST_F(NemesisTest, FirstQuery)
 // {
 // 	TestClient tc;
 
 // 	ASSERT_TRUE(tc.open());
 	
-// 	std::string rsp {R"({ "KV_SERVER_INFO_RSP":{"st":1, "qryCnt":1, "version":")" + std::string{fusion::core::FUSION_VERSION} + "\"}}"};
+// 	std::string rsp {R"({ "KV_SERVER_INFO_RSP":{"st":1, "qryCnt":1, "version":")" + std::string{nemesis::core::FUSION_VERSION} + "\"}}"};
 
 // 	// qryCnt is 1 because it includes the server_info account itself
 // 	tc.test({TestData { .request = R"({ "KV_SERVER_INFO":{} })"_json,	.expected = {json::parse(rsp)} }});
 // }
 
 
-// TEST_F(FusionTest, AfterQueries)
+// TEST_F(NemesisTest, AfterQueries)
 // {
 // 	TestClient tc;
 
 // 	ASSERT_TRUE(tc.open());
 	
-// 	std::string rsp {R"({ "KV_SERVER_INFO_RSP":{"st":1, "qryCnt":3, "version":")" + std::string{fusion::core::FUSION_VERSION} + "\"}}"};
+// 	std::string rsp {R"({ "KV_SERVER_INFO_RSP":{"st":1, "qryCnt":3, "version":")" + std::string{nemesis::core::FUSION_VERSION} + "\"}}"};
 
 // 	// qryCnt is 3: the two sets plus the server_info
 // 	tc.test({TestData { .request = R"({ "KV_SET":{"string1":"billybob"}})"_json,	.expected = {R"({ "KV_SET_RSP":{ "st":20, "k":"string1" } })"_json} }});
@@ -32,7 +32,7 @@ using namespace fusion::test;
 // }
 
 
-// TEST_F(FusionTest, IncorrectCommandType)
+// TEST_F(NemesisTest, IncorrectCommandType)
 // {
 // 	TestClient tc;
 

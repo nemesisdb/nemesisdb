@@ -1,5 +1,5 @@
-#ifndef FC_CORE_KVCOMMON_H
-#define FC_CORE_KVCOMMON_H
+#ifndef NDB_CORE_KVCOMMON_H
+#define NDB_CORE_KVCOMMON_H
 
 #include <map>
 #include <array>
@@ -7,10 +7,10 @@
 #include <uuid_v4/uuid_v4.h>
 #include <nlohmann/json.hpp>
 #include <uwebsockets/App.h>
-#include <core/FusionCommon.h>
+#include <core/NemesisCommon.h>
 
 
-namespace fusion { namespace core { namespace kv {
+namespace nemesis { namespace core { namespace kv {
 
 
 using kvhaKV_t = std::uint32_t;
@@ -45,28 +45,28 @@ enum class KvQueryType : std::uint8_t
 };
 
 
-const std::map<const std::string_view, std::tuple<const KvQueryType, const fcjson::value_t>> QueryNameToType = 
+const std::map<const std::string_view, std::tuple<const KvQueryType, const njson::value_t>> QueryNameToType = 
 {  
   // session
-  {"SH_NEW",          {KvQueryType::SessionNew,       fcjson::value_t::object}},
-  {"SH_END",          {KvQueryType::SessionEnd,       fcjson::value_t::object}},
-  {"SH_OPEN",         {KvQueryType::SessionOpen,      fcjson::value_t::object}},
-  {"SH_INFO",         {KvQueryType::SessionInfo,      fcjson::value_t::object}},
-  {"SH_INFO_ALL",     {KvQueryType::SessionInfoAll,   fcjson::value_t::object}},
+  {"SH_NEW",          {KvQueryType::SessionNew,       njson::value_t::object}},
+  {"SH_END",          {KvQueryType::SessionEnd,       njson::value_t::object}},
+  {"SH_OPEN",         {KvQueryType::SessionOpen,      njson::value_t::object}},
+  {"SH_INFO",         {KvQueryType::SessionInfo,      njson::value_t::object}},
+  {"SH_INFO_ALL",     {KvQueryType::SessionInfoAll,   njson::value_t::object}},
   // 
-  {"KV_SET",          {KvQueryType::SessionSet,       fcjson::value_t::object}},
-  {"KV_SETQ",         {KvQueryType::SessionSetQ,      fcjson::value_t::object}},
-  {"KV_GET",          {KvQueryType::SessionGet,       fcjson::value_t::object}},
-  {"KV_ADD",          {KvQueryType::SessionAdd,       fcjson::value_t::object}},
-  {"KV_ADDQ",         {KvQueryType::SessionAddQ,      fcjson::value_t::object}},
-  {"KV_RMV",          {KvQueryType::SessionRemove,    fcjson::value_t::object}},
-  {"KV_CLEAR",        {KvQueryType::SessionClear,     fcjson::value_t::object}},
-  {"KV_COUNT",        {KvQueryType::SessionCount,     fcjson::value_t::object}},
-  {"KV_APPEND",       {KvQueryType::SessionAppend,    fcjson::value_t::object}},
-  {"KV_CONTAINS",     {KvQueryType::SessionContains,  fcjson::value_t::object}},
-  //{"KV_ARRAY_MOVE",   {KvQueryType::SessionArrayMove, fcjson::value_t::object}},
-  {"KV_FIND",         {KvQueryType::SessionFind,      fcjson::value_t::object}},
-  {"KV_UPDATE",       {KvQueryType::SessionUpdate,    fcjson::value_t::object}}
+  {"KV_SET",          {KvQueryType::SessionSet,       njson::value_t::object}},
+  {"KV_SETQ",         {KvQueryType::SessionSetQ,      njson::value_t::object}},
+  {"KV_GET",          {KvQueryType::SessionGet,       njson::value_t::object}},
+  {"KV_ADD",          {KvQueryType::SessionAdd,       njson::value_t::object}},
+  {"KV_ADDQ",         {KvQueryType::SessionAddQ,      njson::value_t::object}},
+  {"KV_RMV",          {KvQueryType::SessionRemove,    njson::value_t::object}},
+  {"KV_CLEAR",        {KvQueryType::SessionClear,     njson::value_t::object}},
+  {"KV_COUNT",        {KvQueryType::SessionCount,     njson::value_t::object}},
+  {"KV_APPEND",       {KvQueryType::SessionAppend,    njson::value_t::object}},
+  {"KV_CONTAINS",     {KvQueryType::SessionContains,  njson::value_t::object}},
+  //{"KV_ARRAY_MOVE",   {KvQueryType::SessionArrayMove, njson::value_t::object}},
+  {"KV_FIND",         {KvQueryType::SessionFind,      njson::value_t::object}},
+  {"KV_UPDATE",       {KvQueryType::SessionUpdate,    njson::value_t::object}}
 };
 
 
@@ -100,37 +100,37 @@ struct PoolRequestResponse
   using enum RequestStatus;
 
   // SESSION
-  static fcjson sessionNew (const RequestStatus status, const SessionToken& token, const SessionName name)
+  static njson sessionNew (const RequestStatus status, const SessionToken& token, const SessionName name)
   {
-    fcjson rsp;
+    njson rsp;
     rsp["SH_NEW_RSP"]["st"] = status;
     rsp["SH_NEW_RSP"]["name"] = name;
     rsp["SH_NEW_RSP"]["tkn"] = token;
     return rsp;
   }
   
-  static fcjson sessionEnd (const RequestStatus status, const SessionToken& token)
+  static njson sessionEnd (const RequestStatus status, const SessionToken& token)
   {
-    fcjson rsp;
+    njson rsp;
     rsp["SH_END_RSP"]["st"] = status;
     rsp["SH_END_RSP"]["tkn"] = token;
     return rsp;
   }
 
-  static fcjson sessionInfo (const RequestStatus status, const SessionToken& token)
+  static njson sessionInfo (const RequestStatus status, const SessionToken& token)
   {
-    fcjson rsp;
+    njson rsp;
     rsp["SH_INFO_RSP"]["st"] = status;
     rsp["SH_INFO_RSP"]["tkn"] = token;
-    rsp["SH_INFO_RSP"]["shared"] = fcjson{};
-    rsp["SH_INFO_RSP"]["keyCnt"] = fcjson{};
+    rsp["SH_INFO_RSP"]["shared"] = njson{};
+    rsp["SH_INFO_RSP"]["keyCnt"] = njson{};
     
     return rsp;
   }
 
-  static fcjson sessionInfo (const RequestStatus status, const SessionToken& token, const bool shared, const bool expires, const bool deleteOnExpire, const SessionDuration duration, SessionExpireTimeUnit expireTime, const std::size_t keyCount)
+  static njson sessionInfo (const RequestStatus status, const SessionToken& token, const bool shared, const bool expires, const bool deleteOnExpire, const SessionDuration duration, SessionExpireTimeUnit expireTime, const std::size_t keyCount)
   {
-    fcjson rsp = sessionInfo(status, token);
+    njson rsp = sessionInfo(status, token);
     rsp["SH_INFO_RSP"]["shared"] = shared;
     rsp["SH_INFO_RSP"]["keyCnt"] = keyCount;
     rsp["SH_INFO_RSP"]["expiry"]["expires"] = expires;
@@ -140,36 +140,36 @@ struct PoolRequestResponse
     return rsp;
   }
     
-  static fcjson sessionRemove (const SessionToken& tkn, const bool removed, const std::string&& k)
+  static njson sessionRemove (const SessionToken& tkn, const bool removed, const std::string&& k)
   {
-    fcjson rsp;
+    njson rsp;
     rsp["KV_RMV_RSP"]["st"] = removed ? KeyRemoved : KeyNotExist;
     rsp["KV_RMV_RSP"]["k"] = k;
     rsp["KV_RMV_RSP"]["tkn"] = tkn;
     return rsp;
   }
 
-  static fcjson sessionClear (const SessionToken& tkn, const bool cleared, const std::size_t count)
+  static njson sessionClear (const SessionToken& tkn, const bool cleared, const std::size_t count)
   {
-    fcjson rsp;
+    njson rsp;
     rsp["KV_CLEAR_RSP"]["st"] = cleared ? Ok : Unknown;
     rsp["KV_CLEAR_RSP"]["cnt"] = count;
     rsp["KV_CLEAR_RSP"]["tkn"] = tkn;
     return rsp;
   }
 
-  static fcjson sessionCount (const SessionToken& tkn, const std::size_t count)
+  static njson sessionCount (const SessionToken& tkn, const std::size_t count)
   {
-    fcjson rsp;
+    njson rsp;
     rsp["KV_COUNT_RSP"]["st"] = Ok;
     rsp["KV_COUNT_RSP"]["cnt"] = count;
     rsp["KV_COUNT_RSP"]["tkn"] = tkn;
     return rsp;
   }
 
-  static fcjson sessionAppend (const SessionToken& tkn, const RequestStatus status, const std::string_view k)
+  static njson sessionAppend (const SessionToken& tkn, const RequestStatus status, const std::string_view k)
   {
-    fcjson rsp;
+    njson rsp;
     rsp["KV_APPEND_RSP"]["st"] = status;
     rsp["KV_APPEND_RSP"]["k"] = k;
     rsp["KV_APPEND_RSP"]["tkn"] = tkn;
@@ -183,7 +183,7 @@ struct PoolRequestResponse
   }
 
   RequestStatus status;
-  fcjson contents;
+  njson contents;
   std::size_t affectedCount{0};
 };
 
@@ -192,7 +192,7 @@ struct KvCommand
 {
   uWS::WebSocket<false, true, WsSession> * ws;  // to access the websocket and userdata
   uWS::Loop * loop; // TODO can this be moved to WsSession, only set once in .open handler? the uWS event loop, so we can defer() websocket calls on an event loop thread
-  fcjson contents;  // json taken from the request, contents depends on the query
+  njson contents;  // json taken from the request, contents depends on the query
   KvQueryType type; 
   std::function<void(std::any)> syncResponseHandler; 
   KvFind find;
@@ -239,20 +239,20 @@ fc_always_inline SessionToken createSessionToken(const SessionName& name, const 
 }
 
 
-fc_always_inline bool valueTypeValid (const fcjson& value)
+fc_always_inline bool valueTypeValid (const njson& value)
 {
-  static const std::set<fcjson::value_t> DisallowedTypes = 
+  static const std::set<njson::value_t> DisallowedTypes = 
   {
-    fcjson::value_t::binary,
-    fcjson::value_t::discarded  // technically not possible, but for sanity
+    njson::value_t::binary,
+    njson::value_t::discarded  // technically not possible, but for sanity
   };
 
   if (value.is_array())
   {
-    static const std::set<fcjson::value_t> DisallowedArrayTypes = 
+    static const std::set<njson::value_t> DisallowedArrayTypes = 
     {
-      fcjson::value_t::binary,
-      fcjson::value_t::discarded
+      njson::value_t::binary,
+      njson::value_t::discarded
     };
 
     for(auto& item : value)

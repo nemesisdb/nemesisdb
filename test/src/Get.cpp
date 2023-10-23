@@ -1,10 +1,10 @@
 #include "useful/TestCommon.h"
 
-using namespace fusion::test;
+using namespace nemesis::test;
 
 
 
-TEST_F(FusionTest, GetScalar)
+TEST_F(NemesisTest, GetScalar)
 {
 	TestClient tc;
 
@@ -18,7 +18,7 @@ TEST_F(FusionTest, GetScalar)
 }
 
 
-TEST_F(FusionTest, GetStructured)
+TEST_F(NemesisTest, GetStructured)
 {
 	TestClient tc;
 
@@ -33,7 +33,7 @@ TEST_F(FusionTest, GetStructured)
 
 
 
-TEST_F(FusionTest, KeyInvalidType)
+TEST_F(NemesisTest, KeyInvalidType)
 {
 	TestClient tc;
 
@@ -47,7 +47,7 @@ TEST_F(FusionTest, KeyInvalidType)
 }
 
 
-TEST_F(FusionTest, KeyNotExist)
+TEST_F(NemesisTest, KeyNotExist)
 {
 	TestClient tc;
 
