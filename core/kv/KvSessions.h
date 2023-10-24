@@ -87,6 +87,15 @@ public:
   {
     return m_sessions.contains(token);
   }
+  
+
+  std::tuple<bool, bool> openShared (const SessionToken& token) const
+  {
+    if (auto sesh = m_sessions.find(token); sesh != m_sessions.end())
+      return {true, sesh->second.shared};
+
+    return {false, false};
+  }
 
 
   bool end (const SessionToken& token)

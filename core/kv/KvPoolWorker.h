@@ -362,8 +362,8 @@ private:
         }
         else if (cmd.type == KvQueryType::SessionOpen)
         {
-          const auto haveSession = sessions.contains(cmd.shtk);
-          cmd.syncResponseHandler(std::any{haveSession});
+          const auto existsSharedTuple = sessions.openShared(cmd.shtk);
+          cmd.syncResponseHandler(std::any{existsSharedTuple});
         }
         else if (cmd.type == KvQueryType::SessionInfo)
         {

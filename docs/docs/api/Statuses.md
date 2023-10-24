@@ -53,10 +53,10 @@ These all relate to the `KV_FIND` command.
 |FindInvalidOperator|62|Operator not permitted|
 
 
-
 ## Session
 |Name|Value|Meaning
 |:---|:---:|:---|
-|SessionNotExist|100|Session does not exist (token is incorrect)|
-|SessionTokenInvalid|101|Token is invalid (i.e. not a string)|
+|SessionNotExist|100|Session does not exist|
+|SessionTokenInvalid|101|Token is not a string, not present or empty|
+|SessionOpenFail|102|Failed to open session, either the name is incorrect or the session is not shared|
 

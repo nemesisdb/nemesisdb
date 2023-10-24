@@ -114,7 +114,7 @@ private:
 
   bool getSessionToken(KvWebSocket * ws, const std::string_view queryRspName, njson& cmd, SessionToken& t)
   {
-    if ((!cmd.contains ("tkn")) || cmd.at("tkn").get_ref<const std::string&>().empty())
+    if ((!cmd.contains ("tkn")) || !cmd.at("tkn").is_string() || cmd.at("tkn").get_ref<const std::string&>().empty())
     {
       ws->send(createErrorResponse(queryRspName, RequestStatus::SessionTokenInvalid).dump(), WsSendOpCode);
       return false;
@@ -122,7 +122,7 @@ private:
     else
     {
       t = std::move(cmd.at("tkn"));
-      cmd.erase("tkn"); // TODO this can probably be removed now
+      cmd.erase("tkn");
       return true;
     } 
   }
@@ -308,13 +308,13 @@ private:
     else if (!cmd.at("name").is_string())
       ws->send(createErrorResponse(queryRspName, RequestStatus::ValueTypeInvalid, "name").dump(), WsSendOpCode);
     else if (cmd.at("name").get_ref<const std::string&>().empty())
-      ws->send(createErrorResponse(queryRspName, RequestStatus::ValueTypeInvalid, "name").dump(), WsSendOpCode);
+      ws->send(createErrorResponse(queryRspName, RequestStatus::ValueSize, "name").dump(), WsSendOpCode);
     else
     {
       // ask the pool if the session token exists
 
       // we don't need to check if the pool is shareable because if it isn't, the token will be completely different,
-      // so it'll either go to the wrong pool, and not exist even if it happens to go to the correct pool
+      // so it'll either go to the wrong pool or not exist in the correct pool
       const auto token = createSessionToken(cmd.at("name"), true);
       
       const PoolId pool = getPoolId(token);
@@ -322,10 +322,21 @@ private:
       
       njson rsp;
       
-      if (std::any_cast<bool>(result))
+      const auto [exists, shared] = std::any_cast<std::tuple<bool, bool>>(result) ;
+
+      // if they attempt to open a sesh that isn't shared, we can't accurately report if the 
+      // session exists because the session will have a completely different token, so it either
+      // completely works or a general failure response 
+      if (exists && shared)
+      {
         rsp[queryRspName]["tkn"] = token;
+        rsp[queryRspName]["st"] = RequestStatus::Ok;
+      }
       else
+      {
         rsp[queryRspName]["tkn"] = njson{}; // null
+        rsp[queryRspName]["st"] = RequestStatus::SessionOpenFail;
+      }        
 
       ws->send(rsp.dump(), WsSendOpCode);
     }

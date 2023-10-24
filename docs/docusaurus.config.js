@@ -11,13 +11,14 @@ const config = {
   favicon: 'img/favicon.ico',
 
   // Set the production url of your site here
-  url: 'https://nemesisdb.github.io',
-  // Set the /<baseUrl>/ pathname under which your site is served
-  // For GitHub pages deployment, it is often '/<projectName>/'
-  baseUrl: '/docs/',
+  url: 'https://nemesisdb.github.io/',
+ 
+  // For GitHub pages'/docs/'
+  // For local: '/'
+  //baseUrl: '/docs/',
+  baseUrl: '/',
 
   // GitHub pages deployment config.
-  // If you aren't using GitHub pages, you don't need these.
   organizationName: 'nemesisdb', // Usually your GitHub org/user name.
   projectName: 'docs', // Usually your repo name.
 
@@ -66,22 +67,22 @@ const config = {
       navbar: {
         title: 'Docs',
         logo: {
-          alt: 'My Site Logo',
+          alt: 'NemesisDB',
           src: 'img/logo.svg',
         },
         items: [
           {
             type: 'docSidebar',
-            sidebarId: 'tutorialSidebar',
-            position: 'left',
-            label: 'Tutorials',
-          },
-          {
-            type: 'docSidebar',
             sidebarId: 'apiSidebar',
             position: 'left',
             label: 'API',            
-          }
+          },
+          {
+            type: 'docSidebar',
+            sidebarId: 'tutorialSidebar',
+            position: 'left',
+            label: 'Tutorials',
+          },          
           //{to: '/blog', label: 'Blog', position: 'left'},
           // {
           //   href: 'https://github.com/facebook/docusaurus',

@@ -149,17 +149,9 @@ enum class RequestStatus
   FindNoOperator,
   FindInvalidOperator,
   FindRegExInvalid,
-  // KeySetCreated = 80,
-  // KeySetExists,
-  // KeySetNotExist,
-  // KeySetNameInvalid,
-  // KeyAddFailed,
-  // KeyRemoveFailed,
-  // KeySetRemoveAllFailed,
-  // KeySetClearFailed,
-  // KeyMoveFailed,
   SessionNotExist = 100,
   SessionTokenInvalid,
+  SessionOpenFail,
   Unknown = 1000
 };
 

@@ -31,4 +31,7 @@ Possible statuses:
 
 - Ok
 - SessionNotExist
-- SessionNotShared
+- SessionOpenFail (`name` incorrect or session is not shared)
+- ValueMissing (no `name`)
+- ValueTypeInvalid (`name` is wrong type)
+- ValueSize (`name` is empty)
