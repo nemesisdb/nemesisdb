@@ -4,9 +4,6 @@
 [submodule "unordered_dense"]
 	path = unordered_dense
 	url = https://github.com/martinus/unordered_dense.git
-[submodule "docs"]
-	path = docs
-	url = https://github.com/FusionCache/docs.git
 [submodule "business"]
 	path = business
 	url = git@gitlab.com:dev490212/business.git
