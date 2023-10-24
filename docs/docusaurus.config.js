@@ -15,8 +15,8 @@ const config = {
  
   // For GitHub pages'/docs/'
   // For local: '/'
-  //baseUrl: '/docs/',
-  baseUrl: '/',
+  baseUrl: '/docs/',
+  //baseUrl: '/',
 
   // GitHub pages deployment config.
   organizationName: 'nemesisdb', // Usually your GitHub org/user name.

@@ -7,7 +7,7 @@ Shared sessions let different services access the same session without knowing t
 
 A normal (non-shared) session token is randomly generated, so if two clients create a session with the same name, they will receive a different token.
 
-But with a shared session, the name is used to generate the token which lets `SH_OPEN` generate the same token if the name is the same as the shared session.
+But with a shared session, the name is used to generate the token which lets `SH_OPEN` generate the same token if the name is the same **and** the session is shared.
 
 If `SH_OPEN` attempts to open a session that isn't shared, it will fail.
 

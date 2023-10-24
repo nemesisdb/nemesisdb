@@ -3,7 +3,7 @@ sidebar_position: 3
 ---
 
 # End Session
-A session ends when it expires or when command with `SH_END`.
+A session ends when it expires or when commanded by `SH_END`.
 
 When using `SH_END` the session is deleted (including its data). When a session expires, there is a flag which controls if the session is deleted.
 
@@ -32,4 +32,4 @@ The server confirms:
 }
 ```
 
-`st` is the status. A status of `1` means "Ok", as opposed to `100` which means "Session Not Found".
+`st` is the status, `1` means "Ok".

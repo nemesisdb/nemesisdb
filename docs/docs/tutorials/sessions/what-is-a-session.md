@@ -7,8 +7,8 @@ When you store data in NemesisDB, it must be stored in a session. A session sepa
 
 For example:
 
-- A web app could create a session for each user that logs in. The session ends after a set duration
-- A delivery app, create a session for each active delivery, which ends when the customer receives the package
+- A web app can create a session for each user that logs in. The session ends after a set duration
+- A delivery app can create a session for each active delivery, which ends when the customer receives the package
 
 
 # Creating Sessions
