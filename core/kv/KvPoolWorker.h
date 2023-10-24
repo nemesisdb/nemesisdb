@@ -405,13 +405,19 @@ private:
         if (!m_channel.is_closed())
         {
           std::cout << "Pool Fiber Exception: " << fex.what() << '\n';
-          send(cmd, createErrorResponse(RequestStatus::Unknown).dump());
+          
+          // cmd::ws can be null if the exception is thrown during internal monitor check
+          if (cmd.ws)
+            send(cmd, createErrorResponse(RequestStatus::Unknown).dump());
         } 
       }
       catch (const std::exception& ex)
       {
         std::cout << "Pool Exception: " << ex.what() << '\n';
-        send(cmd, createErrorResponse(RequestStatus::Unknown).dump());
+
+        // cmd::ws can be null if the exception is thrown during internal monitor check
+        if (cmd.ws)
+          send(cmd, createErrorResponse(RequestStatus::Unknown).dump());
       }
     }
   }

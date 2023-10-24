@@ -91,7 +91,13 @@ public:
 
   bool end (const SessionToken& token)
   {
-    return m_sessions.erase(token) != 0U;
+    if (auto sesh = m_sessions.find(token); sesh != m_sessions.end())
+    {
+      m_expiry.erase(sesh->second.expireInfo.time);
+      return m_sessions.erase(token) != 0U;
+    }
+
+    return false;
   }
 
   
@@ -140,7 +146,7 @@ public:
       {
         if (it->second.deleteOnExpire)
           m_sessions.erase(it->second.token);
-        else
+        else if (m_sessions.contains(it->second.token)) // shouldn't happen because end() removes the entry, but sanity check
           m_sessions.at(it->second.token).map.clear();
       }
 
