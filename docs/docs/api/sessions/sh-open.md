@@ -7,6 +7,10 @@ Opens a shared session from the session name.
 
 The session must have been created with `"shared":true` for this command to succeed.
 
+:::note
+If the `name` is the same as an existing session but the existing session is not shared, this command fails.
+:::
+
 
 |Param|Type|Meaning|Required|
 |:---|:---|:---|:---:|

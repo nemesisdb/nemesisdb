@@ -7,7 +7,7 @@ Creates a new session.
 
 |Param|Type|Meaning|Required|
 |:---|:---|:---|:---:|
-|name|string|A session name. May be used when creating session token for shared sessions|Y|
+|name|string|The session name.<br/> If the session is shared, the name can be used in `SH_OPEN` to get the session token. |Y|
 |shared|bool|Default: `false`<br/> `true`: the session token is created so that the token can be retrieved by the token name with `SH_OPEN`. See [below](#shared-sessions)|N|
 |expiry|object|Default: never expires <br/>Defines session expiry settings. See below.|N|
 
@@ -23,6 +23,11 @@ Creates a new session.
 
 <br/>
 
+## Session Name
+For a session that is not shared (`"shared":false`) the name has no meaning to the server other than it can't be empty. The name is returned in the response so clients can match the name to a session token when working asynchronously.
+
+If the session is shared the name can be used in [`SH_OPEN`](./sh-open.md) to get the session token from its name. This allows services/apps to access the same session without having to exchange the token.
+
 
 ## Response
 
@@ -37,7 +42,7 @@ See the [response status](./../Statuses) page for status values.
 |tkn|string|Session token|
 |st|unsigned int|Status|
 
-Possible status are:
+Possible status values:
 
 - Ok
 - CommandSyntax
