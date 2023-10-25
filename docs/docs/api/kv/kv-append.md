@@ -1,5 +1,5 @@
 ---
-sidebar_position: 90
+sidebar_position: 100
 ---
 
 # KV_APPEND
@@ -145,16 +145,15 @@ We want to:
 |Param|Type|Meaning|
 |:---|:---|:---|
 |tkn|string|Session token|
-|keys|object|Key names with status|
-
-`keys` is an object with contents:
-
-`"<keyname>":<status>`
+|keys|object|Key names with status for each: `"<keyname>":<status>`|
 
 Possible status values:
 
 - Ok
+- KeyNotExist
 - ValueTypeInvalid
+
+See the [response status](./../Statuses) page for status values.
 
 
 ### Example

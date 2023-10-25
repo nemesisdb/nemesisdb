@@ -1,5 +1,5 @@
 ---
-sidebar_position: 60
+sidebar_position: 70
 ---
 
 # KV_RMV
@@ -23,8 +23,9 @@ The command requires the token and an array of keys to remove.
 |:---|:---|:---|
 |tkn|string|Session token|
 
-
 After the `tkn`, each key is listed with its removal status, typically KeyRemoved or KeyNotExist.
+
+See the [response status](./../Statuses) page for status values.
 
 
 ### Remove Key
