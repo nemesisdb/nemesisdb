@@ -176,11 +176,6 @@ public:
                   
                   if (const auto status = m_kvHandler->handle(ws, std::move(request)); status != RequestStatus::Ok)
                     ws->send(createErrorResponse(commandName+"_RSP", status).dump(), kv::WsSendOpCode);
-                  
-                  // if (status == RequestStatus::CommandType)
-                  //   ws->send(createErrorResponse(commandName+"_RSP", status).dump(), kv::WsSendOpCode);
-                  // else if (status != RequestStatus::Ok)
-                  //   ws->send(createErrorResponse(status, commandName).dump(), kv::WsSendOpCode);
                 }
               }
             }
