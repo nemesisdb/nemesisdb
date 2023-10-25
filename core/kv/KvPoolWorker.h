@@ -138,9 +138,9 @@ private:
         if (item.value().is_string()) [[likely]]
         {
           if (auto [exists, pair] = map.get(item.value().get_ref<const cachedkey&>()); exists)
-            rsp["KV_GET_RSP"].emplace(std::move(pair.begin().key()), std::move(pair.begin().value()));
+            rsp["KV_GET_RSP"]["keys"].emplace(std::move(pair.begin().key()), std::move(pair.begin().value()));
           else
-            rsp["KV_GET_RSP"][item.value()] = njson{}; //null
+            rsp["KV_GET_RSP"]["keys"][item.value()] = njson{}; //null
         }        
       }
 

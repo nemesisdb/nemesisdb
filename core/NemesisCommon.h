@@ -139,7 +139,7 @@ enum class RequestStatus
   KeyExists,
   KeyRemoved,
   Key_Reserved1,
-  KeyMissing,
+  ParamMissing,
   KeyTypeInvalid,
   ValueMissing = 40,
   ValueTypeInvalid,

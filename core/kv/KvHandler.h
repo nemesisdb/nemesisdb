@@ -419,7 +419,7 @@ private:
     SessionToken token;
 
     if (!cmd.contains("keys"))
-      ws->send(createErrorResponse(queryRspName, RequestStatus::KeyMissing).dump(), WsSendOpCode);
+      ws->send(createErrorResponse(queryRspName, RequestStatus::ParamMissing, "keys").dump(), WsSendOpCode);
     else if (!cmd.at("keys").is_object())
       ws->send(createErrorResponse(queryRspName, RequestStatus::ValueTypeInvalid, "keys").dump(), WsSendOpCode);
     else if (getSessionToken(ws, queryRspName, cmd, token))
@@ -437,7 +437,7 @@ private:
     SessionToken token;
 
     if (!cmd.contains("keys"))
-      ws->send(createErrorResponse(queryRspName, RequestStatus::KeyMissing).dump(), WsSendOpCode);
+      ws->send(createErrorResponse(queryRspName, RequestStatus::ParamMissing, "keys").dump(), WsSendOpCode);
     else if (!cmd.at("keys").is_object())
       ws->send(createErrorResponse(queryRspName, RequestStatus::ValueTypeInvalid, "keys").dump(), WsSendOpCode);
     else if (getSessionToken(ws, queryRspName, cmd, token))
@@ -455,7 +455,7 @@ private:
     SessionToken token;
 
     if (!cmd.contains("keys"))
-      ws->send(createErrorResponse(queryRspName, RequestStatus::KeyMissing).dump(), WsSendOpCode);
+      ws->send(createErrorResponse(queryRspName, RequestStatus::ParamMissing, "keys").dump(), WsSendOpCode);
     else if (!cmd.at("keys").is_array())
       ws->send(createErrorResponse(queryRspName, RequestStatus::ValueTypeInvalid, "keys").dump(), WsSendOpCode);
     else if (getSessionToken(ws, queryRspName, cmd, token))
@@ -473,7 +473,7 @@ private:
     SessionToken token;
 
     if (!cmd.contains("keys"))
-      ws->send(createErrorResponse(queryRspName, RequestStatus::KeyMissing).dump(), WsSendOpCode);
+      ws->send(createErrorResponse(queryRspName, RequestStatus::ParamMissing, "keys").dump(), WsSendOpCode);
     else if (!cmd.at("keys").is_object())
       ws->send(createErrorResponse(queryRspName, RequestStatus::ValueTypeInvalid, "keys").dump(), WsSendOpCode);
     else if (getSessionToken(ws, queryRspName, cmd, token))
@@ -491,7 +491,7 @@ private:
     SessionToken token;
 
     if (!cmd.contains("keys"))
-      ws->send(createErrorResponse(queryRspName, RequestStatus::KeyMissing).dump(), WsSendOpCode);
+      ws->send(createErrorResponse(queryRspName, RequestStatus::ParamMissing, "keys").dump(), WsSendOpCode);
     else if (!cmd.at("keys").is_object())
       ws->send(createErrorResponse(queryRspName, RequestStatus::ValueTypeInvalid, "keys").dump(), WsSendOpCode);
     else if (getSessionToken(ws, queryRspName, cmd, token))
@@ -509,7 +509,7 @@ private:
     SessionToken token;
 
     if (!cmd.contains("keys"))
-      ws->send(createErrorResponse(queryRspName, RequestStatus::KeyMissing).dump(), WsSendOpCode);
+      ws->send(createErrorResponse(queryRspName, RequestStatus::ParamMissing, "keys").dump(), WsSendOpCode);
     else if (!cmd.at("keys").is_array())
       ws->send(createErrorResponse(queryRspName, RequestStatus::ValueTypeInvalid, "keys").dump(), WsSendOpCode);
     else if (getSessionToken(ws, queryRspName, cmd, token))
@@ -566,7 +566,7 @@ private:
     SessionToken token;
 
     if (!cmd.contains("keys"))
-      ws->send(createErrorResponse(queryRspName, RequestStatus::KeyMissing).dump(), WsSendOpCode);
+      ws->send(createErrorResponse(queryRspName, RequestStatus::ParamMissing).dump(), WsSendOpCode);
     else if (!cmd.at("keys").is_array())
       ws->send(createErrorResponse(queryRspName, RequestStatus::ValueTypeInvalid, "keys").dump(), WsSendOpCode);
     else if (getSessionToken(ws, queryName, cmd, token))
@@ -584,7 +584,7 @@ private:
   //   SessionToken token;
 
   //   if (!cmd.contains("keys"))
-  //     ws->send(createErrorResponse(queryRspName, RequestStatus::KeyMissing).dump(), WsSendOpCode);
+  //     ws->send(createErrorResponse(queryRspName, RequestStatus::ParamMissing).dump(), WsSendOpCode);
   //   else if (!cmd.at("keys").is_object())
   //     ws->send(createErrorResponse(queryRspName, RequestStatus::ValueTypeInvalid, "keys").dump(), WsSendOpCode);
   //   else if (getSessionToken(ws, queryName, cmd, token))
@@ -651,7 +651,7 @@ private:
       if (cmd.size() != 2U)
         ws->send(createErrorResponse(queryRspName, RequestStatus::CommandSyntax).dump(), WsSendOpCode);
       else if (!cmd.contains("key"))
-        ws->send(createErrorResponse(queryRspName, RequestStatus::KeyMissing).dump(), WsSendOpCode);
+        ws->send(createErrorResponse(queryRspName, RequestStatus::ParamMissing).dump(), WsSendOpCode);
       else if (!cmd.at("key").is_string())
         ws->send(createErrorResponse(queryRspName, RequestStatus::ValueTypeInvalid, "key").dump(), WsSendOpCode);
       else
