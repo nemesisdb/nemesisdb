@@ -166,18 +166,21 @@ public:
                 ws->send(createErrorResponse(RequestStatus::JsonInvalid).dump(), kv::WsSendOpCode);
               else
               {
-                const auto& commandName = request.cbegin().key();
-
-                if (request.size() != 1U)
-                  ws->send(createErrorResponse(commandName + "_RSP", RequestStatus::CommandMultiple).dump(), kv::WsSendOpCode);
+                 if (request.empty())
+                  ws->send(createErrorResponse(RequestStatus::CommandSyntax).dump(), kv::WsSendOpCode);
+                else if (request.size() > 1U)
+                  ws->send(createErrorResponse(RequestStatus::CommandMultiple).dump(), kv::WsSendOpCode);
                 else
                 {
-                  auto [status, queryName] = m_kvHandler->handle(ws, std::move(request));
-
-                  if (status == RequestStatus::CommandType)
-                    ws->send(createErrorResponse(queryName+"_RSP", status).dump(), kv::WsSendOpCode);
-                  else if (status != RequestStatus::Ok)
-                    ws->send(createErrorResponse(status, queryName).dump(), kv::WsSendOpCode);
+                  const auto& commandName = request.cbegin().key();
+                  
+                  if (const auto status = m_kvHandler->handle(ws, std::move(request)); status != RequestStatus::Ok)
+                    ws->send(createErrorResponse(commandName+"_RSP", status).dump(), kv::WsSendOpCode);
+                  
+                  // if (status == RequestStatus::CommandType)
+                  //   ws->send(createErrorResponse(commandName+"_RSP", status).dump(), kv::WsSendOpCode);
+                  // else if (status != RequestStatus::Ok)
+                  //   ws->send(createErrorResponse(status, commandName).dump(), kv::WsSendOpCode);
                 }
               }
             }

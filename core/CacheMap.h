@@ -218,13 +218,17 @@ public:
     
     auto valueMatch = [&handler, &opValue, &path](std::pair<cachedkey, cachedvalue>& kv)
     {
-      // no path (non an object) but value match || (object with path match and operator match)
-      if ((path.empty() && handler(kv.second, opValue)) ||
-          (kv.second.contains(path) && handler(kv.second.at(path), opValue)))
-        return true;
-      else
-        return false;
+      try
+      {
+        return kv.second.contains(path) && handler(kv.second.at(path), opValue);  
+      }
+      catch(...)
+      {
+      }
+
+      return false;      
     };
+
 
     for(auto& kv : m_map)
     {

@@ -37,7 +37,7 @@ enum class KvQueryType : std::uint8_t
   SessionCount,
   SessionAppend,
   SessionContains,
-  SessionFind,
+  //SessionFind,
   SessionUpdate,
   Max,
   InternalSessionMonitor,
@@ -64,8 +64,7 @@ const std::map<const std::string_view, std::tuple<const KvQueryType, const njson
   {"KV_COUNT",        {KvQueryType::SessionCount,     njson::value_t::object}},
   {"KV_APPEND",       {KvQueryType::SessionAppend,    njson::value_t::object}},
   {"KV_CONTAINS",     {KvQueryType::SessionContains,  njson::value_t::object}},
-  //{"KV_ARRAY_MOVE",   {KvQueryType::SessionArrayMove, njson::value_t::object}},
-  {"KV_FIND",         {KvQueryType::SessionFind,      njson::value_t::object}},
+  //{"KV_FIND",         {KvQueryType::SessionFind,      njson::value_t::object}},
   {"KV_UPDATE",       {KvQueryType::SessionUpdate,    njson::value_t::object}}
 };
 
@@ -89,8 +88,7 @@ const std::map<const KvQueryType, const std::string> QueryTypeToName =
   {KvQueryType::SessionCount,     "KV_COUNT"},
   {KvQueryType::SessionAppend,    "KV_APPEND"},
   {KvQueryType::SessionContains,  "KV_CONTAINS"},
-  //{KvQueryType::SessionArrayMove, "KV_ARRAY_MOVE"},
-  {KvQueryType::SessionFind,      "KV_FIND"},
+  //{KvQueryType::SessionFind,      "KV_FIND"},
   {KvQueryType::SessionUpdate,    "KV_UPDATE"}
 };
 
