@@ -5,11 +5,20 @@ displayed_sidebar: apiSidebar
 
 # Overview
 
-There are two APIs, Session and KeyValue.
+There are two APIs: Session and KeyValue.
 
-All commands must be in upper case and all parameters are in lower case unless the docs say otherwise (i.e. `SH_NEW` has a `deleteSession` parameter).
+Important points:
 
-Many commands return a response that contains a status (`st`) which is an unsigned integer. Possible values are listed [here](./Statuses).
+- All commands must be in upper case and all parameters are in lower case unless the docs say otherwise (i.e. `SH_NEW` has a `deleteSession` parameter).
+- All commands are a JSON object, i.e. for `SH_NEW`:
+```json
+{
+  "SH_NEW": {
+    "name":"session1"
+  }
+}
+```
+- Many commands return a response that contains a status (`st`) which is an unsigned integer. Possible values are listed [here](./Statuses).
 
 :::tip
 Command names and parameters are case-sensitive.
@@ -17,17 +26,23 @@ Command names and parameters are case-sensitive.
 
 <br/>
 
-**Session**
+## Session
 
-Session commands to create, open, end and return session information. They begin with `SH_`.
+Beginning with `SH_`, these commands create, open, end and return session information. 
+
+A session does not belong to a particular client and a client can create multiple sessions, accessing their data as required by using the appropriate session token.
+
+<br/>
+<br/>
 
 
-**KV**
+## KV
 
 These store, update, find and retrieve data session data. They start `KV_`.
 
 The commands require a session token which is typically returned by `SH_NEW` but may also be returned by `SH_OPEN` if using a shared session.
 
+<br/>
 <br/>
 
 # How to Use the APIs

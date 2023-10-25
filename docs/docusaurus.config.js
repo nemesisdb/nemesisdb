@@ -13,14 +13,14 @@ const config = {
   // Set the production url of your site here
   url: 'https://nemesisdb.github.io/',
  
-  // For GitHub pages'/docs/'
+  // For GitHub pages'/docs-deploy/'
   // For local: '/'
-  baseUrl: '/docs/',
+  baseUrl: '/docs-deploy/',
   //baseUrl: '/',
 
   // GitHub pages deployment config.
   organizationName: 'nemesisdb', // Usually your GitHub org/user name.
-  projectName: 'docs', // Usually your repo name.
+  projectName: 'docs-deploy', // Usually your repo name.
 
   onBrokenLinks: 'throw',
   onBrokenMarkdownLinks: 'warn',

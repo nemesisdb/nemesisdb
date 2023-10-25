@@ -21,6 +21,7 @@ This table listed a 'friendly name' and value. THe friendly name is used through
 |CommandMultiple|11|Multiple commands in the same request|
 |CommandType|12|Command is known but it is the incorrect type (most commands are objects)|
 |CommandSyntax|13|Command is known but contains invalid syntax. `m` will contain the offending parameter if known.|
+|ParamMissing|26|A param is not in the command|
 
 
 ## Keys
@@ -31,7 +32,6 @@ This table listed a 'friendly name' and value. THe friendly name is used through
 |KeyNotExist|22|Key does not exist|
 |KeyExist|23|Key exist (i.e. with `KV_CONTAINS`)|
 |KeyRemoved|24|Key deleted/removed|
-|KeyMissing|26|Key param not in command, i.e. `keys`|
 |KeyTypeInvalid|27|Key wrong type. Must always be a string|
 
 
