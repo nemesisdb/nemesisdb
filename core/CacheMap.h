@@ -77,41 +77,39 @@ public:
   }
 
   
-  auto append (njson& contents)
+  auto append (const cachedkey& key, njson&& value)
   {
     RequestStatus status = RequestStatus::Ok;
 
-    const auto& key = contents.begin().key();
     if (const auto it = m_map.find(key) ; it != m_map.cend())
     {
-      switch (contents.begin().value().type())
+      if (it->second.type() == njson::value_t::string && value.is_string())
       {
-        case njson::value_t::array:
+        if (value.is_string())
+          it->second.get_ref<njson::string_t&>().append(std::move(value));
+        else
+          status = RequestStatus::ValueTypeInvalid;
+      }
+      else if (it->second.type() == njson::value_t::array)
+      {
+        if (value.is_array())
         {
-          for (auto& item : contents.at(key))
+          for (auto&& item : value)
             it->second.insert(it->second.end(), std::move(item));
         }
-        break;
-
-        case njson::value_t::object:
-          it->second.insert(contents.begin().value().begin(), contents.begin().value().end());
-        break;
-
-        case njson::value_t::string:
-          it->second.get_ref<njson::string_t&>().append(contents.begin().value());
-        break;
-
-        default:
-          status = RequestStatus::ValueTypeInvalid;
-        break;
+        else
+          it->second.insert(it->second.end(), std::move(value));        
       }
+      else if(it->second.type() == njson::value_t::object && value.is_object())
+        it->second.update(value.begin(), value.end(), true);
+      else
+        status = RequestStatus::ValueTypeInvalid;
     }
-    else
+    else 
       status = RequestStatus::KeyNotExist;
-    
 
     return status;
-  };
+  }
 
 
   bool contains (const njson& contents)  //TODO why not: const cachedkey&

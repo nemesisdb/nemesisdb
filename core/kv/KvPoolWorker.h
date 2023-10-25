@@ -225,10 +225,13 @@ private:
 
     auto append = [this](CacheMap& map, KvCommand& cmd)
     {
-      RequestStatus status = map.append(cmd.contents);
-      auto& key = cmd.contents.begin().key();
+      njson rsp;
+      rsp["KV_APPEND_RSP"]["tkn"] = std::move(cmd.shtk);
 
-      send(cmd, PoolRequestResponse::sessionAppend(cmd.shtk, status, std::move(key)).dump());
+      for(auto& kv : cmd.contents.items())
+        rsp["KV_APPEND_RSP"]["keys"][kv.key()] = map.append(kv.key(), std::move(kv.value()));
+
+      send(cmd, rsp.dump());
     };
 
 

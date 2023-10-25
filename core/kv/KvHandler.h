@@ -549,10 +549,15 @@ private:
     static const std::string queryName     = QueryTypeToName.at(queryType);
     static const std::string queryRspName  = queryName +"_RSP";
 
+    auto& cmd = json.at(queryName);
     SessionToken token;
 
-    if (getSessionToken(ws, queryName, json.at(queryName), token))
-      sessionSubmitPairs(ws, std::move(json.at(queryName)), token, queryType, queryName, queryRspName);
+    if (!cmd.contains("keys"))
+      ws->send(createErrorResponse(queryRspName, RequestStatus::ParamMissing, "keys").dump(), WsSendOpCode);
+    else if (!cmd.at("keys").is_object())
+      ws->send(createErrorResponse(queryRspName, RequestStatus::ValueTypeInvalid, "keys").dump(), WsSendOpCode);
+    else if (getSessionToken(ws, queryName, json.at(queryName), token))
+      sessionSubmit(ws, token, queryType, queryName, queryRspName, std::move(cmd.at("keys")));
   }
 
 

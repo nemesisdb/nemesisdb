@@ -1,5 +1,5 @@
 ---
-sidebar_position: 1
+sidebar_position: 10
 ---
 
 # KV_SET
@@ -87,6 +87,7 @@ Possible status values:
 - ValueTypeInvalid (`keys` not an object)
 
 <br/>
+<hr/>
 
 ## Examples
 

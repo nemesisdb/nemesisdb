@@ -1,5 +1,5 @@
 ---
-sidebar_position: 5
+sidebar_position: 50
 ---
 
 # KV_GET
@@ -23,6 +23,13 @@ The command requires the token and an array of keys to retrieve.
 |:---|:---|:---|
 |tkn|string|Session token|
 |keys|object|The keys and values requested|Y|
+
+
+Possible status values:
+
+- KeyNotExists
+- ParamMissing (no `keys`)
+- ValueTypeInvalid (`keys` not an array)
 
 
 If a key does not exist, its value is returned `null`.
