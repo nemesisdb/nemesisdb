@@ -3,60 +3,65 @@ sidebar_position: 1
 ---
 
 # What is a Session
-When you store data in NemesisDB, it must be stored in a session. A session separates data or groups related data.
+In typical caches and databases all data are lumped together, although some may split this into regions called memory pools to reduce memory fragementation.
 
-For example:
+NemesisDB separates data even further using sessions. A session lets you say:
 
-- A web app can create a session for each user that logs in. The session ends after a set duration
-- A delivery app can create a session for each active delivery, which ends when the customer receives the package
+> I know that I only need x, y and z for what I'm doing, so they can be stored in the same session. When I'm finished I can safely
+> delete everything in the session without affecting anything else.
 
+For example, when writing a service which handles users, you can create a separate session for each user that logs in and delete the session when they log out.
 
-# Creating Sessions
-A session is created with `SH_NEW` which requires a `name`. You can create a shared session which lets others open the session using the name. This avoids all clients having to know the token.
+![](img/sessions_overview.png)
 
-# Ending Sessions
+If user 2 logs out, their session be ended and the memory released, without affecting any other user sessions. Session can also be set to expire with a duration. In this example,
+a session expire could be used as an auto logout feature.
 
-A session can end in two ways:
-
-**Command** 
-
-`SH_END` ends a command. the session and its data are deleted
-
-
-**Expires**
-
-When a session expires, the data is always deleted but the session deletion is configurable.
-
+When a session expires, you can set if only the data should be deleted (session token is still valid) or if the session should also end.
 
 <br/>
 
-# Properties
-A session has two required properties:
+## Session Data
+Each session has a dedicated data store. When you store, get, update etc session data, you are only accessing that particular session's data store.
 
-|Property|Meaning|
-|:---|:---|
-|Name|A session name used when creating a new session or opening an existing shared session|
-|Token|A unique string value used to identify a session|
-
-It also has optional expiry properties:
-
-|Property|Meaning|
-|:---|:---|
-|Duration| Time in seconds until the session expires |
-|DeleteSession| Flag indicating if the session should be deleted. If `false`, only the data is deleted. |
+When you are finished with the data you can end the session and its data is deleted, or let it expire if it has a expiry duration set.
 
 <br/>
 
-When a session ends its data is deleted. In some cases, you may want to delete the data but not the session, so the `deleteSession` setting controls this.
-
-:::info
-Sessions offer control of data availibility and memory consumption. 
-:::
+## Session Token
+A session is identified by a token, which is just a string. When you create a session the server returns a token which is used with commands to access the data.
 
 <br/>
 
-# Session Token
-A token identifies a session. It is a 64-bit unsigned integer but is treated as a string.
+## Shared Sessions
+A session doesn't belong to a particular client via some authentication process - it can be accessed by any client with the token. But there may be cases where sharing a session is useful, for example a session
+that stores default settings which is common to many areas of the backend services. 
+
+You could distribute the session token amongst all clients, but this adds complexity. This is what shared sessions are for.
+
+A session be set a shared which means others can get the session token from just the session name. 
+
+<details>
+  <summary>Token Generation</summary>
+  <div>
+    <div>
+      If a session is not shared:<br/>
+      <ul>
+        <li>The session name does not take part in token generation. This means two sessions with the same name do not generate the same token</li>
+      </ul>
+      If a session is shared:<br/>
+      <ul>
+        <li>The session name is used in token generation, allowings others to get the token from session name</li>
+      </ul>
+        
+    </div>   
+  </div>
+</details>
+
+
+<br/>
+<hr/>
+
 
 <br/>
 

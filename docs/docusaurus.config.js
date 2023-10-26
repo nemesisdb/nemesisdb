@@ -9,7 +9,7 @@ const config = {
   title: 'NemessiDB',
   tagline: '',
   favicon: 'img/favicon.ico',
-
+  
   // Set the production url of your site here
   url: 'https://nemesisdb.github.io/',
  
@@ -68,7 +68,7 @@ const config = {
         title: 'Docs',
         logo: {
           alt: 'NemesisDB',
-          src: 'img/logo.svg',
+          src: 'img/logo_nemesis_200.png',
         },
         items: [
           {
