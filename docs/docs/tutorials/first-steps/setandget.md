@@ -175,7 +175,11 @@ Now when we want the user's profile data, we just have to get one key:
 
 
 ## The End
-That's the basics of setting and getting, further info:
+That's the basics of setting and getting.
 
+This guide shows one session for a user. This pattern works for many users, each with their own session. The client service just need to use the appropriate taken to switch to the correct user.
+
+:::info
 - `KV_SET` overwrites the key if it already exists. If you don't want this, you can use `KV_ADD` which won't overwrite
 - `KV_SET` always returns a response. If you don't need confirmation, you can use `KV_SETQ` ("set quiet") which only responds on an error
+:::
