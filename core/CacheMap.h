@@ -169,6 +169,7 @@ public:
   };
 
 
+  /*
   auto find (const njson& contents, const KvFind& find)
   {
     auto& [opString, handler] = findConditions.getOperation(find.condition);
@@ -236,18 +237,29 @@ public:
         keysArray.emplace_back(kv.first);
     }
   };
+  */
 
 
   RequestStatus updateByPath (const cachedkey& key, const njson::json_pointer& path, njson&& value)
   {
+    const static njson::json_pointer rootPath {"/"};
+
     RequestStatus status = RequestStatus::Ok;
     
     if (const auto it = m_map.find(key) ; it != m_map.cend())
     {
-      if (it->second.contains(path))
-        it->second[path] = std::move(value);
-      else
+      try
+      {
+        if (it->second.contains(path))
+          it->second[path == rootPath ? njson::json_pointer{""} : path] = std::move(value);
+        else
+          status = RequestStatus::PathNotExist;
+
+      }
+      catch(const std::exception& e)
+      {
         status = RequestStatus::PathNotExist;
+      }
     }
     else
       status = RequestStatus::KeyNotExist;

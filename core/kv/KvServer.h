@@ -104,7 +104,6 @@ public:
     };
     
     kv::serverStats = new kv::ServerStats;
-    auto keySets = new ks::Sets;
 
     unsigned int maxPayload = config.cfg["kv"]["maxPayload"];
     std::string ip = config.cfg["kv"]["ip"];
@@ -123,7 +122,7 @@ public:
     
     kv::MaxPools = std::max<std::size_t>(1U, nCores - nIoThreads);
 
-    m_kvHandler = new kv::KvHandler {kv::MaxPools, nCores - kv::MaxPools, keySets};
+    m_kvHandler = new kv::KvHandler {kv::MaxPools, nCores - kv::MaxPools};
     
     #ifndef NDB_UNIT_TEST
     std::cout << "Available Cores: "  << std::thread::hardware_concurrency() << '\n'

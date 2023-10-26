@@ -267,19 +267,19 @@ private:
 
       send(cmd, rsp.dump());
     };
-    */
+    
 
-
-    // auto find = [this](CacheMap& map, KvCommand& cmd)
-    // {
-    //   njson rsp;
-    //   rsp["KV_FIND_RSP"]["tkn"] = cmd.shtk;
-    //   rsp["KV_FIND_RSP"]["keys"] = njson::array();
+    auto find = [this](CacheMap& map, KvCommand& cmd)
+    {
+      njson rsp;
+      rsp["KV_FIND_RSP"]["tkn"] = cmd.shtk;
+      rsp["KV_FIND_RSP"]["keys"] = njson::array();
       
-    //   map.findNoRegEx(cmd.contents, cmd.find, rsp["KV_FIND_RSP"]["keys"]);
+      map.findNoRegEx(cmd.contents, cmd.find, rsp["KV_FIND_RSP"]["keys"]);
 
-    //   send(cmd, rsp.dump());
-    // };
+      send(cmd, rsp.dump());
+    };
+    */
 
 
     auto update = [this](CacheMap& map, KvCommand& cmd)
@@ -308,11 +308,9 @@ private:
       RequestStatus status;
 
       if (pathValid)
-        status = map.updateByPath(itKey.value(), path, std::move(itPath.value()));
+        rsp["KV_UPDATE_RSP"]["keys"][itKey.value()] = map.updateByPath(itKey.value(), path, std::move(itPath.value()));
       else
-        status = RequestStatus::PathInvalid;  // rename to PathInvalid
-
-      rsp["KV_UPDATE_RSP"]["st"] = status;
+        rsp["KV_UPDATE_RSP"]["keys"][itKey.value()] = RequestStatus::PathInvalid;
 
       send(cmd, rsp.dump());
     };
