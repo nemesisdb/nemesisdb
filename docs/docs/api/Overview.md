@@ -48,11 +48,4 @@ The commands require a session token which is typically returned by `SH_NEW` but
 <br/>
 
 # How to Use the APIs
-A good place to start is:
-
-1. `SH_NEW` - create a session, which returns the session token
-2. `KV_SET` - store keys in the session, using the token from step 1
-3. `KV_GET` - get keys from the cache
-4. `SH_END` - delete the session and its data
-
-After this you can use `SH_NEW` to create a session that expires, either deleting the session and data, or just its data.
+A good place to start is the [First Steps](../tutorials/first-steps/setup) which shows how to create a session and store/get data.

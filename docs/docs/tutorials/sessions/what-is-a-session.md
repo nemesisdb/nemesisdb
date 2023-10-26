@@ -14,7 +14,7 @@ For example, when writing a service which handles users, you can create a separa
 
 ![](img/sessions_overview.png)
 
-If user 2 logs out, their session be ended and the memory released, without affecting any other user sessions. Session can also be set to expire with a duration. In this example,
+If user 2 logs out, their session can be ended which deletes their data, without affecting any other sessions. Session can also be set to expire with a duration. In this example,
 a session expire could be used as an auto logout feature.
 
 When a session expires, you can set if only the data should be deleted (session token is still valid) or if the session should also end.
@@ -24,7 +24,7 @@ When a session expires, you can set if only the data should be deleted (session 
 ## Session Data
 Each session has a dedicated data store. When you store, get, update etc session data, you are only accessing that particular session's data store.
 
-When you are finished with the data you can end the session and its data is deleted, or let it expire if it has a expiry duration set.
+When you are finished with the data you can end the session. If the session was created with an expiry duration, the session will be automatically ended.
 
 <br/>
 
@@ -39,7 +39,7 @@ that stores default settings which is common to many areas of the backend servic
 
 You could distribute the session token amongst all clients, but this adds complexity. This is what shared sessions are for.
 
-A session be set a shared which means others can get the session token from just the session name. 
+When a session is shared, the session token can be retrieved from just the session name.
 
 <details>
   <summary>Token Generation</summary>
@@ -51,7 +51,7 @@ A session be set a shared which means others can get the session token from just
       </ul>
       If a session is shared:<br/>
       <ul>
-        <li>The session name is used in token generation, allowings others to get the token from session name</li>
+        <li>The session name is used in token generation, allowing others to get the token from session name</li>
       </ul>
         
     </div>   

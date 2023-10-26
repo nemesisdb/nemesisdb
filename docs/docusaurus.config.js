@@ -11,12 +11,9 @@ const config = {
   favicon: 'img/favicon.ico',
   
   // Set the production url of your site here
-  url: 'https://nemesisdb.github.io/',
- 
-  // For GitHub pages'/docs-deploy/'
-  // For local: '/'
-  baseUrl: '/docs-deploy/',
-  //baseUrl: '/',
+  url: 'https://docs.nemesisdb.io',
+
+  baseUrl: '/',
 
   // GitHub pages deployment config.
   organizationName: 'nemesisdb', // Usually your GitHub org/user name.
