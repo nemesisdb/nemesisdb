@@ -21,7 +21,9 @@ Important points:
 - Many commands return a response that contains a status (`st`) which is an unsigned integer. Possible values are listed [here](./Statuses).
 
 :::tip
-Command names and parameters are case-sensitive.
+Command names must be uppercase.
+
+Parameters are case-sensitive.
 :::
 
 <br/>

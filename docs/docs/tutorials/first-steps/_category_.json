@@ -1,0 +1,8 @@
+{
+  "label": "First Steps",
+  "position": 2,
+  "link": {
+    "type": "generated-index",
+    "description": "15 minutes to play with session then store and retrieve data."
+  }
+}
