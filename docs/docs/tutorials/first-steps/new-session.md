@@ -5,7 +5,7 @@ displayed_sidebar: tutorialSidebar
 
 # Create Session
 
-This shows how to create a session, store data and then get that data. It also briefly shows how to create an expiring session.
+This shows how to create a session, store data and then get that data.
 
 
 ## All Session Info
@@ -26,7 +26,7 @@ The 'Response' pane shows our request and the response:
 ![](img/02-shinfoall.png)
 
 
-The response we have no sessions or keys.
+The response confirms we have no sessions or keys.
 
 
 
@@ -66,7 +66,7 @@ Keep the token safe, you'll need this in subsequent steps.
 
 
 ## Session Info
-We used `SH_INFO_ALL` to get information for all sessions, but we can session specific info with `SH_INFO`.
+To get information for a particular session we use `SH_INFO`.
 
 Send the following, **replacing** `tkn` with your token:
 

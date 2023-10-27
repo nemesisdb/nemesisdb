@@ -5,10 +5,11 @@ sidebar_position: 3
 # End Session
 A session ends when it expires or when commanded by `SH_END`.
 
-When using `SH_END` the session is deleted (including its data). When a session expires, there is a flag which controls if the session is deleted.
+- When commanded by `SH_END` the session and its data are deleted
+- When a session expires, there is a flag which controls if the session is deleted or just its data
+
 
 By deleting the data you are releasing server memory for other sessions.
-
 
 
 ```json title="End Session"

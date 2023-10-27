@@ -3,7 +3,7 @@ sidebar_position: 4
 ---
 
 # Shared Session
-Shared sessions let different services access the same session without knowing the token. This is useful if there are multiple independent backend services that require access to the same session whilst avoiding having to distribute the session token to each service. 
+Shared sessions let different services access the same session without knowing the token. This is useful if there are multiple independent backend services that require access to the same session, whilst avoiding having to distribute the session token to each service. 
 
 A normal (non-shared) session token is randomly generated, so if two clients create a session with the same name, they will receive a different token.
 
@@ -17,7 +17,7 @@ We have a platform that has web and mobile app users. We need default settings f
 
 
 
-1. On initial deployment we use `SH_NEW` to create a session with `shared:true` and no `expiry` settings (never expires)
+1. On initial deployment we use `SH_NEW` to create a shared session that never expires
 
 <center>
 

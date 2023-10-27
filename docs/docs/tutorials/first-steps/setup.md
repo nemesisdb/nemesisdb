@@ -30,17 +30,17 @@ This starts the server on `127.0.0.1:1987`.
 ![](img/postman_newwebsocket.png)
 
 
-The default view will have the "Response" pane below the request. If you prefer this view, you do so by:
-
-1. `File->Settings`
-2. In the "General" tab, towards the right select "Two-pane view"
-
-
-To connect:
-
-1. In "Enter URL" box, set `127.0.0.1:1987` and press Enter (or press Connect)
+3. In "Enter URL" box, set `127.0.0.1:1987` and press Enter (or press Connect)
 
 ![](img/postman_connected.png)
 
 
 We're ready to fire some commands at the server now.
+
+
+:::info
+The default view will have the "Response" pane below the request. If you prefer the two pane view as the screenshot, you do so by:
+
+1. `File->Settings`
+2. In the "General" tab, towards the right, select "Two-pane view"
+:::

@@ -17,7 +17,7 @@ For example, when writing a service which handles users, you can create a separa
 If user 2 logs out, their session can be ended which deletes their data, without affecting any other sessions. Session can also be set to expire with a duration. In this example,
 a session expire could be used as an auto logout feature.
 
-When a session expires, you can set if only the data should be deleted (session token is still valid) or if the session should also end.
+When a session expires, you can set if only the data should be deleted or if the session should also end. If only the data is deleted, the session token remains valid.
 
 <br/>
 
@@ -35,7 +35,7 @@ A session is identified by a token, which is just a string. When you create a se
 
 ## Shared Sessions
 A session doesn't belong to a particular client via some authentication process - it can be accessed by any client with the token. But there may be cases where sharing a session is useful, for example a session
-that stores default settings which is common to many areas of the backend services. 
+that stores default settings which are common to many areas of the backend services. 
 
 You could distribute the session token amongst all clients, but this adds complexity. This is what shared sessions are for.
 

@@ -30,10 +30,10 @@ Send:
   }
 }
 ```
+The stores the key `username` with string value "Spongebob".
 
-The response contains `"username": 20` which is the key and status. This confirms "username" was successfully set.
-
-If you send the command again, the status will change to `21`, which means an existing key has been overwritten (not an error).
+- The `KV_SET_RSP` response contains `"username": 20` which is the key and status. This confirms "username" was successfully set.
+- If you send the command again, the status will change to `21`, which means an existing key has been overwritten (not an error).
 
 
 ## Array
@@ -57,7 +57,7 @@ Send:
 }
 ```
 
-This stores a key, "friends", which is an array.
+This stores a key, `friends`, which is an array.
 
 
 ## Multiple
@@ -79,8 +79,8 @@ You can store multiple keys per request:
 
 This stores two keys:
 
-- "email" which is a string
-- "age" which is a number
+- `email` which is a string
+- `age` which is a number
 
 
 ## Get Data
@@ -131,7 +131,7 @@ Let's clear our session data:
 }
 ```
 
-The reponse confirms that four keys have deleted (`cnt`).
+The reponse contains `cnt`, confirming four keys were.
 
 
 ## Object
@@ -157,7 +157,7 @@ We'll store the same data again but in an object:
 }
 ```
 
-This is storing a key "profile" which is an object. 
+This is storing a key `profile` which is an object. 
 
 
 ## Get Object
@@ -177,7 +177,7 @@ Now when we want the user's profile data, we just have to get one key:
 ## The End
 That's the basics of setting and getting.
 
-This guide shows one session for a user. This pattern works for many users, each with their own session. The client service just need to use the appropriate taken to switch to the correct user.
+This guide shows one session for one user. This pattern works for many users, each with their own session. Clients just need to use the appropriate token to switch users.
 
 :::info
 - `KV_SET` overwrites the key if it already exists. If you don't want this, you can use `KV_ADD` which won't overwrite

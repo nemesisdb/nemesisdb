@@ -6,7 +6,7 @@ sidebar_position: 2
 
 A session is created with the `SH_NEW` command.
 
-The minimum required is a `name`:
+The only required parameter is a `name`:
 
 ```json title="Session Never Expires"
 {
@@ -17,9 +17,9 @@ The minimum required is a `name`:
 }
 ```
 
-Expiry settings aren't set so by default this session never expires.
+Expiry settings aren't set, so by default this session never expires.
 
-The server responds with a `SH_NEW_RSP` containing the `name` and the token, `tkn`:
+The server responds with a `SH_NEW_RSP` containing the `name` and the `tkn` (token):
 
 ```json title="New Session Response"
 {
@@ -75,3 +75,8 @@ We create a session that expires after 10 minutes, but the session is not delete
   }
 }
 ```
+After this session expires, its token remains valid for further use, but its data is deleted.
+
+:::note
+To clear a session's data it does not need to expire, you can use `KV_CLEAR` any time.
+:::
