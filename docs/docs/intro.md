@@ -15,7 +15,7 @@ A Docker image will be available soon.
 
 ## Download
 
-Download the latest version [here TODO](https://releases.nemesisdb.io).
+Download the latest version [here](https://releases.nemesisdb.io/package/nemesisdb_0.3.0_amd64.deb).
 
 ## Install and Configure
 Instructions to [install](./home/install) and [configure](./home/config).
