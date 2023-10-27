@@ -12,7 +12,7 @@ The tutorial uses the Postman tool as a WebSocket client. The free version is su
 
 We'll start the server with the default config.
 
-1. Change to the install directory, default is `/usr/bin/nemesisdb`
+1. Change to the install directory, default is `/usr/local/bin/nemesisdb`
 2. In a terminal:
 
 ```bash title="Start server"

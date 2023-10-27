@@ -109,6 +109,10 @@ const config = {
             title: 'Community',
             items: [
               {
+                label: 'LinkedIn',
+                href: 'https://www.linkedin.com/company/nemesisdb',
+              },
+              {
                 label: 'Stack Overflow',
                 href: 'https://stackoverflow.com/questions/tagged/nemesisdb',
               },
