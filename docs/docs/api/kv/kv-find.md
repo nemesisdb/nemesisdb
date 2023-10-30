@@ -22,17 +22,17 @@ Only keys matching the path are returned.
 
 
 ## `"paths"`
-The paths to the element(s) matching the criteria returned. The key in which the values are found are not returned.
+The paths to the element(s) matching the path returned. The key in which the values are found are not returned.
 
 
 ## `"kv"`
-The keys and values are returned.
+The keys and values are returned for matching paths.
 
 
 ## Response
 `KV_FIND_RSP`
 
-The `tkn` is always returned so this omitted from the tables below.
+The `tkn` is always returned so this is omitted from the tables below.
 
 <br/>
 
