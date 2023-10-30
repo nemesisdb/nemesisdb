@@ -52,8 +52,7 @@ private:
     std::bind(&KvHandler::count,            std::ref(*this), std::placeholders::_1, std::placeholders::_2),
     std::bind(&KvHandler::append,           std::ref(*this), std::placeholders::_1, std::placeholders::_2),
     std::bind(&KvHandler::contains,         std::ref(*this), std::placeholders::_1, std::placeholders::_2),
-    //std::bind(&KvHandler::arrayMove,        std::ref(*this), std::placeholders::_1, std::placeholders::_2),
-    //std::bind(&KvHandler::find,             std::ref(*this), std::placeholders::_1, std::placeholders::_2),
+    std::bind(&KvHandler::find,             std::ref(*this), std::placeholders::_1, std::placeholders::_2),
     std::bind(&KvHandler::update,           std::ref(*this), std::placeholders::_1, std::placeholders::_2)
   };
 
@@ -578,6 +577,49 @@ private:
       sessionSubmit(ws, token, queryType, queryName, queryRspName, std::move(cmd.at("keys")));
   }
 
+
+  fc_always_inline void find(KvWebSocket * ws, njson&& json)
+  {
+    static const KvQueryType queryType = KvQueryType::SessionFind;
+    static const std::string queryName     = QueryTypeToName.at(queryType);
+    static const std::string queryRspName  = queryName +"_RSP";
+
+    auto& cmd = json.at(queryName);
+    
+    SessionToken token;
+    if (getSessionToken(ws, queryRspName, cmd, token))
+    {
+      // getSessionToken() deletes the "tkn" so only 'path' and 'rsp' must remain, with optional 'keys'
+      if (cmd.size() < 2U || cmd.size() > 3U)
+        ws->send(createErrorResponse(queryRspName, RequestStatus::CommandSyntax).dump(), WsSendOpCode);
+      else if (!cmd.contains("path"))
+        ws->send(createErrorResponse(queryRspName, RequestStatus::FindNoPath).dump(), WsSendOpCode);
+      else if (!cmd.at("path").is_string())
+        ws->send(createErrorResponse(queryRspName, RequestStatus::ValueTypeInvalid, "path").dump(), WsSendOpCode);
+      else if (!cmd.contains("rsp"))
+        ws->send(createErrorResponse(queryRspName, RequestStatus::ValueMissing, "rsp").dump(), WsSendOpCode);
+      else if (!cmd.at("rsp").is_string())
+        ws->send(createErrorResponse(queryRspName, RequestStatus::ValueTypeInvalid, "rsp").dump(), WsSendOpCode);
+      else if (cmd.at("rsp") != "paths" && cmd.at("rsp") != "kv" && cmd.at("rsp") != "keys")
+        ws->send(createErrorResponse(queryRspName, RequestStatus::CommandSyntax, "rsp").dump(), WsSendOpCode);
+      else if (cmd.contains("keys") && !cmd.at("keys").is_array())
+        ws->send(createErrorResponse(queryRspName, RequestStatus::ValueTypeInvalid, "keys").dump(), WsSendOpCode);
+      else
+      {
+        if (!cmd.contains("keys"))
+          cmd["keys"] = njson::array();
+
+        const auto poolId = getPoolId(token);
+        
+        m_pools[poolId]->execute(KvCommand{ .ws = ws,
+                                            .loop = uWS::Loop::get(),
+                                            .contents = std::move(cmd),
+                                            .type = queryType,
+                                            .shtk = token});
+      }
+    }    
+  }
+
   /*
   fc_always_inline void arrayMove(KvWebSocket * ws, njson&& json)
   {
@@ -595,52 +637,8 @@ private:
     else if (getSessionToken(ws, queryName, cmd, token))
       sessionSubmit(ws, token, queryType, queryName, queryRspName, std::move(cmd.at("keys")));
   }
-
-
-  fc_always_inline void find(KvWebSocket * ws, njson&& json)
-  {
-    static const KvQueryType queryType = KvQueryType::SessionFind;
-    static const std::string queryName     = QueryTypeToName.at(queryType);
-    static const std::string queryRspName  = queryName +"_RSP";
-
-    auto& cmd = json.at(queryName);
-    
-    SessionToken token;
-    if (getSessionToken(ws, queryRspName, cmd, token))
-    {
-      // getSessionToken() deletes the "tkn" so only path and operator should remain
-      if (cmd.size() != 2U)
-        ws->send(createErrorResponse(queryRspName, RequestStatus::CommandSyntax).dump(), WsSendOpCode);
-      else if (!cmd.contains("path"))
-        ws->send(createErrorResponse(queryRspName, RequestStatus::FindNoPath).dump(), WsSendOpCode);
-      else if (!cmd.at("path").is_string())
-        ws->send(createErrorResponse(queryRspName, RequestStatus::ValueTypeInvalid, "path").dump(), WsSendOpCode);
-      else
-      {
-        njson::const_iterator  itPath = cmd.cbegin(),
-                                itOp = std::next(cmd.cbegin(), 1);
-
-        if (itPath.key() != "path")
-          std::swap(itOp, itPath);
-
-        if (!findConditions.isValidOperator(itOp.key()))
-          ws->send(createErrorResponse(queryRspName, RequestStatus::FindInvalidOperator).dump(), WsSendOpCode);
-        else
-        {
-          const auto poolId = getPoolId(token);
-          KvFind findData { .condition = findConditions.getOperator(itOp.key())};
-          
-          m_pools[poolId]->execute(KvCommand{ .ws = ws,
-                                              .loop = uWS::Loop::get(),
-                                              .contents = std::move(cmd),
-                                              .type = queryType,
-                                              .find = findData,
-                                              .shtk = token});
-        }          
-      }
-    }    
-  }
   */
+
 
   fc_always_inline void update(KvWebSocket * ws, njson&& json)
   {

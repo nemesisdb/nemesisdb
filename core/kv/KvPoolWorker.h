@@ -9,12 +9,16 @@
 #include <boost/fiber/buffered_channel.hpp>
 #include <ankerl/unordered_dense.h>
 #include <concurrentqueue/concurrentqueue.h>
+#include <core/NemesisCommon.h>
 #include <core/CacheMap.h>
 #include <core/kv/KvCommon.h>
 #include <core/kv/KvSessions.h>
 
 
+
 namespace nemesis { namespace core { namespace kv {
+
+using namespace std::string_view_literals;
 
 
 // A number of KvPoolWorker are created (MaxPools), which is hardware_concurrency() minus the number of IO threads.
@@ -248,38 +252,35 @@ private:
     };
 
 
-    /*
-    auto sessionArrayMove = [this](CacheMap& map, KvCommand& cmd)
+    auto find = [this](CacheMap& map, KvCommand& cmd)
     {
-      njson rsp;
-      rsp["KV_ARRAY_MOVE_RSP"]["tkn"] = cmd.shtk;
+      const bool paths = cmd.contents.at("rsp") == "paths";
 
-      for (auto& item : cmd.contents.items())
+      njson result = njson::array();
+
+      map.find(cmd.contents, paths, result);
+
+      njson rsp;
+      rsp["KV_FIND_RSP"]["tkn"] = cmd.shtk;
+
+      if (cmd.contents.at("rsp") != "kv")
+        rsp["KV_FIND_RSP"][paths ? "paths" : "keys"] = std::move(result);
+      else
       {
-        if (!item.value().is_array())
-          rsp["KV_ARRAY_MOVE_RSP"][item.key()] = RequestStatus::ValueTypeInvalid;
-        else
+        rsp["KV_FIND_RSP"]["keys"] = njson{};
+
+        for(auto& item : result.items())
         {
-          const auto status = map.arrayMove(njson {{item.key(), std::move(item.value())}});
-          rsp["KV_ARRAY_MOVE_RSP"][item.key()] = status;
-        }
+          if (auto [exists, pair] = map.get(item.value().get_ref<const cachedkey&>()); exists)
+            rsp["KV_FIND_RSP"]["keys"].emplace(std::move(pair.begin().key()), std::move(pair.begin().value()));
+          else
+            rsp["KV_FIND_RSP"]["keys"][item.value()] = njson{}; //null
+        } 
       }
 
       send(cmd, rsp.dump());
     };
     
-
-    auto find = [this](CacheMap& map, KvCommand& cmd)
-    {
-      njson rsp;
-      rsp["KV_FIND_RSP"]["tkn"] = cmd.shtk;
-      rsp["KV_FIND_RSP"]["keys"] = njson::array();
-      
-      map.findNoRegEx(cmd.contents, cmd.find, rsp["KV_FIND_RSP"]["keys"]);
-
-      send(cmd, rsp.dump());
-    };
-    */
 
 
     auto update = [this](CacheMap& map, KvCommand& cmd)
@@ -334,7 +335,7 @@ private:
       count,
       append,
       contains,
-      //find,
+      find,
       update
     };
 
