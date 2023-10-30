@@ -26,10 +26,9 @@ set(CMAKE_GENERATOR_PLATFORM x64)
 set(CPACK_PROJECT_NAME ${PROJECT_NAME})
 set(CPACK_PROJECT_VERSION ${PROJECT_VERSION})
 
-add_executable(nemesisdb server.cpp)
+add_executable(jsoncons jsoncons.cpp)
 
-target_compile_features(nemesisdb PUBLIC cxx_std_20)
-target_link_libraries(nemesisdb PRIVATE "-Wl,-z,stack-size=2097152" -luSockets -lz -lboost_fiber -lboost_context -lboost_program_options)
-#target_link_libraries(nemesisdb PRIVATE "-Wl,-z,stack-size=2097152" -lboost_fiber -lboost_context -lboost_program_options)
+target_compile_features(jsoncons PUBLIC cxx_std_20)
+target_link_libraries(jsoncons PRIVATE "-Wl,-z,stack-size=2097152" -luSockets -lz -lboost_fiber -lboost_context -lboost_program_options)
 
 #include(CPack)

@@ -13,3 +13,6 @@
 [submodule "docs-deploy"]
 	path = docs-deploy
 	url = https://github.com/nemesisdb/docs-deploy.git
+[submodule "jsoncons"]
+	path = jsoncons
+	url = https://github.com/danielaparker/jsoncons.git

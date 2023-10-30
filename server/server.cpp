@@ -41,7 +41,7 @@ int main (int argc, char ** argv)
     config.cfg["version"] = 1;
     config.cfg["kv"]["ip"] = "127.0.0.1";
     config.cfg["kv"]["port"] = 1987;
-    config.cfg["kv"]["maxPayload"] = 1024U;
+    config.cfg["kv"]["maxPayload"] = 2048;
   #else
     if (nemesis::core::readConfig(config, argc, argv); !config.valid)
       return 0;

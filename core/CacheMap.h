@@ -3,7 +3,7 @@
 
 #include <regex>
 #include <ankerl/unordered_dense.h>
-#include <core/NemesisConfig.h>
+#include <core/NemesisCommon.h>
 
 
 namespace nemesis { namespace core {
@@ -169,6 +169,82 @@ public:
   };
 
 
+  auto find (const njson& contents, const bool findPaths, njson& result) const
+  {
+    namespace jsonpath = jsoncons::jsonpath;
+    const std::string_view path = contents.at("path").get<const std::string_view>();
+    
+    if (contents.at("keys").empty())
+    {
+      for(auto& kv : m_map)
+      {
+        auto json = jcjson::parse(kv.second.dump());
+        
+        if (auto queryResult = jsonpath::json_query(json, path, jsonpath::result_options::path | jsonpath::result_options::nodups); !queryResult.empty())
+        {
+          if (findPaths)
+            for(auto& i : queryResult.array_range())
+              result.emplace_back(std::move(i.as_string()));
+          else
+            result.emplace_back(kv.first);
+        }
+      }
+    }
+    else
+    {
+      for (auto& kv : contents.at("keys").items())
+      {
+        auto& key = kv.value().get_ref<const std::string&>();
+
+        if (auto entry = m_map.find(key); entry != m_map.cend())
+        {
+          auto json = jcjson::parse(entry->second.dump());
+
+          if (auto queryResult = jsonpath::json_query(json, path, jsonpath::result_options::path | jsonpath::result_options::nodups); !queryResult.empty())
+          {
+            if (findPaths)
+              for(auto& i : queryResult.array_range())
+                result.emplace_back(std::move(i.as_string()));
+            else
+              result.emplace_back(key);
+          } 
+        }
+      }
+    }
+  }
+
+
+  /*
+  void findNoRegEx (const njson& contents, const KvFind& find, njson& keysArray)
+  {
+    auto& [opString, handler] = findConditions.getOperation(find.condition);
+
+    njson::json_pointer path {contents.at("path")};
+    njson::const_reference opValue = contents.at(opString);
+    
+    auto valueMatch = [&handler, &opValue, &path](std::pair<cachedkey, cachedvalue>& kv)
+    {
+      try
+      {
+        return kv.second.contains(path) && handler(kv.second.at(path), opValue);  
+      }
+      catch(...)
+      {
+      }
+
+      return false;      
+    };
+
+
+    for(auto& kv : m_map)
+    {
+      if (valueMatch(kv))
+        keysArray.emplace_back(kv.first);
+    }
+  };
+  */
+
+
   /*
   auto find (const njson& contents, const KvFind& find)
   {
@@ -208,37 +284,9 @@ public:
 
     return std::move(keys);
   };
-
-
-  void findNoRegEx (const njson& contents, const KvFind& find, njson& keysArray)
-  {
-    auto& [opString, handler] = findConditions.getOperation(find.condition);
-
-    njson::json_pointer path {contents.at("path")};
-    njson::const_reference opValue = contents.at(opString);
-    
-    auto valueMatch = [&handler, &opValue, &path](std::pair<cachedkey, cachedvalue>& kv)
-    {
-      try
-      {
-        return kv.second.contains(path) && handler(kv.second.at(path), opValue);  
-      }
-      catch(...)
-      {
-      }
-
-      return false;      
-    };
-
-
-    for(auto& kv : m_map)
-    {
-      if (valueMatch(kv))
-        keysArray.emplace_back(kv.first);
-    }
-  };
   */
 
+  
 
   RequestStatus updateByPath (const cachedkey& key, const njson::json_pointer& path, njson&& value)
   {

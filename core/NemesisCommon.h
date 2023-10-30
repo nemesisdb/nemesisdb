@@ -7,6 +7,10 @@
 #include <thread>
 #include <chrono>
 #include <uwebsockets/App.h>
+#include <nlohmann/json.hpp>
+#include <jsoncons/json.hpp>
+#include <jsoncons_ext/jsonpath/jsonpath.hpp>
+
 
 namespace nemesis { namespace core {
 
@@ -22,13 +26,14 @@ static const std::size_t NEMESIS_KV_MAXPAYLOAD = 2U * 1024U * 1024U;
 
 // general
 using njson = nlohmann::ordered_json;
+using jcjson = jsoncons::json;
 using NemesisClock = std::chrono::steady_clock;
 using NemesisTimePoint = NemesisClock::time_point;
 
 // kv
 using cachedkey = std::string;
 using cachedvalue = nlohmann::ordered_json;
-using cachedpair = nlohmann::ordered_json;
+using cachedpair = nlohmann::ordered_json; // TODO not used?
 
 // session
 using SessionPoolId = std::size_t;
