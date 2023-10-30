@@ -6,3 +6,5 @@ package/staging/*
 test/bin/*
 clients/Release/bin/*
 clients/Debug/bin/*
+faff/Debug/*
+faff/Release/*

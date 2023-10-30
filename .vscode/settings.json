@@ -100,6 +100,7 @@
     "latch": "cpp",
     "barrier": "cpp",
     "*.ipp": "cpp",
-    "regex": "cpp"
+    "regex": "cpp",
+    "scoped_allocator": "cpp"
   }
 }

@@ -33,7 +33,7 @@ using NemesisTimePoint = NemesisClock::time_point;
 // kv
 using cachedkey = std::string;
 using cachedvalue = nlohmann::ordered_json;
-using cachedpair = nlohmann::ordered_json;
+using cachedpair = nlohmann::ordered_json; // TODO not used?
 
 // session
 using SessionPoolId = std::size_t;
