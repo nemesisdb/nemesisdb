@@ -158,24 +158,38 @@ public:
             ++serverStats->queryCount;
 
             if (opCode != uWS::OpCode::TEXT)
-              ws->send(createErrorResponse(RequestStatus::OpCodeInvalid).dump(), kv::WsSendOpCode);
+              ws->send(createErrorResponse(RequestStatus::OpCodeInvalid).to_string(), kv::WsSendOpCode);
             else
             {
-              if (auto request = njson::parse(message, nullptr, false); request.is_discarded()) // TODO change parse() to accept()?
-                ws->send(createErrorResponse(RequestStatus::JsonInvalid).dump(), kv::WsSendOpCode);
+              // TODO this avoids exceptions on parse error, but not clear how to create json object
+              //      from reader out (if even possible)
+              //jsoncons::json_string_reader reader(message);
+              //std::error_code ec;
+              //reader.read(ec);
+
+              njson2 request = njson2::null();
+
+              try
+              {
+                request = std::move(njson2::parse(message));
+              }
+              catch (...)
+              {
+
+              }
+              
+              if (request.is_null())
+                ws->send(createErrorResponse(RequestStatus::JsonInvalid).to_string(), kv::WsSendOpCode);
+              else if (request.empty() || !request.is_object())
+                  ws->send(createErrorResponse(RequestStatus::CommandSyntax).to_string(), kv::WsSendOpCode);
+              else if (request.size() > 1U)
+                  ws->send(createErrorResponse(RequestStatus::CommandMultiple).to_string(), kv::WsSendOpCode);
               else
               {
-                 if (request.empty())
-                  ws->send(createErrorResponse(RequestStatus::CommandSyntax).dump(), kv::WsSendOpCode);
-                else if (request.size() > 1U)
-                  ws->send(createErrorResponse(RequestStatus::CommandMultiple).dump(), kv::WsSendOpCode);
-                else
-                {
-                  const auto& commandName = request.cbegin().key();
-                  
-                  if (const auto status = m_kvHandler->handle(ws, std::move(request)); status != RequestStatus::Ok)
-                    ws->send(createErrorResponse(commandName+"_RSP", status).dump(), kv::WsSendOpCode);
-                }
+                const auto& commandName = request.object_range().cbegin()->key();
+                
+                if (const auto status = m_kvHandler->handle(ws, commandName, std::move(request)); status != RequestStatus::Ok)
+                  ws->send(createErrorResponse(commandName+"_RSP", status).to_string(), kv::WsSendOpCode);
               }
             }
           },

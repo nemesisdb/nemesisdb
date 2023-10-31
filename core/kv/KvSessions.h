@@ -43,6 +43,7 @@ private:
     SessionToken token;
     SessionExpireTime time{};
     bool deleteOnExpire{true};
+    SessionDuration duration{};
   };
 
 
@@ -62,8 +63,10 @@ public:
 
   std::optional<std::reference_wrapper<CacheMap>> start (const SessionToken& token, const bool shared, const SessionDuration duration, const bool deleteOnExpire)
   {
-    if (auto seshIt = m_sessions.find(token) ; seshIt != m_sessions.cend())
-      return seshIt->second.map;
+    //if (auto seshIt = m_sessions.find(token) ; seshIt != m_sessions.cend())
+      //return seshIt->second.map;
+    if (m_sessions.contains(token))
+      return {};  // TODO check this, if shared:true and a session with this name already exists
     else
     {
       if (duration != SessionDuration::zero())
@@ -73,7 +76,7 @@ public:
         ExpireInfo expire {.time = expireTime, .duration = duration, .deleteOnExpire = deleteOnExpire};
         m_sessions[token] = Session{.token = token, .expireInfo = std::move(expire), .shared = shared, .expires = true};
 
-        m_expiry.emplace(std::make_pair(expireTime, ExpiryTracking{.token = token, .time = expireTime, .deleteOnExpire = deleteOnExpire}));
+        m_expiry.emplace(std::make_pair(expireTime, ExpiryTracking{.token = token, .time = expireTime, .deleteOnExpire = deleteOnExpire, .duration = duration}));
       }
       else
         m_sessions[token] = Session{.token = token, .shared = shared, .expires = false};
@@ -145,21 +148,38 @@ public:
   }
 
 
-  void removeExpired (const SessionExpireTime time = SessionClock::now())
-  {
+  void handleExpired (const SessionExpireTime time = SessionClock::now())
+  {    
     auto itExpired = m_expiry.lower_bound(time);
 
     if (itExpired != m_expiry.end() || (itExpired == m_expiry.end() && !m_expiry.empty()))
     {
+      std::multimap<SessionExpireTime, ExpiryTracking> renew;
+
       for (auto it = m_expiry.cbegin() ; it != itExpired; ++it)
       {
         if (it->second.deleteOnExpire)
           m_sessions.erase(it->second.token);
-        else if (m_sessions.contains(it->second.token)) // shouldn't happen because end() removes the entry, but sanity check
-          m_sessions.at(it->second.token).map.clear();
+        else if (m_sessions.contains(it->second.token)) // should alwys be true because end() removes the entry, but sanity check
+        {
+          // session expired but not deleted, so clear data and reset expiry
+          auto& expireInfo = it->second;
+          auto& session = m_sessions.at(expireInfo.token);
+
+          const SessionExpireTime expireTime = SessionClock::now() + expireInfo.duration;
+
+          session.map.clear();
+          session.expireInfo.time = expireTime;
+          
+          ExpiryTracking tracking {expireInfo};
+          tracking.time = expireTime;
+
+          renew.emplace(expireTime, std::move(tracking));
+        }
       }
 
       m_expiry.erase(m_expiry.begin(), itExpired);
+      m_expiry.insert(std::make_move_iterator(renew.begin()), std::make_move_iterator(renew.end()));
     }
   }
 

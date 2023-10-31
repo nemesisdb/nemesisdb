@@ -16,7 +16,7 @@ namespace nemesis { namespace core {
 
 #define fc_always_inline inline __attribute__((always_inline))
 
-static const char * NEMESIS_VERSION = "0.3.0";
+static const char * NEMESIS_VERSION = "0.3.1";
 static const std::size_t NEMESIS_CONFIG_VERSION = 1U;
 static const std::size_t NEMESIS_MAX_CORES = 4U;
 
@@ -26,6 +26,7 @@ static const std::size_t NEMESIS_KV_MAXPAYLOAD = 2U * 1024U * 1024U;
 
 // general
 using njson = nlohmann::ordered_json;
+using njson2 = jsoncons::ojson;
 using jcjson = jsoncons::json;
 using NemesisClock = std::chrono::steady_clock;
 using NemesisTimePoint = NemesisClock::time_point;
@@ -33,7 +34,9 @@ using NemesisTimePoint = NemesisClock::time_point;
 // kv
 using cachedkey = std::string;
 using cachedvalue = nlohmann::ordered_json;
-using cachedpair = nlohmann::ordered_json; // TODO not used?
+using cachedpair = nlohmann::ordered_json;
+using cachedvalue2 = njson2;
+using cachedpair2 = njson2;
 
 // session
 using SessionPoolId = std::size_t;
@@ -42,7 +45,7 @@ using SessionName = std::string;
 using SessionClock = std::chrono::steady_clock;
 using SessionExpireTime = SessionClock::time_point;
 using SessionDuration = std::chrono::seconds;
-using SessionExpireTimeUnit = std::chrono::seconds;
+using SessionExpireTimePoint = std::chrono::time_point<SessionClock, std::chrono::seconds>;
 
 
 struct WsSession
@@ -157,9 +160,9 @@ enum class RequestStatus
   SessionNotExist = 100,
   SessionTokenInvalid,
   SessionOpenFail,
+  SessionNewFail,
   Unknown = 1000
 };
-
 
 static inline bool setThreadAffinity(const std::thread::native_handle_type handle, const size_t core)
 {
@@ -185,29 +188,28 @@ static njson createErrorResponse (const std::string_view commandRsp, const Reque
   return rsp;
 }
 
-static njson createErrorResponse (const std::string_view commandRsp, const RequestStatus status, const std::string_view msg = "")
+static njson2 createErrorResponse (const std::string_view commandRsp, const RequestStatus status, const std::string_view msg = "")
 {
-  njson rsp;
-  rsp[commandRsp]["st"] = status;
-  rsp[commandRsp]["tkn"] = njson{};
+  njson2 rsp;
+  rsp[commandRsp]["st"] = static_cast<int>(status);
+  rsp[commandRsp]["tkn"] = njson2::null();
   rsp[commandRsp]["m"] = msg;
   return rsp;
 }
 
 
 // Response is the original command is unknown.
-static njson createErrorResponse (const RequestStatus status, const std::string_view msg = "")
+static njson2 createErrorResponse (const RequestStatus status, const std::string_view msg = "")
 {
-  njson rsp;
-  rsp["ERR"]["st"] = status;
+  njson2 rsp;
+  rsp["ERR"]["st"] = static_cast<int>(status);
   rsp["ERR"]["m"] = msg;
   return rsp;
 }
 
 
-
-
 } // namespace core
 } // namespace fusion
+
 
 #endif
