@@ -12,8 +12,6 @@
 #include <core/kv/KvCommon.h>
 #include <core/kv/KvPoolWorker.h>
 #include <core/kv/KvHandler.h>
-#include <core/ks/KsHandler.h>  
-#include <core/ks/KsSets.h>
 #include <core/NemesisConfig.h>
 
 

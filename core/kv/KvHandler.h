@@ -10,7 +10,6 @@
 #include <core/NemesisCommon.h>
 #include <core/kv/KvCommon.h>
 #include <core/kv/KvPoolWorker.h>
-#include <core/ks/KsSets.h>
 
 
 namespace nemesis { namespace core { namespace kv {
