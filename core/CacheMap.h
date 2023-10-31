@@ -119,39 +119,48 @@ public:
     namespace jsonpath = jsoncons::jsonpath;
     const auto& path = contents.at("path").as_string();
     
-    if (contents.at("keys").empty())
+    try
     {
-      for(auto& kv : m_map)
-      {       
-        if (auto queryResult = jsonpath::json_query(kv.second, path, jsonpath::result_options::path | jsonpath::result_options::nodups); !queryResult.empty())
-        {
-          if (findPaths)
-            for(auto& i : queryResult.array_range())
-              result.emplace_back(std::move(i.as_string()));
-          else
-            result.emplace_back(kv.first);
-        }
-      }
-    }
-    else
-    {
-      for (auto& kv : contents.at("keys").array_range())
+      if (contents.at("keys").empty())
       {
-        const auto& key = kv.as_string();
-
-        if (auto entry = m_map.find(key); entry != m_map.cend())
-        {
-          if (auto queryResult = jsonpath::json_query(entry->second, path, jsonpath::result_options::path | jsonpath::result_options::nodups); !queryResult.empty())
+        for(auto& kv : m_map)
+        {       
+          if (auto queryResult = jsonpath::json_query(kv.second, path, jsonpath::result_options::path | jsonpath::result_options::nodups); !queryResult.empty())
           {
             if (findPaths)
               for(auto& i : queryResult.array_range())
                 result.emplace_back(std::move(i.as_string()));
             else
-              result.emplace_back(key);
-          } 
+              result.emplace_back(kv.first);
+          }
+        }
+      }
+      else
+      {
+        for (auto& kv : contents.at("keys").array_range())
+        {
+          const auto& key = kv.as_string();
+
+          if (auto entry = m_map.find(key); entry != m_map.cend())
+          {
+            if (auto queryResult = jsonpath::json_query(entry->second, path, jsonpath::result_options::path | jsonpath::result_options::nodups); !queryResult.empty())
+            {
+              if (findPaths)
+                for(auto& i : queryResult.array_range())
+                  result.emplace_back(std::move(i.as_string()));
+              else
+                result.emplace_back(key);
+            } 
+          }
         }
       }
     }
+    catch (.../*const jsonpath::jsonpath_error&*/)
+    {
+      return false;
+    }
+
+    return true;
   }
 
 

@@ -251,29 +251,34 @@ private:
     {
       const bool paths = cmd.contents.at("rsp") == "paths";
 
-      njson2 result = njson2::array();
-
-      map.find(cmd.contents, paths, result);
-
       njson2 rsp;
       rsp["KV_FIND_RSP"]["tkn"] = cmd.shtk;
 
-      if (cmd.contents.at("rsp") != "kv")
-        rsp["KV_FIND_RSP"][paths ? "paths" : "keys"] = std::move(result);
+      njson2 result = njson2::array();
+
+      if (!map.find(cmd.contents, paths, result))
+        rsp["KV_FIND_RSP"]["st"] = toUnderlying(RequestStatus::PathInvalid);
       else
-      {
-        // return key-values as if doing a KV_GET
-        rsp["KV_FIND_RSP"]["keys"] = njson2::object();
+      {       
+        rsp["KV_FIND_RSP"]["st"] = toUnderlying(RequestStatus::Ok);
 
-        for(auto& item : result.array_range())
+        if (cmd.contents.at("rsp") != "kv")
+          rsp["KV_FIND_RSP"][paths ? "paths" : "keys"] = std::move(result);
+        else
         {
-          const auto& key = item.as_string();
+          // return key-values the same as KV_GET
+          rsp["KV_FIND_RSP"]["keys"] = njson2::object();
 
-          if (auto [exists, value] = map.get(key); exists)
-            rsp["KV_FIND_RSP"]["keys"][key] = std::move(value);
-          else
-            rsp["KV_FIND_RSP"]["keys"][key] = njson2::null();
-        } 
+          for(auto& item : result.array_range())
+          {
+            const auto& key = item.as_string();
+
+            if (auto [exists, value] = map.get(key); exists)
+              rsp["KV_FIND_RSP"]["keys"][key] = std::move(value);
+            else
+              rsp["KV_FIND_RSP"]["keys"][key] = njson2::null();
+          } 
+        }
       }
 
       send(cmd, rsp.to_string());
