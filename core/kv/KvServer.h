@@ -155,10 +155,10 @@ public:
             else
             {
               // TODO this avoids exceptions on parse error, but not clear how to create json object
-              //      from reader out (if even possible)
-              //jsoncons::json_string_reader reader(message);
-              //std::error_code ec;
-              //reader.read(ec);
+              //      from reader output (if even possible)
+              // jsoncons::json_string_reader reader(message);
+              // std::error_code ec;
+              // reader.read(ec);
 
               njson2 request = njson2::null();
 
@@ -173,15 +173,17 @@ public:
               
               if (request.is_null())
                 ws->send(createErrorResponse(RequestStatus::JsonInvalid).to_string(), kv::WsSendOpCode);
-              else if (request.empty() || !request.is_object())
-                  ws->send(createErrorResponse(RequestStatus::CommandSyntax).to_string(), kv::WsSendOpCode);
+              else if (request.empty() || !request.is_object()) //i.e. top level not an object
+                ws->send(createErrorResponse(RequestStatus::CommandSyntax).to_string(), kv::WsSendOpCode);
               else if (request.size() > 1U)
-                  ws->send(createErrorResponse(RequestStatus::CommandMultiple).to_string(), kv::WsSendOpCode);
+                ws->send(createErrorResponse(RequestStatus::CommandMultiple).to_string(), kv::WsSendOpCode);
               else
               {
                 const auto& commandName = request.object_range().cbegin()->key();
-                
-                if (const auto status = m_kvHandler->handle(ws, commandName, std::move(request)); status != RequestStatus::Ok)
+
+                if (!request.at(commandName).is_object())
+                  ws->send(createErrorResponse(commandName+"_RSP", RequestStatus::CommandType).to_string(), kv::WsSendOpCode);
+                else if (const auto status = m_kvHandler->handle(ws, commandName, std::move(request)); status != RequestStatus::Ok)
                   ws->send(createErrorResponse(commandName+"_RSP", status).to_string(), kv::WsSendOpCode);
               }
             }

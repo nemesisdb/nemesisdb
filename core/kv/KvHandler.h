@@ -190,50 +190,7 @@ private:
     return results;
   }
 
-
-  /*
-  fc_always_inline void sessionSubmitPairs(KvWebSocket * ws, njson2&& cmd, const SessionToken& token, const KvQueryType queryType, const std::string_view command, const std::string_view rspName)
-  {
-    const auto poolId = getPoolId(token);
-
-    for (auto& pair : cmd.items())
-    {
-      auto& value = pair.value(); 
-
-      if (valueTypeValid(value))    [[likely]]
-      {
-        m_pools[poolId]->execute(KvCommand{ .ws = ws,
-                                            .loop = uWS::Loop::get(),
-                                            .contents = std::move(pair),
-                                            .type = queryType,
-                                            .shtk = token});
-      }
-      else
-        ws->send(createErrorResponse(rspName, RequestStatus::ValueTypeInvalid, pair.key()).to_string(), WsSendOpCode);
-    }
-  }
-
-
-  fc_always_inline void sessionSubmitKeys(KvWebSocket * ws, njson2&& cmd, const SessionToken& token, const KvQueryType queryType, const std::string_view command, const std::string_view rspName)
-  {
-    const auto poolId = getPoolId(token);
-
-    for (auto& key : cmd)
-    {
-      if (key.is_string())
-      {        
-        m_pools[poolId]->execute(KvCommand{ .ws = ws,
-                                            .loop = uWS::Loop::get(),
-                                            .contents = std::move(key.get<std::string_view>()),
-                                            .type = queryType,
-                                            .shtk = token});
-      }
-      else
-        ws->send(createErrorResponse(rspName, RequestStatus::KeyTypeInvalid, token).to_string(), WsSendOpCode);
-    }
-  }
-  */
-
+  
   // SESSION
   fc_always_inline void sessionNew(KvWebSocket * ws, njson2&& json)
   {
@@ -407,9 +364,9 @@ private:
 
   fc_always_inline void set(KvWebSocket * ws, njson2&& json)
   {
-    static const KvQueryType queryType = KvQueryType::SessionSet;
-    static const std::string queryName     = QueryTypeToName.at(queryType);
-    static const std::string queryRspName  = queryName +"_RSP";
+    static const KvQueryType queryType    = KvQueryType::SessionSet;
+    static const std::string queryName    = QueryTypeToName.at(queryType);
+    static const std::string queryRspName = queryName +"_RSP";
 
     auto& cmd = json.at(queryName);
     SessionToken token;
@@ -426,7 +383,7 @@ private:
   
   fc_always_inline void setQ(KvWebSocket * ws, njson2&& json)
   {
-    static const KvQueryType queryType = KvQueryType::SessionSetQ;
+    static const KvQueryType queryType    = KvQueryType::SessionSetQ;
     static const std::string queryName    = QueryTypeToName.at(queryType);
     static const std::string queryRspName = queryName +"_RSP";
 
@@ -444,9 +401,9 @@ private:
   
   fc_always_inline void get(KvWebSocket * ws, njson2&& json)
   {
-    static const KvQueryType queryType = KvQueryType::SessionGet;
-    static const std::string queryName    = QueryTypeToName.at(queryType);
-    static const std::string queryRspName = queryName +"_RSP";
+    static const KvQueryType queryType      = KvQueryType::SessionGet;
+    static const std::string queryName      = QueryTypeToName.at(queryType);
+    static const std::string queryRspName   = queryName +"_RSP";
 
     auto& cmd = json.at(queryName);
     SessionToken token;
@@ -463,9 +420,9 @@ private:
   
   fc_always_inline void add(KvWebSocket * ws, njson2&& json)
   {
-    static const KvQueryType queryType = KvQueryType::SessionAdd;
-    static const std::string_view queryName     = "KV_ADD";
-    static const std::string_view queryRspName  = "KV_ADD_RSP";
+    static const KvQueryType queryType      = KvQueryType::SessionAdd;
+    static const std::string queryName      = QueryTypeToName.at(queryType);
+    static const std::string queryRspName   = queryName +"_RSP";
 
     auto& cmd = json.at(queryName);
     SessionToken token;
@@ -580,6 +537,8 @@ private:
         ws->send(createErrorResponse(queryRspName, RequestStatus::FindNoPath).to_string(), WsSendOpCode);
       else if (!cmd.at("path").is_string())
         ws->send(createErrorResponse(queryRspName, RequestStatus::ValueTypeInvalid, "path").to_string(), WsSendOpCode);
+      else if (const auto& path = cmd.at("path").as_string() ; path.empty())
+        ws->send(createErrorResponse(queryRspName, RequestStatus::ValueSize, "path").to_string(), WsSendOpCode);      
       else if (!cmd.contains("rsp"))
         ws->send(createErrorResponse(queryRspName, RequestStatus::ValueMissing, "rsp").to_string(), WsSendOpCode);
       else if (!cmd.at("rsp").is_string())

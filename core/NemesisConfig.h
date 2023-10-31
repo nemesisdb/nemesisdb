@@ -4,8 +4,8 @@
 #include <string_view>
 #include <mutex>
 #include <fstream>
+#include <filesystem>
 #include <boost/program_options.hpp>
-#include <nlohmann/json.hpp>
 #include <core/NemesisCommon.h>
 
 
@@ -22,6 +22,11 @@ struct NemesisConfig
   NemesisConfig(njson2&& config) : cfg(std::move(config)), valid(true)
   {
 
+  }
+
+  NemesisConfig(const std::string_view config) : valid(true)
+  {
+    cfg = std::move(njson2::parse(config));
   }
 
   njson2 cfg;

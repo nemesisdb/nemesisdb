@@ -186,7 +186,8 @@ public:
   */
 
 
-  /*RequestStatus updateByPath (const cachedkey& key, const njson::json_pointer& path, njson&& value)
+  /*
+  RequestStatus updateByPath (const cachedkey& key, const njson::json_pointer& path, njson&& value)
   {
     const static njson::json_pointer rootPath {"/"};
 

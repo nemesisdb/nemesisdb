@@ -6,6 +6,7 @@ include_directories("../../../")
 include_directories("../../clientapi/src/")
 include_directories("../../vcpkg/installed/x64-linux/include")
 include_directories("../../unordered_dense/include")
+include_directories("../../jsoncons/include")
 
 link_directories("../../vcpkg/installed/x64-linux/lib")
 
