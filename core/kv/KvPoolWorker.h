@@ -251,7 +251,7 @@ private:
     {
       const bool paths = cmd.contents.at("rsp") == "paths";
 
-      njson2 result = njson::array();
+      njson2 result = njson2::array();
 
       map.find(cmd.contents, paths, result);
 

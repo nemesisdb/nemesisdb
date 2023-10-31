@@ -7,7 +7,6 @@
 #include <thread>
 #include <chrono>
 #include <uwebsockets/App.h>
-#include <nlohmann/json.hpp>
 #include <jsoncons/json.hpp>
 #include <jsoncons_ext/jsonpath/jsonpath.hpp>
 
@@ -25,7 +24,6 @@ static const std::size_t NEMESIS_KV_MAXPAYLOAD = 2U * 1024U * 1024U;
 
 
 // general
-using njson = nlohmann::ordered_json;
 using njson2 = jsoncons::ojson;
 using jcjson = jsoncons::json;
 using NemesisClock = std::chrono::steady_clock;
@@ -33,8 +31,6 @@ using NemesisTimePoint = NemesisClock::time_point;
 
 // kv
 using cachedkey = std::string;
-using cachedvalue = nlohmann::ordered_json;
-using cachedpair = nlohmann::ordered_json;
 using cachedvalue2 = njson2;
 using cachedpair2 = njson2;
 
@@ -73,61 +69,6 @@ struct WsSession
 
 
 using KvWebSocket = uWS::WebSocket<false, true, WsSession>;
-
-
-
-struct FindConditions
-{
-  enum class Condition { Equals, GT, GTE, LT, LTE  };
-
-  using ConditionOperator = std::function<bool(const njson&, const njson&)>;
-
-
-  const std::map<Condition, std::tuple<const std::string, ConditionOperator>> ConditionToOp = 
-  {
-    {Condition::Equals,   {"==",  [](const njson& a, const njson& b){ return a == b; }} },
-    {Condition::GT,       {">",   [](const njson& a, const njson& b){ return a > b; }} },
-    {Condition::GTE,      {">=",  [](const njson& a, const njson& b){ return a >= b; }} },
-    {Condition::LT,       {"<",   [](const njson& a, const njson& b){ return a < b; }} },
-    {Condition::LTE,      {"<=",  [](const njson& a, const njson& b){ return a <= b; }} }
-  };
-
-  
-  const std::map<const std::string, Condition> OpStringToOp = 
-  {
-    {"==",  Condition::Equals},
-    {">",   Condition::GT},
-    {">=",  Condition::GTE},
-    {"<",   Condition::LT},
-    {"<=",  Condition::LTE}
-  };
-
-
-  bool isValidOperator(const std::string& opString)
-  {
-    return OpStringToOp.contains(opString);
-  }
-
-
-  Condition getOperator(const std::string& opString)
-  {
-    return OpStringToOp.at(opString);
-  }
-
-
-  const std::tuple<const std::string, ConditionOperator>& getOperation (const Condition cond)
-  {
-    return ConditionToOp.at(cond);
-  }
-
-} findConditions ;
-
-
-struct KvFind
-{
-  FindConditions::Condition condition;
-
-};
 
 
 enum class RequestStatus
@@ -174,19 +115,20 @@ static inline bool setThreadAffinity(const std::thread::native_handle_type handl
 
 
 // Response when command known but response
-static njson createErrorResponse (const std::string_view commandRsp, const RequestStatus status, const SessionToken& tkn, const std::string_view msg)
-{
-  njson rsp;
-  rsp[commandRsp]["st"] = status;
+// static njson createErrorResponse (const std::string_view commandRsp, const RequestStatus status, const SessionToken& tkn, const std::string_view msg)
+// {
+//   njson2 rsp;
+//   rsp[commandRsp]["st"] = static_cast<int>(status);
   
-  if (tkn.empty())
-    rsp[commandRsp]["tkn"] = njson{};
-  else
-    rsp[commandRsp]["tkn"] = tkn;
+//   if (tkn.empty())
+//     rsp[commandRsp]["tkn"] = njson2::null();
+//   else
+//     rsp[commandRsp]["tkn"] = tkn;
 
-  rsp[commandRsp]["m"] = msg;
-  return rsp;
-}
+//   rsp[commandRsp]["m"] = msg;
+//   return rsp;
+// }
+
 
 static njson2 createErrorResponse (const std::string_view commandRsp, const RequestStatus status, const std::string_view msg = "")
 {

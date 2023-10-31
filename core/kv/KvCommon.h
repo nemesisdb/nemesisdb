@@ -37,7 +37,7 @@ enum class KvQueryType : std::uint8_t
   SessionCount,
   SessionContains,
   SessionFind,
-  SessionUpdate,
+  //SessionUpdate,
   Max,
   InternalSessionMonitor,
   Unknown,
@@ -63,7 +63,7 @@ const std::map<const std::string_view, std::tuple<const KvQueryType>> QueryNameT
   {"KV_COUNT",        {KvQueryType::SessionCount}},
   {"KV_CONTAINS",     {KvQueryType::SessionContains}},
   {"KV_FIND",         {KvQueryType::SessionFind}},
-  {"KV_UPDATE",       {KvQueryType::SessionUpdate}}
+  //{"KV_UPDATE",       {KvQueryType::SessionUpdate}}
 };
 
 
@@ -86,7 +86,7 @@ const std::map<const KvQueryType, const std::string> QueryTypeToName =
   {KvQueryType::SessionCount,     "KV_COUNT"},
   {KvQueryType::SessionContains,  "KV_CONTAINS"},
   {KvQueryType::SessionFind,      "KV_FIND"},
-  {KvQueryType::SessionUpdate,    "KV_UPDATE"}
+  //{KvQueryType::SessionUpdate,    "KV_UPDATE"}
 };
 
 
@@ -183,11 +183,9 @@ struct KvCommand
 {
   uWS::WebSocket<false, true, WsSession> * ws;  // to access the websocket and userdata
   uWS::Loop * loop; // TODO can this be moved to WsSession, only set once in .open handler? the uWS event loop, so we can defer() websocket calls on an event loop thread
-  //njson contents;  // json taken from the request, contents depends on the query
   njson2 contents;
   KvQueryType type; 
   std::function<void(std::any)> syncResponseHandler; 
-  KvFind find;
   SessionToken shtk;
 };
 
@@ -230,34 +228,32 @@ fc_always_inline SessionToken createSessionToken(const SessionName& name, const 
   }
 }
 
+// TODO this isn't used, but really should be
+// fc_always_inline bool valueTypeValid (const njson2& value)
+// {
+//   static const std::set<jsoncons::json_type> DisallowedTypes = 
+//   {
+//     jsoncons::json_type::byte_string_value
+//   };
 
-fc_always_inline bool valueTypeValid (const njson& value)
-{
-  static const std::set<njson::value_t> DisallowedTypes = 
-  {
-    njson::value_t::binary,
-    njson::value_t::discarded  // technically not possible, but for sanity
-  };
+//   if (value.is_array())
+//   {
+//     static const std::set<jsoncons::json_type> DisallowedTypes = 
+//     {
+//       jsoncons::json_type::byte_string_value
+//     };
 
-  if (value.is_array())
-  {
-    static const std::set<njson::value_t> DisallowedArrayTypes = 
-    {
-      njson::value_t::binary,
-      njson::value_t::discarded
-    };
+//     for(const auto& item : value.array_range())
+//     {
+//       if (item.type() == jsoncons::json_type::byte_string_value)
+//         return false;
+//     }
 
-    for(auto& item : value)
-    {
-      if (DisallowedArrayTypes.contains(item.type()))
-        return false;
-    }
-
-    return true;
-  }
-  else
-    return !DisallowedTypes.contains(value.type());
-}
+//     return true;
+//   }
+//   else
+//     return value.type() != jsoncons::json_type::byte_string_value;
+// }
 
 
 

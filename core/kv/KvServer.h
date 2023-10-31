@@ -105,9 +105,9 @@ public:
     
     kv::serverStats = new kv::ServerStats;
 
-    unsigned int maxPayload = config.cfg["kv"]["maxPayload"];
-    std::string ip = config.cfg["kv"]["ip"];
-    int port = config.cfg["kv"]["port"];
+    unsigned int maxPayload = config.cfg["kv"]["maxPayload"].as<unsigned int>();
+    std::string ip = config.cfg["kv"]["ip"].as_string();
+    int port = config.cfg["kv"]["port"].as<unsigned int>();
     
 
     const auto nCores = std::min<std::size_t>(std::thread::hardware_concurrency(), NEMESIS_MAX_CORES);

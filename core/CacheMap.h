@@ -17,13 +17,6 @@ class CacheMap
 
 public:
 
-  auto set (njson& contents) -> std::pair<Map::iterator, bool>
-  {
-    const auto& key = contents.begin().key();
-    auto& value = contents.begin().value(); 
-    return m_map.insert_or_assign(key, std::move(value));
-  }
-
   auto set (const cachedkey& key, cachedvalue2&& value) -> std::pair<CacheMapIterator, bool>
   {
     return m_map.insert_or_assign(key, std::move(value));
@@ -77,39 +70,41 @@ public:
   }
 
   
+  /*
   auto append (const cachedkey& key, njson&& value)
   {
     RequestStatus status = RequestStatus::Ok;
 
-    // if (const auto it = m_map.find(key) ; it != m_map.cend())
-    // {
-    //   if (it->second.type() == njson::value_t::string && value.is_string())
-    //   {
-    //     if (value.is_string())
-    //       it->second.get_ref<njson::string_t&>().append(std::move(value));
-    //     else
-    //       status = RequestStatus::ValueTypeInvalid;
-    //   }
-    //   else if (it->second.type() == njson::value_t::array)
-    //   {
-    //     if (value.is_array())
-    //     {
-    //       for (auto&& item : value)
-    //         it->second.insert(it->second.end(), std::move(item));
-    //     }
-    //     else
-    //       it->second.insert(it->second.end(), std::move(value));        
-    //   }
-    //   else if(it->second.type() == njson::value_t::object && value.is_object())
-    //     it->second.update(value.begin(), value.end(), true);
-    //   else
-    //     status = RequestStatus::ValueTypeInvalid;
-    // }
-    // else 
-    //   status = RequestStatus::KeyNotExist;
+    if (const auto it = m_map.find(key) ; it != m_map.cend())
+    {
+      if (it->second.type() == njson::value_t::string && value.is_string())
+      {
+        if (value.is_string())
+          it->second.get_ref<njson::string_t&>().append(std::move(value));
+        else
+          status = RequestStatus::ValueTypeInvalid;
+      }
+      else if (it->second.type() == njson::value_t::array)
+      {
+        if (value.is_array())
+        {
+          for (auto&& item : value)
+            it->second.insert(it->second.end(), std::move(item));
+        }
+        else
+          it->second.insert(it->second.end(), std::move(value));        
+      }
+      else if(it->second.type() == njson::value_t::object && value.is_object())
+        it->second.update(value.begin(), value.end(), true);
+      else
+        status = RequestStatus::ValueTypeInvalid;
+    }
+    else 
+      status = RequestStatus::KeyNotExist;
 
     return status;
   }
+  */
 
 
   bool contains (const cachedkey& key)
@@ -191,44 +186,35 @@ public:
   */
 
 
-  RequestStatus updateByPath (const cachedkey& key, const njson::json_pointer& path, njson&& value)
+  /*RequestStatus updateByPath (const cachedkey& key, const njson::json_pointer& path, njson&& value)
   {
     const static njson::json_pointer rootPath {"/"};
 
     RequestStatus status = RequestStatus::Ok;
     
-    // if (const auto it = m_map.find(key) ; it != m_map.cend())
-    // {
-    //   try
-    //   {
-    //     if (it->second.contains(path))
-    //       it->second[path == rootPath ? njson::json_pointer{""} : path] = std::move(value);
-    //     else
-    //       status = RequestStatus::PathNotExist;
+    if (const auto it = m_map.find(key) ; it != m_map.cend())
+    {
+      try
+      {
+        if (it->second.contains(path))
+          it->second[path == rootPath ? njson::json_pointer{""} : path] = std::move(value);
+        else
+          status = RequestStatus::PathNotExist;
 
-    //   }
-    //   catch(const std::exception& e)
-    //   {
-    //     status = RequestStatus::PathNotExist;
-    //   }
-    // }
-    // else
-    //   status = RequestStatus::KeyNotExist;
+      }
+      catch(const std::exception& e)
+      {
+        status = RequestStatus::PathNotExist;
+      }
+    }
+    else
+      status = RequestStatus::KeyNotExist;
 
     return status;
   }
+  */
 
 
-private:
-
-  auto doAdd (njson& contents) -> std::tuple<bool, std::string>
-  {
-    const auto& key = contents.items().begin().key();
-    auto& value = contents.items().begin().value(); 
-
-    const auto [ignore, added] = m_map.emplace(key, std::move(value));
-    return std::make_tuple(added, key);
-  };
 
 private:
   Map m_map;

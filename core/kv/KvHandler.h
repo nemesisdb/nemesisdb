@@ -35,7 +35,7 @@ public:
 private:
   
   // CAREFUL: these have to be in the order of KvQueryType enum
-  const std::array<std::function<void(KvWebSocket *, njson2&&)>, static_cast<std::size_t>(15U/*KvQueryType::Max*/)> Handlers = 
+  const std::array<std::function<void(KvWebSocket *, njson2&&)>, static_cast<std::size_t>(KvQueryType::Max)> Handlers = 
   {
     std::bind(&KvHandler::sessionNew,       std::ref(*this), std::placeholders::_1, std::placeholders::_2),
     std::bind(&KvHandler::sessionEnd,       std::ref(*this), std::placeholders::_1, std::placeholders::_2),
@@ -604,26 +604,6 @@ private:
     }    
   }
   
-
-  /*
-  fc_always_inline void arrayMove(KvWebSocket * ws, njson&& json)
-  {
-    static const KvQueryType queryType = KvQueryType::SessionArrayMove;
-    static const std::string queryName     = QueryTypeToName.at(queryType);
-    static const std::string queryRspName  = queryName +"_RSP";
-
-    auto& cmd = json.at(queryName);
-    SessionToken token;
-
-    if (!cmd.contains("keys"))
-      ws->send(createErrorResponse(queryRspName, RequestStatus::ParamMissing).to_string(), WsSendOpCode);
-    else if (!cmd.at("keys").is_object())
-      ws->send(createErrorResponse(queryRspName, RequestStatus::ValueTypeInvalid, "keys").to_string(), WsSendOpCode);
-    else if (getSessionToken(ws, queryName, cmd, token))
-      sessionSubmit(ws, token, queryType, queryName, queryRspName, std::move(cmd.at("keys")));
-  }
-  */
-
 
   /*
   fc_always_inline void update(KvWebSocket * ws, njson&& json)
