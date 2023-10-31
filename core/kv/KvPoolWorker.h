@@ -100,18 +100,18 @@ private:
       for(auto& kv : cmd.contents.object_range())
       {
         auto [it, inserted] = map.set(kv.key(), std::move(kv.value()));
-        rsp["KV_SET_RSP"]["keys"][kv.key()] = static_cast<int>(inserted ? RequestStatus::KeySet : RequestStatus::KeyUpdated);
+        rsp["KV_SET_RSP"]["keys"][kv.key()] = toUnderlying(inserted ? RequestStatus::KeySet : RequestStatus::KeyUpdated);
       }
 
       send(cmd, rsp.to_string());
     };
 
-    /*
+    
     auto setQ = [this](CacheMap& map, KvCommand& cmd)
     {
-      njson rsp;
+      njson2 rsp ;
       
-      for(auto& kv : cmd.contents.items())
+      for(auto& kv : cmd.contents.object_range())
       {
         try
         {
@@ -119,74 +119,75 @@ private:
         }
         catch(const std::exception& e)
         {
-          rsp["KV_SETQ_RSP"]["keys"][kv.key()] = RequestStatus::Unknown;
+          rsp["KV_SETQ_RSP"]["keys"][kv.key()] = toUnderlying(RequestStatus::Unknown);
         }
       }
 
-      if (!rsp.is_null())
+      if (!rsp.empty())
       {
         rsp["KV_SETQ_RSP"]["tkn"] = cmd.shtk;
         send(cmd, rsp.to_string());
       }      
     };
 
-
+    
     auto get = [this](CacheMap& map, KvCommand& cmd)
     {
-      njson rsp;
+      njson2 rsp;
       rsp["KV_GET_RSP"]["tkn"] = cmd.shtk;
 
-      for(auto& item : cmd.contents.items())
+      for(auto& item : cmd.contents.array_range())
       {
-        if (item.value().is_string()) [[likely]]
+        if (item.is_string()) [[likely]]
         {
-          if (auto [exists, pair] = map.get(item.value().get_ref<const cachedkey&>()); exists)
-            rsp["KV_GET_RSP"]["keys"].emplace(std::move(pair.begin().key()), std::move(pair.begin().value()));
+          const auto& key = item.as_string();
+          if (auto [exists, value] = map.get(key); exists)
+            rsp["KV_GET_RSP"]["keys"][key] = std::move(value);
           else
-            rsp["KV_GET_RSP"]["keys"][item.value()] = njson{}; //null
+            rsp["KV_GET_RSP"]["keys"][key] = njson2::null();
         }        
       }
 
       send(cmd, rsp.to_string());
     };
 
-
+    
     auto add = [this](CacheMap& map, KvCommand& cmd)
     {
-      njson rsp;
+      njson2 rsp;
       rsp["KV_ADD_RSP"]["tkn"] = cmd.shtk;
 
       if (cmd.contents.empty())
-        rsp["KV_ADD_RSP"]["keys"] = njson::object();
-
-      for(auto& kv : cmd.contents.items())
-      {
-        const auto inserted = map.add(kv.key(), std::move(kv.value()));
-        rsp["KV_ADD_RSP"]["keys"][kv.key()] = inserted ? RequestStatus::KeySet : RequestStatus::KeyExists;
+      { 
+        rsp["KV_ADD_RSP"]["keys"] = njson2::object();
+        send(cmd, rsp.to_string());
       }
+      else
+      {
+        for(auto& kv : cmd.contents.object_range())
+        {
+          const auto inserted = map.add(kv.key(), std::move(kv.value()));
+          rsp["KV_ADD_RSP"]["keys"][kv.key()] = toUnderlying(inserted ? RequestStatus::KeySet : RequestStatus::KeyExists);
+        }
 
-      send(cmd, rsp.to_string());
+        send(cmd, rsp.to_string());
+      }
     };
 
 
     auto addQ = [this](CacheMap& map, KvCommand& cmd)
     {
-      njson rsp;
+      if (!cmd.contents.empty())
+      {
+        njson2 rsp;
 
-      if (cmd.contents.empty())
-      {
-        rsp["KV_ADDQ_RSP"]["keys"] = njson::object();
-        send(cmd, rsp.to_string());
-      }
-      else
-      {
-        for(auto& kv : cmd.contents.items())
+        for(auto& kv : cmd.contents.object_range())
         {
           if (const auto inserted = map.add(kv.key(), std::move(kv.value())); !inserted)
-            rsp["KV_ADDQ_RSP"]["keys"][kv.key()] = RequestStatus::KeyExists;
+            rsp["KV_ADDQ_RSP"]["keys"][kv.key()] = toUnderlying(RequestStatus::KeyExists);
         }
 
-        if (!rsp.is_null())
+        if (!rsp.empty())
         {
           rsp["KV_ADDQ_RSP"]["tkn"] = cmd.shtk;
           send(cmd, rsp.to_string());
@@ -194,18 +195,19 @@ private:
       }
     };
 
-
+    
     auto remove = [this](CacheMap& map, KvCommand& cmd)
     {
-      njson rsp;
+      njson2 rsp;
       rsp["KV_RMV_RSP"]["tkn"] = cmd.shtk;
 
-      for(auto& key : cmd.contents.items())
+      for(auto& value : cmd.contents.array_range())
       {
-        if (key.value().is_string())
+        if (value.is_string())
         {
-          const auto removed = map.remove(key.value().get_ref<const cachedkey&>());
-          rsp["KV_RMV_RSP"][key.value()] = removed ? RequestStatus::KeyRemoved : RequestStatus::KeyNotExist;
+          const auto& key = value.as_string();
+          const auto removed = map.remove(key);
+          rsp["KV_RMV_RSP"][key] = toUnderlying(removed ? RequestStatus::KeyRemoved : RequestStatus::KeyNotExist);
         }
       }
 
@@ -225,55 +227,52 @@ private:
       send(cmd, PoolRequestResponse::sessionCount(cmd.shtk, map.count()).to_string());
     };
 
-
-    auto append = [this](CacheMap& map, KvCommand& cmd)
-    {
-      njson rsp;
-      rsp["KV_APPEND_RSP"]["tkn"] = std::move(cmd.shtk);
-
-      for(auto& kv : cmd.contents.items())
-        rsp["KV_APPEND_RSP"]["keys"][kv.key()] = map.append(kv.key(), std::move(kv.value()));
-
-      send(cmd, rsp.to_string());
-    };
-
-
+    
     auto contains = [this](CacheMap& map, KvCommand& cmd)
     {
-      njson rsp;
-      rsp["KV_CONTAINS_RSP"]["st"] = RequestStatus::Ok;
+      njson2 rsp;
+      rsp["KV_CONTAINS_RSP"]["st"] = toUnderlying(RequestStatus::Ok);
       rsp["KV_CONTAINS_RSP"]["tkn"] = cmd.shtk;
 
-      for (auto& item : cmd.contents.items())
-        rsp["KV_CONTAINS_RSP"]["keys"][item.value()] = map.contains(item.value());
+      for (auto& item : cmd.contents.array_range())
+      {
+        if (item.is_string())
+        {
+          const cachedkey& key = item.as_string();
+          rsp["KV_CONTAINS_RSP"]["keys"][key] = map.contains(key);
+        }
+      }
 
       send(cmd, rsp.to_string());
     };
 
-
+    
     auto find = [this](CacheMap& map, KvCommand& cmd)
     {
       const bool paths = cmd.contents.at("rsp") == "paths";
 
-      njson result = njson::array();
+      njson2 result = njson::array();
 
       map.find(cmd.contents, paths, result);
 
-      njson rsp;
+      njson2 rsp;
       rsp["KV_FIND_RSP"]["tkn"] = cmd.shtk;
 
       if (cmd.contents.at("rsp") != "kv")
         rsp["KV_FIND_RSP"][paths ? "paths" : "keys"] = std::move(result);
       else
       {
-        rsp["KV_FIND_RSP"]["keys"] = njson{};
+        // return key-values as if doing a KV_GET
+        rsp["KV_FIND_RSP"]["keys"] = njson2::object();
 
-        for(auto& item : result.items())
+        for(auto& item : result.array_range())
         {
-          if (auto [exists, pair] = map.get(item.value().get_ref<const cachedkey&>()); exists)
-            rsp["KV_FIND_RSP"]["keys"].emplace(std::move(pair.begin().key()), std::move(pair.begin().value()));
+          const auto& key = item.as_string();
+
+          if (auto [exists, value] = map.get(key); exists)
+            rsp["KV_FIND_RSP"]["keys"][key] = std::move(value);
           else
-            rsp["KV_FIND_RSP"]["keys"][item.value()] = njson{}; //null
+            rsp["KV_FIND_RSP"]["keys"][key] = njson2::null();
         } 
       }
 
@@ -281,7 +280,7 @@ private:
     };
     
 
-
+    /*
     auto update = [this](CacheMap& map, KvCommand& cmd)
     {
       njson rsp;
@@ -325,17 +324,16 @@ private:
       sessionInfo,
       sessionInfoAll,
       set,
-      /*setQ,
+      setQ,
       get,
       add,
       addQ,
       remove,
       clear,
       count,
-      append,
       contains,
       find,
-      update*/
+      /*update*/
     };
 
 

@@ -35,7 +35,6 @@ enum class KvQueryType : std::uint8_t
   SessionRemove,
   SessionClear,
   SessionCount,
-  SessionAppend,
   SessionContains,
   SessionFind,
   SessionUpdate,
@@ -62,7 +61,6 @@ const std::map<const std::string_view, std::tuple<const KvQueryType>> QueryNameT
   {"KV_RMV",          {KvQueryType::SessionRemove}},
   {"KV_CLEAR",        {KvQueryType::SessionClear}},
   {"KV_COUNT",        {KvQueryType::SessionCount}},
-  {"KV_APPEND",       {KvQueryType::SessionAppend}},
   {"KV_CONTAINS",     {KvQueryType::SessionContains}},
   {"KV_FIND",         {KvQueryType::SessionFind}},
   {"KV_UPDATE",       {KvQueryType::SessionUpdate}}
@@ -86,7 +84,6 @@ const std::map<const KvQueryType, const std::string> QueryTypeToName =
   {KvQueryType::SessionRemove,    "KV_RMV"},
   {KvQueryType::SessionClear,     "KV_CLEAR"},
   {KvQueryType::SessionCount,     "KV_COUNT"},
-  {KvQueryType::SessionAppend,    "KV_APPEND"},
   {KvQueryType::SessionContains,  "KV_CONTAINS"},
   {KvQueryType::SessionFind,      "KV_FIND"},
   {KvQueryType::SessionUpdate,    "KV_UPDATE"}

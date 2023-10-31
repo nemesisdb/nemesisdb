@@ -208,6 +208,12 @@ static njson2 createErrorResponse (const RequestStatus status, const std::string
 }
 
 
+template <typename E>
+constexpr typename std::underlying_type<E>::type toUnderlying(E e) noexcept
+{
+  return static_cast<typename std::underlying_type_t<E>>(e);
+}
+
 } // namespace core
 } // namespace fusion
 

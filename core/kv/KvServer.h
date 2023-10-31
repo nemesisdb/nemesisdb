@@ -124,13 +124,6 @@ public:
 
     m_kvHandler = new kv::KvHandler {kv::MaxPools, nCores - kv::MaxPools};
     
-    #ifndef NDB_UNIT_TEST
-    std::cout << "Available Cores: "  << std::thread::hardware_concurrency() << '\n'
-              << "NemesisDB Max Cores: " << NEMESIS_MAX_CORES << '\n';
-    //std::cout << "I/O Threads: "    << nIoThreads << '\n'
-    //          << "Pools: "            << kv::MaxPools << '\n';
-    #endif
-    
     std::size_t listenSuccess{0U};
     std::atomic_ref listenSuccessRef{listenSuccess};
     std::latch startLatch (nIoThreads);
