@@ -1,5 +1,5 @@
 ---
-sidebar_position: 1
+sidebar_position: 5
 displayed_sidebar: homeSidebar
 ---
 

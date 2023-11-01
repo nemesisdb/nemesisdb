@@ -1,5 +1,5 @@
 ---
-sidebar_position: 2
+sidebar_position: 10
 displayed_sidebar: homeSidebar
 ---
 
@@ -27,7 +27,7 @@ The configuration has paremeters:
 
 There is a default configuration included in the install package:
 
-```json
+```json title="default.json"
 {
   "version":1,
   "kv":

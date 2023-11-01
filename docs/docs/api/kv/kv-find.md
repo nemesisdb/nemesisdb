@@ -11,6 +11,7 @@ Searches the values and returns keys, data or paths.
 |tkn|string|Session token|Y|
 |rsp|string|Must be one of: `keys`, `kv`, or `paths`|Y|
 |path|string|A JSON Path applied to each key's value|Y|
+|keys|array|An array of keys. If present, only these keys are searched|N|
 
 <br/>
 
