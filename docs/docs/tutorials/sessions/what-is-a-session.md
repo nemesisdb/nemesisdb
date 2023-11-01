@@ -3,12 +3,17 @@ sidebar_position: 1
 ---
 
 # What is a Session
-In typical caches and databases all data are lumped together, although some may split this into regions called memory pools to reduce memory fragementation.
+A session is just a data container. They are called sessions because data is intended to be stored for a period of time before being deleted:
 
-NemesisDB separates data even further using sessions. A session lets you say:
+- A session can expire
+- When a session expires, all its data is deleted
+- The session and data can be deleted or just the data. If you only delete data, you can continue to use the session
 
-> I know that I only need x, y and z for what I'm doing, so they can be stored in the same session. When I'm finished I can safely
-> delete everything in the session without affecting anything else.
+A session can represent:
+  - Whilst a user is logged into your app
+  - Whilst you're waiting for a user to confirm a One Time Password
+  - Until the session data has been stored in the primary database
+
 
 For example, when writing a service which handles users, you can create a separate session for each user that logs in and delete the session when they log out.
 
@@ -16,8 +21,6 @@ For example, when writing a service which handles users, you can create a separa
 
 If user 2 logs out, their session can be ended which deletes their data, without affecting any other sessions. Session can also be set to expire with a duration. In this example,
 a session expire could be used as an auto logout feature.
-
-When a session expires, you can set if only the data should be deleted or if the session should also end. If only the data is deleted, the session token remains valid.
 
 <br/>
 
