@@ -56,7 +56,7 @@ The response will be similar to the following:
 ```
 
 - `st` is the status. 1 means Ok/Success
-- `name` is the same name as in the request (useful if you sent multiple and the responses as the responses may return in a different order)
+- `name` is the same name as in the request
 - `tkn` is the session token (you'll have a different value)
 
 

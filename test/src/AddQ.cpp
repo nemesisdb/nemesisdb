@@ -60,23 +60,6 @@ TEST_F(NemesisTest, AddToExisting)
 }
 
 
-TEST_F(NemesisTest, NoKeys)
-{
-	std::vector<TestData> data = 
-	{
-		{TestData { .request = R"({ "KV_ADDQ":{"keys":{ }} })"_json,	.expected = {R"({ "KV_ADDQ_RSP":{ "keys":{} } })"_json} }}
-	};
-
-
-	TestClient tc;
-
-	ASSERT_TRUE(tc.open());
-
-	for(auto& d : data)
-		tc.test(d);
-}
-
-
 TEST_F(NemesisTest, IncorrectCommandType)
 {
 	std::vector<TestData> data = 

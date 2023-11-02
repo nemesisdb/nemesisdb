@@ -6,7 +6,7 @@ const darkCodeTheme = require('prism-react-renderer/themes/dracula');
 
 /** @type {import('@docusaurus/types').Config} */
 const config = {
-  title: 'NemessiDB',
+  title: 'NemesisDB',
   tagline: '',
   favicon: 'img/favicon.ico',
   
@@ -79,32 +79,12 @@ const config = {
             sidebarId: 'tutorialSidebar',
             position: 'left',
             label: 'Tutorials',
-          },          
-          //{to: '/blog', label: 'Blog', position: 'left'},
-          // {
-          //   href: 'https://github.com/facebook/docusaurus',
-          //   label: 'GitHub',
-          //   position: 'right',
-          // },
+          },
         ],
       },
       footer: {
         style: 'dark',
         links: [
-          // {
-          //   title: 'Docs',
-          //   items:
-          //   [
-          //     {
-          //       label: 'Tutorials',
-          //       to: '/docs/intro',
-          //     },
-          //     {
-          //       label: 'API',
-          //       to: '/docs/api',
-          //     }
-          //   ],
-          // },
           {
             title: 'Community',
             items: [
@@ -116,20 +96,22 @@ const config = {
                 label: 'Stack Overflow',
                 href: 'https://stackoverflow.com/questions/tagged/nemesisdb',
               },
-              // {
-              //   label: 'Git',
-              //   href: 'https://twitter.com/nemesisdb/isssues',
-              // },
+              {
+                label: 'Twitter',
+                href: 'https://twitter.com/nmsisdb',
+              },
             ],
           },          
         ],
         copyright: `Copyright © ${new Date().getFullYear()} NemesisDB LTD.`,
       },
       prism: {
+        additionalLanguages: ['bash', 'json'],
         darkTheme: darkCodeTheme,
-        theme: lightCodeTheme
+        theme: lightCodeTheme,        
       },
     }),
 };
+
 
 module.exports = config;

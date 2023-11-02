@@ -10,6 +10,7 @@
 #include <core/NemesisCommon.h>
 #include <core/kv/KvServer.h>
 #include <clients/utils/Client.hpp>
+#include <nlohmann/json.hpp>
 
 
 namespace nemesis { namespace test {
@@ -17,6 +18,7 @@ namespace nemesis { namespace test {
 using namespace nemesis::core;
 using namespace nemesis::core::kv;
 using namespace fusion::client;
+using namespace std::string_literals;
 
 namespace asio = boost::asio;
 
@@ -27,7 +29,7 @@ using testjson = nlohmann::json;
 class KvTestServer  : public ::testing::Test
 {
 public:
-  KvTestServer(NemesisConfig config = NemesisConfig { R"({ "version":1, "kv":{ "ip":"127.0.0.1", "port":1987, "maxPayload":1024 } })"_json}) : m_config(config)
+  KvTestServer(NemesisConfig config = NemesisConfig { R"({ "version":1, "kv":{ "ip":"127.0.0.1", "port":1987, "maxPayload":1024 } })"sv}) : m_config(config)
   {
 
   }
@@ -136,7 +138,7 @@ struct TestClient
 		{
 			{
 				std::scoped_lock lck{responsesMux};
-				responses.emplace_back (njson::parse(response.msg));
+				responses.emplace_back (testjson::parse(response.msg));
 			}
 			
 			latch->count_down();
@@ -217,7 +219,7 @@ struct TestClient
 		{
 			latch = std::make_unique<std::latch>(1);
 
-			njson sesh{{"SH_NEW", {{"name","test"}}}};
+			testjson sesh{{"SH_NEW", {{"name","test"}}}};
 			ws->send(sesh.dump());
 
 			latch->wait();

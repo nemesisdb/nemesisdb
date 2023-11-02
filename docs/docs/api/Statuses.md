@@ -15,8 +15,8 @@ This table listed a 'friendly name' and value. THe friendly name is used through
 |Ok|1|Command successful, everything good|
 |PayLoadInvalid|2|WebSocket pay invalid, must be text|
 |JsonInvalid|3|JSON failed parsing|
-|PathInvalid|4|Path invalid, for example in `KV_UPDATE`|
-|PathNotExist|5|Path is valid syntax, but not found|
+|PathInvalid|4|Path invalid|
+|NoPath|5|No `path`|
 |CommandNotExist|10|Command does not exist|
 |CommandMultiple|11|Multiple commands in the same request|
 |CommandType|12|Command is known but it is the incorrect type (most commands are objects)|
@@ -43,20 +43,11 @@ This table listed a 'friendly name' and value. THe friendly name is used through
 |ValueSize|42|Value exceeds maximum size (NOTE: if the payload size exceeds the maximum, this is not returned)|
 
 
-## Find
-These all relate to the `KV_FIND` command.
-
-|Name|Value|Meaning
-|:---|:---:|:---|
-|FindNoPath|60|No `path`|
-|FindNoOperator|61|No operator|
-|FindInvalidOperator|62|Operator not permitted|
-
-
 ## Session
 |Name|Value|Meaning
 |:---|:---:|:---|
 |SessionNotExist|100|Session does not exist|
 |SessionTokenInvalid|101|Token is not a string, not present or empty|
 |SessionOpenFail|102|Failed to open session, either the name is incorrect or the session is not shared|
+|SessionNewFail|103|Failed to create new session. Only likely when creating a shared session with a name for a shared session that already exists|
 

@@ -10,6 +10,7 @@
 #include <core/kv/KvCommon.h>
 #include <core/kv/KvHandler.h>
 #include <core/kv/KvServer.h>
+#include <jsoncons/json_traits_macros.hpp>
 
 
 using namespace nemesis::core;
@@ -23,6 +24,8 @@ inline void kvSigHandle(int param)
   run.count_down();
 }
 
+
+//JSONCONS_ENUM_TRAITS(kv::RequestStatus, Ok); // TODO
 
 
 int main (int argc, char ** argv)

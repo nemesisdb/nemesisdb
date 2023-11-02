@@ -12,8 +12,6 @@
 #include <core/kv/KvCommon.h>
 #include <core/kv/KvPoolWorker.h>
 #include <core/kv/KvHandler.h>
-#include <core/ks/KsHandler.h>  
-#include <core/ks/KsSets.h>
 #include <core/NemesisConfig.h>
 
 
@@ -105,9 +103,9 @@ public:
     
     kv::serverStats = new kv::ServerStats;
 
-    unsigned int maxPayload = config.cfg["kv"]["maxPayload"];
-    std::string ip = config.cfg["kv"]["ip"];
-    int port = config.cfg["kv"]["port"];
+    unsigned int maxPayload = config.cfg["kv"]["maxPayload"].as<unsigned int>();
+    std::string ip = config.cfg["kv"]["ip"].as_string();
+    int port = config.cfg["kv"]["port"].as<unsigned int>();
     
 
     const auto nCores = std::min<std::size_t>(std::thread::hardware_concurrency(), NEMESIS_MAX_CORES);
@@ -123,13 +121,6 @@ public:
     kv::MaxPools = std::max<std::size_t>(1U, nCores - nIoThreads);
 
     m_kvHandler = new kv::KvHandler {kv::MaxPools, nCores - kv::MaxPools};
-    
-    #ifndef NDB_UNIT_TEST
-    std::cout << "Available Cores: "  << std::thread::hardware_concurrency() << '\n'
-              << "NemesisDB Max Cores: " << NEMESIS_MAX_CORES << '\n';
-    //std::cout << "I/O Threads: "    << nIoThreads << '\n'
-    //          << "Pools: "            << kv::MaxPools << '\n';
-    #endif
     
     std::size_t listenSuccess{0U};
     std::atomic_ref listenSuccessRef{listenSuccess};
@@ -158,24 +149,40 @@ public:
             ++serverStats->queryCount;
 
             if (opCode != uWS::OpCode::TEXT)
-              ws->send(createErrorResponse(RequestStatus::OpCodeInvalid).dump(), kv::WsSendOpCode);
+              ws->send(createErrorResponse(RequestStatus::OpCodeInvalid).to_string(), kv::WsSendOpCode);
             else
             {
-              if (auto request = njson::parse(message, nullptr, false); request.is_discarded()) // TODO change parse() to accept()?
-                ws->send(createErrorResponse(RequestStatus::JsonInvalid).dump(), kv::WsSendOpCode);
+              // TODO this avoids exceptions on parse error, but not clear how to create json object
+              //      from reader output (if even possible)
+              // jsoncons::json_string_reader reader(message);
+              // std::error_code ec;
+              // reader.read(ec);
+
+              njson2 request = njson2::null();
+
+              try
+              {
+                request = std::move(njson2::parse(message));
+              }
+              catch (...)
+              {
+
+              }
+              
+              if (request.is_null())
+                ws->send(createErrorResponse(RequestStatus::JsonInvalid).to_string(), kv::WsSendOpCode);
+              else if (request.empty() || !request.is_object()) //i.e. top level not an object
+                ws->send(createErrorResponse(RequestStatus::CommandSyntax).to_string(), kv::WsSendOpCode);
+              else if (request.size() > 1U)
+                ws->send(createErrorResponse(RequestStatus::CommandMultiple).to_string(), kv::WsSendOpCode);
               else
               {
-                 if (request.empty())
-                  ws->send(createErrorResponse(RequestStatus::CommandSyntax).dump(), kv::WsSendOpCode);
-                else if (request.size() > 1U)
-                  ws->send(createErrorResponse(RequestStatus::CommandMultiple).dump(), kv::WsSendOpCode);
-                else
-                {
-                  const auto& commandName = request.cbegin().key();
-                  
-                  if (const auto status = m_kvHandler->handle(ws, std::move(request)); status != RequestStatus::Ok)
-                    ws->send(createErrorResponse(commandName+"_RSP", status).dump(), kv::WsSendOpCode);
-                }
+                const auto& commandName = request.object_range().cbegin()->key();
+
+                if (!request.at(commandName).is_object())
+                  ws->send(createErrorResponse(commandName+"_RSP", RequestStatus::CommandType).to_string(), kv::WsSendOpCode);
+                else if (const auto status = m_kvHandler->handle(ws, commandName, std::move(request)); status != RequestStatus::Ok)
+                  ws->send(createErrorResponse(commandName+"_RSP", status).to_string(), kv::WsSendOpCode);
               }
             }
           },

@@ -6,7 +6,7 @@ displayed_sidebar: tutorialSidebar
 # Setup
 
 ## Install Postman
-The tutorial uses the Postman tool as a WebSocket client. The free version is suitable and be [downloaded](https://www.postman.com/downloads/) for Windows, Linux and Mac.
+The tutorial uses the Postman tool as a WebSocket client. The free version is suitable and can be [downloaded](https://www.postman.com/downloads/) for Windows, Linux and Mac.
 
 ## Start NemesisDB
 

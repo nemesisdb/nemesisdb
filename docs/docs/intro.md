@@ -5,7 +5,7 @@ displayed_sidebar: homeSidebar
 
 # NemesisDB
 
-NemesisDB is a session based JSON database. At the moment it is in-memory storage only, a future release will include saving data to disk.
+NemesisDB is an in-memory JSON database. At the moment it is in-memory storage only, a future release will include saving data to disk.
 
 :::info 
 NemesisDB is only available as a 64-bit Debian package for x86 CPUs (Intel/AMD).
@@ -26,6 +26,7 @@ The install includes a default config file to start the server on `127.0.0.1:198
 
 # Next Steps
 
+- [TLDR](./home/tldr)
 - [Session Basics](/tutorials/sessions/what-is-a-session)
 - [First Steps](/tutorials/first-steps/setup)
 

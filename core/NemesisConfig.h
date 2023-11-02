@@ -4,8 +4,8 @@
 #include <string_view>
 #include <mutex>
 #include <fstream>
+#include <filesystem>
 #include <boost/program_options.hpp>
-#include <nlohmann/json.hpp>
 #include <core/NemesisCommon.h>
 
 
@@ -19,12 +19,17 @@ struct NemesisConfig
 
   }
 
-  NemesisConfig(njson&& config) : cfg(std::move(config)), valid(true)
+  NemesisConfig(njson2&& config) : cfg(std::move(config)), valid(true)
   {
 
   }
 
-  njson cfg;
+  NemesisConfig(const std::string_view config) : valid(true)
+  {
+    cfg = std::move(njson2::parse(config));
+  }
+
+  njson2 cfg;
   bool valid;
 
 } ;
@@ -42,16 +47,15 @@ inline bool isValid (std::function<bool()> isValidCheck, const std::string_view 
 void readConfig(NemesisConfig& config, std::filesystem::path path)
 {
   std::ifstream configStream{path};
-  njson cfg;
 
   config = NemesisConfig{};
 
-  if (cfg = njson::parse(configStream, nullptr, false); cfg.is_discarded())
-    std::cout << "Config file not valid JSON\n";
-  else
+  try
   {
+    njson2 cfg = njson2::parse(configStream);
+
     bool valid = false;
-    valid = isValid([&cfg](){ return cfg.contains("version") && cfg.at("version").is_number_unsigned(); }, "Require version as an unsigned int") &&
+    valid = isValid([&cfg](){ return cfg.contains("version") && cfg.at("version").is_uint64(); }, "Require version as an unsigned int") &&
             isValid([&cfg](){ return cfg.at("version") == nemesis::core::NEMESIS_CONFIG_VERSION; }, "Config version not compatible") &&
             isValid([&cfg](){ return cfg.contains("kv") && cfg.at("kv").is_object(); }, "Require kv section as an object");
     
@@ -59,13 +63,17 @@ void readConfig(NemesisConfig& config, std::filesystem::path path)
     {
       const auto& kvCfg = cfg.at("kv");
       valid = isValid([&kvCfg](){ return kvCfg.contains("ip") && kvCfg.contains("port") && kvCfg.contains("maxPayload"); }, "kv section requires ip, port and maxPayload") &&
-              isValid([&kvCfg](){ return kvCfg.at("ip").is_string() && kvCfg.at("port").is_number_unsigned() && kvCfg.at("maxPayload").is_number_unsigned(); }, "kv::ip must string, kv::port and kv::maxPayload must be unsigned integer") &&
+              isValid([&kvCfg](){ return kvCfg.at("ip").is_string() && kvCfg.at("port").is_uint64() && kvCfg.at("maxPayload").is_uint64(); }, "kv::ip must string, kv::port and kv::maxPayload must be unsigned integer") &&
               isValid([&kvCfg](){ return kvCfg.at("maxPayload") >= nemesis::core::NEMESIS_KV_MINPAYLOAD; }, "kv::maxPayload below minimum") &&
               isValid([&kvCfg](){ return kvCfg.at("maxPayload") <= nemesis::core::NEMESIS_KV_MAXPAYLOAD; }, "kv::maxPayload exceeds maximum");
     
       config = NemesisConfig{std::move(cfg)};
     }
   }
+  catch(const std::exception& e)
+  {
+    std::cout << "Config file not valid JSON\n";
+  }  
 }
 
 
