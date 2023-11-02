@@ -33,7 +33,7 @@ TEST_F(NemesisTest, NoPathRspKeys)
 
 	ASSERT_TRUE(tc.open());
 
-	tc.test({TestData { .request = R"({ "KV_FIND":{ "a":"a", "b":"b", "c":"c" } })"_json,	.expected = {R"({ "KV_FIND_RSP":{ "st":60, "m":"" } })"_json} }});
+	tc.test({TestData { .request = R"({ "KV_FIND":{ "a":"a", "b":"b", "c":"c" } })"_json,	.expected = {R"({ "KV_FIND_RSP":{ "st":5, "m":"" } })"_json} }});
 }
 
 

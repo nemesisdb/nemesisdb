@@ -77,6 +77,7 @@ enum class RequestStatus
   OpCodeInvalid,
   JsonInvalid,
   PathInvalid,
+  NoPath,
   CommandNotExist = 10,
   CommandMultiple,
   CommandType,
@@ -92,8 +93,7 @@ enum class RequestStatus
   ValueMissing = 40,
   ValueTypeInvalid,
   ValueSize,
-  OutOfBounds,
-  FindNoPath = 60,
+  OutOfBounds,  // not used
   SessionNotExist = 100,
   SessionTokenInvalid,
   SessionOpenFail,

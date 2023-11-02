@@ -533,7 +533,7 @@ private:
       if (cmd.size() < 2U || cmd.size() > 3U)
         ws->send(createErrorResponse(queryRspName, RequestStatus::CommandSyntax).to_string(), WsSendOpCode);
       else if (!cmd.contains("path"))
-        ws->send(createErrorResponse(queryRspName, RequestStatus::FindNoPath).to_string(), WsSendOpCode);
+        ws->send(createErrorResponse(queryRspName, RequestStatus::NoPath).to_string(), WsSendOpCode);
       else if (!cmd.at("path").is_string())
         ws->send(createErrorResponse(queryRspName, RequestStatus::ValueTypeInvalid, "path").to_string(), WsSendOpCode);
       else if (const auto& path = cmd.at("path").as_string() ; path.empty())
