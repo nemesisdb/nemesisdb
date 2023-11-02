@@ -7,7 +7,7 @@ displayed_sidebar: tutorialSidebar
 
 We'll store data of different types. With data types part of the JSON syntax, we don't have to care about types, only that the JSON is valid.
 
-To interact with data, the Key Value API is used. It's commands begin `KV_`.
+To interact with data, the Key Value API is used. Its commands begin `KV_`.
 
 :::info Token
 Remember to replace the `tkn` with your token.
@@ -32,8 +32,8 @@ Send:
 ```
 The stores the key `username` with string value "Spongebob".
 
-- The `KV_SET_RSP` response contains `"username": 20` which is the key and status. This confirms "username" was successfully set.
-- If you send the command again, the status will change to `21`, which means an existing key has been overwritten (not an error).
+- The `KV_SET_RSP` response contains `"username": 20` which is the key and status. This confirms "username" was successfully set
+- If you send the command again, the status will change to `21`, which means an existing key has been overwritten (not an error)
 
 
 ## Array
@@ -131,7 +131,7 @@ Let's clear our session data:
 }
 ```
 
-The reponse contains `cnt`, confirming four keys were.
+The reponse contains `cnt`, confirming four keys were deleted.
 
 
 ## Object
@@ -157,7 +157,7 @@ We'll store the same data again but in an object:
 }
 ```
 
-This is storing a key `profile` which is an object. 
+This stores a key, `profile`, which is an object. 
 
 
 ## Get Object
