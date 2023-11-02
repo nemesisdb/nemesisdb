@@ -17,6 +17,8 @@ using namespace nemesis::core;
 using namespace nemesis::core::kv;
 using namespace std::chrono;
 
+using json = nlohmann::json;
+
 
 namespace po = boost::program_options;
 
@@ -32,7 +34,7 @@ enum class Mode
 std::latch latch{1};
 std::string receiveIp;
 std::filesystem::path configPath;
-njson config;
+json config;
 Mode mode = Mode::None;
 std::size_t valueSize = 0;
 
@@ -130,13 +132,13 @@ bool parseConfig (const int argc, char ** argv)
       };
 
       std::ifstream cfgStream {configPath};
-      config = nemesis::core::njson::parse(cfgStream);
+      config = json::parse(cfgStream);
 
       if (config.size() != 1U)
         std::cout << "Root must have only one key: Local or SendConfig\n";
       else
       {
-        auto validateLocal = [&isValid](njson& config)
+        auto validateLocal = [&isValid](json& config)
         {
           bool valid =  isValid( [&]{ return config.contains("fusionIp") && config.contains("fusionPort") && config.contains("nClients") && config.contains("valueSize") && config.contains("set") && config.contains("get") ; },
                                  "Config must contain ip, port, nClients and either datafiles or set and get") &&
@@ -186,7 +188,7 @@ struct TestClient
   };
 
 
-  TestClient(njson& conf) : config(conf)
+  TestClient(json& conf) : config(conf)
   {
   }
 
@@ -207,12 +209,12 @@ struct TestClient
       return createUuid().str();
     };
     
-    auto createValue = [valueIndex]() -> nemesis::core::njson
+    auto createValue = [valueIndex]() -> json
     {
       static std::random_device dev;
       static std::mt19937 rng(dev());
 
-      nemesis::core::njson value;
+      json value;
 
       static const std::array<const std::string_view, 3U> strings =
       {
@@ -244,13 +246,13 @@ struct TestClient
   bool createSession ()
   {
     std::latch latch{1};
-    njson rsp;
+    json rsp;
 
     auto onResponse = [&latch, &rsp](fusion::client::Response r)
     {
       if (r.connected)
       {
-        rsp = njson::parse(std::move(r.msg));
+        rsp = json::parse(std::move(r.msg));
         latch.count_down();
       }
     };
@@ -259,7 +261,7 @@ struct TestClient
     fusion::client::Client client {*ioc.ioc};
     if (auto ws = client.openQueryWebSocket(config["fusionIp"], config["fusionPort"], "/", onResponse); ws)
     {
-      njson sesh{{"SH_NEW", {{"name","test"}}}};
+      json sesh{{"SH_NEW", {{"name","test"}}}};
       ws->send(sesh.dump());
 
       latch.wait();
@@ -305,7 +307,7 @@ struct TestClient
 
         for (auto& kv : data)
         {
-          njson query;
+          json query;
           query[queryName]["tkn"] = token;
           query[queryName]["keys"] = {{kv.first, kv.second}};
 
@@ -354,7 +356,7 @@ struct TestClient
           if (i++ == max)
             break;
           
-          njson query;
+          json query;
           query["KV_GET"]["tkn"] = token;
           query["KV_GET"]["keys"] = {std::move(kv.first)};
 
@@ -377,14 +379,14 @@ struct TestClient
 
 private:
   Ioc ioc;
-  std::map<std::string, nemesis::core::njson> data;
-  njson config;
+  std::map<std::string, json> data;
+  json config;
   std::chrono::microseconds setDuration, getDuration;
   SessionToken token;
 };
 
 
-void runLocal(njson& config)
+void runLocal(json& config)
 {
   const auto doingGet = config.contains("get") && config["get"]["enabled"];
   const std::size_t nClients = config["nClients"];
@@ -461,10 +463,10 @@ int main (int argc, char ** argv)
   {
     std::latch haveConfig{1};
 
-    njson config;
+    json config;
     auto onSession = [&config, &haveConfig](std::string msg)
     {
-      config = njson::parse(msg);
+      config = json::parse(msg);
       haveConfig.count_down();
     };
 

@@ -9,7 +9,8 @@
     {
       "fusionIp":"10.0.0.11",
       "fusionPort":1987,
-      "nClients":2,
+      "nClients":4,
+      "valueSize":1000,
       "set":
       {
         "max": 50000,
