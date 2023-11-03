@@ -24,15 +24,15 @@ static const std::size_t NEMESIS_KV_MAXPAYLOAD = 2U * 1024U * 1024U;
 
 
 // general
-using njson2 = jsoncons::ojson;
-using jcjson = jsoncons::json;
+using njson = jsoncons::ojson;
+//using jcjson = jsoncons::json;
 using NemesisClock = std::chrono::steady_clock;
 using NemesisTimePoint = NemesisClock::time_point;
 
 // kv
 using cachedkey = std::string;
-using cachedvalue2 = njson2;
-using cachedpair2 = njson2;
+using cachedvalue2 = njson;
+using cachedpair2 = njson;
 
 // session
 using SessionPoolId = std::size_t;
@@ -110,36 +110,20 @@ static inline bool setThreadAffinity(const std::thread::native_handle_type handl
 }
 
 
-// Response when command known but response
-// static njson createErrorResponse (const std::string_view commandRsp, const RequestStatus status, const SessionToken& tkn, const std::string_view msg)
-// {
-//   njson2 rsp;
-//   rsp[commandRsp]["st"] = static_cast<int>(status);
-  
-//   if (tkn.empty())
-//     rsp[commandRsp]["tkn"] = njson2::null();
-//   else
-//     rsp[commandRsp]["tkn"] = tkn;
-
-//   rsp[commandRsp]["m"] = msg;
-//   return rsp;
-// }
-
-
-static njson2 createErrorResponse (const std::string_view commandRsp, const RequestStatus status, const std::string_view msg = "")
+static njson createErrorResponse (const std::string_view commandRsp, const RequestStatus status, const std::string_view msg = "")
 {
-  njson2 rsp;
+  njson rsp;
   rsp[commandRsp]["st"] = static_cast<int>(status);
-  rsp[commandRsp]["tkn"] = njson2::null();
+  rsp[commandRsp]["tkn"] = njson::null();
   rsp[commandRsp]["m"] = msg;
   return rsp;
 }
 
 
 // Response is the original command is unknown.
-static njson2 createErrorResponse (const RequestStatus status, const std::string_view msg = "")
+static njson createErrorResponse (const RequestStatus status, const std::string_view msg = "")
 {
-  njson2 rsp;
+  njson rsp;
   rsp["ERR"]["st"] = static_cast<int>(status);
   rsp["ERR"]["m"] = msg;
   return rsp;

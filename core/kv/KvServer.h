@@ -119,7 +119,7 @@ public:
 
     if (auto check = isPortOpen(ip, port); !check || *check)
     {
-      std::cout << "ERROR: IP and port already used OR failed to check open ports. " << ip << ":" << port << '\n';
+      std::cout << "ERROR: IP and port already used OR failed during checking open ports. " << ip << ":" << port << '\n';
       return false;
     }
 
@@ -162,17 +162,17 @@ public:
               ws->send(createErrorResponse(RequestStatus::OpCodeInvalid).to_string(), kv::WsSendOpCode);
             else
             {
-              // TODO this avoids exceptions on parse error, but not clear how to create json object
+              // TODO this avoids exception on parse error, but not clear how to create json object
               //      from reader output (if even possible)
               // jsoncons::json_string_reader reader(message);
               // std::error_code ec;
               // reader.read(ec);
 
-              njson2 request = njson2::null();
+              njson request = njson::null();
 
               try
               {
-                request = std::move(njson2::parse(message));
+                request = std::move(njson::parse(message));
               }
               catch (...)
               {
@@ -285,6 +285,7 @@ public:
 
     std::optional<bool> isPortOpen (const std::string& checkIp, const int checkPort)
     {
+      #ifndef NDB_UNIT_TEST_NOPORTCHECK
       // should really add path to linux headers
       // /usr/src/linux-headers-5.15.0-86-generic/include/net
       static const std::filesystem::path tcp4 {"/proc/net/tcp"};
@@ -319,6 +320,9 @@ public:
       }
 
       return {};
+      #else
+      return false;
+      #endif
     }
 
 
