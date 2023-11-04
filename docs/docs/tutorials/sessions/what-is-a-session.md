@@ -24,17 +24,23 @@ a session expire could be used as an auto logout feature.
 
 <br/>
 
-## Session Data
-Each session has a dedicated data store. When you store, get, update etc session data, you are only accessing that particular session's data store.
-
-When you are finished with the data you can end the session. If the session was created with an expiry duration, the session will be automatically ended.
-
-<br/>
-
 ## Session Token
 A session is identified by a token, which is just a string. When you create a session the server returns a token which is used with commands to access the data.
 
 <br/>
+
+## Session Data
+Each session has a dedicated data store. When you store, get, update etc session data, you are only accessing that particular session's data store.
+
+- When you are finished with the data you can end the session
+- If the session was created with an expiry duration, the session and data can both be deleted, or just the data
+
+A visual representation of two session with tokens `1234` and `4321`. Each token is mapped to dedicated expiry info and data:
+
+![Session map](./img/sessions_map.svg)
+
+<br/>
+
 
 ## Shared Sessions
 A session doesn't belong to a particular client via some authentication process - it can be accessed by any client with the token. But there may be cases where sharing a session is useful, for example a session

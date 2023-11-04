@@ -94,7 +94,7 @@ private:
 
     auto set = [this](CacheMap& map, KvCommand& cmd)
     {
-      njson2 rsp;
+      njson rsp;
       rsp["KV_SET_RSP"]["tkn"] = cmd.shtk;
 
       for(auto& kv : cmd.contents.object_range())
@@ -109,7 +109,7 @@ private:
     
     auto setQ = [this](CacheMap& map, KvCommand& cmd)
     {
-      njson2 rsp ;
+      njson rsp ;
       
       for(auto& kv : cmd.contents.object_range())
       {
@@ -133,7 +133,7 @@ private:
     
     auto get = [this](CacheMap& map, KvCommand& cmd)
     {
-      njson2 rsp;
+      njson rsp;
       rsp["KV_GET_RSP"]["tkn"] = cmd.shtk;
 
       for(auto& item : cmd.contents.array_range())
@@ -144,7 +144,7 @@ private:
           if (auto [exists, value] = map.get(key); exists)
             rsp["KV_GET_RSP"]["keys"][key] = std::move(value);
           else
-            rsp["KV_GET_RSP"]["keys"][key] = njson2::null();
+            rsp["KV_GET_RSP"]["keys"][key] = njson::null();
         }        
       }
 
@@ -154,12 +154,12 @@ private:
     
     auto add = [this](CacheMap& map, KvCommand& cmd)
     {
-      njson2 rsp;
+      njson rsp;
       rsp["KV_ADD_RSP"]["tkn"] = cmd.shtk;
 
       if (cmd.contents.empty())
       { 
-        rsp["KV_ADD_RSP"]["keys"] = njson2::object();
+        rsp["KV_ADD_RSP"]["keys"] = njson::object();
         send(cmd, rsp.to_string());
       }
       else
@@ -179,7 +179,7 @@ private:
     {
       if (!cmd.contents.empty())
       {
-        njson2 rsp;
+        njson rsp;
 
         for(auto& kv : cmd.contents.object_range())
         {
@@ -198,7 +198,7 @@ private:
     
     auto remove = [this](CacheMap& map, KvCommand& cmd)
     {
-      njson2 rsp;
+      njson rsp;
       rsp["KV_RMV_RSP"]["tkn"] = cmd.shtk;
 
       for(auto& value : cmd.contents.array_range())
@@ -230,7 +230,7 @@ private:
     
     auto contains = [this](CacheMap& map, KvCommand& cmd)
     {
-      njson2 rsp;
+      njson rsp;
       rsp["KV_CONTAINS_RSP"]["st"] = toUnderlying(RequestStatus::Ok);
       rsp["KV_CONTAINS_RSP"]["tkn"] = cmd.shtk;
 
@@ -251,10 +251,10 @@ private:
     {
       const bool paths = cmd.contents.at("rsp") == "paths";
 
-      njson2 rsp;
+      njson rsp;
       rsp["KV_FIND_RSP"]["tkn"] = cmd.shtk;
 
-      njson2 result = njson2::array();
+      njson result = njson::array();
 
       if (!map.find(cmd.contents, paths, result))
         rsp["KV_FIND_RSP"]["st"] = toUnderlying(RequestStatus::PathInvalid);
@@ -267,7 +267,7 @@ private:
         else
         {
           // return key-values the same as KV_GET
-          rsp["KV_FIND_RSP"]["keys"] = njson2::object();
+          rsp["KV_FIND_RSP"]["keys"] = njson::object();
 
           for(auto& item : result.array_range())
           {
@@ -276,7 +276,7 @@ private:
             if (auto [exists, value] = map.get(key); exists)
               rsp["KV_FIND_RSP"]["keys"][key] = std::move(value);
             else
-              rsp["KV_FIND_RSP"]["keys"][key] = njson2::null();
+              rsp["KV_FIND_RSP"]["keys"][key] = njson::null();
           } 
         }
       }
@@ -285,40 +285,23 @@ private:
     };
     
 
-    /*
+    
     auto update = [this](CacheMap& map, KvCommand& cmd)
     {
+      const auto& key = cmd.contents.at("key").as_string();
+      const auto& path = cmd.contents.at("path").as_string();
+
       njson rsp;
       rsp["KV_UPDATE_RSP"]["tkn"] = cmd.shtk;
-            
-      njson::iterator  itKey = cmd.contents.begin(),
-                        itPath = std::next(itKey, 1);
 
-      if (itKey.key() != "key")
-        std::swap(itKey, itPath);
+      const auto [keyExists, count] = map.update(key, path, std::move(cmd.contents.at("value")));
 
-      bool pathValid = true;
-      njson::json_pointer path;
-
-      try
-      {
-        path = std::move(njson::json_pointer{itPath.key()});
-      }
-      catch (...)
-      {
-        pathValid = false;
-      }
-
-      RequestStatus status;
-
-      if (pathValid)
-        rsp["KV_UPDATE_RSP"]["keys"][itKey.value()] = map.updateByPath(itKey.value(), path, std::move(itPath.value()));
-      else
-        rsp["KV_UPDATE_RSP"]["keys"][itKey.value()] = RequestStatus::PathInvalid;
+      rsp["KV_UPDATE_RSP"]["st"] = keyExists ? toUnderlying(RequestStatus::Ok) : toUnderlying(RequestStatus::KeyNotExist);
+      rsp["KV_UPDATE_RSP"]["cnt"] = count;
 
       send(cmd, rsp.to_string());
     };
-    */
+
 
     // CAREFUL: these have to be in the order of KvQueryType enum
     static const std::array<std::function<void(CacheMap&, KvCommand&)>, static_cast<std::size_t>(KvQueryType::Max)> handlers = 
@@ -338,7 +321,7 @@ private:
       count,
       contains,
       find,
-      /*update*/
+      update
     };
 
 

@@ -28,7 +28,7 @@ public:
     if (const auto it = m_map.find(key) ; it != m_map.cend())
       return {true, it->second};
     else
-      return {false, njson2::null()};
+      return {false, njson::null()};
   };
 
 
@@ -114,7 +114,7 @@ public:
 
   
   // TODO review this, result as json may not be required: it's always returning strings (path or keys)
-  auto find (const njson2& contents, const bool findPaths, njson2& result) const
+  auto find (const njson& contents, const bool findPaths, njson& result) const
   {
     namespace jsonpath = jsoncons::jsonpath;
     const auto& path = contents.at("path").as_string();
@@ -164,65 +164,25 @@ public:
   }
 
 
-  /*
-  void findNoRegEx (const njson& contents, const KvFind& find, njson& keysArray)
+  std::tuple<bool, std::size_t> update (const cachedkey& key, const std::string& path, njson&& value) 
   {
-    auto& [opString, handler] = findConditions.getOperation(find.condition);
+    namespace jsonpath = jsoncons::jsonpath;
 
-    njson::json_pointer path {contents.at("path")};
-    njson::const_reference opValue = contents.at(opString);
-    
-    auto valueMatch = [&handler, &opValue, &path](std::pair<cachedkey, cachedvalue>& kv)
+    if (auto entry = m_map.find(key); entry != m_map.cend())
     {
-      try
+      std::size_t updated = 0;
+
+      jsonpath::json_replace(entry->second, path, [&updated, value = std::move(value)](const std::string& /*path*/, njson& currentValue)
       {
-        return kv.second.contains(path) && handler(kv.second.at(path), opValue);  
-      }
-      catch(...)
-      {
-      }
+        currentValue = std::move(value);
+        ++updated;
+      });
 
-      return false;      
-    };
-
-
-    for(auto& kv : m_map)
-    {
-      if (valueMatch(kv))
-        keysArray.emplace_back(kv.first);
+      return {true, updated};
     }
-  };
-  */
 
-
-  /*
-  RequestStatus updateByPath (const cachedkey& key, const njson::json_pointer& path, njson&& value)
-  {
-    const static njson::json_pointer rootPath {"/"};
-
-    RequestStatus status = RequestStatus::Ok;
-    
-    if (const auto it = m_map.find(key) ; it != m_map.cend())
-    {
-      try
-      {
-        if (it->second.contains(path))
-          it->second[path == rootPath ? njson::json_pointer{""} : path] = std::move(value);
-        else
-          status = RequestStatus::PathNotExist;
-
-      }
-      catch(const std::exception& e)
-      {
-        status = RequestStatus::PathNotExist;
-      }
-    }
-    else
-      status = RequestStatus::KeyNotExist;
-
-    return status;
+    return {false, 0U};
   }
-  */
 
 
 

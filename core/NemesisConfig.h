@@ -19,17 +19,17 @@ struct NemesisConfig
 
   }
 
-  NemesisConfig(njson2&& config) : cfg(std::move(config)), valid(true)
+  NemesisConfig(njson&& config) : cfg(std::move(config)), valid(true)
   {
 
   }
 
   NemesisConfig(const std::string_view config) : valid(true)
   {
-    cfg = std::move(njson2::parse(config));
+    cfg = std::move(njson::parse(config));
   }
 
-  njson2 cfg;
+  njson cfg;
   bool valid;
 
 } ;
@@ -52,7 +52,7 @@ void readConfig(NemesisConfig& config, std::filesystem::path path)
 
   try
   {
-    njson2 cfg = njson2::parse(configStream);
+    njson cfg = njson::parse(configStream);
 
     bool valid = false;
     valid = isValid([&cfg](){ return cfg.contains("version") && cfg.at("version").is_uint64(); }, "Require version as an unsigned int") &&

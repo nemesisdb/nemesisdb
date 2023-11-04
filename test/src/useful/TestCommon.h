@@ -2,7 +2,9 @@
 #define NDB_TEST_COMMON_H
 
 
-#define NDB_UNIT_TEST_NOMONITOR
+#define NDB_UNIT_TEST_NOMONITOR			// disable session monitoring
+#define NDB_UNIT_TEST_NOPORTCHECK		// rapid server shutdown/startup seems the socket isn't closed immediately (check this)
+
 
 #include <thread>
 #include <gtest/gtest.h>

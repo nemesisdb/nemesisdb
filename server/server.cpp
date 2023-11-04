@@ -51,9 +51,11 @@ int main (int argc, char ** argv)
   #endif
 
   kv::KvServer server;
-  server.run(config);
-
-  run.wait();
+  
+  if (server.run(config))
+    run.wait();
+  else
+    run.count_down();
 
   server.stop();
 }

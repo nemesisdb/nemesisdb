@@ -2,6 +2,7 @@
 #define NDB_CORE_KVSERVER_H
 
 
+#include <arpa/inet.h>  // for inet_pton() etc
 #include <functional>
 #include <vector>
 #include <set>
@@ -21,9 +22,9 @@ namespace nemesis { namespace core { namespace kv {
 class KvServer
 {
 public:
-  KvServer() : m_run(true)
+  KvServer() : m_run(true), m_kvHandler(nullptr)
   {
-
+    kv::serverStats = nullptr;
   }
 
 
@@ -81,7 +82,7 @@ public:
   }
 
 
-  void run (NemesisConfig& config)
+  bool run (NemesisConfig& config)
   {
     // cores => io threads
     static const std::map<std::size_t, std::size_t> CoresToIoThreads =
@@ -101,21 +102,30 @@ public:
       {64, 58}
     };
     
-    kv::serverStats = new kv::ServerStats;
-
-    unsigned int maxPayload = config.cfg["kv"]["maxPayload"].as<unsigned int>();
-    std::string ip = config.cfg["kv"]["ip"].as_string();
-    int port = config.cfg["kv"]["port"].as<unsigned int>();
     
 
     const auto nCores = std::min<std::size_t>(std::thread::hardware_concurrency(), NEMESIS_MAX_CORES);
 
-    if (nCores < 1U || nCores > 256U)
+    if (nCores < 1U || nCores > 64U)
     {
       std::cout << "Core count unexpected: " << nCores << '\n';
-      return;
+      return false;
     }
     
+
+    unsigned int maxPayload = config.cfg["kv"]["maxPayload"].as<unsigned int>();
+    std::string ip = config.cfg["kv"]["ip"].as_string();
+    int port = config.cfg["kv"]["port"].as<unsigned int>();
+
+    if (auto check = isPortOpen(ip, port); !check || *check)
+    {
+      std::cout << "ERROR: IP and port already used OR failed during checking open ports. " << ip << ":" << port << '\n';
+      return false;
+    }
+
+
+    kv::serverStats = new kv::ServerStats;
+
     const std::size_t nIoThreads = CoresToIoThreads.contains(nCores) ? CoresToIoThreads.at(nCores) : std::prev(CoresToIoThreads.upper_bound(nCores), 1)->second;
     
     kv::MaxPools = std::max<std::size_t>(1U, nCores - nIoThreads);
@@ -152,17 +162,17 @@ public:
               ws->send(createErrorResponse(RequestStatus::OpCodeInvalid).to_string(), kv::WsSendOpCode);
             else
             {
-              // TODO this avoids exceptions on parse error, but not clear how to create json object
+              // TODO this avoids exception on parse error, but not clear how to create json object
               //      from reader output (if even possible)
               // jsoncons::json_string_reader reader(message);
               // std::error_code ec;
               // reader.read(ec);
 
-              njson2 request = njson2::null();
+              njson request = njson::null();
 
               try
               {
-                request = std::move(njson2::parse(message));
+                request = std::move(njson::parse(message));
               }
               catch (...)
               {
@@ -237,7 +247,10 @@ public:
     startLatch.wait();
 
     if (listenSuccess != nIoThreads)
+    {
       std::cout << "Failed to listen on " << ip << ":"  << port << std::endl;
+      return false;
+    }
     else
     {
       #ifndef NDB_UNIT_TEST_NOMONITOR
@@ -264,7 +277,53 @@ public:
     #ifndef NDB_UNIT_TEST
     std::cout << "Ready\n";
     #endif
+
+    return true;
   }
+
+  private:
+
+    std::optional<bool> isPortOpen (const std::string& checkIp, const int checkPort)
+    {
+      #ifndef NDB_UNIT_TEST_NOPORTCHECK
+      // should really add path to linux headers
+      // /usr/src/linux-headers-5.15.0-86-generic/include/net
+      static const std::filesystem::path tcp4 {"/proc/net/tcp"};
+      static const int TcpStateListening = 0x0A;
+
+      sockaddr_in checkSa;
+      inet_pton(AF_INET, checkIp.c_str(), &(checkSa.sin_addr));
+    
+      if (std::ifstream stream{tcp4}; stream.good())
+      {
+        std::string line;
+        
+        std::getline(stream, line); // skip first header/column name line
+        line.clear();
+
+        while (std::getline(stream, line))
+        {
+          auto ipStart = line.find_first_of(':') + 2;
+          auto sIpHex = line.substr(ipStart, line.find_first_of(':', ipStart+1) - ipStart);
+
+          auto portStart = line.find_first_of(':', ipStart+1)+1;
+          auto sPort = line.substr(portStart, line.find_first_of(' ', portStart) - portStart);
+          
+          const auto openIp = std::stoi(sIpHex, nullptr, 16);
+          const std::int32_t openPort = std::stoi(sPort, nullptr, 16);
+
+          if (openIp == checkSa.sin_addr.s_addr && checkPort == openPort)
+            return true;
+        }
+
+        return false;
+      }
+
+      return {};
+      #else
+      return false;
+      #endif
+    }
 
 
   private:
@@ -275,7 +334,7 @@ public:
     std::mutex m_socketsMux;
     std::mutex m_wsSessionsMux;
     std::mutex m_threadsMux;
-    std::atomic_bool m_run; // true if fusion has triggered a close
+    std::atomic_bool m_run;
     std::jthread m_monitor;
 };
 
