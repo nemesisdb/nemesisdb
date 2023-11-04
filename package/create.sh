@@ -35,7 +35,7 @@ echo "Architecture: amd64" >> $controlFilePath
 echo "Maintainer: NemesisDB" >> $controlFilePath
 echo "Homepage: https://nemesisdb.io" >> $controlFilePath
 echo "Description: NemesisDB" >> $controlFilePath
-echo " JSON cache." >> $controlFilePath
+echo " JSON database." >> $controlFilePath
 
 
 echo Copying server binary

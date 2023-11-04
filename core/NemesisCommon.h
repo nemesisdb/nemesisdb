@@ -15,7 +15,7 @@ namespace nemesis { namespace core {
 
 #define fc_always_inline inline __attribute__((always_inline))
 
-static const char * NEMESIS_VERSION = "0.3.1";
+static const char * NEMESIS_VERSION = "0.3.2";
 static const std::size_t NEMESIS_CONFIG_VERSION = 1U;
 static const std::size_t NEMESIS_MAX_CORES = 4U;
 
