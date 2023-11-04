@@ -5,7 +5,6 @@
 #include <array>
 #include <any>
 #include <uuid_v4/uuid_v4.h>
-#include <nlohmann/json.hpp>
 #include <uwebsockets/App.h>
 #include <core/NemesisCommon.h>
 

@@ -1,0 +1,68 @@
+FROM alpine:3.18.4 AS prepare
+
+
+# packages for building fusion and vcpkg (pkgconfig for nlohmann-json)
+RUN apk --no-cache add libgcc libstdc++ g++ linux-headers openssh pkgconfig git build-base bash cmake ninja zip unzip curl 
+
+# force vcpkg to use ninja, cmake, curl we just installed (cmake fails otherwise)
+ENV VCPKG_FORCE_SYSTEM_BINARIES=1
+
+# get dependencies from github (uuidv4 and unordered_dense are header only)
+WORKDIR /build
+
+
+RUN git clone https://github.com/crashoz/uuid_v4.git
+RUN git clone https://github.com/martinus/unordered_dense.git
+RUN git clone https://github.com/danielaparker/jsoncons.git
+RUN git clone https://github.com/Microsoft/vcpkg.git
+
+
+# install/build vcpkg dependencies
+WORKDIR /build/vcpkg
+
+RUN ./bootstrap-vcpkg.sh
+
+# run vcpkg install command from script
+#COPY vcpkg_run_install.sh ./
+#RUN ./vcpkg_run_install.sh
+RUN ./vcpkg install boost-fiber[numa] boost-program-options uwebsockets --clean-after-build
+
+
+# prepare: 
+FROM prepare AS build
+
+WORKDIR /build
+COPY server ./server/
+COPY core ./core/
+
+
+# configure
+WORKDIR /build/server
+RUN cmake -B ./ -S . -DCMAKE_TOOLCHAIN_FILE:STRING=/build/vcpkg/scripts/buildsystems/vcpkg.cmake -DCMAKE_EXPORT_COMPILE_COMMANDS:BOOL=TRUE \
+                    -DCMAKE_BUILD_TYPE:STRING=Release -DCMAKE_C_COMPILER:FILEPATH=/usr/bin/gcc -DCMAKE_CXX_COMPILER:FILEPATH=/usr/bin/g++ \
+                    -DCMAKE_CXX_FLAGS:="-DNEMESIS_BUILD_DOCKER" \
+                    -S/build/server -B/build/cmakebuild -G "Unix Makefiles"
+
+# NOTE: removed -DBOOST_FIBERS_NO_ATOMICS from cmake_cxx_flags because it causes a compilation error.
+#       this docs say to "compile the library" with this definition, but I would expect the application requires it as well.
+#       the cause of the compile error is obvious, too obvious to have not been noticed and fixed.
+#       see:  https://github.com/boostorg/fiber/issues/301
+
+# build
+WORKDIR /build/cmakebuild
+RUN cmake --build /build/cmakebuild --config Release --target nemesisdb -j 18
+
+
+
+# publish: just the server plus runtime dependencies
+FROM alpine:3.18.4 as publish
+RUN apk --no-cache add libgcc libstdc++ 
+WORKDIR /usr/local/bin/nemesisdb
+COPY --from=build /build/server/Release/bin/nemesisdb ./
+COPY --from=build /build/server/configs/docker_default.json default.json
+
+
+EXPOSE 1987
+
+ENTRYPOINT ["/usr/local/bin/nemesisdb/nemesisdb"]
+CMD ["--config=default.json"]

@@ -16,4 +16,4 @@ echo
 echo Installing ...
 echo 
 
-./vcpkg install concurrentqueue nlohmann-json boost-fiber[numa] boost-program-options boost-beast gtest uwebsockets --clean-after-build
+./vcpkg install nlohmann-json boost-fiber[numa] boost-program-options boost-beast gtest uwebsockets --clean-after-build
