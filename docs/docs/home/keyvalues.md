@@ -34,6 +34,8 @@ This is how NemesisDB treats the data when stored:
 - `address` is mapped to `{"city":"Paris","country":"France"}`
 
 
+![keyvalues](./img/kvset_kv.svg)
+
 <br/>
 
 ## Set

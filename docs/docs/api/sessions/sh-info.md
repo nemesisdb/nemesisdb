@@ -32,7 +32,7 @@ See the [response status](./../Statuses) page for status values.
 |Param|Type|Meaning|
 |:---|:---|:---|
 |expires|bool|true if the session expires, false is it never expires|
-|duration|unsigned int|Time, in seconds, the session can exist|
+|remaining|int|Time, in seconds, until the session ends. Note, this can be negative because the session can end before the session monitor checks|
 |time|int|Timestamp of expiry time. This timestamp is in seconds|
 |deleteSession|bool|If true, the session is deleted when the session expires. If false, only the data is deleted|
 
