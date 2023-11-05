@@ -13,9 +13,7 @@ NemesisDB is only available as a 64-bit Debian package for x86 CPUs (Intel/AMD).
 A Docker image will be available soon.
 :::
 
-## Download
 
-Download the latest version [here](https://releases.nemesisdb.io/package/nemesisdb_0.3.2_amd64.deb).
 
 ## Install and Configure
 Instructions to [install](./home/install) and [configure](./home/config).
