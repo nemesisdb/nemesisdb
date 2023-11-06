@@ -3,11 +3,12 @@ sidebar_position: 1
 displayed_sidebar: homeSidebar
 ---
 
-# Docker
+# Linux
 
-This is required if running on Windows unless you use WSL2 which is not supported.
+:::note
+The Docker image should be ok on Mac but this has not been tested.
+:::
 
-The Docker image is based on Alpine Linux to keep deployment minimal.
 
 ## Pull
 
@@ -26,7 +27,8 @@ REPOSITORY            TAG       IMAGE ID       CREATED        SIZE
 nemesisdb/nemesisdb   0.3.2     6c2973cf3e57   5 hours ago    17.9MB
 ```
 
-# Run - Linux
+## Start
+
 On Linux, Docker containers can use the host's network which avoids having to map ports between host and container.
 
 If you have Docker Desktop installed, you need to do this first:
@@ -48,19 +50,18 @@ docker context use default
 </details>
 
 
-## Start
-
-The default config, included in the image, starts the server on `0.0.0.0:1987` so it is available from the host at `127.0.0.1:1987`.
 
 ### Default Config
-Now we can start with:
+The default config, included in the image, starts the server on `0.0.0.0:1987` so it is available from the host at `127.0.0.1:1987`.
+
+We start with:
 
 ```bash
 docker run --rm -d --network host --name test1 nemesisdb/nemesisdb:latest
 ```
 
-- `rm` deletes the container when you stop it. Remove `--rm` to keep it
-- `d` runs detached to avoid blocking the terminal
+- `rm` deletes the container when you stop it. Omit `--rm` to retain the container
+- `d` runs detached to avoid blocking the terminal. Replace with `-it` to attach the container's terminal.
 - `network host` tells the container to use the host's network stack, which avoids having to map ports between host and container (i.e. `-p 1987:1987`)
 
 Confirm the server is running and its ports are bound to the host:
@@ -96,7 +97,7 @@ The final argument `--config=/configs/config.json` is the full path. We use `/co
 
 
 :::tip
-You could also use `-v ./server/configs:/configs:ro` to create a read-only mount.
+You can also set the `ro` option to mount as read-only: `-v ./server/configs:/configs:ro`.
 :::
 
 
@@ -106,9 +107,9 @@ You could also use `-v ./server/configs:/configs:ro` to create a read-only mount
 docker stop test1
 ```
 
+If you started interactively (`-it`), use `ctrl+c` to stop.
+
 This will also delete the container because the container was started with `--rm`.
 
 <br/>
 
-
-# Run - Windows
