@@ -15,10 +15,10 @@ Download the latest version [here](https://releases.nemesisdb.io/package/nemesis
 ## Install
 Open a terminal, change to your download location and install with `dpkg`.
 
-For example, to install version 0.3.3:
+For example, to install version 0.3.2:
 
 ```bash
-sudo dpkg -i nemesisdb_0.3.3_amd64.deb
+sudo dpkg -i nemesisdb_0.3.2_amd64.deb
 ```
 <br/>
 
