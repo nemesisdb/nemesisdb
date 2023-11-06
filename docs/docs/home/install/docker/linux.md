@@ -54,7 +54,7 @@ docker context use default
 ### Default Config
 The default config, included in the image, starts the server on `0.0.0.0:1987` so it is available from the host at `127.0.0.1:1987`.
 
-We start with:
+Start with:
 
 ```bash
 docker run --rm -d --network host --name test1 nemesisdb/nemesisdb:latest
