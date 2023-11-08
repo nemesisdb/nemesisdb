@@ -17,9 +17,12 @@ set(CPACK_PROJECT_VERSION ${PROJECT_VERSION})
 
 
 add_executable(kvclient kvclient.cpp)
+add_executable(kv kv.cpp)
 
 
 target_compile_features(kvclient PUBLIC cxx_std_20)
+target_compile_features(kv PUBLIC cxx_std_20)
 
 target_link_libraries(kvclient PRIVATE -lboost_program_options)
+target_link_libraries(kv PRIVATE -lboost_program_options)
 
