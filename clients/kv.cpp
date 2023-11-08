@@ -82,25 +82,25 @@ struct Ioc
 };
 
 
-auto jsonSet = R"({
-                    "KV_SET":
-                    {
-                      "tkn":"",
-                      "keys":
-                      {
-                        "profile":
-                        {
-                          "handle":"some handle",
-                          "email":"myemail@email.com",
-                          "avatar":"abc.png"
-                        },
-                        "loginTime":0,
-                        "interests":["Swimming", "Rugby", "Tennis", "Ice Fishing"],
-                        "paymentMethods":[{"type":"Credit Card", "id":"1"}, {"type":"Credit Card", "id":"2"}],
-                        "preferredPaymentMethod":"1"
-                      }
-                    }  
-                  })"_json;
+const auto jsonSet = R"({
+                          "KV_SET":
+                          {
+                            "tkn":"",
+                            "keys":
+                            {
+                              "profile":
+                              {
+                                "handle":"some handle",
+                                "email":"myemail@email.com",
+                                "avatar":"abc.png"
+                              },
+                              "loginTime":0,
+                              "interests":["Swimming", "Rugby", "Tennis", "Ice Fishing"],
+                              "paymentMethods":[{"type":"Credit Card", "id":"1"}, {"type":"Credit Card", "id":"2"}],
+                              "preferredPaymentMethod":"1"
+                            }
+                          }  
+                        })"_json;
 
 
 bool readProgramArgs(const int argc, char ** argv)
