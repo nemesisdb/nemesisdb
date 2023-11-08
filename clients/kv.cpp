@@ -31,12 +31,15 @@ enum class Mode
   Receive
 };
 
-std::latch latch{1};
-std::string receiveIp;
-std::filesystem::path configPath;
-json config;
-Mode mode = Mode::None;
+const std::size_t MaxSessions = 1'000'000;
+
+std::latch signalLatch{1};
 std::vector<nemesis::core::SessionToken> tokens;
+std::size_t nSessions = 1;
+std::size_t nIo = 1;
+std::string serverIp = "127.0.0.1";
+int serverPort = 1987;
+bool createLog = false;
 
 
 struct Ioc
@@ -100,11 +103,42 @@ auto jsonSet = R"({
                   })"_json;
 
 
+bool readProgramArgs(const int argc, char ** argv)
+{
+  po::options_description common("");
+  common.add_options()    
+    ("io",        po::value<std::size_t>(&nIo),         "Number of IO threads")
+    ("sessions",  po::value<std::size_t>(&nSessions),   "Number of sessions")
+    ("ip",        po::value<std::string>(&serverIp),    "Server IP")
+    ("port",      po::value<int>(&serverPort),          "Server port")
+    ("log",       "Log session tokens to session.txt");
+      
+  po::options_description all;
+  all.add(common);
+
+  try
+  {
+    po::variables_map vm;
+    po::store(po::parse_command_line(argc, argv, all), vm);
+
+    po::notify(vm);
+
+    createLog = vm.contains("log");
+  }
+  catch (const po::unknown_option& uo)
+  {
+    std::cout << "ERROR: unknown option: " << uo.get_option_name() << '\n';
+    return false;
+  }
+
+  return true;
+}
+
+
 void createSessions(const std::string& ip, const int port, std::shared_ptr<asio::io_context> ioc, const std::size_t nSessions)
 {
   std::mutex mux;
   std::latch latch{static_cast<std::ptrdiff_t>(nSessions)};
-
 
   fusion::client::Client client{*ioc};
   
@@ -126,8 +160,7 @@ void createSessions(const std::string& ip, const int port, std::shared_ptr<asio:
     }
   };
 
-
-  if (auto ws = client.openQueryWebSocket(ip, 1987, "", onRsp); ws)
+  if (auto ws = client.openQueryWebSocket(ip, port, "", onRsp); ws)
   {
     auto start = Clock::now();
 
@@ -140,7 +173,7 @@ void createSessions(const std::string& ip, const int port, std::shared_ptr<asio:
     std::cout << "New:\t" << std::chrono::duration_cast<std::chrono::milliseconds>(end-start) << '\n';
   }
   else
-    std::cout << "createSessions(): falied to connect\n";
+    std::cout << "createSessions(): falied to connect\n";    
 }
 
 
@@ -149,7 +182,7 @@ void set(const std::string& ip, const int port, std::shared_ptr<asio::io_context
   // TODO KV_SET
   fusion::client::Client client{*ioc};
 
-  if (auto ws = client.openQueryWebSocket(ip, 1987, "", [](auto rsp){}); ws)
+  if (auto ws = client.openQueryWebSocket(ip, port, "", [](auto rsp){}); ws)
   {
     auto commandName = setq ? "KV_SETQ" : "KV_SET";
 
@@ -211,7 +244,7 @@ void get(const std::string& ip, const int port, std::shared_ptr<asio::io_context
   };
 
 
-  if (auto ws = client.openQueryWebSocket(ip, 1987, "", onRsp); ws)
+  if (auto ws = client.openQueryWebSocket(ip, port, "", onRsp); ws)
   {
     json query;
     query["KV_GET"]["tkn"] ="";
@@ -263,7 +296,7 @@ void find(const std::string& ip, const int port, std::shared_ptr<asio::io_contex
   };
 
 
-  if (auto ws = client.openQueryWebSocket(ip, 1987, "", onRsp); ws)
+  if (auto ws = client.openQueryWebSocket(ip, port, "", onRsp); ws)
   {
     auto start = Clock::now();
 
@@ -289,17 +322,21 @@ void find(const std::string& ip, const int port, std::shared_ptr<asio::io_contex
 
 int main (int argc, char ** argv)
 {
-  Ioc ioc{std::thread::hardware_concurrency()};
-  
-  if (createSessions("127.0.0.1", 1987, ioc.ioc, 10'000); !tokens.empty())
+  if (readProgramArgs(argc, argv))
   {
-    {
-      std::ofstream out{"sessions.txt"/*std::to_string(Clock::now().time_since_epoch().count())+".txt"*/, std::ios_base::trunc | std::ios_base::out};
-      std::for_each(tokens.cbegin(), tokens.cend(), [&out](const auto& tkn){ out << tkn << '\n';});
-    }
+    Ioc ioc{std::min<std::size_t>(nIo, std::thread::hardware_concurrency())};
 
-    set("127.0.0.1", 1987, ioc.ioc, true);
-    get("127.0.0.1", 1987, ioc.ioc);
+    if (createSessions(serverIp, serverPort, ioc.ioc, std::min<std::size_t>(MaxSessions, nSessions)); !tokens.empty())
+    {
+      if (createLog)
+      {
+        std::ofstream out{"sessions.txt", std::ios_base::trunc | std::ios_base::out};
+        std::for_each(tokens.cbegin(), tokens.cend(), [&out](const auto& tkn){ out << tkn << '\n';});
+      }
+
+      set(serverIp, serverPort, ioc.ioc, true);
+      get(serverIp, serverPort, ioc.ioc);
+    }
   }
 
   return 0;
