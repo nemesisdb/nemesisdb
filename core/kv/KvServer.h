@@ -286,39 +286,18 @@ public:
     std::optional<bool> isPortOpen (const std::string& checkIp, const int checkPort)
     {
       #ifndef NDB_UNIT_TEST_NOPORTCHECK
-      // should really add path to linux headers
-      // /usr/src/linux-headers-5.15.0-86-generic/include/net
-      static const std::filesystem::path tcp4 {"/proc/net/tcp"};
-      static const int TcpStateListening = 0x0A;
 
-      sockaddr_in checkSa;
-      inet_pton(AF_INET, checkIp.c_str(), &(checkSa.sin_addr));
+      if (auto fd = socket(AF_INET, SOCK_STREAM, 0) ; fd >= 0)
+      {        
+        sockaddr_in address;
+        address.sin_family = AF_INET;
+        address.sin_port = checkPort;
+
+        inet_pton(AF_INET, checkIp.c_str(), &(address.sin_addr));
     
-      if (std::ifstream stream{tcp4}; stream.good())
-      {
-        std::string line;
-        
-        std::getline(stream, line); // skip first header/column name line
-        line.clear();
-
-        while (std::getline(stream, line))
-        {
-          auto ipStart = line.find_first_of(':') + 2;
-          auto sIpHex = line.substr(ipStart, line.find_first_of(':', ipStart+1) - ipStart);
-
-          auto portStart = line.find_first_of(':', ipStart+1)+1;
-          auto sPort = line.substr(portStart, line.find_first_of(' ', portStart) - portStart);
-          
-          const auto openIp = std::stoi(sIpHex, nullptr, 16);
-          const std::int32_t openPort = std::stoi(sPort, nullptr, 16);
-
-          if (openIp == checkSa.sin_addr.s_addr && checkPort == openPort)
-            return true;
-        }
-
-        return false;
+        return bind(fd, (struct sockaddr*)&address,sizeof(address)) < 0;
       }
-
+ 
       return {};
       #else
       return false;
