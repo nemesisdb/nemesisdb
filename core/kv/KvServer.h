@@ -283,7 +283,7 @@ public:
 
   private:
 
-    std::optional<bool> isPortOpen (const std::string& checkIp, const int checkPort)
+    std::optional<bool> isPortOpen (const std::string& checkIp, const short checkPort)
     {
       #ifndef NDB_UNIT_TEST_NOPORTCHECK
 
