@@ -36,11 +36,11 @@ const std::size_t MaxSessions = 1'000'000;
 std::latch signalLatch{1};
 std::vector<nemesis::core::SessionToken> tokens;
 std::size_t nSessions = 1;
-std::size_t nIo = 1;
+std::size_t nIo = std::thread::hardware_concurrency();
 std::string serverIp = "127.0.0.1";
 int serverPort = 1987;
 bool createLog = false;
-
+bool setQ = true;
 
 struct Ioc
 {
@@ -111,8 +111,10 @@ bool readProgramArgs(const int argc, char ** argv)
     ("sessions",  po::value<std::size_t>(&nSessions),   "Number of sessions")
     ("ip",        po::value<std::string>(&serverIp),    "Server IP")
     ("port",      po::value<int>(&serverPort),          "Server port")
-    ("log",       "Log session tokens to session.txt");
-      
+    ("log",       "Log session tokens to session.txt")
+    ("set",       "Use KV_SET instead of KV_SETQ (default: false)");
+
+
   po::options_description all;
   all.add(common);
 
@@ -124,6 +126,7 @@ bool readProgramArgs(const int argc, char ** argv)
     po::notify(vm);
 
     createLog = vm.contains("log");
+    setQ = !vm.contains("set");
   }
   catch (const po::unknown_option& uo)
   {
@@ -179,10 +182,24 @@ void createSessions(const std::string& ip, const int port, std::shared_ptr<asio:
 
 void set(const std::string& ip, const int port, std::shared_ptr<asio::io_context> ioc, const bool setq)
 {
-  // TODO KV_SET
+  std::latch latch {static_cast<std::ptrdiff_t>(tokens.size())};
+
+  auto setRsp = [&latch](Response r)
+  {
+    if (r.connected)
+    {
+      latch.count_down();
+    }
+  };
+
+  fusion::client::ResponseHandler handler = [](Response r){}; // if setq, no response unless error, we assume no errors here
+
+  if (!setq)
+    handler = setRsp;
+
   fusion::client::Client client{*ioc};
 
-  if (auto ws = client.openQueryWebSocket(ip, port, "", [](auto rsp){}); ws)
+  if (auto ws = client.openQueryWebSocket(ip, port, "", handler); ws)
   {
     auto commandName = setq ? "KV_SETQ" : "KV_SET";
 
@@ -334,7 +351,7 @@ int main (int argc, char ** argv)
         std::for_each(tokens.cbegin(), tokens.cend(), [&out](const auto& tkn){ out << tkn << '\n';});
       }
 
-      set(serverIp, serverPort, ioc.ioc, true);
+      set(serverIp, serverPort, ioc.ioc, setQ);
       get(serverIp, serverPort, ioc.ioc);
     }
   }
