@@ -185,6 +185,15 @@ public:
   }
 
 
+  njson keys()
+  {
+    njson keys = njson::make_array();
+    
+    for(const auto& it : m_map)
+      keys.emplace_back(it.first);
+
+    return keys;
+  }
 
 private:
   Map m_map;

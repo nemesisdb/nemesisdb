@@ -51,7 +51,8 @@ private:
     std::bind(&KvHandler::count,            std::ref(*this), std::placeholders::_1, std::placeholders::_2),
     std::bind(&KvHandler::contains,         std::ref(*this), std::placeholders::_1, std::placeholders::_2),
     std::bind(&KvHandler::find,             std::ref(*this), std::placeholders::_1, std::placeholders::_2),
-    std::bind(&KvHandler::update,           std::ref(*this), std::placeholders::_1, std::placeholders::_2)
+    std::bind(&KvHandler::update,           std::ref(*this), std::placeholders::_1, std::placeholders::_2),
+    std::bind(&KvHandler::keys,             std::ref(*this), std::placeholders::_1, std::placeholders::_2)
   };
 
 
@@ -566,9 +567,9 @@ private:
   
   fc_always_inline void update(KvWebSocket * ws, njson&& json)
   {
-    static const KvQueryType queryType = KvQueryType::KvUpdate;
-    static const std::string queryName     = QueryTypeToName.at(queryType);
-    static const std::string queryRspName  = queryName +"_RSP";
+    static const KvQueryType queryType      = KvQueryType::KvUpdate;
+    static const std::string queryName      = QueryTypeToName.at(queryType);
+    static const std::string queryRspName   = queryName +"_RSP";
 
     auto& cmd = json.at(queryName);
     
@@ -587,6 +588,25 @@ private:
         ws->send(createErrorResponse(queryRspName, RequestStatus::ValueTypeInvalid, "path").to_string(), WsSendOpCode);
       else if (!cmd.contains("value"))
         ws->send(createErrorResponse(queryRspName, RequestStatus::ParamMissing, "value").to_string(), WsSendOpCode);
+      else
+        sessionSubmit(ws, token, queryType, queryName, queryRspName, std::move(cmd));
+    }
+  }
+
+
+  fc_always_inline void keys(KvWebSocket * ws, njson&& json)
+  {
+    static const KvQueryType queryType      = KvQueryType::KvKeys;
+    static const std::string queryName      = QueryTypeToName.at(queryType);
+    static const std::string queryRspName   = queryName +"_RSP";
+
+    auto& cmd = json.at(queryName);
+    
+    SessionToken token;
+    if (getSessionToken(ws, queryRspName, cmd, token))
+    {
+      if (!cmd.empty()) // after tkn removed
+        ws->send(createErrorResponse(queryRspName, RequestStatus::CommandSyntax).to_string(), WsSendOpCode);
       else
         sessionSubmit(ws, token, queryType, queryName, queryRspName, std::move(cmd));
     }

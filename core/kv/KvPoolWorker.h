@@ -284,7 +284,6 @@ private:
       send(cmd, rsp.to_string());
     };
     
-
     
     auto update = [this](CacheMap& map, KvCommand& cmd)
     {
@@ -300,6 +299,12 @@ private:
       rsp["KV_UPDATE_RSP"]["cnt"] = count;
 
       send(cmd, rsp.to_string());
+    };
+
+
+    auto keys = [this](CacheMap& map, KvCommand& cmd)
+    {
+      send(cmd, PoolRequestResponse::sessionKeys(cmd.shtk, map.keys()).to_string());
     };
 
 
@@ -321,7 +326,8 @@ private:
       count,
       contains,
       find,
-      update
+      update,
+      keys
     };
 
 

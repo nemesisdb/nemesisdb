@@ -37,6 +37,7 @@ enum class KvQueryType : std::uint8_t
   KvContains,
   KvFind,
   KvUpdate,
+  KvKeys,
   Max,
   InternalSessionMonitor,
   Unknown,
@@ -62,7 +63,8 @@ const std::map<const std::string_view, std::tuple<const KvQueryType>> QueryNameT
   {"KV_COUNT",        {KvQueryType::KvCount}},
   {"KV_CONTAINS",     {KvQueryType::KvContains}},
   {"KV_FIND",         {KvQueryType::KvFind}},
-  {"KV_UPDATE",       {KvQueryType::KvUpdate}}
+  {"KV_UPDATE",       {KvQueryType::KvUpdate}},
+  {"KV_KEYS",         {KvQueryType::KvKeys}}
 };
 
 
@@ -75,17 +77,18 @@ const std::map<const KvQueryType, const std::string> QueryTypeToName =
   {KvQueryType::SessionInfo,      "SH_INFO"},
   {KvQueryType::SessionInfoAll,   "SH_INFO_ALL"},
   //
-  {KvQueryType::KvSet,       "KV_SET"},
-  {KvQueryType::KvSetQ,      "KV_SETQ"},
-  {KvQueryType::KvGet,       "KV_GET"},
-  {KvQueryType::KvAdd,       "KV_ADD"},
-  {KvQueryType::KvAddQ,      "KV_ADDQ"},
-  {KvQueryType::KvRemove,    "KV_RMV"},
-  {KvQueryType::KvClear,     "KV_CLEAR"},
-  {KvQueryType::KvCount,     "KV_COUNT"},
-  {KvQueryType::KvContains,  "KV_CONTAINS"},
-  {KvQueryType::KvFind,      "KV_FIND"},
-  {KvQueryType::KvUpdate,    "KV_UPDATE"}
+  {KvQueryType::KvSet,        "KV_SET"},
+  {KvQueryType::KvSetQ,       "KV_SETQ"},
+  {KvQueryType::KvGet,        "KV_GET"},
+  {KvQueryType::KvAdd,        "KV_ADD"},
+  {KvQueryType::KvAddQ,       "KV_ADDQ"},
+  {KvQueryType::KvRemove,     "KV_RMV"},
+  {KvQueryType::KvClear,      "KV_CLEAR"},
+  {KvQueryType::KvCount,      "KV_COUNT"},
+  {KvQueryType::KvContains,   "KV_CONTAINS"},
+  {KvQueryType::KvFind,       "KV_FIND"},
+  {KvQueryType::KvUpdate,     "KV_UPDATE"},
+  {KvQueryType::KvKeys,       "KV_KEYS"}
 };
 
 
@@ -167,12 +170,11 @@ struct PoolRequestResponse
     return rsp;
   }
 
-  static njson sessionAppend (const SessionToken& tkn, const RequestStatus status, const std::string_view k)
+  static njson sessionKeys(const SessionToken& tkn, njson&& keys)
   {
     njson rsp;
-    rsp["KV_APPEND_RSP"]["st"] = toInt(status);
-    rsp["KV_APPEND_RSP"]["k"] = k;
-    rsp["KV_APPEND_RSP"]["tkn"] = tkn;
+    rsp["KV_KEYS_RSP"]["tkn"] = tkn;
+    rsp["KV_KEYS_RSP"]["keys"] = std::move(keys);
     return rsp;
   }
 };

@@ -8,6 +8,7 @@
       "overrideName": true
     }
   },
+  "debug.terminal.clearBeforeReusing": true,
   "editor.fontSize": 12,
   "editor.tabSize": 2,
   "files.associations": {
@@ -97,5 +98,5 @@
     "*.ipp": "cpp",
     "regex": "cpp",
     "scoped_allocator": "cpp"
-  }
+  }  
 }

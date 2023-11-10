@@ -221,6 +221,8 @@ public:
             us_socket_t * socket = reinterpret_cast<us_socket_t *>(listenSocket); // this cast is safe
             listenSuccessRef += us_socket_is_closed(0, socket) ? 0U : 1U;
           }
+          else
+            std::cout << "socket failed\n";
 
           startLatch.count_down();
         });
@@ -291,11 +293,14 @@ public:
       {        
         sockaddr_in address;
         address.sin_family = AF_INET;
-        address.sin_port = checkPort;
+        address.sin_port = htons(checkPort);
 
         inet_pton(AF_INET, checkIp.c_str(), &(address.sin_addr));
     
-        return bind(fd, (struct sockaddr*)&address,sizeof(address)) < 0;
+        const auto open = bind(fd, (struct sockaddr*)&address,sizeof(address)) < 0;
+        close(fd);
+
+        return open;
       }
  
       return {};
