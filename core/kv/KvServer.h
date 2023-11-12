@@ -44,6 +44,11 @@ public:
 
   void stop()
   {
+    m_run = false;
+
+    if (m_monitor.joinable())
+      m_monitor.join();
+
     {
       std::scoped_lock lck{m_wsClientsMux};
       for (auto ws : m_wsClients)
@@ -51,11 +56,6 @@ public:
 
       m_wsClients.clear();
     }
-
-    m_run = false;
-
-    if (m_monitor.joinable())
-      m_monitor.join();
 
     {
       std::scoped_lock lck{m_socketsMux};
@@ -226,8 +226,6 @@ public:
             us_socket_t * socket = reinterpret_cast<us_socket_t *>(listenSocket); // this cast is safe
             listenSuccessRef += us_socket_is_closed(0, socket) ? 0U : 1U;
           }
-          else
-            std::cout << "socket failed\n";
 
           startLatch.count_down();
         });
