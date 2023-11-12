@@ -18,14 +18,14 @@ The configuration has paremeters:
 
 |Param|Type|Description|
 |:---|:---:|:---|
-|ip|string|IP address to bind the WebSocket server|
+|ip|string|IP address of the WebSocket server|
 |port|unsigned int|Port of the WebSocket server|
-|maxPayload|unsigned int|Max bytes per query. A query larger than this will be rejected.<br/> Max is 2MB.|
+|maxPayload|unsigned int|Max bytes per query. A query larger than this will be rejected.<br/>Absolute min/max are 64 bytes and 2MB.|
 
 
 ## Default Config
 
-There is a default configuration included in the install package:
+There is a default configuration included in the install package/Docker image:
 
 ```json title="default.json"
 {
