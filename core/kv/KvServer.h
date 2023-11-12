@@ -2,6 +2,7 @@
 #define NDB_CORE_KVSERVER_H
 
 
+#include <dirent.h>     // for checking /proc
 #include <arpa/inet.h>  // for inet_pton() etc
 #include <functional>
 #include <vector>
@@ -36,25 +37,25 @@ public:
     }
     catch(const std::exception& e)
     {
-      std::cerr << "Error during shutdown\n"; // don't care particularly
+      std::cout << "Error during shutdown\n"; // don't care particularly
     }
   }
 
 
   void stop()
   {
+    {
+      std::scoped_lock lck{m_wsClientsMux};
+      for (auto ws : m_wsClients)
+        ws->end(1000); // calls AsyncSocket::shutdown()
+
+      m_wsClients.clear();
+    }
+
     m_run = false;
 
     if (m_monitor.joinable())
       m_monitor.join();
-
-    {
-      std::scoped_lock lck{m_wsSessionsMux};
-      for (auto ws : m_wsSessions)
-        ws->end(1000); 
-
-      m_wsSessions.clear();
-    }
 
     {
       std::scoped_lock lck{m_socketsMux};
@@ -117,11 +118,15 @@ public:
     std::string ip = config.cfg["kv"]["ip"].as_string();
     int port = config.cfg["kv"]["port"].as<unsigned int>();
 
-    if (auto check = isPortOpen(ip, port); !check || *check)
-    {
-      std::cout << "ERROR: IP and port already used OR failed during checking open ports. " << ip << ":" << port << '\n';
-      return false;
-    }
+
+    // TODO decide: when we shutdown, client connections enter TIME_WAIT, preventing starting
+    //              if isPortOpen() is called. 
+    //              See: https://www.baeldung.com/linux/close-socket-time_wait
+    // if (auto check = isPortOpen(ip, port); !check || *check)
+    // {
+    //   std::cout << "ERROR: IP and port already used OR failed during checking open ports. " << ip << ":" << port << '\n';
+    //   return false;
+    // }
 
 
     kv::serverStats = new kv::ServerStats;
@@ -151,8 +156,8 @@ public:
           
           .open = [this](KvWebSocket * ws)
           {
-            std::scoped_lock lck{m_wsSessionsMux};
-            m_wsSessions.insert(ws);
+            std::scoped_lock lck{m_wsClientsMux};
+            m_wsClients.insert(ws);
           },          
           .message = [this, serverStats](KvWebSocket * ws, std::string_view message, uWS::OpCode opCode)
           {   
@@ -204,8 +209,8 @@ public:
             // but when we call ws->end(), this lambda is called, so we need to avoid mutex deadlock with this flag
             if (m_run)
             {
-              std::scoped_lock lck{m_wsSessionsMux};
-              m_wsSessions.erase(ws);
+              std::scoped_lock lck{m_wsClientsMux};
+              m_wsClients.erase(ws);
             }
           }
         })
@@ -231,7 +236,6 @@ public:
           wsApp.run();
       });
       
-
       if (thread)
       {
         {
@@ -285,38 +289,92 @@ public:
 
   private:
 
+    /*
     std::optional<bool> isPortOpen (const std::string& checkIp, const short checkPort)
     {
-      #ifndef NDB_UNIT_TEST_NOPORTCHECK
-
+      #ifdef NDB_UNIT_TEST_NOPORTCHECK
+      return false;
+      #else
+      
       if (auto fd = socket(AF_INET, SOCK_STREAM, 0) ; fd >= 0)
       {        
+        sockaddr a;
         sockaddr_in address;
         address.sin_family = AF_INET;
         address.sin_port = htons(checkPort);
 
         inet_pton(AF_INET, checkIp.c_str(), &(address.sin_addr));
     
-        const auto open = bind(fd, (struct sockaddr*)&address,sizeof(address)) < 0;
+        const auto open = bind(fd, reinterpret_cast<const sockaddr*>(&address), sizeof(address)) < 0;
+        
+        if (open)
+        {
+          char msg[256];
+          std::cout << strerror_r(errno, msg, 256) << '\n';
+        }
+
         close(fd);
 
         return open;
       }
- 
       return {};
-      #else
-      return false;
+
       #endif
     }
+
+    int getPid(const std::string& procName)
+    {
+      int pid = -1;
+
+      // Open the /proc directory
+      DIR *dp = opendir("/proc");
+      if (dp != NULL)
+      {
+        // Enumerate all entries in directory until process found
+        struct dirent *dirp;
+        while (pid < 0 && (dirp = readdir(dp)))
+        {
+          // Skip non-numeric entries
+          int id = atoi(dirp->d_name);
+          if (id > 0)
+          {
+            // Read contents of virtual /proc/{pid}/cmdline file
+            std::string cmdPath = std::string("/proc/") + dirp->d_name + "/cmdline";
+            std::ifstream cmdFile(cmdPath.c_str());
+            std::string cmdLine;
+            if (std::getline(cmdFile, cmdLine); !cmdLine.empty())
+            {
+              // Keep first cmdline item which contains the program path
+              size_t pos = cmdLine.find('\0');
+              if (pos != std::string::npos)
+                cmdLine = cmdLine.substr(0, pos);
+              // Keep program name only, removing the path
+              pos = cmdLine.rfind('/');
+              if (pos != std::string::npos)
+                cmdLine = cmdLine.substr(pos + 1);
+
+              // Compare against requested process name
+              if (procName == cmdLine)
+                pid = id;
+            }
+          }
+        }
+      }
+
+      closedir(dp);
+
+      return pid;
+    }
+    */
 
 
   private:
     std::vector<std::jthread *> m_threads;
     std::vector<us_listen_socket_t *> m_sockets;
-    std::set<KvWebSocket *> m_wsSessions;
+    std::set<KvWebSocket *> m_wsClients;
     kv::KvHandler * m_kvHandler;
     std::mutex m_socketsMux;
-    std::mutex m_wsSessionsMux;
+    std::mutex m_wsClientsMux;
     std::mutex m_threadsMux;
     std::atomic_bool m_run;
     std::jthread m_monitor;
