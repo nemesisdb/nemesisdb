@@ -174,6 +174,7 @@ struct PoolRequestResponse
   {
     njson rsp;
     rsp["KV_KEYS_RSP"]["tkn"] = tkn;
+    rsp["KV_KEYS_RSP"]["st"] = toInt(Ok);
     rsp["KV_KEYS_RSP"]["keys"] = std::move(keys);
     return rsp;
   }

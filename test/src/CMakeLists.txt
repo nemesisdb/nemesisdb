@@ -30,6 +30,7 @@ add_executable(test_contains Contains.cpp)
 add_executable(test_find Find.cpp)
 add_executable(test_sessions Sessions.cpp)
 add_executable(test_update Update.cpp)
+add_executable(test_keys Keys.cpp)
 
 
 target_compile_features(test_set PUBLIC cxx_std_20)
@@ -46,6 +47,7 @@ target_compile_features(test_contains PUBLIC cxx_std_20)
 target_compile_features(test_find PUBLIC cxx_std_20)
 target_compile_features(test_sessions PUBLIC cxx_std_20)
 target_compile_features(test_update PUBLIC cxx_std_20)
+target_compile_features(test_keys PUBLIC cxx_std_20)
 
 
 target_link_libraries(test_set -luSockets -lz -lboost_fiber -lboost_program_options -lboost_context -lgtest)
@@ -62,6 +64,7 @@ target_link_libraries(test_contains -luSockets -lz -lboost_fiber -lboost_program
 target_link_libraries(test_find -luSockets -lz -lboost_fiber -lboost_program_options -lboost_context -lgtest)
 target_link_libraries(test_sessions -luSockets -lz -lboost_fiber -lboost_program_options -lboost_context -lgtest)
 target_link_libraries(test_update -luSockets -lz -lboost_fiber -lboost_program_options -lboost_context -lgtest)
+target_link_libraries(test_keys -luSockets -lz -lboost_fiber -lboost_program_options -lboost_context -lgtest)
 
 
 set(CMAKE_GENERATOR_PLATFORM x64)
