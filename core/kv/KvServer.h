@@ -85,58 +85,17 @@ public:
 
   bool run (NemesisConfig& config)
   {
-    // cores => io threads
-    static const std::map<std::size_t, std::size_t> CoresToIoThreads =
-    {
-      {1, 1},
-      {2, 1},
-      {4, 3},
-      {8, 6},
-      {10, 8},
-      {12, 10},
-      {16, 12},
-      {18, 15},
-      {20, 17},
-      {24, 20},
-      {32, 28},
-      {48, 44},
-      {64, 58}
-    };
-    
-    
+    std::size_t nIoThreads = 0 ;
+    bool started = false;
 
-    const auto nCores = std::min<std::size_t>(std::thread::hardware_concurrency(), NEMESIS_MAX_CORES);
-
-    if (nCores < 1U || nCores > 64U)
-    {
-      std::cout << "Core count unexpected: " << nCores << '\n';
+    if (std::tie(started, nIoThreads) = init(config.cfg); !started)
       return false;
-    }
-    
 
     unsigned int maxPayload = config.cfg["kv"]["maxPayload"].as<unsigned int>();
     std::string ip = config.cfg["kv"]["ip"].as_string();
     int port = config.cfg["kv"]["port"].as<unsigned int>();
 
 
-    // TODO decide: when we shutdown, client connections enter TIME_WAIT, preventing starting
-    //              if isPortOpen() is called. 
-    //              See: https://www.baeldung.com/linux/close-socket-time_wait
-    // if (auto check = isPortOpen(ip, port); !check || *check)
-    // {
-    //   std::cout << "ERROR: IP and port already used OR failed during checking open ports. " << ip << ":" << port << '\n';
-    //   return false;
-    // }
-
-
-    kv::serverStats = new kv::ServerStats;
-
-    const std::size_t nIoThreads = CoresToIoThreads.contains(nCores) ? CoresToIoThreads.at(nCores) : std::prev(CoresToIoThreads.upper_bound(nCores), 1)->second;
-    
-    kv::MaxPools = std::max<std::size_t>(1U, nCores - nIoThreads);
-
-    m_kvHandler = new kv::KvHandler {kv::MaxPools, nCores - kv::MaxPools};
-    
     std::size_t listenSuccess{0U};
     std::atomic_ref listenSuccessRef{listenSuccess};
     std::latch startLatch (nIoThreads);
@@ -286,6 +245,84 @@ public:
   }
 
   private:
+
+    std::tuple<bool, std::size_t> init(const njson& config)
+    {
+      // cores => io threads
+      static const std::map<std::size_t, std::size_t> CoresToIoThreads =
+      {
+        {1, 1},
+        {2, 1},
+        {4, 3},
+        {8, 6},
+        {10, 8},
+        {12, 10},
+        {16, 12},
+        {18, 15},
+        {20, 17},
+        {24, 20},
+        {32, 28},
+        {48, 44},
+        {64, 58}
+      };
+      
+
+      if (NemesisConfig::kvSaveEnabled(config))
+      {
+        // test we can write to the kv save path
+        if (std::filesystem::path path {NemesisConfig::kvSavePath(config)}; !std::filesystem::exists(path) || !std::filesystem::is_directory(path))
+        {
+          std::cout << "kv::save::path is not a directory or does not exist\n";
+          return {false, 0};
+        }
+        else
+        {
+          auto filename = createUuid();
+          std::filesystem::path fullPath{path};
+          fullPath /= filename;
+
+          if (std::ofstream out{fullPath}; !out.good())
+          {
+            std::cout << "Cannot write to kv::save::path\n";
+            return {false, 0};
+          }
+          else
+          {
+            out.close();
+            std::filesystem::remove(fullPath);
+          }
+        }
+      }
+
+
+      if (const auto nCores = std::min<std::size_t>(std::thread::hardware_concurrency(), NEMESIS_MAX_CORES); nCores < 1U || nCores > 64U)
+      {
+        std::cout << "Core count unexpected: " << nCores << '\n';
+        return {false, 0};
+      }
+      else
+      {
+        const std::size_t nIoThreads = CoresToIoThreads.contains(nCores) ? CoresToIoThreads.at(nCores) : std::prev(CoresToIoThreads.upper_bound(nCores), 1)->second;
+        
+        kv::MaxPools = std::max<std::size_t>(1U, nCores - nIoThreads);
+        kv::serverStats = new kv::ServerStats;
+        
+        m_kvHandler = new kv::KvHandler {kv::MaxPools, nCores - kv::MaxPools, config};
+      
+        return {true, nIoThreads};
+      }
+
+      /* TODO decide: when we shutdown, client connections enter TIME_WAIT, preventing starting
+      //              if isPortOpen() is called. 
+      //              See: https://www.baeldung.com/linux/close-socket-time_wait
+      if (auto check = isPortOpen(ip, port); !check || *check)
+      {
+        std::cout << "ERROR: IP and port already used OR failed during checking open ports. " << ip << ":" << port << '\n';
+        return false;
+      }
+      */
+    }
+
 
     /*
     std::optional<bool> isPortOpen (const std::string& checkIp, const short checkPort)

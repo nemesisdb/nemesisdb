@@ -18,8 +18,9 @@ namespace nemesis { namespace core { namespace kv {
 class KvHandler
 {
 public:
-  KvHandler(const std::size_t nPools, const std::size_t coreOffset) :
-    m_createSessionPoolId(nPools == 1U ? SessionIndexers[1U] : SessionIndexers[0U])
+  KvHandler(const std::size_t nPools, const std::size_t coreOffset, const njson& config) :
+    m_createSessionPoolId(nPools == 1U ? SessionIndexers[1U] : SessionIndexers[0U]),
+    m_config(config)
   {
     for (std::size_t pool = 0, core = coreOffset ; pool < nPools ; ++pool, ++core)
       m_pools.emplace_back(new KvPoolWorker{core, pool});
@@ -52,7 +53,8 @@ private:
     std::bind(&KvHandler::contains,         std::ref(*this), std::placeholders::_1, std::placeholders::_2),
     std::bind(&KvHandler::find,             std::ref(*this), std::placeholders::_1, std::placeholders::_2),
     std::bind(&KvHandler::update,           std::ref(*this), std::placeholders::_1, std::placeholders::_2),
-    std::bind(&KvHandler::keys,             std::ref(*this), std::placeholders::_1, std::placeholders::_2)
+    std::bind(&KvHandler::keys,             std::ref(*this), std::placeholders::_1, std::placeholders::_2),
+    std::bind(&KvHandler::save,             std::ref(*this), std::placeholders::_1, std::placeholders::_2)
   };
 
 
@@ -613,10 +615,30 @@ private:
   }
   
 
+  fc_always_inline void save(KvWebSocket * ws, njson&& json)
+  {
+    static const KvQueryType queryType      = KvQueryType::KvSave;
+    static const std::string queryName      = QueryTypeToName.at(queryType);
+    static const std::string queryRspName   = queryName +"_RSP";
+
+    auto& cmd = json.at(queryName);
+
+    if ((!cmd.contains("name")) || !cmd.at("name").is_string())
+      ws->send(createErrorResponse(queryRspName, RequestStatus::CommandSyntax).to_string(), WsSendOpCode);
+    else
+    {
+      njson saveCmd;
+      //saveCmd["path"]
+      
+      
+    }
+  }  
+
 
 private:
   std::vector<KvPoolWorker *> m_pools;
   std::function<void(const SessionToken&, SessionPoolId&)> m_createSessionPoolId;
+  njson m_config;
 };
 
 }

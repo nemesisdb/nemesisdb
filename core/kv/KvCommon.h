@@ -38,6 +38,7 @@ enum class KvQueryType : std::uint8_t
   KvFind,
   KvUpdate,
   KvKeys,
+  KvSave,
   Max,
   InternalSessionMonitor,
   Unknown,
@@ -229,6 +230,17 @@ fc_always_inline SessionToken createSessionToken(const SessionName& name, const 
     return std::to_string(uuid.hash());
   }
 }
+
+
+fc_always_inline uuid createUuid ()
+{
+  static UUIDv4::UUIDGenerator<std::mt19937_64> uuidGenerator; 
+  
+  uuid s;
+  uuidGenerator.getUUID().str(s);
+  return s;
+}
+
 
 // TODO this isn't used, but really should be
 // fc_always_inline bool valueTypeValid (const njson& value)

@@ -7,6 +7,7 @@
 #include <thread>
 #include <chrono>
 #include <uwebsockets/App.h>
+#include <uuid_v4/uuid_v4.h>
 #include <jsoncons/json.hpp>
 #include <jsoncons_ext/jsonpath/jsonpath.hpp>
 
@@ -15,7 +16,7 @@ namespace nemesis { namespace core {
 
 #define fc_always_inline inline __attribute__((always_inline))
 
-static const char * NEMESIS_VERSION = "0.3.3";
+static const char * NEMESIS_VERSION = "0.3.4";
 static const std::size_t NEMESIS_CONFIG_VERSION = 1U;
 static const std::size_t NEMESIS_MAX_CORES = 4U;
 
@@ -25,7 +26,7 @@ static const std::size_t NEMESIS_KV_MAXPAYLOAD = 2U * 1024U * 1024U;
 
 // general
 using njson = jsoncons::ojson;
-//using jcjson = jsoncons::json;
+using uuid = std::string;
 using NemesisClock = std::chrono::steady_clock;
 using NemesisTimePoint = NemesisClock::time_point;
 

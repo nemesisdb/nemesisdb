@@ -29,9 +29,19 @@ struct NemesisConfig
     cfg = std::move(njson::parse(config));
   }
 
+  
+  static std::string kvSavePath (const njson& cfg)
+  {
+    return cfg.at("kv").at("save").at("path").as_string();
+  }
+
+  static bool kvSaveEnabled (const njson& cfg)
+  {
+    return cfg.at("kv").at("save").at("enabled").as_bool();
+  }
+
   njson cfg;
   bool valid;
-
 } ;
 
 
@@ -44,11 +54,9 @@ inline bool isValid (std::function<bool()> isValidCheck, const std::string_view 
 };
 
 
-void readConfig(NemesisConfig& config, std::filesystem::path path)
+NemesisConfig readConfig(std::filesystem::path path)
 {
   std::ifstream configStream{path};
-
-  config = NemesisConfig{};
 
   try
   {
@@ -62,22 +70,32 @@ void readConfig(NemesisConfig& config, std::filesystem::path path)
     if (valid)
     {
       const auto& kvCfg = cfg.at("kv");
-      valid = isValid([&kvCfg](){ return kvCfg.contains("ip") && kvCfg.contains("port") && kvCfg.contains("maxPayload"); }, "kv section requires ip, port and maxPayload") &&
-              isValid([&kvCfg](){ return kvCfg.at("ip").is_string() && kvCfg.at("port").is_uint64() && kvCfg.at("maxPayload").is_uint64(); }, "kv::ip must string, kv::port and kv::maxPayload must be unsigned integer") &&
+      valid = isValid([&kvCfg](){ return kvCfg.contains("ip") && kvCfg.contains("port") && kvCfg.contains("maxPayload") && kvCfg.contains("save"); }, "kv section requires ip, port, maxPayload and save") &&
+              isValid([&kvCfg](){ return kvCfg.at("ip").is_string() && kvCfg.at("port").is_uint64() && kvCfg.at("maxPayload").is_uint64() && kvCfg.at("save").is_object(); }, "kv::ip must string, kv::port and kv::maxPayload must be unsigned integer, kv::save must be an object") &&
               isValid([&kvCfg](){ return kvCfg.at("maxPayload") >= nemesis::core::NEMESIS_KV_MINPAYLOAD; }, "kv::maxPayload below minimum") &&
               isValid([&kvCfg](){ return kvCfg.at("maxPayload") <= nemesis::core::NEMESIS_KV_MAXPAYLOAD; }, "kv::maxPayload exceeds maximum");
-    
-      config = NemesisConfig{std::move(cfg)};
+
+      if (valid)
+      {
+        auto& saveCfg = kvCfg.at("save");
+        valid = isValid([&saveCfg](){ return saveCfg.contains("path") && saveCfg.at("path").is_string(); }, "kv::save::path must be a string") &&
+                isValid([&saveCfg](){ return saveCfg.contains("enabled") && saveCfg.at("enabled").is_bool(); }, "kv::save::enabled must be a bool");
+      }
+
+      if (valid)
+        return NemesisConfig{std::move(cfg)};
     }
   }
   catch(const std::exception& e)
   {
     std::cout << "Config file not valid JSON\n";
   }  
+
+  return NemesisConfig{};
 }
 
 
-void readConfig (NemesisConfig& config, const int argc, char ** argv)
+NemesisConfig readConfig (const int argc, char ** argv)
 {
   namespace po = boost::program_options;
 
@@ -86,7 +104,7 @@ void readConfig (NemesisConfig& config, const int argc, char ** argv)
   std::filesystem::path cfgPath;
 
   po::options_description common("");
-  common.add_options()("help",    "Show help");
+  common.add_options()("help, h",    "Show help");
 
   po::options_description configFile("Config file");
   configFile.add_options()("config",  po::value<std::filesystem::path>(&cfgPath),     "Path to json config file");
@@ -100,7 +118,7 @@ void readConfig (NemesisConfig& config, const int argc, char ** argv)
   po::notify(vm);
 
   if (vm.contains("help"))
-    std::cout << all << '\n';  
+    std::cout << all << '\n';
   else
   { 
     if (vm.count("config") != 1U)
@@ -110,9 +128,11 @@ void readConfig (NemesisConfig& config, const int argc, char ** argv)
       if (!std::filesystem::exists(cfgPath))
         std::cout << "Config file path not found\n";
       else
-        readConfig(config, cfgPath);
+        return readConfig(cfgPath);
     }
   }
+
+  return {};
 }
 
 
