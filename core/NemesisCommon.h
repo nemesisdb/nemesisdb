@@ -35,6 +35,7 @@ using cachedkey = std::string;
 using cachedvalue2 = njson;
 using cachedpair2 = njson;
 using KvSaveClock = std::chrono::system_clock;
+using KvSaveMetaDataUnit = std::chrono::milliseconds;
 
 // session
 using SessionPoolId = std::size_t;
@@ -99,10 +100,22 @@ enum class RequestStatus
   SessionNotExist = 100,
   SessionTokenInvalid,
   SessionOpenFail,
-  SessionNewFail,
-  SaveError = 120,
+  SessionNewFail,  
+  SaveStart = 120,
+  SaveComplete,
+  SaveDirWriteFail,
+  SaveError,
   Unknown = 1000
 };
+
+
+enum class KvSaveStatus
+{
+  Pending = 0,
+  Complete,
+  Error
+};
+
 
 static inline bool setThreadAffinity(const std::thread::native_handle_type handle, const size_t core)
 {

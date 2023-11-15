@@ -627,27 +627,63 @@ private:
       ws->send(createErrorResponse(queryRspName, RequestStatus::CommandSyntax).to_string(), WsSendOpCode);
     else
     {
-      // TODO metadata
-
-      const auto path = NemesisConfig::kvSavePath(m_config);
-      const auto timestampDir = std::to_string(KvSaveClock::now().time_since_epoch().count());
-
-      njson saveCmd;
-      saveCmd["poolDataRoot"] = (std::filesystem::path{path} / "data" / timestampDir).string();
-
-      auto results = sessionSubmitSync(ws, queryType, queryName, queryRspName, std::move(saveCmd));
+      const auto& name = cmd.at("name").as_string();
 
       njson rsp;
-      rsp[queryRspName]["name"] = std::move(cmd.at("name"));
-
-      RequestStatus st = RequestStatus::Ok;
-
-      for (auto& result : results)
-        st = (std::any_cast<RequestStatus>(result) == RequestStatus::Ok ? RequestStatus::Ok : RequestStatus::SaveError);
+      rsp[queryRspName]["name"] = name;
       
-      rsp[queryRspName]["st"] = toUnderlying(st);
+      const auto timestampDir = std::to_string(KvSaveClock::now().time_since_epoch().count());
+      const auto root = std::filesystem::path {NemesisConfig::kvSavePath(m_config)} / name / timestampDir;
+      const auto metaPath = std::filesystem::path{root} / "md";
+      const auto dataPath = std::filesystem::path{root} / "data";
 
-      ws->send(rsp.to_string(), WsSendOpCode);
+      std::ofstream metaStream;
+
+      if (!std::filesystem::create_directories(metaPath))
+      {
+        rsp[queryRspName]["st"] = toUnderlying(RequestStatus::SaveDirWriteFail);
+        ws->send(rsp.to_string(), WsSendOpCode);
+      }
+      else if (metaStream.open(metaPath/"md.json", std::ios_base::trunc | std::ios_base::out); !metaStream.is_open())
+      {
+        rsp[queryRspName]["st"] = toUnderlying(RequestStatus::SaveDirWriteFail);
+        ws->send(rsp.to_string(), WsSendOpCode);
+      }
+      else
+      {
+        rsp[queryRspName]["st"] = toUnderlying(RequestStatus::SaveStart);
+        ws->send(rsp.to_string(), WsSendOpCode);
+
+        // write metadata before we start incase we're interrupted mid-save
+        njson metadata;
+        metadata["name"] = name;
+        metadata["status"] = toUnderlying(KvSaveStatus::Pending);        
+        metadata["pools"] = m_pools.size();
+        metadata["start"] = std::chrono::time_point_cast<KvSaveMetaDataUnit>(KvSaveClock::now()).time_since_epoch().count();
+        metadata["complete"] = 0;
+        
+        metadata.dump(metaStream);
+
+        // build and send save to pools
+        njson saveCmd;
+        saveCmd["poolDataRoot"] = dataPath.string();
+
+        auto results = sessionSubmitSync(ws, queryType, queryName, queryRspName, std::move(saveCmd));
+
+        RequestStatus st = RequestStatus::Ok;
+
+        for (auto& result : results)
+          st = (std::any_cast<RequestStatus>(result) == RequestStatus::Ok ? RequestStatus::Ok : RequestStatus::SaveError);
+        
+        
+        metadata["status"] = toUnderlying(KvSaveStatus::Complete);
+        metadata["complete"] = std::chrono::time_point_cast<KvSaveMetaDataUnit>(KvSaveClock::now()).time_since_epoch().count();
+        metaStream.seekp(0);
+        metadata.dump(metaStream);
+
+        rsp[queryRspName]["st"] = toUnderlying(st);
+        ws->send(rsp.to_string(), WsSendOpCode);
+      }
     }
   }  
 
