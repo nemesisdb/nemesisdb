@@ -195,6 +195,12 @@ public:
     return keys;
   }
 
+
+  const Map& map () const
+  {
+    return m_map;
+  }
+
 private:
   Map m_map;
 };

@@ -139,6 +139,12 @@ public:
   }
 
 
+  const SessionsMap& getSessions () const
+  {
+    return m_sessions;
+  }
+
+
   std::optional<std::reference_wrapper<const Session>> get (const SessionToken& token) const
   {
     if (auto it = m_sessions.find(token) ; it == m_sessions.end())

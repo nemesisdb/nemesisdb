@@ -35,7 +35,7 @@ public:
 private:
   
   // CAREFUL: these have to be in the order of KvQueryType enum
-  const std::array<std::function<void(KvWebSocket *, njson&&)>, static_cast<std::size_t>(KvQueryType::Max)> Handlers = 
+  const std::array<std::function<void(KvWebSocket *, njson&&)>, static_cast<std::size_t>(KvQueryType::MAX)> Handlers = 
   {
     std::bind(&KvHandler::sessionNew,       std::ref(*this), std::placeholders::_1, std::placeholders::_2),
     std::bind(&KvHandler::sessionEnd,       std::ref(*this), std::placeholders::_1, std::placeholders::_2),
@@ -60,7 +60,7 @@ private:
 
 public:
 
-  //std::tuple<RequestStatus,std::string> handle(KvWebSocket * ws, njson&& json)
+  
   RequestStatus handle(KvWebSocket * ws, const std::string_view& command, njson&& json)
   {
     RequestStatus status = RequestStatus::Ok;
@@ -183,7 +183,7 @@ private:
     {
       pool->execute(KvCommand{  .ws = ws,
                                 .loop = uWS::Loop::get(),
-                                .contents = std::move(cmd),
+                                .contents = cmd,
                                 .type = queryType,
                                 .syncResponseHandler = onResult});
     }
@@ -627,10 +627,27 @@ private:
       ws->send(createErrorResponse(queryRspName, RequestStatus::CommandSyntax).to_string(), WsSendOpCode);
     else
     {
+      // TODO metadata
+
+      const auto path = NemesisConfig::kvSavePath(m_config);
+      const auto timestampDir = std::to_string(KvSaveClock::now().time_since_epoch().count());
+
       njson saveCmd;
-      //saveCmd["path"]
+      saveCmd["poolDataRoot"] = (std::filesystem::path{path} / "data" / timestampDir).string();
+
+      auto results = sessionSubmitSync(ws, queryType, queryName, queryRspName, std::move(saveCmd));
+
+      njson rsp;
+      rsp[queryRspName]["name"] = std::move(cmd.at("name"));
+
+      RequestStatus st = RequestStatus::Ok;
+
+      for (auto& result : results)
+        st = (std::any_cast<RequestStatus>(result) == RequestStatus::Ok ? RequestStatus::Ok : RequestStatus::SaveError);
       
-      
+      rsp[queryRspName]["st"] = toUnderlying(st);
+
+      ws->send(rsp.to_string(), WsSendOpCode);
     }
   }  
 

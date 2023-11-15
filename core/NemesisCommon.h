@@ -34,6 +34,7 @@ using NemesisTimePoint = NemesisClock::time_point;
 using cachedkey = std::string;
 using cachedvalue2 = njson;
 using cachedpair2 = njson;
+using KvSaveClock = std::chrono::system_clock;
 
 // session
 using SessionPoolId = std::size_t;
@@ -99,6 +100,7 @@ enum class RequestStatus
   SessionTokenInvalid,
   SessionOpenFail,
   SessionNewFail,
+  SaveError = 120,
   Unknown = 1000
 };
 

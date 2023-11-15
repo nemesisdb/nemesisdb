@@ -8,6 +8,7 @@
 #include <boost/fiber/fiber.hpp>
 #include <boost/fiber/buffered_channel.hpp>
 #include <ankerl/unordered_dense.h>
+#include <jsoncons/json_encoder.hpp>
 #include <core/NemesisCommon.h>
 #include <core/CacheMap.h>
 #include <core/kv/KvCommon.h>
@@ -62,33 +63,8 @@ private:
 
   void run ()
   {
-    auto sessionNew = [this](CacheMap& map, KvCommand& cmd)
+    auto placeholder = [this](CacheMap& map, KvCommand& cmd)
     {
-      // handled below
-    };
-
-
-    auto sessionEnd = [this](CacheMap& map, KvCommand& cmd)
-    {
-      // handled below 
-    };
-
-
-    auto sessionOpen = [this](CacheMap& map, KvCommand& cmd)
-    {
-      // handled below
-    };
-
-
-    auto sessionInfo = [this](CacheMap& map, KvCommand& cmd)
-    {
-      // handled below
-    };
-
-
-    auto sessionInfoAll = [this](CacheMap& map, KvCommand& cmd)
-    {
-      // handled below
     };
 
 
@@ -307,15 +283,16 @@ private:
       send(cmd, PoolRequestResponse::sessionKeys(cmd.shtk, map.keys()).to_string());
     };
 
+    
 
     // CAREFUL: these have to be in the order of KvQueryType enum
-    static const std::array<std::function<void(CacheMap&, KvCommand&)>, static_cast<std::size_t>(KvQueryType::Max)> handlers = 
+    static const std::array<std::function<void(CacheMap&, KvCommand&)>, static_cast<std::size_t>(KvQueryType::MAX)> handlers = 
     {    
-      sessionNew,
-      sessionEnd,
-      sessionOpen,
-      sessionInfo,
-      sessionInfoAll,
+      placeholder,  // SessionNew
+      placeholder,  // SessionEnd
+      placeholder,  // SessionOpen
+      placeholder,  // SessionInfo
+      placeholder,  // SessionInfoAll
       set,
       setQ,
       get,
@@ -327,7 +304,8 @@ private:
       contains,
       find,
       update,
-      keys
+      keys,
+      placeholder   // kvSave
     };
 
 
@@ -386,6 +364,10 @@ private:
         {
           sessions.handleExpired();
         }
+        else if (cmd.type == KvQueryType::KvSave)
+        {
+          save(cmd, sessions);
+        }
         else  [[likely]]
         {
           if (auto map = sessions.getMap(cmd.shtk); map)
@@ -416,6 +398,50 @@ private:
           send(cmd, createErrorResponse(RequestStatus::Unknown).to_string());
       }
     }
+  }
+
+
+
+  void save(KvCommand& cmd, const Sessions& sessions)
+  {
+    const auto root = cmd.contents["poolDataRoot"].as_string_view();
+    const auto path = std::filesystem::path{root} / std::to_string(m_poolId);
+
+    RequestStatus status = RequestStatus::Ok;
+
+    try
+    {
+      std::cout << "Pool " << m_poolId << " creating: " << path << '\n';
+
+      if (!std::filesystem::create_directories(path))
+        status = RequestStatus::SaveError;
+      else
+      {
+        for(const auto& [token, sesh] : sessions.getSessions())
+        {
+          std::cout << "Pool " << m_poolId << " creating: " << (path/token) << '\n';
+
+          std::ofstream out{path / token};
+          out << "[";
+          
+          for(const auto& [k, v] : sesh.map.map())
+          {
+            out << "{";
+            out << "\"" << k << "\":";
+            v.dump(out);
+            out << "}";
+          }
+
+          out << "]";
+        }
+      }
+    }
+    catch (...)
+    {
+      status = RequestStatus::SaveError;
+    } 
+
+    cmd.syncResponseHandler(std::any{status});   
   }
 
 
