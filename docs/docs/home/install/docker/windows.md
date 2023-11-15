@@ -55,7 +55,7 @@ docker network create --subnet 192.168.1.0/16 my-net
 Start with:
 
 ```bash
-docker run --rm -d --network=my-net --ip=192.1681.111 -v ./server/configs:/configs --name test1 nemesisdb/nemesisdb:latest --config=./configs/config.json
+docker run --rm -d --network=my-net --ip=192.168.1.111 -v ./server/configs:/configs --name test1 nemesisdb/nemesisdb:latest --config=./configs/config.json
 ```
 
 - The config file has `"kv" : {"ip":"192.168.1.111"}` set which is within the range of our `my-net` we just created
