@@ -318,6 +318,8 @@ private:
       {
         cmd = std::move(m_channel.value_pop());
 
+        // TODO can this be tidied by converting query type to int and using relative positions?
+
         if (cmd.type == KvQueryType::SessionNew)
         {
           const SessionDuration duration {cmd.contents.at("expiry").at("duration").as<SessionDuration::rep>()};
@@ -360,13 +362,17 @@ private:
           std::tuple<const std::size_t, const std::size_t> rsp {std::make_tuple(sessions.countSessions(), sessions.countKeys())};
           cmd.syncResponseHandler(std::any{std::move(rsp)});
         }
+        else if (cmd.type == KvQueryType::KvSave)
+        {
+          save(cmd, sessions);
+        }
         else if (cmd.type == KvQueryType::InternalSessionMonitor)
         {
           sessions.handleExpired();
         }
-        else if (cmd.type == KvQueryType::KvSave)
+        else if (cmd.type == KvQueryType::InternalLoad)
         {
-          save(cmd, sessions);
+          load(cmd, sessions);
         }
         else  [[likely]]
         {
@@ -424,12 +430,15 @@ private:
           std::ofstream out{path / token};
           out << "[";
           
+          bool first = true;
           for(const auto& [k, v] : sesh.map.map())
           {
-            out << "{";
+            out << (first ? "{" : ",{");
             out << "\"" << k << "\":";
             v.dump(out);
             out << "}";
+
+            first = false;
           }
 
           out << "]";
@@ -442,6 +451,49 @@ private:
     } 
 
     cmd.syncResponseHandler(std::any{status});   
+  }
+
+
+  void load(KvCommand& cmd, Sessions& sessions)
+  {
+    RequestStatus status = RequestStatus::Loading;
+
+    try
+    {
+      std::cout << cmd.contents << "\n";
+
+      for (auto& dataDir : cmd.contents.at("dirs").array_range())
+      {
+        std::filesystem::path dir {dataDir.as_string_view()};
+        for (const auto seshFile : std::filesystem::directory_iterator{dir})
+        {
+          if (seshFile.is_regular_file())
+          {
+            // TODO session info
+            if (auto session = sessions.start(seshFile.path().filename(), false, SessionDuration{0}, false); session)
+            {
+              std::ifstream seshStream{seshFile.path()};
+              auto seshData = njson::parse(seshStream);
+
+              for (auto& items : seshData.array_range())
+              {
+                for (auto& kv : items.object_range())
+                  session->get().set(kv.key(), std::move(kv.value()));
+              }
+            }
+          }
+        }
+      }
+
+      status = RequestStatus::LoadComplete;
+    }
+    catch(const std::exception& e)
+    {
+      std::cerr << e.what() << '\n';
+      status = RequestStatus::LoadError;
+    }
+
+    cmd.syncResponseHandler(std::any{status});
   }
 
 

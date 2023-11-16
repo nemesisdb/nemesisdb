@@ -15,6 +15,9 @@
 namespace nemesis { namespace core { namespace kv {
 
 
+namespace fs = std::filesystem;
+
+
 class KvHandler
 {
 public:
@@ -94,6 +97,17 @@ public:
   }
 
 
+  void load(const fs::path& dataSetRoot)
+  {
+    // TODO clear cache (later have option to load without clearing)
+
+    njson cmd;
+    cmd["dirs"] = njson::array();
+    cmd["dirs"].emplace_back((dataSetRoot / "0").string());
+
+    auto result = sessionSubmitSync(0, KvQueryType::InternalLoad, std::move(cmd));
+  }
+
 private:
   
 
@@ -136,7 +150,29 @@ private:
                                         .shtk = token});
   } 
 
+  
+  fc_always_inline std::any sessionSubmitSync(const PoolId pool, const KvQueryType queryType, njson&& cmd = "")
+  {
+    std::latch latch{1U};
+    std::any result;
 
+    auto onResult = [&latch, &result](auto r)
+    {
+      result = std::move(r);
+      latch.count_down();
+    };
+
+    m_pools[pool]->execute(KvCommand{ .ws = nullptr,
+                                      .loop = nullptr,
+                                      .contents = std::move(cmd),
+                                      .type = queryType,
+                                      .syncResponseHandler = onResult});
+
+    latch.wait();
+    return result;
+  }
+
+  
   fc_always_inline std::any sessionSubmitSync(KvWebSocket * ws, const SessionToken& token, const KvQueryType queryType, const std::string_view command, const std::string_view rspName, njson&& cmd = "")
   {
     std::latch latch{1U};
@@ -633,13 +669,13 @@ private:
       rsp[queryRspName]["name"] = name;
       
       const auto timestampDir = std::to_string(KvSaveClock::now().time_since_epoch().count());
-      const auto root = std::filesystem::path {NemesisConfig::kvSavePath(m_config)} / name / timestampDir;
-      const auto metaPath = std::filesystem::path{root} / "md";
-      const auto dataPath = std::filesystem::path{root} / "data";
+      const auto root = fs::path {NemesisConfig::kvSavePath(m_config)} / name / timestampDir;
+      const auto metaPath = fs::path{root} / "md";
+      const auto dataPath = fs::path{root} / "data";
 
       std::ofstream metaStream;
 
-      if (!std::filesystem::create_directories(metaPath))
+      if (!fs::create_directories(metaPath))
       {
         rsp[queryRspName]["st"] = toUnderlying(RequestStatus::SaveDirWriteFail);
         ws->send(rsp.to_string(), WsSendOpCode);

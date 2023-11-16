@@ -105,6 +105,9 @@ enum class RequestStatus
   SaveComplete,
   SaveDirWriteFail,
   SaveError,
+  Loading = 140,
+  LoadComplete,
+  LoadError,
   Unknown = 1000
 };
 

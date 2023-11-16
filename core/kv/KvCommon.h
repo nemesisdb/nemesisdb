@@ -41,6 +41,7 @@ enum class KvQueryType : std::uint8_t
   KvSave,
   MAX,
   InternalSessionMonitor,
+  InternalLoad,
   Unknown,
 };
 

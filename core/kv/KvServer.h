@@ -19,6 +19,8 @@
 
 namespace nemesis { namespace core { namespace kv {
 
+namespace fs = std::filesystem;
+
 
 class KvServer
 {
@@ -90,6 +92,11 @@ public:
 
     if (std::tie(started, nIoThreads) = init(config.cfg); !started)
       return false;
+
+    if (config.load())
+    {
+      load(config);
+    }
 
     unsigned int maxPayload = config.cfg["kv"]["maxPayload"].as<unsigned int>();
     std::string ip = config.cfg["kv"]["ip"].as_string();
@@ -244,6 +251,7 @@ public:
     return true;
   }
 
+  
   private:
 
     std::tuple<bool, std::size_t> init(const njson& config)
@@ -321,6 +329,45 @@ public:
         return false;
       }
       */
+    }
+
+
+    std::tuple<bool, std::string> load(const NemesisConfig& config)
+    {
+      fs::path root = config.loadPath / config.loadName;
+
+      if (!fs::exists(root))
+        return {false, "Load name does not exist"};
+      
+      if (!fs::is_directory(root))
+        return {false, "Path to load name is not a directory"};
+
+      std::size_t max = 0;
+
+      for (auto& dir : fs::directory_iterator(root, fs::directory_options::follow_directory_symlink))
+      {
+        if (dir.is_directory())
+          max = std::max<std::size_t>(std::stoul(dir.path().filename()), max);
+      }
+
+      if (!max)
+        return {false, "No data"};
+
+      const fs::path datasets = root / std::to_string(max);
+      const fs::path data = datasets / "data";
+      const fs::path md = datasets / "md";
+
+      if (!(fs::exists(data) && fs::is_directory(data)))
+        return {false, "'data' directory does not exist or is not a directory"};
+      
+      if (!(fs::exists(md) && fs::is_directory(md)))
+        return {false, "'md' directory does not exist or is not a directory"};
+
+      std::cout << "Loading " << datasets << '\n';
+
+      m_kvHandler->load(data);
+
+      return {true, ""};
     }
 
 
