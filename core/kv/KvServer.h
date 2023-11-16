@@ -95,7 +95,11 @@ public:
 
     if (config.load())
     {
-      load(config);
+      if (auto [ok, msg] = load(config); !ok)
+      {
+        std::cout << msg << '\n';
+        return false;
+      }
     }
 
     unsigned int maxPayload = config.cfg["kv"]["maxPayload"].as<unsigned int>();
@@ -256,7 +260,6 @@ public:
 
     std::tuple<bool, std::size_t> init(const njson& config)
     {
-      // cores => io threads
       static const std::map<std::size_t, std::size_t> CoresToIoThreads =
       {
         {1, 1},
@@ -367,10 +370,8 @@ public:
       
       std::ifstream mdStream {md / "md.json"};
       auto mdJson = njson::parse(mdStream);
-
-
-      std::cout << "Loading " << datasets << '\n';      
-      m_kvHandler->loadOnStartUp(mdJson.at("pool").as_uint(), data);
+    
+      m_kvHandler->loadOnStartUp(mdJson.at("pools").as<std::size_t>(), data);
 
       return {true, ""};
     }

@@ -457,6 +457,7 @@ private:
   void load(KvCommand& cmd, Sessions& sessions)
   {
     RequestStatus status = RequestStatus::Loading;
+    std::size_t nSessions{0}, nKeys{0};
 
     try
     {
@@ -478,8 +479,13 @@ private:
               for (auto& items : seshData.array_range())
               {
                 for (auto& kv : items.object_range())
+                {
                   session->get().set(kv.key(), std::move(kv.value()));
+                  ++nKeys;
+                }
               }
+
+              ++nSessions;
             }
           }
         }
@@ -493,7 +499,7 @@ private:
       status = RequestStatus::LoadError;
     }
 
-    cmd.syncResponseHandler(std::any{status});
+    cmd.syncResponseHandler(std::any{StartupLoadResult{.status = status, .nSessions = nSessions, .nKeys = nKeys}});
   }
 
 

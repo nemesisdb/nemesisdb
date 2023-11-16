@@ -203,6 +203,29 @@ struct ServerStats
 } * serverStats;
 
 
+struct StartupLoadResult
+{  
+  RequestStatus status;
+  std::size_t nSessions;
+  std::size_t nKeys;
+
+  StartupLoadResult& operator+=(const StartupLoadResult& r)
+  {
+    if (r.status != RequestStatus::LoadComplete)
+      status = r.status;
+    else
+    {
+      nKeys += r.nKeys;
+      nSessions += r.nSessions; 
+    }
+  
+    return *this;
+  }  
+};
+
+
+
+
 
 static const std::array<std::function<void(const SessionToken&, SessionPoolId&)>, 2U> SessionIndexers =
 {

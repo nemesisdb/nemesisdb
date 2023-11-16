@@ -99,28 +99,78 @@ public:
 
   void loadOnStartUp(const std::size_t sourcePools, const fs::path& dataSetRoot)
   {
+    std::cout << "Loading from " << dataSetRoot << '\n';  
+
     // TODO clear cache (later have option to load without clearing)
     const auto hostPools = m_pools.size();
+    StartupLoadResult loadResult { .status = RequestStatus::LoadComplete };
+
 
     if (hostPools == sourcePools)
     {
-      std::cout << "1 to 1\n";
+      std::cout << "Direct\n";
+
+      std::latch latch{static_cast<std::ptrdiff_t>(hostPools)};
+      std::mutex resultsMux;
+      std::vector<std::any> results;
+
+      auto onResult = [&latch, &results, &resultsMux](auto r)
+      {
+        {
+          std::scoped_lock lck{resultsMux};
+          results.emplace_back(std::move(r));
+        }
+        latch.count_down();
+      };
+      
+
+      for (std::size_t pool = 0 ; pool < hostPools ; ++pool)
+      {
+        njson cmd;
+        cmd["dirs"] = njson::array();
+        cmd["dirs"].emplace_back((dataSetRoot / std::to_string(pool)).string());
+        
+        m_pools[pool]->execute(KvCommand{ .ws = nullptr,
+                                          .loop = nullptr,
+                                          .contents = std::move(cmd),
+                                          .type = KvQueryType::InternalLoad,
+                                          .syncResponseHandler = onResult});
+      }
+
+      latch.wait();
+
+      // collate results
+      for(auto& result : results)
+        loadResult += std::any_cast<StartupLoadResult> (result);
     }
     else if (hostPools == 1U)
     {
       std::cout << "Everything to pool 0\n";
+
+      njson cmd;
+      cmd["dirs"] = njson::array();
+
+      for (std::size_t pool = 0 ; pool < sourcePools ; ++pool)
+        cmd["dirs"].emplace_back((dataSetRoot / std::to_string(pool)).string());
+
+      auto result = submitSync(0, KvQueryType::InternalLoad, std::move(cmd));
+      loadResult = std::any_cast<StartupLoadResult> (result);
     }
     else
     {
       std::cout << "Something else\n";
     }
 
-    njson cmd;
-    cmd["dirs"] = njson::array();
-    cmd["dirs"].emplace_back((dataSetRoot / "0").string());
+    std::cout << "-- Load --\n";
+    
+    if (loadResult.status == RequestStatus::LoadComplete)
+      std::cout << "Status: Success\nSessions: " << loadResult.nSessions << "\nKeys: " << loadResult.nKeys << '\n'; 
+    else
+      std::cout << "Status: Fail\n";
 
-    auto result = submitSync(0, KvQueryType::InternalLoad, std::move(cmd));
+    std::cout << "----------\n";
   }
+
 
 private:
   
