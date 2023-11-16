@@ -97,9 +97,23 @@ public:
   }
 
 
-  void load(const fs::path& dataSetRoot)
+  void loadOnStartUp(const std::size_t sourcePools, const fs::path& dataSetRoot)
   {
     // TODO clear cache (later have option to load without clearing)
+    const auto hostPools = m_pools.size();
+
+    if (hostPools == sourcePools)
+    {
+      std::cout << "1 to 1\n";
+    }
+    else if (hostPools == 1U)
+    {
+      std::cout << "Everything to pool 0\n";
+    }
+    else
+    {
+      std::cout << "Something else\n";
+    }
 
     njson cmd;
     cmd["dirs"] = njson::array();

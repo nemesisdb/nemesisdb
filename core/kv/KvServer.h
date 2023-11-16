@@ -363,9 +363,14 @@ public:
       if (!(fs::exists(md) && fs::is_directory(md)))
         return {false, "'md' directory does not exist or is not a directory"};
 
-      std::cout << "Loading " << datasets << '\n';
+      std::cout << "Reading metadata in " << md << "\n";
+      
+      std::ifstream mdStream {md / "md.json"};
+      auto mdJson = njson::parse(mdStream);
 
-      m_kvHandler->load(data);
+
+      std::cout << "Loading " << datasets << '\n';      
+      m_kvHandler->loadOnStartUp(mdJson.at("pool").as_uint(), data);
 
       return {true, ""};
     }
