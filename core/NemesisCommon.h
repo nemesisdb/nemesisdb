@@ -96,7 +96,6 @@ enum class RequestStatus
   ValueMissing = 40,
   ValueTypeInvalid,
   ValueSize,
-  OutOfBounds,  // not used
   SessionNotExist = 100,
   SessionTokenInvalid,
   SessionOpenFail,
@@ -150,7 +149,7 @@ static njson createErrorResponse (const RequestStatus status, const std::string_
 
 
 template <typename E>
-constexpr typename std::underlying_type<E>::type toUnderlying(E e) noexcept
+constexpr typename std::underlying_type<E>::type toUnderlying(const E e) noexcept
 {
   return static_cast<typename std::underlying_type_t<E>>(e);
 }
