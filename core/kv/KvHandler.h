@@ -97,16 +97,30 @@ public:
   }
 
 
-  void loadOnStartUp(const std::size_t sourcePools, const fs::path& dataSetRoot)
+  void loadOnStartUp(const std::size_t sourcePools, const fs::path& dataSetsRoot)
   {
-    std::cout << "Loading from " << dataSetRoot << '\n';  
+    std::cout << "Loading from " << dataSetsRoot << '\n';  
 
     // TODO clear cache (later have option to load without clearing)
     const auto hostPools = m_pools.size();
     StartupLoadResult loadResult { .status = RequestStatus::LoadComplete };
 
+    std::cout << "host: " << hostPools << ", source: " << sourcePools << '\n';
 
-    if (hostPools == sourcePools)
+    if (hostPools == 1U)
+    {
+      std::cout << "Everything to pool 0\n";
+
+      njson cmd;
+      cmd["dirs"] = njson::array();
+
+      for (std::size_t pool = 0 ; pool < sourcePools ; ++pool)
+        cmd["dirs"].emplace_back((dataSetsRoot / std::to_string(pool)).string());
+
+      auto result = submitSync(0, KvQueryType::InternalLoad, std::move(cmd));
+      loadResult = std::any_cast<StartupLoadResult> (result);
+    }
+    else if (hostPools == sourcePools)
     {
       std::cout << "Direct\n";
 
@@ -128,7 +142,7 @@ public:
       {
         njson cmd;
         cmd["dirs"] = njson::array();
-        cmd["dirs"].emplace_back((dataSetRoot / std::to_string(pool)).string());
+        cmd["dirs"].emplace_back((dataSetsRoot / std::to_string(pool)).string());
         
         m_pools[pool]->execute(KvCommand{ .ws = nullptr,
                                           .loop = nullptr,
@@ -142,23 +156,13 @@ public:
       // collate results
       for(auto& result : results)
         loadResult += std::any_cast<StartupLoadResult> (result);
-    }
-    else if (hostPools == 1U)
-    {
-      std::cout << "Everything to pool 0\n";
-
-      njson cmd;
-      cmd["dirs"] = njson::array();
-
-      for (std::size_t pool = 0 ; pool < sourcePools ; ++pool)
-        cmd["dirs"].emplace_back((dataSetRoot / std::to_string(pool)).string());
-
-      auto result = submitSync(0, KvQueryType::InternalLoad, std::move(cmd));
-      loadResult = std::any_cast<StartupLoadResult> (result);
-    }
+    }    
     else
     {
-      std::cout << "Something else\n";
+      std::cout << "Re-map\n";
+      // there's no shortcut to this because source and host pools can't be inferred
+      // have to recalculate each source session's pool from its token
+      loadResult = loadRemap(dataSetsRoot);
     }
 
     std::cout << "-- Load --\n";
@@ -174,6 +178,64 @@ public:
 
 private:
   
+  
+  StartupLoadResult loadRemap (const fs::path& dataSetsRoot)
+  {
+    auto countFiles = [](const fs::path& path) -> std::size_t
+    {
+      return (std::size_t)std::distance(fs::directory_iterator{path}, fs::directory_iterator{});
+    };
+
+
+    StartupLoadResult loadResult { .status = RequestStatus::LoadComplete};
+
+    for(auto& poolDir : fs::directory_iterator(dataSetsRoot))
+    {
+      const auto& poolPath = poolDir.path();      
+      const auto nFiles = countFiles(poolPath);
+
+      std::latch latch{static_cast<std::ptrdiff_t>(nFiles)};
+      std::vector<std::any> results;
+      std::mutex resultsMux;
+
+      auto onResult = [&latch, &results, &resultsMux](auto r)
+      {
+        {
+          std::scoped_lock lck{resultsMux};
+          results.emplace_back(std::move(r));
+        }
+        latch.count_down();
+      };
+
+      for(auto& file : fs::directory_iterator(poolPath))
+      {
+        const auto token = file.path().filename();
+        const auto poolId = getPoolId(token);
+
+        //std::cout << token << " on pool " << poolId << '\n';
+
+        njson cmd;
+        cmd["file"] = file.path().string();
+
+        m_pools[poolId]->execute(KvCommand{ .ws = nullptr,
+                                            .loop = nullptr,
+                                            .contents = std::move(cmd),
+                                            .type = KvQueryType::InternalLoad,
+                                            .syncResponseHandler = onResult});
+      }
+
+      latch.wait();
+
+      // collate results
+      for(auto& result : results)
+      {        
+        loadResult += std::any_cast<StartupLoadResult> (result);
+      }
+    }
+
+    return loadResult;
+  }
+
 
   fc_always_inline PoolId getPoolId (const SessionToken& shtk)
   {
@@ -204,10 +266,16 @@ private:
   }
 
 
-  // Submit to a pool asynchronously
+  // Submit asynchronously with just token
   fc_always_inline void submit(KvWebSocket * ws, const SessionToken& token, const KvQueryType queryType, const std::string_view command, const std::string_view rspName, njson&& cmd = "")
   {
-    const auto poolId = getPoolId(token);
+    submit(ws, getPoolId(token), token, queryType, command, rspName, std::move(cmd));
+  } 
+
+
+  // Submit asynchronously with pool id
+  fc_always_inline void submit(KvWebSocket * ws, const PoolId& poolId, const SessionToken& token, const KvQueryType queryType, const std::string_view command, const std::string_view rspName, njson&& cmd = "")
+  {
     m_pools[poolId]->execute(KvCommand{ .ws = ws,
                                         .loop = uWS::Loop::get(),
                                         .contents = std::move(cmd),
@@ -216,7 +284,7 @@ private:
   } 
 
   
-  // Submit to a pool synchronously, when not trigged from a WebSocket commmand (i.e. load on startup)
+  // Submit to a pool synchronously, when not triggered from a WebSocket client (i.e. load on startup)
   fc_always_inline std::any submitSync(const PoolId pool, const KvQueryType queryType, njson&& cmd = "")
   {
     std::latch latch{1U};
@@ -298,6 +366,7 @@ private:
 
   
   // SESSION
+  
   fc_always_inline void sessionNew(KvWebSocket * ws, njson&& json)
   {
     static const KvQueryType queryType = KvQueryType::SessionNew;

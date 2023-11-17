@@ -20,6 +20,8 @@ namespace nemesis { namespace core { namespace kv {
 
 using namespace std::string_view_literals;
 
+namespace fs = std::filesystem;
+
 
 // A number of KvPoolWorker are created (MaxPools), which is hardware_concurrency() minus the number of IO threads.
 // A pool worker runs in a thread which is assigned to a core. Each pool worker has a dedicated map which stores the key/values. 
@@ -411,7 +413,7 @@ private:
   void save(KvCommand& cmd, const Sessions& sessions)
   {
     const auto root = cmd.contents["poolDataRoot"].as_string_view();
-    const auto path = std::filesystem::path{root} / std::to_string(m_poolId);
+    const auto path = fs::path{root} / std::to_string(m_poolId);
 
     RequestStatus status = RequestStatus::Ok;
 
@@ -419,7 +421,7 @@ private:
     {
       std::cout << "Pool " << m_poolId << " creating: " << path << '\n';
 
-      if (!std::filesystem::create_directories(path))
+      if (!fs::create_directories(path))
         status = RequestStatus::SaveError;
       else
       {
@@ -456,48 +458,77 @@ private:
 
   void load(KvCommand& cmd, Sessions& sessions)
   {
+    // TODO session info
     RequestStatus status = RequestStatus::Loading;
     std::size_t nSessions{0}, nKeys{0};
+
+    auto updateStatus = [&status](const RequestStatus st)
+    {
+      if (status != RequestStatus::LoadError)
+        status = st;
+    };
+
+    auto readSeshFile = [&sessions, &nKeys, &nSessions, &updateStatus](const fs::path path)
+    {
+      try
+      {
+        if (auto session = sessions.start(path.filename(), false, SessionDuration{0}, false); session)
+        {
+          std::ifstream seshStream{path};
+          auto seshData = njson::parse(seshStream);
+
+          for (auto& items : seshData.array_range())
+          {
+            for (auto& kv : items.object_range())
+            {
+              session->get().set(kv.key(), std::move(kv.value()));
+              ++nKeys;
+            }
+          }
+
+          ++nSessions;
+        }
+        else 
+        {
+          std::cout << "readSeshFile: failed to create session";
+          updateStatus(RequestStatus::LoadError);
+        } 
+          
+      }
+      catch(const std::exception& e)
+      {
+        std::cerr << e.what() << '\n';
+      }
+    };
+    
 
     try
     {
       std::cout << cmd.contents << "\n";
 
-      for (auto& dataDir : cmd.contents.at("dirs").array_range())
+      if (cmd.contents.contains("dirs"))
       {
-        std::filesystem::path dir {dataDir.as_string_view()};
-        for (const auto seshFile : std::filesystem::directory_iterator{dir})
+        // all files within each directory
+        for (auto& dataDir : cmd.contents.at("dirs").array_range())
         {
-          if (seshFile.is_regular_file())
-          {
-            // TODO session info
-            if (auto session = sessions.start(seshFile.path().filename(), false, SessionDuration{0}, false); session)
-            {
-              std::ifstream seshStream{seshFile.path()};
-              auto seshData = njson::parse(seshStream);
-
-              for (auto& items : seshData.array_range())
-              {
-                for (auto& kv : items.object_range())
-                {
-                  session->get().set(kv.key(), std::move(kv.value()));
-                  ++nKeys;
-                }
-              }
-
-              ++nSessions;
-            }
-          }
+          fs::path dir {dataDir.as_string_view()};
+          for (const auto seshFile : fs::directory_iterator{dir})
+            readSeshFile(seshFile.path());
         }
       }
-
-      status = RequestStatus::LoadComplete;
+      else
+      {
+        // individual file
+        readSeshFile(cmd.contents.at("file").as_string());
+      }
     }
     catch(const std::exception& e)
     {
       std::cerr << e.what() << '\n';
       status = RequestStatus::LoadError;
     }
+
+    updateStatus(RequestStatus::LoadComplete);
 
     cmd.syncResponseHandler(std::any{StartupLoadResult{.status = status, .nSessions = nSessions, .nKeys = nKeys}});
   }

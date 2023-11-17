@@ -206,8 +206,8 @@ struct ServerStats
 struct StartupLoadResult
 {  
   RequestStatus status;
-  std::size_t nSessions;
-  std::size_t nKeys;
+  std::size_t nSessions{0};
+  std::size_t nKeys{0};
 
   StartupLoadResult& operator+=(const StartupLoadResult& r)
   {
