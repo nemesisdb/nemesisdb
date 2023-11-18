@@ -208,6 +208,7 @@ struct StartupLoadResult
   RequestStatus status;
   std::size_t nSessions{0};
   std::size_t nKeys{0};
+  NemesisClock::duration loadTime{0};
 
   StartupLoadResult& operator+=(const StartupLoadResult& r)
   {
@@ -216,11 +217,13 @@ struct StartupLoadResult
     else
     {
       nKeys += r.nKeys;
-      nSessions += r.nSessions; 
+      nSessions += r.nSessions;
     }
+
+    loadTime += r.loadTime; // beware when loading concurrent pools
   
     return *this;
-  }  
+  }
 };
 
 

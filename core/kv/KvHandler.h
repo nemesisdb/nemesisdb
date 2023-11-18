@@ -99,13 +99,13 @@ public:
 
   void loadOnStartUp(const std::size_t sourcePools, const fs::path& dataSetsRoot)
   {
-    std::cout << "Loading from " << dataSetsRoot << '\n';  
+    std::cout << "Loading from " << dataSetsRoot << '\n';
 
     // TODO clear cache (later have option to load without clearing)
     const auto hostPools = m_pools.size();
     StartupLoadResult loadResult { .status = RequestStatus::LoadComplete };
 
-    std::cout << "host: " << hostPools << ", source: " << sourcePools << '\n';
+    auto start = NemesisClock::now();
 
     if (hostPools == 1U)
     {
@@ -165,12 +165,17 @@ public:
       loadResult = loadRemap(dataSetsRoot);
     }
 
+    auto end = NemesisClock::now();
+    loadResult.loadTime = end - start;
+
     std::cout << "-- Load --\n";
     
     if (loadResult.status == RequestStatus::LoadComplete)
       std::cout << "Status: Success\nSessions: " << loadResult.nSessions << "\nKeys: " << loadResult.nKeys << '\n'; 
     else
       std::cout << "Status: Fail\n";
+
+    std::cout << "Time: " << std::chrono::duration_cast<std::chrono::milliseconds>(loadResult.loadTime) << '\n';
 
     std::cout << "----------\n";
   }

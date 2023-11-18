@@ -419,31 +419,43 @@ private:
 
     try
     {
-      std::cout << "Pool " << m_poolId << " creating: " << path << '\n';
-
       if (!fs::create_directories(path))
         status = RequestStatus::SaveError;
       else
       {
         for(const auto& [token, sesh] : sessions.getSessions())
         {
-          std::cout << "Pool " << m_poolId << " creating: " << (path/token) << '\n';
-
           std::ofstream out{path / token};
-          out << "[";
-          
+          out << "{";
+
+          // session
+          out << "\"sh\":";
+          out << "{";
+            out << "\"shared\":" << std::boolalpha << sesh.shared << ",";
+            out << "\"expiry\":{";
+              out << "\"duration\":"      << std::chrono::duration_cast<SessionDuration>(sesh.expireInfo.duration).count() << ",";
+              out << "\"deleteSession\":" << std::boolalpha << sesh.expireInfo.deleteOnExpire;
+            out << "}";
+          out << "},";
+
+          // keys
+          out << "\"keys\":";
+          out << "{";
+
           bool first = true;
           for(const auto& [k, v] : sesh.map.map())
           {
-            out << (first ? "{" : ",{");
+            if (!first)
+              out << ",";
+
             out << "\"" << k << "\":";
             v.dump(out);
-            out << "}";
 
             first = false;
           }
+          out << "}"; // end keys
 
-          out << "]";
+          out << "}";
         }
       }
     }
@@ -472,18 +484,19 @@ private:
     {
       try
       {
-        if (auto session = sessions.start(path.filename(), false, SessionDuration{0}, false); session)
-        {
-          std::ifstream seshStream{path};
-          auto seshData = njson::parse(seshStream);
+        std::ifstream seshStream{path};
+        auto root = njson::parse(seshStream);
 
-          for (auto& items : seshData.array_range())
+        const auto isShared = root["sh"]["shared"].as_bool();
+        const auto deleteOnExpire = root["sh"]["expiry"]["deleteSession"].as_bool();
+        const auto duration = SessionDuration{root["sh"]["expiry"]["duration"].as<std::size_t>()};
+
+        if (auto session = sessions.start(path.filename(), isShared, duration, deleteOnExpire); session)
+        {
+          for (auto& items : root.at("keys").object_range())
           {
-            for (auto& kv : items.object_range())
-            {
-              session->get().set(kv.key(), std::move(kv.value()));
-              ++nKeys;
-            }
+            session->get().set(items.key(), std::move(items.value()));
+            ++nKeys;
           }
 
           ++nSessions;
@@ -504,8 +517,6 @@ private:
 
     try
     {
-      std::cout << cmd.contents << "\n";
-
       if (cmd.contents.contains("dirs"))
       {
         // all files within each directory
