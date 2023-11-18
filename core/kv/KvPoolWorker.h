@@ -503,26 +503,29 @@ private:
         std::ifstream seshStream{path};
         auto root = njson::parse(seshStream);
 
-        const auto isShared = root["sh"]["shared"].as_bool();
-        const auto deleteOnExpire = root["sh"]["expiry"]["deleteSession"].as_bool();
-        const auto duration = SessionDuration{root["sh"]["expiry"]["duration"].as<std::size_t>()};
-
-        if (auto session = sessions.start(path.filename(), isShared, duration, deleteOnExpire); session)
+        for (auto& item : root.array_range())
         {
-          for (auto& items : root.at("keys").object_range())
+          const auto token = std::move(item["sh"]["tkn"].as_string());
+          const auto isShared = item["sh"]["shared"].as_bool();
+          const auto deleteOnExpire = item["sh"]["expiry"]["deleteSession"].as_bool();
+          const auto duration = SessionDuration{item["sh"]["expiry"]["duration"].as<std::size_t>()};
+
+          if (auto session = sessions.start(token, isShared, duration, deleteOnExpire); session)
           {
-            session->get().set(items.key(), std::move(items.value()));
-            ++nKeys;
-          }
+            for (auto& items : item.at("keys").object_range())
+            {
+              session->get().set(items.key(), std::move(items.value()));
+              ++nKeys;
+            }
 
-          ++nSessions;
+            ++nSessions;
+          }
+          else 
+          {
+            std::cout << "readSeshFile: failed to create session";
+            updateStatus(RequestStatus::LoadError);
+          } 
         }
-        else 
-        {
-          std::cout << "readSeshFile: failed to create session";
-          updateStatus(RequestStatus::LoadError);
-        } 
-          
       }
       catch(const std::exception& e)
       {

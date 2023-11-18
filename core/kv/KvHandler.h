@@ -162,7 +162,7 @@ public:
       std::cout << "Re-map\n";
       // there's no shortcut to this because source and host pools can't be inferred
       // have to recalculate each source session's pool from its token
-      loadResult = loadRemap(dataSetsRoot);
+      //loadResult = loadRemap(dataSetsRoot);
     }
 
     auto end = NemesisClock::now();
