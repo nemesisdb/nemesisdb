@@ -21,6 +21,7 @@ namespace nemesis { namespace core { namespace kv {
 using namespace std::string_view_literals;
 
 namespace fs = std::filesystem;
+namespace chrono = std::chrono;
 
 
 // A number of KvPoolWorker are created (MaxPools), which is hardware_concurrency() minus the number of IO threads.
@@ -412,6 +413,7 @@ private:
 
   void save(KvCommand& cmd, const Sessions& sessions)
   {
+    const std::size_t SessionsPerFile = 1000U;
     const auto root = cmd.contents["poolDataRoot"].as_string_view();
     const auto path = fs::path{root} / std::to_string(m_poolId);
 
@@ -423,44 +425,58 @@ private:
         status = RequestStatus::SaveError;
       else
       {
-        for(const auto& [token, sesh] : sessions.getSessions())
+        const auto& allSessions = sessions.getSessions();        
+        std::size_t nFiles = 0, i = 0, written = 0, total = allSessions.size() ;
+        std::size_t remaining = std::min<std::size_t>(total, SessionsPerFile);
+        std::ofstream dataStream ;
+        njson data;
+
+        if (total)
         {
-          std::ofstream out{path / token};
-          out << "{";
+          data = njson::make_array(remaining);
+          dataStream.open(path / std::to_string(nFiles));
+        }
 
-          // session
-          out << "\"sh\":";
-          out << "{";
-            out << "\"shared\":" << std::boolalpha << sesh.shared << ",";
-            out << "\"expiry\":{";
-              out << "\"duration\":"      << std::chrono::duration_cast<SessionDuration>(sesh.expireInfo.duration).count() << ",";
-              out << "\"deleteSession\":" << std::boolalpha << sesh.expireInfo.deleteOnExpire;
-            out << "}";
-          out << "},";
+        for(const auto& [token, sesh] : allSessions)
+        {
+          njson seshData;
+          seshData["sh"]["tkn"] = token;
+          seshData["sh"]["shared"] = sesh.shared;
+          seshData["sh"]["expiry"]["duration"] = chrono::duration_cast<SessionDuration>(sesh.expireInfo.duration).count();
+          seshData["sh"]["expiry"]["deleteSession"] = sesh.expireInfo.deleteOnExpire;
 
-          // keys
-          out << "\"keys\":";
-          out << "{";
-
-          bool first = true;
           for(const auto& [k, v] : sesh.map.map())
+            seshData["keys"][k] = v;
+
+          data[i++] = std::move(seshData);
+          --remaining;
+          ++written;
+
+          if (remaining == 0)
           {
-            if (!first)
-              out << ",";
+            std::cout << "Write stream. Remaining: " << remaining << '\n';
 
-            out << "\"" << k << "\":";
-            v.dump(out);
+            data.dump(dataStream);
+            dataStream.close();
 
-            first = false;
+            if (total - written)
+            {
+              ++nFiles;
+
+              dataStream.open(path / std::to_string(nFiles));
+              remaining = std::min<std::size_t>(total - written, SessionsPerFile);
+              data.resize(remaining);
+              i = 0;
+
+              std::cout << "New file. Remaining: " << remaining << "\n";
+            }
           }
-          out << "}"; // end keys
-
-          out << "}";
         }
       }
     }
-    catch (...)
+    catch (std::exception& ex)
     {
+      std::cout << ex.what() << '\n';
       status = RequestStatus::SaveError;
     } 
 
