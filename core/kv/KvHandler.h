@@ -799,9 +799,9 @@ private:
     auto& cmd = json.at(queryName);
 
     if (!NemesisConfig::kvSaveEnabled(m_config))
-      ws->send(createErrorResponse(queryRspName, RequestStatus::CommandDisabled).to_string(), WsSendOpCode);
+      ws->send(createErrorResponseNoTkn(queryRspName, RequestStatus::CommandDisabled).to_string(), WsSendOpCode);
     else if (!(cmd.contains("name") && cmd.at("name").is_string()))
-      ws->send(createErrorResponse(queryRspName, RequestStatus::CommandSyntax).to_string(), WsSendOpCode);
+      ws->send(createErrorResponseNoTkn(queryRspName, RequestStatus::CommandSyntax).to_string(), WsSendOpCode);
     else
     {
       const auto& name = cmd.at("name").as_string();

@@ -139,7 +139,16 @@ static njson createErrorResponse (const std::string_view commandRsp, const Reque
 }
 
 
-// Response is the original command is unknown.
+static njson createErrorResponseNoTkn (const std::string_view commandRsp, const RequestStatus status, const std::string_view msg = "")
+{
+  njson rsp;
+  rsp[commandRsp]["st"] = static_cast<int>(status);
+  rsp[commandRsp]["m"] = msg;
+  return rsp;
+}
+
+
+// Response is the original command is unknown (i.e. JSON parse error).
 static njson createErrorResponse (const RequestStatus status, const std::string_view msg = "")
 {
   njson rsp;
@@ -156,7 +165,7 @@ constexpr typename std::underlying_type<E>::type toUnderlying(const E e) noexcep
 }
 
 } // namespace core
-} // namespace fusion
+} // namespace nemesis
 
 
 #endif
