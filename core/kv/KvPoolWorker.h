@@ -413,7 +413,7 @@ private:
 
   void save(KvCommand& cmd, const Sessions& sessions)
   {
-    const std::size_t SessionsPerFile = 1000U;
+    const std::size_t SessionsPerFile = 10'000U;
     const auto root = cmd.contents["poolDataRoot"].as_string_view();
     const auto path = fs::path{root} / std::to_string(m_poolId);
 
@@ -426,7 +426,8 @@ private:
       else
       {
         const auto& allSessions = sessions.getSessions();        
-        std::size_t nFiles = 0, i = 0, written = 0, total = allSessions.size() ;
+        const auto total = allSessions.size() ;
+        std::size_t nFiles = 0, i = 0, written = 0;        
         std::size_t remaining = std::min<std::size_t>(total, SessionsPerFile);
         std::ofstream dataStream ;
         njson data;
@@ -454,7 +455,7 @@ private:
 
           if (remaining == 0)
           {
-            std::cout << "Write stream. Remaining: " << remaining << '\n';
+            //std::cout << "Write stream. Remaining: " << remaining << '\n';
 
             data.dump(dataStream);
             dataStream.close();
@@ -468,13 +469,13 @@ private:
               data.resize(remaining);
               i = 0;
 
-              std::cout << "New file. Remaining: " << remaining << "\n";
+              //std::cout << "New file. Remaining: " << remaining << "\n";
             }
           }
         }
       }
     }
-    catch (std::exception& ex)
+    catch (const std::exception& ex)
     {
       std::cout << ex.what() << '\n';
       status = RequestStatus::SaveError;
@@ -486,7 +487,6 @@ private:
 
   void load(KvCommand& cmd, Sessions& sessions)
   {
-    // TODO session info
     RequestStatus status = RequestStatus::Loading;
     std::size_t nSessions{0}, nKeys{0};
 
@@ -496,6 +496,7 @@ private:
         status = st;
     };
 
+    /*
     auto readSeshFile = [&sessions, &nKeys, &nSessions, &updateStatus](const fs::path path)
     {
       try
@@ -532,25 +533,26 @@ private:
         std::cerr << e.what() << '\n';
       }
     };
+    */
     
 
     try
-    {
+    {      
       if (cmd.contents.contains("dirs"))
       {
-        // all files within each directory
+        // loading everything from multiple pool data dirs
         for (auto& dataDir : cmd.contents.at("dirs").array_range())
         {
           fs::path dir {dataDir.as_string_view()};
           for (const auto seshFile : fs::directory_iterator{dir})
-            readSeshFile(seshFile.path());
+            readSeshFile(sessions, seshFile.path(), status, nSessions, nKeys);
         }
       }
       else
       {
-        // individual file
-        readSeshFile(cmd.contents.at("file").as_string());
-      }
+        // load an individual session
+        loadSession(sessions, std::move(cmd.contents.at("sesh")), status, nSessions, nKeys);
+      }      
     }
     catch(const std::exception& e)
     {
@@ -562,6 +564,51 @@ private:
 
     cmd.syncResponseHandler(std::any{StartupLoadResult{.status = status, .nSessions = nSessions, .nKeys = nKeys}});
   }
+
+
+public:
+
+  fc_always_inline void readSeshFile (Sessions& sessions, const fs::path path, RequestStatus& status, std::size_t& nSessions, std::size_t& nKeys)
+  {
+    try
+    {
+      std::ifstream seshStream{path};
+      auto root = njson::parse(seshStream);
+
+      for (auto& item : root.array_range())
+        loadSession(sessions, std::move(item), status, nSessions, nKeys);
+    }
+    catch(const std::exception& e)
+    {
+      std::cerr << e.what() << '\n';
+    }
+  };
+
+
+  fc_always_inline void loadSession (Sessions& sessions, njson&& seshData, RequestStatus& status, std::size_t& nSessions, std::size_t& nKeys)
+  {
+    const auto token = std::move(seshData["sh"]["tkn"].as_string());
+    const auto isShared = seshData["sh"]["shared"].as_bool();
+    const auto deleteOnExpire = seshData["sh"]["expiry"]["deleteSession"].as_bool();
+    const auto duration = SessionDuration{seshData["sh"]["expiry"]["duration"].as<std::size_t>()};
+
+    if (auto session = sessions.start(token, isShared, duration, deleteOnExpire); session)
+    {
+      for (auto& items : seshData.at("keys").object_range())
+      {
+        session->get().set(items.key(), std::move(items.value()));
+        ++nKeys;
+      }
+
+      ++nSessions;
+    }
+    else 
+    {
+      std::cout << "readSeshFile: failed to create session";
+      status = RequestStatus::LoadError;
+    } 
+  }
+
 
 
 private:

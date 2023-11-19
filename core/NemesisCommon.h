@@ -18,7 +18,7 @@ namespace nemesis { namespace core {
 
 static const char * NEMESIS_VERSION = "0.3.4";
 static const std::size_t NEMESIS_CONFIG_VERSION = 1U;
-static const std::size_t NEMESIS_MAX_CORES = 4U;
+static const std::size_t NEMESIS_MAX_CORES = 8U; // TODO temp temp
 
 static const std::size_t NEMESIS_KV_MINPAYLOAD = 64U;
 static const std::size_t NEMESIS_KV_MAXPAYLOAD = 2U * 1024U * 1024U;

@@ -144,9 +144,7 @@ public:
         cmd["dirs"] = njson::array();
         cmd["dirs"].emplace_back((dataSetsRoot / std::to_string(pool)).string());
         
-        m_pools[pool]->execute(KvCommand{ .ws = nullptr,
-                                          .loop = nullptr,
-                                          .contents = std::move(cmd),
+        m_pools[pool]->execute(KvCommand{ .contents = std::move(cmd),
                                           .type = KvQueryType::InternalLoad,
                                           .syncResponseHandler = onResult});
       }
@@ -162,7 +160,7 @@ public:
       std::cout << "Re-map\n";
       // there's no shortcut to this because source and host pools can't be inferred
       // have to recalculate each source session's pool from its token
-      //loadResult = loadRemap(dataSetsRoot);
+      loadResult = loadRemap(dataSetsRoot);
     }
 
     auto end = NemesisClock::now();
@@ -193,52 +191,58 @@ private:
 
 
     StartupLoadResult loadResult { .status = RequestStatus::LoadComplete};
+    std::atomic_size_t nSessions{0}, nKeys{0};
+    std::atomic_bool error{false};
+
 
     for(auto& poolDir : fs::directory_iterator(dataSetsRoot))
     {
       const auto& poolPath = poolDir.path();      
-      const auto nFiles = countFiles(poolPath);
 
-      std::latch latch{static_cast<std::ptrdiff_t>(nFiles)};
-      std::vector<std::any> results;
-      std::mutex resultsMux;
+      std::cout << "Loading pool data from: " << poolPath << '\n';
 
-      auto onResult = [&latch, &results, &resultsMux](auto r)
-      {
-        {
-          std::scoped_lock lck{resultsMux};
-          results.emplace_back(std::move(r));
-        }
-        latch.count_down();
-      };
-
+      // open each file, get token, create pool id, send to pool
       for(auto& file : fs::directory_iterator(poolPath))
       {
-        const auto token = file.path().filename();
-        const auto poolId = getPoolId(token);
+        std::ifstream seshStream {file.path()};
+        njson sessions = njson::parse(seshStream);
 
-        //std::cout << token << " on pool " << poolId << '\n';
+        //std::cout << "File " << file.path() << " has " << sessions.size() << " session" << '\n';
 
-        njson cmd;
-        cmd["file"] = file.path().string();
+        std::latch latch{static_cast<std::ptrdiff_t>(sessions.size())};
 
-        m_pools[poolId]->execute(KvCommand{ .ws = nullptr,
-                                            .loop = nullptr,
-                                            .contents = std::move(cmd),
-                                            .type = KvQueryType::InternalLoad,
-                                            .syncResponseHandler = onResult});
-      }
+        auto onResult = [&latch, &nSessions, &nKeys, &error](auto r)
+        {
+          StartupLoadResult lr = std::any_cast<StartupLoadResult> (r);
+          nSessions += lr.nSessions;
+          nKeys += lr.nKeys;
+          
+          if (!error)
+            error = lr.status != RequestStatus::LoadComplete;
 
-      latch.wait();
+          latch.count_down();
+        };
 
-      // collate results
-      for(auto& result : results)
-      {        
-        loadResult += std::any_cast<StartupLoadResult> (result);
+        for(auto& sesh : sessions.array_range())
+        {
+          const SessionToken& token = sesh["sh"]["tkn"].as_string();
+
+          njson cmd;
+          cmd["sesh"] = std::move(sesh);
+          
+          const auto poolId = getPoolId(token);
+          m_pools[poolId]->execute(KvCommand{ .contents = std::move(cmd),
+                                              .type = KvQueryType::InternalLoad,
+                                              .syncResponseHandler = onResult});
+        }
+
+        latch.wait();
       }
     }
 
-    return loadResult;
+    return StartupLoadResult{ .status = error ? RequestStatus::LoadError : RequestStatus::LoadComplete,
+                              .nSessions = nSessions.load(),
+                              .nKeys = nKeys.load()};
   }
 
 

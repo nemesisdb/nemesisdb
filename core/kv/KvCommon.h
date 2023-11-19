@@ -272,32 +272,33 @@ fc_always_inline uuid createUuid ()
 
 
 // TODO this isn't used, but really should be
-// fc_always_inline bool valueTypeValid (const njson& value)
-// {
-//   static const std::set<jsoncons::json_type> DisallowedTypes = 
-//   {
-//     jsoncons::json_type::byte_string_value
-//   };
+/*
+fc_always_inline bool valueTypeValid (const njson& value)
+{
+  static const std::set<jsoncons::json_type> DisallowedTypes = 
+  {
+    jsoncons::json_type::byte_string_value
+  };
 
-//   if (value.is_array())
-//   {
-//     static const std::set<jsoncons::json_type> DisallowedTypes = 
-//     {
-//       jsoncons::json_type::byte_string_value
-//     };
+  if (value.is_array())
+  {
+    static const std::set<jsoncons::json_type> DisallowedTypes = 
+    {
+      jsoncons::json_type::byte_string_value
+    };
 
-//     for(const auto& item : value.array_range())
-//     {
-//       if (item.type() == jsoncons::json_type::byte_string_value)
-//         return false;
-//     }
+    for(const auto& item : value.array_range())
+    {
+      if (item.type() == jsoncons::json_type::byte_string_value)
+        return false;
+    }
 
-//     return true;
-//   }
-//   else
-//     return value.type() != jsoncons::json_type::byte_string_value;
-// }
-
+    return true;
+  }
+  else
+    return value.type() != jsoncons::json_type::byte_string_value;
+}
+*/
 
 
 }
