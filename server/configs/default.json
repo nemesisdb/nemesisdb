@@ -8,7 +8,7 @@
     "save":
     {
       "enabled":true,
-      "path":"/home/callum/save"
+      "path":"./data"
     }
   }
 }
