@@ -7,7 +7,7 @@
     "maxPayload":1024,
     "save":
     {
-      "enabled":true,
+      "enabled":false,
       "path":"./data"
     }
   }
