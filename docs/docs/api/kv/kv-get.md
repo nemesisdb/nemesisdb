@@ -24,6 +24,7 @@ The command requires the token and an array of keys to retrieve.
 |tkn|string|Session token|
 |keys|object|The keys and values requested|Y|
 
+If a key does not exist, its value is returned as `null`.
 
 Possible status values:
 
@@ -31,8 +32,8 @@ Possible status values:
 - ParamMissing (no `keys`)
 - ValueTypeInvalid (`keys` not an array)
 
+See the [response status](./../Statuses) page for status values.
 
-If a key does not exist, its value is returned `null`.
 
 ### All Keys Exist
 

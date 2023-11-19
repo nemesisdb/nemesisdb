@@ -798,7 +798,9 @@ private:
 
     auto& cmd = json.at(queryName);
 
-    if ((!cmd.contains("name")) || !cmd.at("name").is_string())
+    if (!NemesisConfig::kvSaveEnabled(m_config))
+      ws->send(createErrorResponse(queryRspName, RequestStatus::CommandDisabled).to_string(), WsSendOpCode);
+    else if (!(cmd.contains("name") && cmd.at("name").is_string()))
       ws->send(createErrorResponse(queryRspName, RequestStatus::CommandSyntax).to_string(), WsSendOpCode);
     else
     {
@@ -848,8 +850,7 @@ private:
         RequestStatus st = RequestStatus::Ok;
 
         for (auto& result : results)
-          st = (std::any_cast<RequestStatus>(result) == RequestStatus::Ok ? RequestStatus::Ok : RequestStatus::SaveError);
-        
+          st = (std::any_cast<RequestStatus>(result) == RequestStatus::SaveComplete ? RequestStatus::SaveComplete : RequestStatus::SaveError);
         
         metadata["status"] = toUnderlying(KvSaveStatus::Complete);
         metadata["complete"] = std::chrono::time_point_cast<KvSaveMetaDataUnit>(KvSaveClock::now()).time_since_epoch().count();

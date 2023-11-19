@@ -417,7 +417,7 @@ private:
     const auto root = cmd.contents["poolDataRoot"].as_string_view();
     const auto path = fs::path{root} / std::to_string(m_poolId);
 
-    RequestStatus status = RequestStatus::Ok;
+    RequestStatus status = RequestStatus::SaveComplete;
 
     try
     {
