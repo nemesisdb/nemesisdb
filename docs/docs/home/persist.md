@@ -6,7 +6,7 @@ displayed_sidebar: homeSidebar
 # Persist Data
 NemesisDB is an in-memory/cache database meaning all the data is always stored in RAM. This offers performance benefits by removing calls to the filesystem and reducing complexity, but it also means if the server shutdowns all the data is lost.
 
-To help this, the data can be persisted to the filesystem using the `SH_SAVE` command. This command writes all data to file so it can be restored on startup.
+To help this, the data can be persisted to the filesystem using the [SH_SAVE](../api/sessions/sh-save) command. This command writes all data to file so it can be restored on startup.
 
 
 The `SH_SAVE` has a server config section, which defaults to:
