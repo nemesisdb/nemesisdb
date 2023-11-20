@@ -1,13 +1,13 @@
 ---
-sidebar_position: 110
+sidebar_position: 25
 ---
 
-# KV_SAVE
+# SH_SAVE
 Saves the data to the filesystem so it can be loaded on startup, restoring the database.
 
 
-- The data is written to the `kv::save::path` set in the config file
-- `kv::save::enabled` must be `true` for this command to be available
+- The data is written to the `session::save::path` set in the config file
+- `session::save::enabled` must be `true` for this command to be available
 
 <br/>
 
@@ -17,7 +17,7 @@ Saves the data to the filesystem so it can be loaded on startup, restoring the d
 
 
 :::info
-The whole database is written by `KV_SAVE`, there is not an option to only write what has changed since the last save. A future version will offer this.
+The whole database is written by `SH_SAVE`, there is not an option to only write what has changed since the last save. A future version will offer this.
 :::
 
 <br/>
@@ -35,7 +35,7 @@ And this is sent:
 
 ```json
 {
-  "KV_SAVE":
+  "SH_SAVE":
   {
     "name":"dump1"
   }
@@ -52,7 +52,7 @@ When loading data, the newest timestamp is selected.
 
 ## Response
 
-`KV_SAVE_RSP`
+`SH_SAVE_RSP`
 
 
 |Param|Type|Meaning|
@@ -92,7 +92,7 @@ See [response status](./../Statuses) for status values.
 
 ```json title="Initiate save"
 {
-  "KV_SAVE":
+  "SH_SAVE":
   {
     "name":"dump"
   }
@@ -103,7 +103,7 @@ Initial response:
 
 ```json title="Save accepted"
 {
-  "KV_SAVE_RSP":
+  "SH_SAVE_RSP":
   {
     "name":"dump",
     "st": 120
@@ -114,7 +114,7 @@ Soon afterwards:
 
 ```json title="Save complete"
 {
-  "KV_SAVE_RSP":
+  "SH_SAVE_RSP":
   {
     "name":"dump",
     "st": 121
@@ -126,4 +126,4 @@ After this, the data can be found in:
 
 `<savepath>/dump/<timestamp>`
 
-where `<savepath>` is the `kv::save::path` in the server config.
+where `<savepath>` is the `session::save::path` in the server config.

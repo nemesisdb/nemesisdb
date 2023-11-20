@@ -45,6 +45,7 @@ private:
     std::bind(&KvHandler::sessionOpen,      std::ref(*this), std::placeholders::_1, std::placeholders::_2),
     std::bind(&KvHandler::sessionInfo,      std::ref(*this), std::placeholders::_1, std::placeholders::_2),
     std::bind(&KvHandler::sessionInfoAll,   std::ref(*this), std::placeholders::_1, std::placeholders::_2),
+    std::bind(&KvHandler::sessionSave,      std::ref(*this), std::placeholders::_1, std::placeholders::_2),
     std::bind(&KvHandler::set,              std::ref(*this), std::placeholders::_1, std::placeholders::_2),
     std::bind(&KvHandler::setQ,             std::ref(*this), std::placeholders::_1, std::placeholders::_2),
     std::bind(&KvHandler::get,              std::ref(*this), std::placeholders::_1, std::placeholders::_2),
@@ -56,8 +57,7 @@ private:
     std::bind(&KvHandler::contains,         std::ref(*this), std::placeholders::_1, std::placeholders::_2),
     std::bind(&KvHandler::find,             std::ref(*this), std::placeholders::_1, std::placeholders::_2),
     std::bind(&KvHandler::update,           std::ref(*this), std::placeholders::_1, std::placeholders::_2),
-    std::bind(&KvHandler::keys,             std::ref(*this), std::placeholders::_1, std::placeholders::_2),
-    std::bind(&KvHandler::save,             std::ref(*this), std::placeholders::_1, std::placeholders::_2)
+    std::bind(&KvHandler::keys,             std::ref(*this), std::placeholders::_1, std::placeholders::_2)    
   };
 
 
@@ -378,7 +378,7 @@ private:
   
   fc_always_inline void sessionNew(KvWebSocket * ws, njson&& json)
   {
-    static const KvQueryType queryType = KvQueryType::SessionNew;
+    static const KvQueryType queryType = KvQueryType::ShNew;
     static const std::string queryName     = QueryTypeToName.at(queryType);
     static const std::string queryRspName  = queryName +"_RSP";
 
@@ -432,7 +432,7 @@ private:
   
   fc_always_inline void sessionOpen(KvWebSocket * ws, njson&& json)
   {
-    static const KvQueryType queryType      = KvQueryType::SessionOpen;
+    static const KvQueryType queryType      = KvQueryType::ShOpen;
     static const std::string queryName      = QueryTypeToName.at(queryType);
     static const std::string queryRspName   = queryName +"_RSP";
 
@@ -481,7 +481,7 @@ private:
   
   fc_always_inline void sessionInfo(KvWebSocket * ws, njson&& json)
   {
-    static const KvQueryType queryType      = KvQueryType::SessionInfo;
+    static const KvQueryType queryType      = KvQueryType::ShInfo;
     static const std::string queryName      = QueryTypeToName.at(queryType);
     static const std::string queryRspName   = queryName +"_RSP";
 
@@ -501,7 +501,7 @@ private:
 
   fc_always_inline void sessionInfoAll(KvWebSocket * ws, njson&& json)
   {
-    static const KvQueryType queryType      = KvQueryType::SessionInfoAll;
+    static const KvQueryType queryType      = KvQueryType::ShInfoAll;
     static const std::string queryName      = QueryTypeToName.at(queryType);
     static const std::string queryRspName   = queryName +"_RSP";
 
@@ -532,7 +532,7 @@ private:
 
   fc_always_inline void sessionEnd(KvWebSocket * ws, njson&& json)
   {
-    static const KvQueryType queryType = KvQueryType::SessionEnd;
+    static const KvQueryType queryType = KvQueryType::ShEnd;
     static const std::string queryName     = QueryTypeToName.at(queryType);
     static const std::string queryRspName  = queryName +"_RSP";
 
@@ -543,6 +543,87 @@ private:
   }
   
   
+  fc_always_inline void sessionSave(KvWebSocket * ws, njson&& json)
+  {
+    static const KvQueryType queryType      = KvQueryType::ShSave;
+    static const std::string queryName      = QueryTypeToName.at(queryType);
+    static const std::string queryRspName   = queryName +"_RSP";
+
+    auto& cmd = json.at(queryName);
+
+    if (!NemesisConfig::kvSaveEnabled(m_config))
+      ws->send(createErrorResponseNoTkn(queryRspName, RequestStatus::CommandDisabled).to_string(), WsSendOpCode);
+    else if (!(cmd.contains("name") && cmd.at("name").is_string()))
+      ws->send(createErrorResponseNoTkn(queryRspName, RequestStatus::CommandSyntax).to_string(), WsSendOpCode);
+    else
+    {
+      const auto& name = cmd.at("name").as_string();
+
+      njson rsp;
+      rsp[queryRspName]["name"] = name;
+      
+      const auto timestampDir = std::to_string(KvSaveClock::now().time_since_epoch().count());
+      const auto root = fs::path {NemesisConfig::kvSavePath(m_config)} / name / timestampDir;
+      const auto metaPath = fs::path{root} / "md";
+      const auto dataPath = fs::path{root} / "data";
+
+      std::ofstream metaStream;
+
+      if (!fs::create_directories(metaPath))
+      {
+        rsp[queryRspName]["st"] = toUnderlying(RequestStatus::SaveDirWriteFail);
+        ws->send(rsp.to_string(), WsSendOpCode);
+      }
+      else if (metaStream.open(metaPath/"md.json", std::ios_base::trunc | std::ios_base::out); !metaStream.is_open())
+      {
+        rsp[queryRspName]["st"] = toUnderlying(RequestStatus::SaveDirWriteFail);
+        ws->send(rsp.to_string(), WsSendOpCode);
+      }
+      else
+      {
+        rsp[queryRspName]["st"] = toUnderlying(RequestStatus::SaveStart);
+        ws->send(rsp.to_string(), WsSendOpCode);
+
+        // write metadata before we start incase we're interrupted mid-save
+        auto start = KvSaveClock::now();
+        njson metadata;
+        metadata["name"] = name;
+        metadata["status"] = toUnderlying(KvSaveStatus::Pending);        
+        metadata["pools"] = m_pools.size();
+        metadata["start"] = std::chrono::time_point_cast<KvSaveMetaDataUnit>(start).time_since_epoch().count();
+        metadata["complete"] = 0;
+        
+        metadata.dump(metaStream);
+
+        // build and send save to pools
+        njson saveCmd;
+        saveCmd["poolDataRoot"] = dataPath.string();
+
+        auto results = submitSync(ws, queryType, queryName, queryRspName, std::move(saveCmd));
+
+        RequestStatus st = RequestStatus::Ok;
+
+        for (auto& result : results)
+          st = (std::any_cast<RequestStatus>(result) == RequestStatus::SaveComplete ? RequestStatus::SaveComplete : RequestStatus::SaveError);
+        
+        auto end = KvSaveClock::now();
+
+        // update metdata
+        metadata["status"] = toUnderlying(KvSaveStatus::Complete);
+        metadata["complete"] = std::chrono::time_point_cast<KvSaveMetaDataUnit>(end).time_since_epoch().count();
+        metaStream.seekp(0);
+        metadata.dump(metaStream);
+
+        // send command rsp
+        rsp[queryRspName]["st"] = toUnderlying(st);
+        rsp[queryRspName]["duration"] = std::chrono::duration_cast<KvSaveMetaDataUnit>(end-start).count();
+
+        ws->send(rsp.to_string(), WsSendOpCode);
+      }
+    }
+  }  
+
+
   // DATA
 
   fc_always_inline void set(KvWebSocket * ws, njson&& json)
@@ -789,87 +870,6 @@ private:
     }
   }
   
-
-  fc_always_inline void save(KvWebSocket * ws, njson&& json)
-  {
-    static const KvQueryType queryType      = KvQueryType::KvSave;
-    static const std::string queryName      = QueryTypeToName.at(queryType);
-    static const std::string queryRspName   = queryName +"_RSP";
-
-    auto& cmd = json.at(queryName);
-
-    if (!NemesisConfig::kvSaveEnabled(m_config))
-      ws->send(createErrorResponseNoTkn(queryRspName, RequestStatus::CommandDisabled).to_string(), WsSendOpCode);
-    else if (!(cmd.contains("name") && cmd.at("name").is_string()))
-      ws->send(createErrorResponseNoTkn(queryRspName, RequestStatus::CommandSyntax).to_string(), WsSendOpCode);
-    else
-    {
-      const auto& name = cmd.at("name").as_string();
-
-      njson rsp;
-      rsp[queryRspName]["name"] = name;
-      
-      const auto timestampDir = std::to_string(KvSaveClock::now().time_since_epoch().count());
-      const auto root = fs::path {NemesisConfig::kvSavePath(m_config)} / name / timestampDir;
-      const auto metaPath = fs::path{root} / "md";
-      const auto dataPath = fs::path{root} / "data";
-
-      std::ofstream metaStream;
-
-      if (!fs::create_directories(metaPath))
-      {
-        rsp[queryRspName]["st"] = toUnderlying(RequestStatus::SaveDirWriteFail);
-        ws->send(rsp.to_string(), WsSendOpCode);
-      }
-      else if (metaStream.open(metaPath/"md.json", std::ios_base::trunc | std::ios_base::out); !metaStream.is_open())
-      {
-        rsp[queryRspName]["st"] = toUnderlying(RequestStatus::SaveDirWriteFail);
-        ws->send(rsp.to_string(), WsSendOpCode);
-      }
-      else
-      {
-        rsp[queryRspName]["st"] = toUnderlying(RequestStatus::SaveStart);
-        ws->send(rsp.to_string(), WsSendOpCode);
-
-        // write metadata before we start incase we're interrupted mid-save
-        auto start = KvSaveClock::now();
-        njson metadata;
-        metadata["name"] = name;
-        metadata["status"] = toUnderlying(KvSaveStatus::Pending);        
-        metadata["pools"] = m_pools.size();
-        metadata["start"] = std::chrono::time_point_cast<KvSaveMetaDataUnit>(start).time_since_epoch().count();
-        metadata["complete"] = 0;
-        
-        metadata.dump(metaStream);
-
-        // build and send save to pools
-        njson saveCmd;
-        saveCmd["poolDataRoot"] = dataPath.string();
-
-        auto results = submitSync(ws, queryType, queryName, queryRspName, std::move(saveCmd));
-
-        RequestStatus st = RequestStatus::Ok;
-
-        for (auto& result : results)
-          st = (std::any_cast<RequestStatus>(result) == RequestStatus::SaveComplete ? RequestStatus::SaveComplete : RequestStatus::SaveError);
-        
-        auto end = KvSaveClock::now();
-
-        // update metdata
-        metadata["status"] = toUnderlying(KvSaveStatus::Complete);
-        metadata["complete"] = std::chrono::time_point_cast<KvSaveMetaDataUnit>(end).time_since_epoch().count();
-        metaStream.seekp(0);
-        metadata.dump(metaStream);
-
-        // send command rsp
-        rsp[queryRspName]["st"] = toUnderlying(st);
-        rsp[queryRspName]["duration"] = std::chrono::duration_cast<KvSaveMetaDataUnit>(end-start).count();
-
-        ws->send(rsp.to_string(), WsSendOpCode);
-      }
-    }
-  }  
-
 
 private:
   std::vector<KvPoolWorker *> m_pools;

@@ -300,6 +300,7 @@ private:
       placeholder,  // SessionOpen
       placeholder,  // SessionInfo
       placeholder,  // SessionInfoAll
+      placeholder,  // SessionSave
       set,
       setQ,
       get,
@@ -311,8 +312,7 @@ private:
       contains,
       find,
       update,
-      keys,
-      placeholder   // kvSave
+      keys
     };
 
 
@@ -327,7 +327,7 @@ private:
 
         // TODO can this be tidied by converting query type to int and using relative positions?
 
-        if (cmd.type == KvQueryType::SessionNew)
+        if (cmd.type == KvQueryType::ShNew)
         {
           const SessionDuration duration {cmd.contents.at("expiry").at("duration").as<SessionDuration::rep>()};
           const bool deleteOnExpire = cmd.contents.at("expiry").at("deleteSession").as_bool();
@@ -337,17 +337,17 @@ private:
           else
             send(cmd, PoolRequestResponse::sessionNew(RequestStatus::SessionNewFail, cmd.shtk, cmd.contents.at("name").as_string()).to_string()); 
         }
-        else if (cmd.type == KvQueryType::SessionEnd)
+        else if (cmd.type == KvQueryType::ShEnd)
         {
           auto status = sessions.end(cmd.shtk) ? RequestStatus::Ok : RequestStatus::SessionNotExist;
           send(cmd, PoolRequestResponse::sessionEnd(status, cmd.shtk).to_string());
         }
-        else if (cmd.type == KvQueryType::SessionOpen)
+        else if (cmd.type == KvQueryType::ShOpen)
         {
           const auto existsSharedTuple = sessions.openShared(cmd.shtk);
           cmd.syncResponseHandler(std::any{existsSharedTuple});
         }
-        else if (cmd.type == KvQueryType::SessionInfo)
+        else if (cmd.type == KvQueryType::ShInfo)
         {
           if (auto session = sessions.get(cmd.shtk); session)
           {
@@ -364,12 +364,12 @@ private:
           else
             send(cmd, PoolRequestResponse::sessionInfo(RequestStatus::SessionNotExist, cmd.shtk).to_string());
         }
-        else if (cmd.type == KvQueryType::SessionInfoAll)
+        else if (cmd.type == KvQueryType::ShInfoAll)
         {
           std::tuple<const std::size_t, const std::size_t> rsp {std::make_tuple(sessions.countSessions(), sessions.countKeys())};
           cmd.syncResponseHandler(std::any{std::move(rsp)});
         }
-        else if (cmd.type == KvQueryType::KvSave)
+        else if (cmd.type == KvQueryType::ShSave)
         {
           save(cmd, sessions);
         }

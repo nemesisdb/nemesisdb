@@ -1,15 +1,15 @@
 ---
-sidebar_position: 4
+sidebar_position: 25
 displayed_sidebar: homeSidebar
 ---
 
 # Persist Data
 NemesisDB is an in-memory/cache database meaning all the data is always stored in RAM. This offers performance benefits by removing calls to the filesystem and reducing complexity, but it also means if the server shutdowns all the data is lost.
 
-To help this, the data can be persisted to the filesystem using the `KV_SAVE` command. This command writes all data to file so it can be restored on startup.
+To help this, the data can be persisted to the filesystem using the `SH_SAVE` command. This command writes all data to file so it can be restored on startup.
 
 
-The `KV_SAVE` has a server config section, which defaults to:
+The `SH_SAVE` has a server config section, which defaults to:
 
 ```json
 "save":
@@ -25,7 +25,7 @@ The `KV_SAVE` has a server config section, which defaults to:
 
 
 ## Data Structure
-The `KV_SAVE` command requires a `name`:
+The `SH_SAVE` command requires a `name`:
 
 - A directory with this name is created in `save::path`
 - Inside `name`, a directory with the current timestamp is created, in which the data is written
@@ -36,7 +36,7 @@ For example, if we send:
 
 ```json
 {
-  "KV_SAVE":
+  "SH_SAVE":
   {
     "name":"dump1"
   }
@@ -50,7 +50,7 @@ A folder is created under `dump1`:
     └── 1700435579410403857
 ```
 
-Send another `KV_SAVE` with the same `name`:
+Send another `SH_SAVE` with the same `name`:
 
 ```bash title="Second save"
 └── dump1
@@ -67,7 +67,7 @@ Data is loaded using the name and the newest data is chosen. The longer term aim
 
 
 :::note
-If you want to store from a particular point, use a separate name for each use of `KV_SAVE` until selecting by timestamp is implemented.
+If you want to store from a particular point, use a separate name for each use of `SH_SAVE` until selecting by timestamp is implemented.
 :::
 
 Restoring data is only available during startup, using the `--loadName` switch:
@@ -92,6 +92,6 @@ Save and load is a new feature, added in version 0.3.4 (Nov 2023) so improvement
 New features will be added such as:
 
 - Select to restore data from name and timestamp
-- A `KV_LOAD` command to restore data at runtime
-- `KV_SAVE` can persist individual sessions rather than all sessions
+- A `SH_LOAD` command to restore data at runtime
+- `SH_SAVE` can persist individual sessions rather than all sessions
 :::
