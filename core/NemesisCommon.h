@@ -77,7 +77,7 @@ using KvWebSocket = uWS::WebSocket<false, true, WsSession>;
 enum class RequestStatus
 {
   Ok = 1,
-  OpCodeInvalid,
+  Reserved1,
   JsonInvalid,
   PathInvalid,
   NoPath,
@@ -91,7 +91,7 @@ enum class RequestStatus
   KeyNotExist,
   KeyExists,
   KeyRemoved,
-  Key_Reserved1,
+  Reserved2,
   ParamMissing,
   KeyTypeInvalid,
   ValueMissing = 40,
