@@ -5,11 +5,9 @@ sidebar_position: 110
 # KV_SAVE
 Saves the data to the filesystem so it can be loaded on startup, restoring the database.
 
-:::info
-The whole database is written by `KV_SAVE`, there is no option to only write what has changed since the last save. A future version will offer this.
-:::
 
-The data is written to the `kv::save::path` set in the config file. Note, `kv::save::enabled` must be `true`.
+- The data is written to the `kv::save::path` set in the config file
+- `kv::save::enabled` must be `true` for this command to be available
 
 <br/>
 
@@ -17,6 +15,10 @@ The data is written to the `kv::save::path` set in the config file. Note, `kv::s
 |:---|:---|:---|:---:|
 |name|string|A friendly name for the dataset. The data is saved to a directory with this name. The name is used when loading the data.|Y|
 
+
+:::info
+The whole database is written by `KV_SAVE`, there is not an option to only write what has changed since the last save. A future version will offer this.
+:::
 
 <br/>
 

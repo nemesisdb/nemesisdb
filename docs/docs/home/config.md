@@ -52,10 +52,10 @@ There is a default configuration included in the install package/Docker image:
     "save":
     {
       "enabled":false,
-      "~/ndbdata"
+      "path":"./data"
     }
   }
 }
 ```
 
-This listens on `127.0.0.1:1987`.
+This listens on `127.0.0.1:1987` with `KV_SAVE` disabled.

@@ -12,10 +12,6 @@ NemesisDB is a JSON in-memory database:
 - A session groups related data (similar to hashes in Redis)
 - You can create as many sessions as required (within memory limitations)
 
-:::info
-At the moment data cannot be saved to disk, but a future version will have a save command
-:::
-
 
 ## Sessions
 
@@ -28,7 +24,7 @@ At the moment data cannot be saved to disk, but a future version will have a sav
 - A session ends when either:
   1. It is commanded
   2. It expires (a session can live forever or have a duration set)
-- When a session is commanded to end, the session and its data are always deleted
+- When a session is commanded to end, the session and its data are deleted
 - When a session expires, its data is always deleted but you can choose if you also want to delete the session
 
 

@@ -832,11 +832,12 @@ private:
         ws->send(rsp.to_string(), WsSendOpCode);
 
         // write metadata before we start incase we're interrupted mid-save
+        auto start = KvSaveClock::now();
         njson metadata;
         metadata["name"] = name;
         metadata["status"] = toUnderlying(KvSaveStatus::Pending);        
         metadata["pools"] = m_pools.size();
-        metadata["start"] = std::chrono::time_point_cast<KvSaveMetaDataUnit>(KvSaveClock::now()).time_since_epoch().count();
+        metadata["start"] = std::chrono::time_point_cast<KvSaveMetaDataUnit>(start).time_since_epoch().count();
         metadata["complete"] = 0;
         
         metadata.dump(metaStream);
@@ -852,12 +853,18 @@ private:
         for (auto& result : results)
           st = (std::any_cast<RequestStatus>(result) == RequestStatus::SaveComplete ? RequestStatus::SaveComplete : RequestStatus::SaveError);
         
+        auto end = KvSaveClock::now();
+
+        // update metdata
         metadata["status"] = toUnderlying(KvSaveStatus::Complete);
-        metadata["complete"] = std::chrono::time_point_cast<KvSaveMetaDataUnit>(KvSaveClock::now()).time_since_epoch().count();
+        metadata["complete"] = std::chrono::time_point_cast<KvSaveMetaDataUnit>(end).time_since_epoch().count();
         metaStream.seekp(0);
         metadata.dump(metaStream);
 
+        // send command rsp
         rsp[queryRspName]["st"] = toUnderlying(st);
+        rsp[queryRspName]["duration"] = std::chrono::duration_cast<KvSaveMetaDataUnit>(end-start).count();
+
         ws->send(rsp.to_string(), WsSendOpCode);
       }
     }
