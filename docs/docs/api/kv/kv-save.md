@@ -54,33 +54,39 @@ When loading data, the newest timestamp is selected.
 
 `KV_SAVE_RSP`
 
-See [response status](./../Statuses) for status values.
 
 |Param|Type|Meaning|
 |:---|:---|:---|
 |st|unsigned int|Status|
-|name|string|The name used in the request.|
+|name|string|The name used in the request|
+|duration|unsigned int|Duration, in milliseconds, to write the data|
 
-This response split in two:
 
-- An initial response indicating the command is accepted
-- A final response confirming the save is complete
+The response is split in two:
+
+- An initial response indicating if the command is accepted
+- A final response confirming the save is complete or error during saving
 
 
 ### Initial Response
 `st` can be:
 
-- CommandDisabled (command disabled in the config file)
+- CommandDisabled (save disabled in the config file)
 - CommandSyntax (`name` not present or not a string)
-- SaveDirWriteFail (failed to create directory/file)
-- SaveStart
+- SaveDirWriteFail (failed to create directory/files required before starting)
+- SaveStart (command accepted, expect a final response)
 
 
 ### Final Response
 `st` can be:
 
-- SaveComplete to confirm the save is finished
+- SaveComplete (save complete without error)
+- SaveError (save incomplete, error occured)
 
+
+See [response status](./../Statuses) for status values.
+
+<br/>
 
 ## Example
 
@@ -88,18 +94,18 @@ This response split in two:
 {
   "KV_SAVE":
   {
-    "name":"first_save"
+    "name":"dump"
   }
 }
 ```
 
-Intial response:
+Initial response:
 
-```json title="Save start"
+```json title="Save accepted"
 {
   "KV_SAVE_RSP":
   {
-    "name":"first_save",
+    "name":"dump",
     "st": 120
   }
 }
@@ -110,8 +116,14 @@ Soon afterwards:
 {
   "KV_SAVE_RSP":
   {
-    "name":"first_save",
+    "name":"dump",
     "st": 121
   }
 }
 ```
+
+After this, the data can be found in:
+
+`<savepath>/dump/<timestamp>`
+
+where `<savepath>` is the `kv::save::path` in the server config.

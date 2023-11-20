@@ -88,7 +88,8 @@ A database with 1M sessions, with each session containing 5 keys (so 5M keys tot
 
 
 :::info
-Save and load is a new feature, added in version 0.3.4 (Nov 2023). New features will be added such as:
+Save and load is a new feature, added in version 0.3.4 (Nov 2023) so improvements will follow.
+New features will be added such as:
 
 - Select to restore data from name and timestamp
 - A `KV_LOAD` command to restore data at runtime
