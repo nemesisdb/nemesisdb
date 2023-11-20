@@ -30,7 +30,11 @@ class KvPoolWorker
 { 
 public:
 
-  KvPoolWorker(const std::size_t core, const PoolId id) noexcept : m_poolId(id), m_run(true), m_channel(8192U), m_thread(&KvPoolWorker::run, this) 
+  KvPoolWorker(const std::size_t core, const PoolId id) noexcept :
+    m_poolId(id),
+    m_run(true),
+    m_channel(16384U),  // must be a power of 2
+    m_thread(&KvPoolWorker::run, this) 
   {
     if (!setThreadAffinity(m_thread.native_handle(), core))
       std::cout << "Failed to assign KvPoolWorker thread: " << core << '\n';

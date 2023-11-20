@@ -120,7 +120,7 @@ public:
           .compression = uWS::DISABLED,
           .maxPayloadLength = maxPayload,
           .idleTimeout = 180, // TODO should be configurable?
-          .maxBackpressure = 16 * 1024 * 1024,
+          .maxBackpressure = 24 * 1024 * 1024,
           // handlers
           .upgrade = nullptr,
           
