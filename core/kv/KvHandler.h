@@ -225,7 +225,8 @@ private:
 
         for(auto& sesh : sessions.array_range())
         {
-          const SessionToken& token = sesh["sh"]["tkn"].as_string();
+          //
+          const SessionToken& token = sesh["sh"]["tkn"].as<SessionToken>();
 
           njson cmd;
           cmd["sesh"] = std::move(sesh);
@@ -257,16 +258,20 @@ private:
   bool getSessionToken(KvWebSocket * ws, const std::string_view queryRspName, njson& cmd, SessionToken& t)
   {
     bool valid = false;
-    if (cmd.contains("tkn") && cmd.at("tkn").is_string())
+    if (cmd.contains("tkn") && cmd.at("tkn").is_uint64())
     {
-      if (const auto& value = cmd.at("tkn").as_string(); value.empty())
-        ws->send(createErrorResponse(queryRspName, RequestStatus::SessionTokenInvalid).to_string(), WsSendOpCode);
-      else
-      {
-        t = std::move(cmd.at("tkn").as_string());
-        cmd.erase("tkn");
-        valid = true;
-      }
+      t = cmd.at("tkn").as<SessionToken>();
+      cmd.erase("tkn");
+      valid = true;
+      // if (const auto& value = cmd.at("tkn").as_string(); value.empty())
+      //   ws->send(createErrorResponse(queryRspName, RequestStatus::SessionTokenInvalid).to_string(), WsSendOpCode);
+      // else
+      // {
+      //   //t = std::move(cmd.at("tkn").as_string());
+      //   t = cmd.at("tkn").as<SessionToken>();
+      //   cmd.erase("tkn");
+      //   valid = true;
+      // }
     }
     else
       ws->send(createErrorResponse(queryRspName, RequestStatus::SessionTokenInvalid).to_string(), WsSendOpCode);
@@ -378,9 +383,9 @@ private:
   
   fc_always_inline void sessionNew(KvWebSocket * ws, njson&& json)
   {
-    static const KvQueryType queryType = KvQueryType::ShNew;
-    static const std::string queryName     = QueryTypeToName.at(queryType);
-    static const std::string queryRspName  = queryName +"_RSP";
+    static const KvQueryType queryType      = KvQueryType::ShNew;
+    static const std::string queryName      = QueryTypeToName.at(queryType);
+    static const std::string queryRspName   = queryName +"_RSP";
 
     auto& cmd = json.at(queryName);
 

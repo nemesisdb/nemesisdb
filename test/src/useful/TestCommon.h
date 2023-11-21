@@ -31,7 +31,8 @@ using testjson = nlohmann::json;
 class KvTestServer  : public ::testing::Test
 {
 public:
-  KvTestServer(NemesisConfig config = NemesisConfig { R"({ "version":1, "kv":{ "ip":"127.0.0.1", "port":1987, "maxPayload":1024 } })"sv}) : m_config(config)
+  KvTestServer(NemesisConfig config = NemesisConfig { R"({ "version":1, "kv":{ "ip":"127.0.0.1", "port":1987, "maxPayload":1024 }, "session":{"save":{"enabled":false, "path":"./data"}} })"sv})
+		: m_config(config)
   {
 
   }

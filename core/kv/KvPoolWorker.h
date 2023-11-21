@@ -591,7 +591,8 @@ public:
 
   fc_always_inline void loadSession (Sessions& sessions, njson&& seshData, RequestStatus& status, std::size_t& nSessions, std::size_t& nKeys)
   {
-    const auto token = std::move(seshData["sh"]["tkn"].as_string());
+    //const auto token = std::move(seshData["sh"]["tkn"].as_string());
+    const auto token = std::move(seshData["sh"]["tkn"].as<SessionToken>());
     const auto isShared = seshData["sh"]["shared"].as_bool();
     const auto deleteOnExpire = seshData["sh"]["expiry"]["deleteSession"].as_bool();
     const auto duration = SessionDuration{seshData["sh"]["expiry"]["duration"].as<std::size_t>()};

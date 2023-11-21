@@ -39,7 +39,7 @@ using KvSaveMetaDataUnit = std::chrono::milliseconds;
 
 // session
 using SessionPoolId = std::size_t;
-using SessionToken = std::string;
+using SessionToken = std::uint64_t; //std::string;
 using SessionName = std::string;
 using SessionClock = std::chrono::steady_clock;
 using SessionExpireTime = SessionClock::time_point;
@@ -135,6 +135,16 @@ static njson createErrorResponse (const std::string_view commandRsp, const Reque
   rsp[commandRsp]["st"] = static_cast<int>(status);
   rsp[commandRsp]["tkn"] = njson::null();
   rsp[commandRsp]["m"] = msg;
+  return rsp;
+}
+
+
+static njson createErrorResponse (const std::string_view commandRsp, const RequestStatus status, const SessionToken tkn)
+{
+  njson rsp;
+  rsp[commandRsp]["st"] = static_cast<int>(status);
+  rsp[commandRsp]["tkn"] = tkn;
+  rsp[commandRsp]["m"] = "";
   return rsp;
 }
 
