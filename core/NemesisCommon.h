@@ -174,6 +174,13 @@ constexpr typename std::underlying_type<E>::type toUnderlying(const E e) noexcep
   return static_cast<typename std::underlying_type_t<E>>(e);
 }
 
+
+std::size_t countFiles (const std::filesystem::path& path)
+{
+  return (std::size_t)std::distance(std::filesystem::directory_iterator{path}, std::filesystem::directory_iterator{});
+};
+
+
 } // namespace core
 } // namespace nemesis
 

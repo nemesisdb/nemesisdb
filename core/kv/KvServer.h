@@ -370,10 +370,16 @@ public:
       
       std::ifstream mdStream {md / "md.json"};
       auto mdJson = njson::parse(mdStream);
-    
-      m_kvHandler->loadOnStartUp(mdJson.at("pools").as<std::size_t>(), data);
 
-      return {true, ""};
+      if (!(mdJson.contains("status") && mdJson.contains("pools")) || !(mdJson["status"].is_uint64() && mdJson["pools"].is_uint64()))
+        return {false, "Metadata file invalid"};
+      else if (mdJson["status"] == toUnderlying(KvSaveStatus::Complete))
+      {
+        m_kvHandler->loadOnStartUp(data);
+        return {true, ""};
+      }
+      else
+        return {false, "Dataset is not complete, cannot load. Metadata status not Complete"};
     }
 
 
