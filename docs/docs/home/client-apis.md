@@ -14,6 +14,7 @@ If you have an API or plan to do so, feel free to contact via [Twitter](https://
 
 - The query interface is a WebSocket
 - It is not encrypted (HTTP/WS rather than HTTPS/WSS) currently
+- The client must support 64-bit integers (required by the session token)
 
 
 ## Sessions
@@ -25,7 +26,7 @@ If you have an API or plan to do so, feel free to contact via [Twitter](https://
 ## KV
 
 - All KV commands require a session token
-- Session tokens are strings (max/min lengths haven't been defined yet)
+- Session tokens are 64-bit unsigned integers
 - `KV_SETQ` and `KV_ADDQ` only respond on error, all other commands always respond
 
 

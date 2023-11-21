@@ -8,7 +8,7 @@ Get session information.
 
 |Param|Type|Meaning|Required|
 |:---|:---|:---|:---:|
-|tkn|string|Session token|Y|
+|tkn|uint|Session token|Y|
 
 
 ## Response
@@ -21,7 +21,7 @@ See the [response status](./../Statuses) page for status values.
 |Param|Type|Meaning|
 |:---|:---|:---|
 |st|unsigned int|Status|
-|tkn|string|Session token|
+|tkn|uint|Session token|
 |keyCnt|unsigned int|Number of keys in the session|
 |shared|bool|Indicates if the session is shared|
 |expiry|object|Expiry information|

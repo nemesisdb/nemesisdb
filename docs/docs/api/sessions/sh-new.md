@@ -39,7 +39,7 @@ See the [response status](./../Statuses) page for status values.
 |Param|Type|Meaning|
 |:---|:---|:---|
 |name|string|Session name as used in the request.|
-|tkn|string|Session token|
+|tkn|uint|Session token|
 |st|unsigned int|Status|
 
 Possible status values:

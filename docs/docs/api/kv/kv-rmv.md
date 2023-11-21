@@ -10,7 +10,7 @@ The command requires the token and an array of keys to remove.
 
 |Param|Type|Meaning|Required|
 |:---|:---|:---|:---:|
-|tkn|string|Session token|Y|
+|tkn|uint|Session token|Y|
 |keys|array|Array of keys to remove|Y|
 
 
@@ -21,7 +21,7 @@ The command requires the token and an array of keys to remove.
 
 |Param|Type|Meaning|
 |:---|:---|:---|
-|tkn|string|Session token|
+|tkn|uint|Session token|
 
 After the `tkn`, each key is listed with its removal status, typically KeyRemoved or KeyNotExist.
 
@@ -34,7 +34,7 @@ See the [response status](./../Statuses) page for status values.
 {
   "KV_RMV":
   {
-    "tkn":"16127334958516145570",
+    "tkn":16127334958516145570,
     "keys":["blocked"]
   }
 }
@@ -45,7 +45,7 @@ Response:
 ```json title="Remove success"
 {
   "KV_RMV_RSP": {
-    "tkn": "16127334958516145570",
+    "tkn": 16127334958516145570,
     "blocked": 24
   }
 }
@@ -57,7 +57,7 @@ Response:
 {
   "KV_RMV":
   {
-    "tkn":"16127334958516145570",
+    "tkn":16127334958516145570,
     "keys":["IDontExist"]
   }
 }
@@ -66,7 +66,7 @@ Response:
 ```json title="Key Does Not Exist"
 {
   "KV_RMV_RSP": {
-    "tkn": "16127334958516145570",
+    "tkn": 16127334958516145570,
     "IDontExist": 22
   }
 }

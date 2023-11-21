@@ -46,7 +46,7 @@ To store the above, you can use the `KV_SET` command:
 {
   "KV_SET":
   {
-    "tkn":"1234",
+    "tkn":1234,
     "keys":
     {
       "age":50,
@@ -73,7 +73,7 @@ To get the above keys:
 {
   "KV_GET":
   {
-    "tkn":"1234",
+    "tkn":1234,
     "keys":["age", "cars", "address"]
   }
 }
@@ -88,7 +88,7 @@ This returns:
 {
   "KV_GET_RSP":
   {
-    "tkn":"1234",
+    "tkn":1234,
     "keys":
     {
       "age":50,

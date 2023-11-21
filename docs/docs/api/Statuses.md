@@ -29,7 +29,7 @@ This table lists a 'friendly name' and value. The friendly name is used througho
 |Name|Value|Meaning
 |:---|:---:|:---|
 |SessionNotExist|100|Session does not exist|
-|SessionTokenInvalid|101|Token is not a string, not present or empty|
+|SessionTokenInvalid|101|Token is not an unsigned int, not present or null|
 |SessionOpenFail|102|Failed to open session, either the name is incorrect or the session is not shared|
 |SessionNewFail|103|Failed to create new session. Only likely when creating a shared session with a name for a shared session that already exists|
 

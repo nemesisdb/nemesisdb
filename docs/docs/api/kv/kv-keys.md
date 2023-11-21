@@ -10,7 +10,7 @@ This only returns the key names, not the values.
 
 |Param|Type|Meaning|Required|
 |:---|:---|:---|:---:|
-|tkn|string|Session token|Y|
+|tkn|uint|Session token|Y|
 
 
 <br/>
@@ -22,7 +22,7 @@ This only returns the key names, not the values.
 
 |Param|Type|Meaning|
 |:---|:---|:---|
-|tkn|string|Session token|
+|tkn|uint|Session token|
 |st|unsigned int|Status|
 |keys|string array|An array of key names|
 
@@ -43,7 +43,7 @@ Possible status values:
 {
   "KV_KEYS":
   {
-    "tkn":"13549976642705620562"
+    "tkn":13549976642705620562
   }
 }
 ```
@@ -54,7 +54,7 @@ Response:
 {
   "KV_KEYS_RSP":
   {
-    "tkn": "13549976642705620562",
+    "tkn": 13549976642705620562,
     "st": 1,
     "keys": []
   }
@@ -68,7 +68,7 @@ Response:
 {
   "KV_KEYS":
   {
-    "tkn":"13549976642705620562"
+    "tkn":13549976642705620562
   }
 }
 ```
@@ -79,7 +79,7 @@ Response:
 {
   "KV_KEYS_RSP":
   {
-    "tkn": "13549976642705620562",
+    "tkn": 13549976642705620562,
     "st": 1,
     "keys": ["profile","stats"]
   }
