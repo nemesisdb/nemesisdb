@@ -4,14 +4,14 @@ displayed_sidebar: homeSidebar
 ---
 
 # Run
-The server is requires a JSON [config](./config) file in preference to a numerous arguments.
+The bulk of the server config are set in a JSON [config](./config) file, which is in preference to endless command line arguments.
 
-The server includes a default config which starts the server on `127.0.0.1:1987`. IF this is unsuitable, change the `kv::ip` or `kv::port` as required.
+The server includes a default config which starts the server on `127.0.0.1:1987`. If this is unsuitable, change the `kv::ip` and `kv::port` as required.
 
 
 ## Arguments
 
-The startup arguments are preceeded with `--`:
+The command line arguments are preceeded with `--`:
 
 |Argument|Required|Description|
 |:---|:---:|:---|
@@ -20,8 +20,10 @@ The startup arguments are preceeded with `--`:
 
 <br/>
 
+:::note
 - When save is enabled the `path` must exist and be a directory
 - You can disable save but still restore data
+:::
 
 <br/>
 
@@ -60,7 +62,7 @@ Config file path not found
 NemesisDB v0.3.4 starting
 Registering signals
 Reading config
-kv::save::path is not a directory or does not exist
+session::save::path is not a directory or does not exist
 ```
 
 

@@ -6,20 +6,23 @@ displayed_sidebar: homeSidebar
 # Persist Data
 NemesisDB is an in-memory/cache database meaning all the data is always stored in RAM. This offers performance benefits by removing calls to the filesystem and reducing complexity, but it also means if the server shutdowns all the data is lost.
 
-To help this, the data can be persisted to the filesystem using the [SH_SAVE](../api/sessions/sh-save) command. This command writes all data to file so it can be restored on startup.
+To help this, the data can be persisted to the filesystem using the [SH_SAVE](../api/sessions/sh-save) command. This command writes all sessions to file so they can be restored on startup.
 
 
 The `SH_SAVE` has a server config section, which defaults to:
 
 ```json
-"save":
+"session":
 {
-  "enabled":false,
-  "path":"./data"
+  "save":
+  {
+    "enabled":false,
+    "path":"./data"
+  }
 }
 ```
 
-- When `enabled` is false, the `path` is not checked so does not need to exist and `kV_SAVE` is disabled
+- When `enabled` is false, the `path` is not checked so does not need to exist and `SH_SAVE` is disabled
 - When `enabled` is true, the `path` must exist and be a directory
 
 
@@ -63,7 +66,7 @@ A new directory is created for the second save.
 <br/>
 
 ## Restore Data
-Data is loaded using the name and the newest data is chosen. The longer term aim is to provide a method to select the data based on the name and timestamp.
+Data is loaded using the name and the newest data is always chosen. The longer term aim is to provide a method to select the data based on the name and timestamp.
 
 
 :::note
@@ -83,12 +86,12 @@ Save and restore performance is mostly governed by disk i/o performance.
 
 A database with 1M sessions, with each session containing 5 keys (so 5M keys total), totalling ~385MB of data on an NVME disk:
 
-- Save: 4 seconds
-- Load: 7 seconds
+- Save: 3.7 seconds
+- Load: 6.5 seconds
 
 
 :::info
-Save and load is a new feature, added in version 0.3.4 (Nov 2023) so improvements will follow.
+Save and load are new features, added in version 0.3.4 (Nov 2023) so improvements will follow.
 New features will be added such as:
 
 - Select to restore data from name and timestamp

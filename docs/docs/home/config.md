@@ -45,7 +45,9 @@ See [SH_SAVE](../api/sessions/sh-save) for more.
 
 ## Default Config
 
-There is a default configuration included in the install package/Docker image:
+There is a default configuration included in the install package/Docker image. 
+
+The default settings listen on `127.0.0.1:1987` with `SH_SAVE` disabled (so `session:save::path` does not need to exist):
 
 ```json title="default.json"
 {
@@ -66,5 +68,3 @@ There is a default configuration included in the install package/Docker image:
   }
 }
 ```
-
-This listens on `127.0.0.1:1987` with `SH_SAVE` disabled.
