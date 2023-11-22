@@ -383,8 +383,13 @@ private:
         }
         else  [[likely]]
         {
-          if (auto map = sessions.getMap(cmd.shtk); map)
-            handlers[static_cast<const std::size_t>(cmd.type)](map->get(), cmd);
+          if (auto sesh = sessions.get(cmd.shtk); sesh)
+          {
+            handlers[static_cast<const std::size_t>(cmd.type)](sesh->get().map, cmd);
+            
+            if (sesh->get().expires)
+              sessions.updateExpiry(sesh->get());
+          }
           else
             send(cmd, createErrorResponse(QueryTypeToName.at(cmd.type) + "_RSP", RequestStatus::SessionNotExist, cmd.shtk).to_string());
         }
@@ -499,46 +504,6 @@ private:
       if (status != RequestStatus::LoadError)
         status = st;
     };
-
-    /*
-    auto readSeshFile = [&sessions, &nKeys, &nSessions, &updateStatus](const fs::path path)
-    {
-      try
-      {
-        std::ifstream seshStream{path};
-        auto root = njson::parse(seshStream);
-
-        for (auto& item : root.array_range())
-        {
-          const auto token = std::move(item["sh"]["tkn"].as_string());
-          const auto isShared = item["sh"]["shared"].as_bool();
-          const auto deleteOnExpire = item["sh"]["expiry"]["deleteSession"].as_bool();
-          const auto duration = SessionDuration{item["sh"]["expiry"]["duration"].as<std::size_t>()};
-
-          if (auto session = sessions.start(token, isShared, duration, deleteOnExpire); session)
-          {
-            for (auto& items : item.at("keys").object_range())
-            {
-              session->get().set(items.key(), std::move(items.value()));
-              ++nKeys;
-            }
-
-            ++nSessions;
-          }
-          else 
-          {
-            std::cout << "readSeshFile: failed to create session";
-            updateStatus(RequestStatus::LoadError);
-          } 
-        }
-      }
-      catch(const std::exception& e)
-      {
-        std::cerr << e.what() << '\n';
-      }
-    };
-    */
-    
 
     try
     {      

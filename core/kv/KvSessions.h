@@ -145,7 +145,7 @@ public:
   }
 
 
-  std::optional<std::reference_wrapper<const Session>> get (const SessionToken& token) const
+  std::optional<std::reference_wrapper<Session>> get (const SessionToken& token)
   {
     if (auto it = m_sessions.find(token) ; it == m_sessions.end())
       return {};
@@ -186,6 +186,29 @@ public:
 
       m_expiry.erase(m_expiry.begin(), itExpired);
       m_expiry.insert(std::make_move_iterator(renew.begin()), std::make_move_iterator(renew.end()));
+    }
+  }
+
+
+  void updateExpiry (Session& sesh)
+  {
+    if (auto itExpire = m_expiry.find(sesh.expireInfo.time); itExpire != m_expiry.end())
+    {
+      auto expireEntry = std::find_if(itExpire, m_expiry.end(), [&sesh](auto expiry) { return expiry.second.token == sesh.token; });
+      if (expireEntry != m_expiry.end())
+      {
+        // m_expiry uses the expire time as a key so we need to extract, update time and insert with new time
+        auto node = m_expiry.extract(expireEntry);
+
+        const auto expireTime = SessionClock::now() + node.mapped().duration;
+
+        sesh.expireInfo.time = expireTime;
+        
+        node.mapped().time = expireTime;
+        node.key() = expireTime;
+
+        m_expiry.insert(std::move(node));
+      }
     }
   }
 
