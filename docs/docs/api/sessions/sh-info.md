@@ -36,6 +36,7 @@ See the [response status](./../Statuses) page for status values.
 |duration|unsigned int|Duration, in seconds, the session exists before expiring|
 |deleteSession|bool|If true, the session is deleted when the session expires. If false, only the data is deleted|
 
+<br/>
 
 Possible status values:
 
