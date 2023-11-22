@@ -8,7 +8,7 @@ Check if a key exists.
 
 |Param|Type|Meaning|Required|
 |:---|:---|:---|:---:|
-|tkn|string|Session token|Y|
+|tkn|uint|Session token|Y|
 |keys|array|Array of key names|Y|
 
 
@@ -29,7 +29,7 @@ Check if a key exists.
 
 |Param|Type|Meaning|
 |:---|:---|:---|
-|tkn|string|Session token|
+|tkn|uint|Session token|
 |st|unsigned int|Status|
 |keys|object|Keys with boolean flag indicating `true` (exist) or `false` (not exist)|Y|
 
@@ -50,7 +50,7 @@ The above command may return this:
   "KV_CONTAINS_RSP":
   {
     "st": 1,
-    "tkn": "10388228285655098522",
+    "tkn": 10388228285655098522,
     "keys": {
       "user": true,
       "access": true,

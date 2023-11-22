@@ -8,6 +8,7 @@
 #include <boost/fiber/fiber.hpp>
 #include <boost/fiber/buffered_channel.hpp>
 #include <ankerl/unordered_dense.h>
+#include <jsoncons/json_encoder.hpp>
 #include <core/NemesisCommon.h>
 #include <core/CacheMap.h>
 #include <core/kv/KvCommon.h>
@@ -19,6 +20,9 @@ namespace nemesis { namespace core { namespace kv {
 
 using namespace std::string_view_literals;
 
+namespace fs = std::filesystem;
+namespace chrono = std::chrono;
+
 
 // A number of KvPoolWorker are created (MaxPools), which is hardware_concurrency() minus the number of IO threads.
 // A pool worker runs in a thread which is assigned to a core. Each pool worker has a dedicated map which stores the key/values. 
@@ -26,7 +30,11 @@ class KvPoolWorker
 { 
 public:
 
-  KvPoolWorker(const std::size_t core, const PoolId id) noexcept : m_poolId(id), m_run(true), m_channel(8192U), m_thread(&KvPoolWorker::run, this) 
+  KvPoolWorker(const std::size_t core, const PoolId id) noexcept :
+    m_poolId(id),
+    m_run(true),
+    m_channel(16384U),  // must be a power of 2
+    m_thread(&KvPoolWorker::run, this) 
   {
     if (!setThreadAffinity(m_thread.native_handle(), core))
       std::cout << "Failed to assign KvPoolWorker thread: " << core << '\n';
@@ -62,33 +70,8 @@ private:
 
   void run ()
   {
-    auto sessionNew = [this](CacheMap& map, KvCommand& cmd)
+    auto placeholder = [this](CacheMap& map, KvCommand& cmd)
     {
-      // handled below
-    };
-
-
-    auto sessionEnd = [this](CacheMap& map, KvCommand& cmd)
-    {
-      // handled below 
-    };
-
-
-    auto sessionOpen = [this](CacheMap& map, KvCommand& cmd)
-    {
-      // handled below
-    };
-
-
-    auto sessionInfo = [this](CacheMap& map, KvCommand& cmd)
-    {
-      // handled below
-    };
-
-
-    auto sessionInfoAll = [this](CacheMap& map, KvCommand& cmd)
-    {
-      // handled below
     };
 
 
@@ -307,15 +290,17 @@ private:
       send(cmd, PoolRequestResponse::sessionKeys(cmd.shtk, map.keys()).to_string());
     };
 
+    
 
     // CAREFUL: these have to be in the order of KvQueryType enum
-    static const std::array<std::function<void(CacheMap&, KvCommand&)>, static_cast<std::size_t>(KvQueryType::Max)> handlers = 
+    static const std::array<std::function<void(CacheMap&, KvCommand&)>, static_cast<std::size_t>(KvQueryType::MAX)> handlers = 
     {    
-      sessionNew,
-      sessionEnd,
-      sessionOpen,
-      sessionInfo,
-      sessionInfoAll,
+      placeholder,  // SessionNew
+      placeholder,  // SessionEnd
+      placeholder,  // SessionOpen
+      placeholder,  // SessionInfo
+      placeholder,  // SessionInfoAll
+      placeholder,  // SessionSave
       set,
       setQ,
       get,
@@ -340,7 +325,9 @@ private:
       {
         cmd = std::move(m_channel.value_pop());
 
-        if (cmd.type == KvQueryType::SessionNew)
+        // TODO can this be tidied by converting query type to int and using relative positions?
+
+        if (cmd.type == KvQueryType::ShNew)
         {
           const SessionDuration duration {cmd.contents.at("expiry").at("duration").as<SessionDuration::rep>()};
           const bool deleteOnExpire = cmd.contents.at("expiry").at("deleteSession").as_bool();
@@ -350,17 +337,17 @@ private:
           else
             send(cmd, PoolRequestResponse::sessionNew(RequestStatus::SessionNewFail, cmd.shtk, cmd.contents.at("name").as_string()).to_string()); 
         }
-        else if (cmd.type == KvQueryType::SessionEnd)
+        else if (cmd.type == KvQueryType::ShEnd)
         {
           auto status = sessions.end(cmd.shtk) ? RequestStatus::Ok : RequestStatus::SessionNotExist;
           send(cmd, PoolRequestResponse::sessionEnd(status, cmd.shtk).to_string());
         }
-        else if (cmd.type == KvQueryType::SessionOpen)
+        else if (cmd.type == KvQueryType::ShOpen)
         {
           const auto existsSharedTuple = sessions.openShared(cmd.shtk);
           cmd.syncResponseHandler(std::any{existsSharedTuple});
         }
-        else if (cmd.type == KvQueryType::SessionInfo)
+        else if (cmd.type == KvQueryType::ShInfo)
         {
           if (auto session = sessions.get(cmd.shtk); session)
           {
@@ -377,14 +364,22 @@ private:
           else
             send(cmd, PoolRequestResponse::sessionInfo(RequestStatus::SessionNotExist, cmd.shtk).to_string());
         }
-        else if (cmd.type == KvQueryType::SessionInfoAll)
+        else if (cmd.type == KvQueryType::ShInfoAll)
         {
           std::tuple<const std::size_t, const std::size_t> rsp {std::make_tuple(sessions.countSessions(), sessions.countKeys())};
           cmd.syncResponseHandler(std::any{std::move(rsp)});
         }
+        else if (cmd.type == KvQueryType::ShSave)
+        {
+          save(cmd, sessions);
+        }
         else if (cmd.type == KvQueryType::InternalSessionMonitor)
         {
           sessions.handleExpired();
+        }
+        else if (cmd.type == KvQueryType::InternalLoad)
+        {
+          load(cmd, sessions);
         }
         else  [[likely]]
         {
@@ -417,6 +412,208 @@ private:
       }
     }
   }
+
+
+
+  void save(KvCommand& cmd, const Sessions& sessions)
+  {
+    const std::size_t SessionsPerFile = 10'000U;
+    const auto root = cmd.contents["poolDataRoot"].as_string_view();
+    const auto path = fs::path{root} / std::to_string(m_poolId);
+
+    RequestStatus status = RequestStatus::SaveComplete;
+
+    try
+    {
+      if (!fs::create_directories(path))
+        status = RequestStatus::SaveError;
+      else
+      {
+        const auto& allSessions = sessions.getSessions();        
+        const auto total = allSessions.size() ;
+        std::size_t nFiles = 0, i = 0, written = 0;        
+        std::size_t remaining = std::min<std::size_t>(total, SessionsPerFile);
+        std::ofstream dataStream ;
+        njson data;
+
+        if (total)
+        {
+          data = njson::make_array(remaining);
+          dataStream.open(path / std::to_string(nFiles));
+        }
+
+        for(const auto& [token, sesh] : allSessions)
+        {
+          njson seshData;
+          seshData["sh"]["tkn"] = token;
+          seshData["sh"]["shared"] = sesh.shared;
+          seshData["sh"]["expiry"]["duration"] = chrono::duration_cast<SessionDuration>(sesh.expireInfo.duration).count();
+          seshData["sh"]["expiry"]["deleteSession"] = sesh.expireInfo.deleteOnExpire;
+
+          for(const auto& [k, v] : sesh.map.map())
+            seshData["keys"][k] = v;
+
+          data[i++] = std::move(seshData);
+          --remaining;
+          ++written;
+
+          if (remaining == 0)
+          {
+            //std::cout << "Write stream. Remaining: " << remaining << '\n';
+
+            data.dump(dataStream);
+            dataStream.close();
+
+            if (total - written)
+            {
+              ++nFiles;
+
+              dataStream.open(path / std::to_string(nFiles));
+              remaining = std::min<std::size_t>(total - written, SessionsPerFile);
+              data.resize(remaining);
+              i = 0;
+
+              //std::cout << "New file. Remaining: " << remaining << "\n";
+            }
+          }
+        }
+      }
+    }
+    catch (const std::exception& ex)
+    {
+      std::cout << ex.what() << '\n';
+      status = RequestStatus::SaveError;
+    } 
+
+    cmd.syncResponseHandler(std::any{status});   
+  }
+
+
+  void load(KvCommand& cmd, Sessions& sessions)
+  {
+    RequestStatus status = RequestStatus::Loading;
+    std::size_t nSessions{0}, nKeys{0};
+
+    auto updateStatus = [&status](const RequestStatus st)
+    {
+      if (status != RequestStatus::LoadError)
+        status = st;
+    };
+
+    /*
+    auto readSeshFile = [&sessions, &nKeys, &nSessions, &updateStatus](const fs::path path)
+    {
+      try
+      {
+        std::ifstream seshStream{path};
+        auto root = njson::parse(seshStream);
+
+        for (auto& item : root.array_range())
+        {
+          const auto token = std::move(item["sh"]["tkn"].as_string());
+          const auto isShared = item["sh"]["shared"].as_bool();
+          const auto deleteOnExpire = item["sh"]["expiry"]["deleteSession"].as_bool();
+          const auto duration = SessionDuration{item["sh"]["expiry"]["duration"].as<std::size_t>()};
+
+          if (auto session = sessions.start(token, isShared, duration, deleteOnExpire); session)
+          {
+            for (auto& items : item.at("keys").object_range())
+            {
+              session->get().set(items.key(), std::move(items.value()));
+              ++nKeys;
+            }
+
+            ++nSessions;
+          }
+          else 
+          {
+            std::cout << "readSeshFile: failed to create session";
+            updateStatus(RequestStatus::LoadError);
+          } 
+        }
+      }
+      catch(const std::exception& e)
+      {
+        std::cerr << e.what() << '\n';
+      }
+    };
+    */
+    
+
+    try
+    {      
+      if (cmd.contents.contains("dirs"))
+      {
+        // loading everything from multiple pool data dirs
+        for (auto& dataDir : cmd.contents.at("dirs").array_range())
+        {
+          fs::path dir {dataDir.as_string_view()};
+          for (const auto seshFile : fs::directory_iterator{dir})
+            readSeshFile(sessions, seshFile.path(), status, nSessions, nKeys);
+        }
+      }
+      else
+      {
+        // load an individual session
+        loadSession(sessions, std::move(cmd.contents.at("sesh")), status, nSessions, nKeys);
+      }      
+    }
+    catch(const std::exception& e)
+    {
+      std::cerr << e.what() << '\n';
+      status = RequestStatus::LoadError;
+    }
+
+    updateStatus(RequestStatus::LoadComplete);
+
+    cmd.syncResponseHandler(std::any{StartupLoadResult{.status = status, .nSessions = nSessions, .nKeys = nKeys}});
+  }
+
+
+public:
+
+  fc_always_inline void readSeshFile (Sessions& sessions, const fs::path path, RequestStatus& status, std::size_t& nSessions, std::size_t& nKeys)
+  {
+    try
+    {
+      std::ifstream seshStream{path};
+      auto root = njson::parse(seshStream);
+
+      for (auto& item : root.array_range())
+        loadSession(sessions, std::move(item), status, nSessions, nKeys);
+    }
+    catch(const std::exception& e)
+    {
+      std::cerr << e.what() << '\n';
+    }
+  };
+
+
+  fc_always_inline void loadSession (Sessions& sessions, njson&& seshData, RequestStatus& status, std::size_t& nSessions, std::size_t& nKeys)
+  {
+    //const auto token = std::move(seshData["sh"]["tkn"].as_string());
+    const auto token = std::move(seshData["sh"]["tkn"].as<SessionToken>());
+    const auto isShared = seshData["sh"]["shared"].as_bool();
+    const auto deleteOnExpire = seshData["sh"]["expiry"]["deleteSession"].as_bool();
+    const auto duration = SessionDuration{seshData["sh"]["expiry"]["duration"].as<std::size_t>()};
+
+    if (auto session = sessions.start(token, isShared, duration, deleteOnExpire); session)
+    {
+      for (auto& items : seshData.at("keys").object_range())
+      {
+        session->get().set(items.key(), std::move(items.value()));
+        ++nKeys;
+      }
+
+      ++nSessions;
+    }
+    else 
+    {
+      std::cout << "readSeshFile: failed to create session";
+      status = RequestStatus::LoadError;
+    } 
+  }
+
 
 
 private:

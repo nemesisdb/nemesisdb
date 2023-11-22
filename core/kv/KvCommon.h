@@ -21,11 +21,12 @@ static PoolId MaxPools = 1U;
 
 enum class KvQueryType : std::uint8_t
 { 
-  SessionNew,
-  SessionEnd,
-  SessionOpen,
-  SessionInfo,
-  SessionInfoAll,
+  ShNew,
+  ShEnd,
+  ShOpen,
+  ShInfo,
+  ShInfoAll,
+  ShSave,
   KvSet,
   KvSetQ,
   KvGet,
@@ -37,9 +38,10 @@ enum class KvQueryType : std::uint8_t
   KvContains,
   KvFind,
   KvUpdate,
-  KvKeys,
-  Max,
+  KvKeys,  
+  MAX,
   InternalSessionMonitor,
+  InternalLoad,
   Unknown,
 };
 
@@ -47,12 +49,13 @@ enum class KvQueryType : std::uint8_t
 const std::map<const std::string_view, std::tuple<const KvQueryType>> QueryNameToType = 
 {  
   // session
-  {"SH_NEW",          {KvQueryType::SessionNew}},
-  {"SH_END",          {KvQueryType::SessionEnd}},
-  {"SH_OPEN",         {KvQueryType::SessionOpen}},
-  {"SH_INFO",         {KvQueryType::SessionInfo}},
-  {"SH_INFO_ALL",     {KvQueryType::SessionInfoAll}},
-  // 
+  {"SH_NEW",          {KvQueryType::ShNew}},
+  {"SH_END",          {KvQueryType::ShEnd}},
+  {"SH_OPEN",         {KvQueryType::ShOpen}},
+  {"SH_INFO",         {KvQueryType::ShInfo}},
+  {"SH_INFO_ALL",     {KvQueryType::ShInfoAll}},
+  {"SH_SAVE",         {KvQueryType::ShSave}},
+  // kv
   {"KV_SET",          {KvQueryType::KvSet}},
   {"KV_SETQ",         {KvQueryType::KvSetQ}},
   {"KV_GET",          {KvQueryType::KvGet}},
@@ -71,11 +74,12 @@ const std::map<const std::string_view, std::tuple<const KvQueryType>> QueryNameT
 const std::map<const KvQueryType, const std::string> QueryTypeToName = 
 {
   // Session
-  {KvQueryType::SessionNew,       "SH_NEW"},
-  {KvQueryType::SessionEnd,       "SH_END"},
-  {KvQueryType::SessionOpen,      "SH_OPEN"},
-  {KvQueryType::SessionInfo,      "SH_INFO"},
-  {KvQueryType::SessionInfoAll,   "SH_INFO_ALL"},
+  {KvQueryType::ShNew,        "SH_NEW"},
+  {KvQueryType::ShEnd,        "SH_END"},
+  {KvQueryType::ShOpen,       "SH_OPEN"},
+  {KvQueryType::ShInfo,       "SH_INFO"},
+  {KvQueryType::ShInfoAll,    "SH_INFO_ALL"},
+  {KvQueryType::ShSave,       "SH_SAVE"},
   //
   {KvQueryType::KvSet,        "KV_SET"},
   {KvQueryType::KvSetQ,       "KV_SETQ"},
@@ -88,7 +92,7 @@ const std::map<const KvQueryType, const std::string> QueryTypeToName =
   {KvQueryType::KvContains,   "KV_CONTAINS"},
   {KvQueryType::KvFind,       "KV_FIND"},
   {KvQueryType::KvUpdate,     "KV_UPDATE"},
-  {KvQueryType::KvKeys,       "KV_KEYS"}
+  {KvQueryType::KvKeys,       "KV_KEYS"}  
 };
 
 
@@ -199,12 +203,39 @@ struct ServerStats
 } * serverStats;
 
 
+struct StartupLoadResult
+{  
+  RequestStatus status;
+  std::size_t nSessions{0};
+  std::size_t nKeys{0};
+  NemesisClock::duration loadTime{0};
+
+  StartupLoadResult& operator+=(const StartupLoadResult& r)
+  {
+    if (r.status != RequestStatus::LoadComplete)
+      status = r.status;
+    else
+    {
+      nKeys += r.nKeys;
+      nSessions += r.nSessions;
+    }
+
+    loadTime += r.loadTime; // beware when loading concurrent pools
+  
+    return *this;
+  }
+};
+
+
+
+
 
 static const std::array<std::function<void(const SessionToken&, SessionPoolId&)>, 2U> SessionIndexers =
 {
   [](const SessionToken& t, SessionPoolId& id) 
   {
-    id = ((t[0U] + t[1U] + t[2U] + t[3U] + t[4U] + t[5U]) & 0xFFFFFFFF) % MaxPools;
+    //id = ((t[0U] + t[1U] + t[2U] + t[3U] + t[4U] + t[5U]) & 0xFFFFFFFF) % MaxPools;
+    id = t % MaxPools;
   },
 
   [](const SessionToken& t, SessionPoolId& id)
@@ -216,47 +247,71 @@ static const std::array<std::function<void(const SessionToken&, SessionPoolId&)>
 
 fc_always_inline SessionToken createSessionToken(const SessionName& name, const bool shared)
 {
+  // if (shared)
+  // {
+  //   static const std::size_t seed = 99194853094755497U;
+  //   const auto hash = std::hash<SessionName>{}(name);
+  //   return std::to_string((std::size_t)(hash | seed));
+  // }
+  // else
+  // {
+  //   static UUIDv4::UUIDGenerator<std::mt19937_64> uuidGenerator; 
+  //   const auto uuid = uuidGenerator.getUUID();
+  //   return std::to_string(uuid.hash());
+  // }
   if (shared)
   {
     static const std::size_t seed = 99194853094755497U;
     const auto hash = std::hash<SessionName>{}(name);
-    return std::to_string((std::size_t)(hash | seed));
+    return (hash | seed);
   }
   else
   {
     static UUIDv4::UUIDGenerator<std::mt19937_64> uuidGenerator; 
     const auto uuid = uuidGenerator.getUUID();
-    return std::to_string(uuid.hash());
+    return uuid.hash();
   }
 }
 
+
+fc_always_inline uuid createUuid ()
+{
+  static UUIDv4::UUIDGenerator<std::mt19937_64> uuidGenerator; 
+  
+  uuid s;
+  uuidGenerator.getUUID().str(s);
+  return s;
+}
+
+
 // TODO this isn't used, but really should be
-// fc_always_inline bool valueTypeValid (const njson& value)
-// {
-//   static const std::set<jsoncons::json_type> DisallowedTypes = 
-//   {
-//     jsoncons::json_type::byte_string_value
-//   };
+/*
+fc_always_inline bool valueTypeValid (const njson& value)
+{
+  static const std::set<jsoncons::json_type> DisallowedTypes = 
+  {
+    jsoncons::json_type::byte_string_value
+  };
 
-//   if (value.is_array())
-//   {
-//     static const std::set<jsoncons::json_type> DisallowedTypes = 
-//     {
-//       jsoncons::json_type::byte_string_value
-//     };
+  if (value.is_array())
+  {
+    static const std::set<jsoncons::json_type> DisallowedTypes = 
+    {
+      jsoncons::json_type::byte_string_value
+    };
 
-//     for(const auto& item : value.array_range())
-//     {
-//       if (item.type() == jsoncons::json_type::byte_string_value)
-//         return false;
-//     }
+    for(const auto& item : value.array_range())
+    {
+      if (item.type() == jsoncons::json_type::byte_string_value)
+        return false;
+    }
 
-//     return true;
-//   }
-//   else
-//     return value.type() != jsoncons::json_type::byte_string_value;
-// }
-
+    return true;
+  }
+  else
+    return value.type() != jsoncons::json_type::byte_string_value;
+}
+*/
 
 
 }

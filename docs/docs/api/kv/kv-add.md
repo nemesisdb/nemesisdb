@@ -15,7 +15,7 @@ See the [response status](./../Statuses) page for status values.
 
 |Param|Type|Meaning|
 |:---|:---|:---|
-|tkn|string|Session token|
+|tkn|uint|Session token|
 |keys|object|For each key that was set: `"<keyname>":<status>`|
 
 

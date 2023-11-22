@@ -50,7 +50,7 @@ The response will be similar to the following:
   "SH_NEW_RSP": {
     "st": 1,
     "name": "user1",
-    "tkn": "14247375118774737462"
+    "tkn": 14247375118774737462
   }
 }
 ```
@@ -73,7 +73,7 @@ Send the following, **replacing** `tkn` with your token:
 ```json
 {
   "SH_INFO": {
-    "tkn": "14247375118774737462"
+    "tkn": 14247375118774737462
   }
 }
 ```
@@ -84,7 +84,7 @@ The response will be:
 {
   "SH_INFO_RSP": {
     "st": 1,
-    "tkn": "14247375118774737462",
+    "tkn": 14247375118774737462,
     "shared": false,
     "keyCnt": 0,
     "expiry": {

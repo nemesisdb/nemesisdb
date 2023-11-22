@@ -8,7 +8,7 @@ Stores data. This command always returns a response. If you don't require a resp
 
 |Param|Type|Meaning|Required|
 |:---|:---|:---|:---:|
-|tkn|string|Session token|Y|
+|tkn|uint|Session token|Y|
 |keys|object|Keys and values to store|Y|
 
 
@@ -31,7 +31,7 @@ This stores three keys, "forename", "surname" and "email" with their respective 
 {
   "KV_SET":
   {
-    "tkn":"12345678",
+    "tkn":12345678,
     "keys":
     {
       "forename":"James",
@@ -48,7 +48,7 @@ The above can be also stored as an object with key "profile":
 {
   "KV_SET":
   {
-    "tkn":"12345678",
+    "tkn":12345678,
     "keys":
     {
       "profile":
@@ -76,7 +76,7 @@ See the [response status](./../Statuses) page for status values.
 
 |Param|Type|Meaning|
 |:---|:---|:---|
-|tkn|string|Session token|
+|tkn|uint|Session token|
 |keys|object|For each key that was set: `"<keyname>":<status>`|
 
 
@@ -97,7 +97,7 @@ Possible status values:
 {
   "KV_SET":
   {
-    "tkn":"3442644399356403325",
+    "tkn":3442644399356403325,
     "keys":
     {
       "user":
@@ -117,7 +117,7 @@ Response:
 {
   "KV_SET_RSP":
   {
-    "tkn": "3442644399356403325",
+    "tkn": 3442644399356403325,
     "keys":
     {
       "user": 20
@@ -136,7 +136,7 @@ This means key "user" was set (`20`). If "user" key already existed, the status 
 {
   "KV_SET":
   {
-    "tkn":"3442644399356403325",
+    "tkn":3442644399356403325,
     "keys":
     {
       "stats":
@@ -160,7 +160,7 @@ Response:
 ```json
 {
   "KV_SET_RSP": {
-    "tkn": "3442644399356403325",
+    "tkn": 3442644399356403325,
     "keys": {
       "stats": 20,
       "ui": 20

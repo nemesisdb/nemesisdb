@@ -7,6 +7,7 @@
 #include <thread>
 #include <chrono>
 #include <uwebsockets/App.h>
+#include <uuid_v4/uuid_v4.h>
 #include <jsoncons/json.hpp>
 #include <jsoncons_ext/jsonpath/jsonpath.hpp>
 
@@ -15,7 +16,7 @@ namespace nemesis { namespace core {
 
 #define fc_always_inline inline __attribute__((always_inline))
 
-static const char * NEMESIS_VERSION = "0.3.3";
+static const char * NEMESIS_VERSION = "0.3.4";
 static const std::size_t NEMESIS_CONFIG_VERSION = 1U;
 static const std::size_t NEMESIS_MAX_CORES = 4U;
 
@@ -25,7 +26,7 @@ static const std::size_t NEMESIS_KV_MAXPAYLOAD = 2U * 1024U * 1024U;
 
 // general
 using njson = jsoncons::ojson;
-//using jcjson = jsoncons::json;
+using uuid = std::string;
 using NemesisClock = std::chrono::steady_clock;
 using NemesisTimePoint = NemesisClock::time_point;
 
@@ -33,10 +34,12 @@ using NemesisTimePoint = NemesisClock::time_point;
 using cachedkey = std::string;
 using cachedvalue2 = njson;
 using cachedpair2 = njson;
+using KvSaveClock = std::chrono::system_clock;
+using KvSaveMetaDataUnit = std::chrono::milliseconds;
 
 // session
 using SessionPoolId = std::size_t;
-using SessionToken = std::string;
+using SessionToken = std::uint64_t; //std::string;
 using SessionName = std::string;
 using SessionClock = std::chrono::steady_clock;
 using SessionExpireTime = SessionClock::time_point;
@@ -82,24 +85,40 @@ enum class RequestStatus
   CommandMultiple,
   CommandType,
   CommandSyntax,
+  CommandDisabled,
   KeySet = 20,
   KeyUpdated,
   KeyNotExist,
   KeyExists,
   KeyRemoved,
-  Key_Reserved1,
+  Reserved2,
   ParamMissing,
   KeyTypeInvalid,
   ValueMissing = 40,
   ValueTypeInvalid,
   ValueSize,
-  OutOfBounds,  // not used
   SessionNotExist = 100,
   SessionTokenInvalid,
   SessionOpenFail,
-  SessionNewFail,
+  SessionNewFail,  
+  SaveStart = 120,
+  SaveComplete,
+  SaveDirWriteFail,
+  SaveError,
+  Loading = 140,
+  LoadComplete,
+  LoadError,
   Unknown = 1000
 };
+
+
+enum class KvSaveStatus
+{
+  Pending = 0,
+  Complete,
+  Error
+};
+
 
 static inline bool setThreadAffinity(const std::thread::native_handle_type handle, const size_t core)
 {
@@ -120,7 +139,26 @@ static njson createErrorResponse (const std::string_view commandRsp, const Reque
 }
 
 
-// Response is the original command is unknown.
+static njson createErrorResponse (const std::string_view commandRsp, const RequestStatus status, const SessionToken tkn)
+{
+  njson rsp;
+  rsp[commandRsp]["st"] = static_cast<int>(status);
+  rsp[commandRsp]["tkn"] = tkn;
+  rsp[commandRsp]["m"] = "";
+  return rsp;
+}
+
+
+static njson createErrorResponseNoTkn (const std::string_view commandRsp, const RequestStatus status, const std::string_view msg = "")
+{
+  njson rsp;
+  rsp[commandRsp]["st"] = static_cast<int>(status);
+  rsp[commandRsp]["m"] = msg;
+  return rsp;
+}
+
+
+// Response is the original command is unknown (i.e. JSON parse error).
 static njson createErrorResponse (const RequestStatus status, const std::string_view msg = "")
 {
   njson rsp;
@@ -131,13 +169,20 @@ static njson createErrorResponse (const RequestStatus status, const std::string_
 
 
 template <typename E>
-constexpr typename std::underlying_type<E>::type toUnderlying(E e) noexcept
+constexpr typename std::underlying_type<E>::type toUnderlying(const E e) noexcept
 {
   return static_cast<typename std::underlying_type_t<E>>(e);
 }
 
+
+std::size_t countFiles (const std::filesystem::path& path)
+{
+  return (std::size_t)std::distance(std::filesystem::directory_iterator{path}, std::filesystem::directory_iterator{});
+};
+
+
 } // namespace core
-} // namespace fusion
+} // namespace nemesis
 
 
 #endif

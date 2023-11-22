@@ -16,7 +16,7 @@ By deleting the data you are releasing server memory for other sessions.
 {
   "SH_END":
   {
-    "tkn":"8467384731478681233"
+    "tkn":8467384731478681233
   }
 }
 ```
@@ -28,7 +28,7 @@ The server confirms:
   "SH_END_RSP":
   {
     "st":1,
-    "tkn":"8467384731478681233"
+    "tkn":8467384731478681233
   }
 }
 ```

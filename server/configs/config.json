@@ -2,8 +2,16 @@
   "version":1,
   "kv":
   {
-    "ip":"192.168.1.111",
+    "ip":"127.0.0.1",
     "port":1987,
     "maxPayload":1024
+  },
+  "session":
+  {
+    "save":
+    {
+      "enabled":true,
+      "path":"./data"
+    }
   }
 }

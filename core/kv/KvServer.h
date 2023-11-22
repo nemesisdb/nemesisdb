@@ -19,6 +19,8 @@
 
 namespace nemesis { namespace core { namespace kv {
 
+namespace fs = std::filesystem;
+
 
 class KvServer
 {
@@ -85,58 +87,26 @@ public:
 
   bool run (NemesisConfig& config)
   {
-    // cores => io threads
-    static const std::map<std::size_t, std::size_t> CoresToIoThreads =
-    {
-      {1, 1},
-      {2, 1},
-      {4, 3},
-      {8, 6},
-      {10, 8},
-      {12, 10},
-      {16, 12},
-      {18, 15},
-      {20, 17},
-      {24, 20},
-      {32, 28},
-      {48, 44},
-      {64, 58}
-    };
-    
-    
+    std::size_t nIoThreads = 0 ;
+    bool started = false;
 
-    const auto nCores = std::min<std::size_t>(std::thread::hardware_concurrency(), NEMESIS_MAX_CORES);
-
-    if (nCores < 1U || nCores > 64U)
-    {
-      std::cout << "Core count unexpected: " << nCores << '\n';
+    if (std::tie(started, nIoThreads) = init(config.cfg); !started)
       return false;
+
+    if (config.load())
+    {
+      if (auto [ok, msg] = load(config); !ok)
+      {
+        std::cout << msg << '\n';
+        return false;
+      }
     }
-    
 
     unsigned int maxPayload = config.cfg["kv"]["maxPayload"].as<unsigned int>();
     std::string ip = config.cfg["kv"]["ip"].as_string();
     int port = config.cfg["kv"]["port"].as<unsigned int>();
 
 
-    // TODO decide: when we shutdown, client connections enter TIME_WAIT, preventing starting
-    //              if isPortOpen() is called. 
-    //              See: https://www.baeldung.com/linux/close-socket-time_wait
-    // if (auto check = isPortOpen(ip, port); !check || *check)
-    // {
-    //   std::cout << "ERROR: IP and port already used OR failed during checking open ports. " << ip << ":" << port << '\n';
-    //   return false;
-    // }
-
-
-    kv::serverStats = new kv::ServerStats;
-
-    const std::size_t nIoThreads = CoresToIoThreads.contains(nCores) ? CoresToIoThreads.at(nCores) : std::prev(CoresToIoThreads.upper_bound(nCores), 1)->second;
-    
-    kv::MaxPools = std::max<std::size_t>(1U, nCores - nIoThreads);
-
-    m_kvHandler = new kv::KvHandler {kv::MaxPools, nCores - kv::MaxPools};
-    
     std::size_t listenSuccess{0U};
     std::atomic_ref listenSuccessRef{listenSuccess};
     std::latch startLatch (nIoThreads);
@@ -150,7 +120,7 @@ public:
           .compression = uWS::DISABLED,
           .maxPayloadLength = maxPayload,
           .idleTimeout = 180, // TODO should be configurable?
-          .maxBackpressure = 16 * 1024 * 1024,
+          .maxBackpressure = 24 * 1024 * 1024,
           // handlers
           .upgrade = nullptr,
           
@@ -285,7 +255,133 @@ public:
     return true;
   }
 
+  
   private:
+
+    std::tuple<bool, std::size_t> init(const njson& config)
+    {
+      static const std::map<std::size_t, std::size_t> CoresToIoThreads =
+      {
+        {1, 1},
+        {2, 1},
+        {4, 3},
+        {8, 6},
+        {10, 8},
+        {12, 10},
+        {16, 12},
+        {18, 15},
+        {20, 17},
+        {24, 20},
+        {32, 28},
+        {48, 44},
+        {64, 58}
+      };
+      
+
+      if (NemesisConfig::kvSaveEnabled(config))
+      {
+        // test we can write to the kv save path
+        if (std::filesystem::path path {NemesisConfig::kvSavePath(config)}; !std::filesystem::exists(path) || !std::filesystem::is_directory(path))
+        {
+          std::cout << "session::save::path is not a directory or does not exist\n";
+          return {false, 0};
+        }
+        else
+        {
+          auto filename = createUuid();
+          std::filesystem::path fullPath{path};
+          fullPath /= filename;
+
+          if (std::ofstream out{fullPath}; !out.good())
+          {
+            std::cout << "Cannot write to session::save::path\n";
+            return {false, 0};
+          }
+          else
+          {
+            out.close();
+            std::filesystem::remove(fullPath);
+          }
+        }
+      }
+
+
+      if (const auto nCores = std::min<std::size_t>(std::thread::hardware_concurrency(), NEMESIS_MAX_CORES); nCores < 1U || nCores > 64U)
+      {
+        std::cout << "Core count unexpected: " << nCores << '\n';
+        return {false, 0};
+      }
+      else
+      {
+        const std::size_t nIoThreads = CoresToIoThreads.contains(nCores) ? CoresToIoThreads.at(nCores) : std::prev(CoresToIoThreads.upper_bound(nCores), 1)->second;
+        
+        kv::MaxPools = std::max<std::size_t>(1U, nCores - nIoThreads);
+        kv::serverStats = new kv::ServerStats;
+        
+        m_kvHandler = new kv::KvHandler {kv::MaxPools, nCores - kv::MaxPools, config};
+      
+        return {true, nIoThreads};
+      }
+
+      /* TODO decide: when we shutdown, client connections enter TIME_WAIT, preventing starting
+      //              if isPortOpen() is called. 
+      //              See: https://www.baeldung.com/linux/close-socket-time_wait
+      if (auto check = isPortOpen(ip, port); !check || *check)
+      {
+        std::cout << "ERROR: IP and port already used OR failed during checking open ports. " << ip << ":" << port << '\n';
+        return false;
+      }
+      */
+    }
+
+
+    std::tuple<bool, std::string> load(const NemesisConfig& config)
+    {
+      fs::path root = config.loadPath / config.loadName;
+
+      if (!fs::exists(root))
+        return {false, "Load name does not exist"};
+      
+      if (!fs::is_directory(root))
+        return {false, "Path to load name is not a directory"};
+
+      std::size_t max = 0;
+
+      for (auto& dir : fs::directory_iterator(root, fs::directory_options::follow_directory_symlink))
+      {
+        if (dir.is_directory())
+          max = std::max<std::size_t>(std::stoul(dir.path().filename()), max);
+      }
+
+      if (!max)
+        return {false, "No data"};
+
+      const fs::path datasets = root / std::to_string(max);
+      const fs::path data = datasets / "data";
+      const fs::path md = datasets / "md";
+
+      if (!(fs::exists(data) && fs::is_directory(data)))
+        return {false, "'data' directory does not exist or is not a directory"};
+      
+      if (!(fs::exists(md) && fs::is_directory(md)))
+        return {false, "'md' directory does not exist or is not a directory"};
+
+      std::cout << "Reading metadata in " << md << "\n";
+      
+      std::ifstream mdStream {md / "md.json"};
+      auto mdJson = njson::parse(mdStream);
+
+      if (!(mdJson.contains("status") && mdJson.contains("pools")) || !(mdJson["status"].is_uint64() && mdJson["pools"].is_uint64()))
+        return {false, "Metadata file invalid"};
+      else if (mdJson["status"] == toUnderlying(KvSaveStatus::Complete))
+      {
+        m_kvHandler->loadOnStartUp(data);
+        return {true, ""};
+      }
+      else
+        return {false, "Dataset is not complete, cannot load. Metadata status not Complete"};
+    }
+
 
     /*
     std::optional<bool> isPortOpen (const std::string& checkIp, const short checkPort)

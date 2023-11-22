@@ -5,9 +5,9 @@ displayed_sidebar: homeSidebar
 
 # NemesisDB
 
-NemesisDB is an in-memory JSON database. At the moment it is in-memory storage only, a future release will include saving data to disk.
+NemesisDB is an in-memory JSON database. Data can be persisted to the filesystem so it can be restored on restart.
 
-NemesisDB is available as a 64-bit Debian package for x86 CPUs (Intel/AMD) and a Docker image.
+NemesisDB is available as a 64-bit Debian package and Docker image for x86 (Intel/AMD) CPUs.
 
 
 ## Install
