@@ -3,29 +3,47 @@ sidebar_position: 1
 ---
 
 # What is a Session
-A session is just a data container. They are called sessions because data is intended to be stored for a period of time before being deleted:
+A session is just a container with a dedicated map for storing key-values.
 
+They are called sessions because data is intended to be stored for a period of time before being deleted:
+
+- A session can live forever
 - A session can expire
-- When a session expires, all its data is deleted
-- The session and data can be deleted or just the data. If you only delete data, you can continue to use the session
+  - When a session expires, all its data is deleted
+  - The session and data can be deleted or just the data. If you only delete data, you can continue to use the session
+- You can create as many as sessions as required (within memory limits)
 
-A session can represent:
-  - Whilst a user is logged into your app
-  - Whilst you're waiting for a user to confirm a One Time Password
-  - Until the session data has been stored in the primary database
+## Examples
 
+### Music Streaming App
 
-For example, when writing a service which handles users, you can create a separate session for each user that logs in and delete the session when they log out.
+1. When a user logs on, check the for this user's session
+2. If no session exists
+    1. Retrieve playlist data from primary database
+    2. Create session with an expiry
+    3. Populate session with playlist data
+3. Their session will expire, deleting their data and freeing server memory for other users
 
-![](img/sessions_overview.png)
-
-If user 2 logs out, their session can be ended which deletes their data, without affecting any other sessions. Session can also be set to expire with a duration. In this example,
-a session expire could be used as an auto logout feature.
+:::note
+Currently there's no method to extend a session's expiry but this will be added soon. For example,
+a 'renew' command to manually extend the session or automatically on each data access.
+:::
 
 <br/>
 
+
+### One Time Password
+
+1. Create a session with an expiry, storing the OTP
+2. If the user does not confirm the OTP within the time, their session will delete and fail OTP validation
+
+
+
+<br/>
+
+
 ## Session Token
-A session is identified by a token, which is just a string. When you create a session the server returns a token which is used with commands to access the data.
+A session is identified by a token, which is a 64-bit integer. When you create a session the server returns a token which is used with commands to access the data.
 
 <br/>
 

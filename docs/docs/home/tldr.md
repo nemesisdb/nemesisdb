@@ -30,18 +30,18 @@ NemesisDB is a JSON in-memory database:
 
 ### Examples
 Examples of a session are:
-- Whilst a user is logged into your app
-- Whilst you're waiting for a user to confirm a One Time Password
-- Whilst you're waiting for confirmation the data has been stored in the primary database
-
+- Music streaming app: each user has a session for storing their playlist
+- One Time Password: create a session for each OTP, which automically expires
 
 
 ### Advantages
 
 - Sessions offer control of server memory
+- When searching data, only the session's data is searched, rather than the whole database
+- Operations on a session does not affect another session's data
 - Grouping data in sessions means keys only need to be unique within each session
 
 
 :::note
-Your database can have just one session that never expires, but then you lose the benefits of grouping data and easier control of deleting data.
+Your database can have just one session that never expires but then you lose the benefits of grouping data and easier control of deleting data.
 :::

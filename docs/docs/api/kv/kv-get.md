@@ -10,7 +10,7 @@ The command requires the token and an array of keys to retrieve.
 
 |Param|Type|Meaning|Required|
 |:---|:---|:---|:---:|
-|tkn|string|Session token|Y|
+|tkn|uint|Session token|Y|
 |keys|array|Array of keys to retrieve|Y|
 
 
@@ -21,7 +21,7 @@ The command requires the token and an array of keys to retrieve.
 
 |Param|Type|Meaning|
 |:---|:---|:---|
-|tkn|string|Session token|
+|tkn|uint|Session token|
 |keys|object|The keys and values requested|Y|
 
 If a key does not exist, its value is returned as `null`.
@@ -41,7 +41,7 @@ See the [response status](./../Statuses) page for status values.
 {
   "KV_GET":
   {
-    "tkn":"5976385796811589752",
+    "tkn":5976385796811589752,
     "keys":["user", "blocked"]
   }
 }
@@ -52,7 +52,7 @@ Response:
 ```json
 {
   "KV_GET_RSP": {
-    "tkn": "5976385796811589752",
+    "tkn": 5976385796811589752,
     "keys": {
       "user": {
         "username": "Potato",
@@ -71,7 +71,7 @@ Response:
 {
   "KV_GET":
   {
-    "tkn":"5976385796811589752",
+    "tkn":5976385796811589752,
     "keys":["blocked", "IDontExist"]
   }
 }
@@ -80,7 +80,7 @@ Response:
 ```json
 {
   "KV_GET_RSP": {
-    "tkn": "5976385796811589752",
+    "tkn": 5976385796811589752,
     "keys": {
       "blocked": false,
       "IDontExist": null

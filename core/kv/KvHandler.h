@@ -97,32 +97,36 @@ public:
   }
 
 
-  void loadOnStartUp(const std::size_t sourcePools, const fs::path& dataSetsRoot)
+  void loadOnStartUp(const fs::path& dataSetsRoot)
   {
     std::cout << "Loading from " << dataSetsRoot << '\n';
 
-    // TODO clear cache (later have option to load without clearing)
     const auto hostPools = m_pools.size();
+    const auto sourcePools = countFiles(dataSetsRoot);
+    
     StartupLoadResult loadResult { .status = RequestStatus::LoadComplete };
 
     auto start = NemesisClock::now();
 
     if (hostPools == 1U)
     {
-      std::cout << "Everything to pool 0\n";
+      //std::cout << "Everything to pool 0\n";
 
       njson cmd;
       cmd["dirs"] = njson::array();
 
-      for (std::size_t pool = 0 ; pool < sourcePools ; ++pool)
-        cmd["dirs"].emplace_back((dataSetsRoot / std::to_string(pool)).string());
+      for(auto& poolDataDir : fs::directory_iterator(dataSetsRoot))
+        cmd["dirs"].emplace_back(poolDataDir.path().string());
+
+      //for (std::size_t pool = 0 ; pool < sourcePools ; ++pool)
+        //cmd["dirs"].emplace_back((dataSetsRoot / std::to_string(pool)).string());
 
       auto result = submitSync(0, KvQueryType::InternalLoad, std::move(cmd));
       loadResult = std::any_cast<StartupLoadResult> (result);
     }
     else if (hostPools == sourcePools)
     {
-      std::cout << "Direct\n";
+      //std::cout << "Direct\n";
 
       std::latch latch{static_cast<std::ptrdiff_t>(hostPools)};
       std::mutex resultsMux;
@@ -157,11 +161,12 @@ public:
     }    
     else
     {
-      std::cout << "Re-map\n";
+      //std::cout << "Re-map\n";
       // there's no shortcut to this because source and host pools can't be inferred
       // have to recalculate each source session's pool from its token
       loadResult = loadRemap(dataSetsRoot);
     }
+
 
     auto end = NemesisClock::now();
     loadResult.loadTime = end - start;
@@ -184,12 +189,6 @@ private:
   
   StartupLoadResult loadRemap (const fs::path& dataSetsRoot)
   {
-    auto countFiles = [](const fs::path& path) -> std::size_t
-    {
-      return (std::size_t)std::distance(fs::directory_iterator{path}, fs::directory_iterator{});
-    };
-
-
     StartupLoadResult loadResult { .status = RequestStatus::LoadComplete};
     std::atomic_size_t nSessions{0}, nKeys{0};
     std::atomic_bool error{false};
@@ -225,7 +224,8 @@ private:
 
         for(auto& sesh : sessions.array_range())
         {
-          const SessionToken& token = sesh["sh"]["tkn"].as_string();
+          //
+          const SessionToken& token = sesh["sh"]["tkn"].as<SessionToken>();
 
           njson cmd;
           cmd["sesh"] = std::move(sesh);
@@ -257,16 +257,20 @@ private:
   bool getSessionToken(KvWebSocket * ws, const std::string_view queryRspName, njson& cmd, SessionToken& t)
   {
     bool valid = false;
-    if (cmd.contains("tkn") && cmd.at("tkn").is_string())
+    if (cmd.contains("tkn") && cmd.at("tkn").is_uint64())
     {
-      if (const auto& value = cmd.at("tkn").as_string(); value.empty())
-        ws->send(createErrorResponse(queryRspName, RequestStatus::SessionTokenInvalid).to_string(), WsSendOpCode);
-      else
-      {
-        t = std::move(cmd.at("tkn").as_string());
-        cmd.erase("tkn");
-        valid = true;
-      }
+      t = cmd.at("tkn").as<SessionToken>();
+      cmd.erase("tkn");
+      valid = true;
+      // if (const auto& value = cmd.at("tkn").as_string(); value.empty())
+      //   ws->send(createErrorResponse(queryRspName, RequestStatus::SessionTokenInvalid).to_string(), WsSendOpCode);
+      // else
+      // {
+      //   //t = std::move(cmd.at("tkn").as_string());
+      //   t = cmd.at("tkn").as<SessionToken>();
+      //   cmd.erase("tkn");
+      //   valid = true;
+      // }
     }
     else
       ws->send(createErrorResponse(queryRspName, RequestStatus::SessionTokenInvalid).to_string(), WsSendOpCode);
@@ -378,9 +382,9 @@ private:
   
   fc_always_inline void sessionNew(KvWebSocket * ws, njson&& json)
   {
-    static const KvQueryType queryType = KvQueryType::ShNew;
-    static const std::string queryName     = QueryTypeToName.at(queryType);
-    static const std::string queryRspName  = queryName +"_RSP";
+    static const KvQueryType queryType      = KvQueryType::ShNew;
+    static const std::string queryName      = QueryTypeToName.at(queryType);
+    static const std::string queryRspName   = queryName +"_RSP";
 
     auto& cmd = json.at(queryName);
 

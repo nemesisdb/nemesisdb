@@ -22,7 +22,7 @@ Send:
 {
   "KV_SET":
   {
-    "tkn":"14247375118774737462",
+    "tkn":14247375118774737462,
     "keys":
     {
       "username":"Spongebob"
@@ -44,7 +44,7 @@ Send:
 {
   "KV_SET":
   {
-    "tkn":"14247375118774737462",
+    "tkn":14247375118774737462,
     "keys":
     {
       "friends":
@@ -67,7 +67,7 @@ You can store multiple keys per request:
 {
   "KV_SET":
   {
-    "tkn":"14247375118774737462",
+    "tkn":14247375118774737462,
     "keys":
     {
       "email":"bob@thesea.com",
@@ -91,7 +91,7 @@ To get keys use `KV_GET`, which can get multiple keys in one request so we'll ge
 {
   "KV_GET":
   {
-    "tkn":"14247375118774737462",
+    "tkn":14247375118774737462,
     "keys":["username", "email", "age", "friends"]
   }
 }
@@ -102,7 +102,7 @@ The response:
 ```json
 {
   "KV_GET_RSP": {
-    "tkn": "14247375118774737462",
+    "tkn": 14247375118774737462,
     "keys": {
       "username": "Spongebob",
       "email": "bob@thesea.com",
@@ -126,7 +126,7 @@ Let's clear our session data:
 {
   "KV_CLEAR":
   {
-    "tkn":"14247375118774737462"
+    "tkn":14247375118774737462
   }
 }
 ```
@@ -142,7 +142,7 @@ We'll store the same data again but in an object:
 {
   "KV_SET":
   {
-    "tkn":"14247375118774737462",
+    "tkn":14247375118774737462,
     "keys":
     {
       "profile":
@@ -167,7 +167,7 @@ Now when we want the user's profile data, we just have to get one key:
 {
   "KV_GET":
   {
-    "tkn":"14247375118774737462",
+    "tkn":14247375118774737462,
     "keys":["profile"]
   }
 }

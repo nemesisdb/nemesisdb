@@ -234,7 +234,8 @@ static const std::array<std::function<void(const SessionToken&, SessionPoolId&)>
 {
   [](const SessionToken& t, SessionPoolId& id) 
   {
-    id = ((t[0U] + t[1U] + t[2U] + t[3U] + t[4U] + t[5U]) & 0xFFFFFFFF) % MaxPools;
+    //id = ((t[0U] + t[1U] + t[2U] + t[3U] + t[4U] + t[5U]) & 0xFFFFFFFF) % MaxPools;
+    id = t % MaxPools;
   },
 
   [](const SessionToken& t, SessionPoolId& id)
@@ -246,17 +247,29 @@ static const std::array<std::function<void(const SessionToken&, SessionPoolId&)>
 
 fc_always_inline SessionToken createSessionToken(const SessionName& name, const bool shared)
 {
+  // if (shared)
+  // {
+  //   static const std::size_t seed = 99194853094755497U;
+  //   const auto hash = std::hash<SessionName>{}(name);
+  //   return std::to_string((std::size_t)(hash | seed));
+  // }
+  // else
+  // {
+  //   static UUIDv4::UUIDGenerator<std::mt19937_64> uuidGenerator; 
+  //   const auto uuid = uuidGenerator.getUUID();
+  //   return std::to_string(uuid.hash());
+  // }
   if (shared)
   {
     static const std::size_t seed = 99194853094755497U;
     const auto hash = std::hash<SessionName>{}(name);
-    return std::to_string((std::size_t)(hash | seed));
+    return (hash | seed);
   }
   else
   {
     static UUIDv4::UUIDGenerator<std::mt19937_64> uuidGenerator; 
     const auto uuid = uuidGenerator.getUUID();
-    return std::to_string(uuid.hash());
+    return uuid.hash();
   }
 }
 

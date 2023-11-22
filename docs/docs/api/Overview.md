@@ -42,7 +42,7 @@ A session does not belong to a particular client and a client can create multipl
 
 These store, update, find and retrieve session data. They start `KV_`.
 
-The commands require a session token which is typically returned by `SH_NEW` but may also be returned by `SH_OPEN` if using a shared session.
+The commands require a session token which is returned by `SH_NEW` and `SH_OPEN`.
 
 <br/>
 <br/>

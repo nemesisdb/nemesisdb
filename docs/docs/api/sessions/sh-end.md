@@ -8,7 +8,7 @@ Ends a session, deleting the session data.
 
 |Param|Type|Meaning|Required|
 |:---|:---|:---|:---:|
-|tkn|string|Session token|Y|
+|tkn|uint|Session token|Y|
 
 
 ## Ending a session before it expires
@@ -25,7 +25,7 @@ See the [response status](./../Statuses) page for status values.
 
 |Param|Type|Meaning|
 |:---|:---|:---|
-|tkn|string|Session token|
+|tkn|uint|Session token|
 |st|unsigned int|Status|
 
 

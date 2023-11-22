@@ -26,7 +26,7 @@ The server responds with a `SH_NEW_RSP` containing the `name` and the `tkn` (tok
   "SH_NEW_RSP":
   {
     "name":"session1",
-    "tkn":"8467384731478681233"
+    "tkn":8467384731478681233
   }
 }
 ```

@@ -155,7 +155,7 @@ void createSessions(const std::string& ip, const int port, std::shared_ptr<asio:
         if (rsp["SH_NEW_RSP"]["st"] == 1)
         {
           std::scoped_lock lck {mux};
-          tokens.emplace_back(rsp["SH_NEW_RSP"]["tkn"].get<std::string>());
+          tokens.emplace_back(rsp["SH_NEW_RSP"]["tkn"].get<SessionToken>());
         }
       }
 
@@ -264,7 +264,7 @@ void get(const std::string& ip, const int port, std::shared_ptr<asio::io_context
   if (auto ws = client.openQueryWebSocket(ip, port, "", onRsp); ws)
   {
     json query;
-    query["KV_GET"]["tkn"] ="";
+    //query["KV_GET"]["tkn"] = json{};
     query["KV_GET"]["keys"] = json::array();
 
     auto start = Clock::now();
@@ -301,10 +301,10 @@ void find(const std::string& ip, const int port, std::shared_ptr<asio::io_contex
       auto rsp = json::parse(response.msg);
       if (rsp.contains("SH_NEW_RSP"))
       {
-        if (rsp["SH_NEW_RSP"]["st"] == 1)
+        if (rsp["SH_NEW_RSP"]["st"] == (std::size_t)nemesis::core::RequestStatus::Ok)
         {
           std::scoped_lock lck {mux};
-          tokens.emplace_back(rsp["SH_NEW_RSP"]["tkn"].get<std::string>());
+          tokens.emplace_back(rsp["SH_NEW_RSP"]["tkn"].get<SessionToken>());
         }
       }
 

@@ -8,7 +8,7 @@ Returns how many keys are in a session.
 
 |Param|Type|Meaning|Required|
 |:---|:---|:---|:---:|
-|tkn|string|Session token|Y|
+|tkn|uint|Session token|Y|
 
 
 ## Response
@@ -18,7 +18,7 @@ Returns how many keys are in a session.
 
 |Param|Type|Meaning|
 |:---|:---|:---|
-|tkn|string|Session token|
+|tkn|uint|Session token|
 |st|unsigned int|Status|
 |cnt|unsigned int|Number of keys in the session|
 
@@ -33,7 +33,7 @@ Possible status values:
 {
   "KV_COUNT":
   {
-    "tkn":"16127334958516145570"
+    "tkn":16127334958516145570
   }
 }
 ```
@@ -45,7 +45,7 @@ Response:
   "KV_COUNT_RSP": {
     "st": 1,
     "cnt": 3457,
-    "tkn": "16127334958516145570"
+    "tkn": 16127334958516145570
   }
 }
 ```

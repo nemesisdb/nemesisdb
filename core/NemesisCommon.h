@@ -39,7 +39,7 @@ using KvSaveMetaDataUnit = std::chrono::milliseconds;
 
 // session
 using SessionPoolId = std::size_t;
-using SessionToken = std::string;
+using SessionToken = std::uint64_t; //std::string;
 using SessionName = std::string;
 using SessionClock = std::chrono::steady_clock;
 using SessionExpireTime = SessionClock::time_point;
@@ -139,6 +139,16 @@ static njson createErrorResponse (const std::string_view commandRsp, const Reque
 }
 
 
+static njson createErrorResponse (const std::string_view commandRsp, const RequestStatus status, const SessionToken tkn)
+{
+  njson rsp;
+  rsp[commandRsp]["st"] = static_cast<int>(status);
+  rsp[commandRsp]["tkn"] = tkn;
+  rsp[commandRsp]["m"] = "";
+  return rsp;
+}
+
+
 static njson createErrorResponseNoTkn (const std::string_view commandRsp, const RequestStatus status, const std::string_view msg = "")
 {
   njson rsp;
@@ -163,6 +173,13 @@ constexpr typename std::underlying_type<E>::type toUnderlying(const E e) noexcep
 {
   return static_cast<typename std::underlying_type_t<E>>(e);
 }
+
+
+std::size_t countFiles (const std::filesystem::path& path)
+{
+  return (std::size_t)std::distance(std::filesystem::directory_iterator{path}, std::filesystem::directory_iterator{});
+};
+
 
 } // namespace core
 } // namespace nemesis
