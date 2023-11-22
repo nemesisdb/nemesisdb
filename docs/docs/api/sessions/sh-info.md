@@ -24,18 +24,19 @@ See the [response status](./../Statuses) page for status values.
 |tkn|uint|Session token|
 |keyCnt|unsigned int|Number of keys in the session|
 |shared|bool|Indicates if the session is shared|
-|expiry|object|Expiry information|
+|expires|bool|true if the session expires, false if it never expires|
+|expiry|object|Expiry information, only present if `expires` is `true`|
 
 
 `expiry`:
 
 |Param|Type|Meaning|
 |:---|:---|:---|
-|expires|bool|true if the session expires, false is it never expires|
-|remaining|int|Time, in seconds, until the session ends. Note, this can be negative because the session can end before the session monitor checks|
-|time|int|Timestamp of expiry time. This timestamp is in seconds|
+|remaining|int|Duration, in seconds, until the session ends. Note, this can be negative because the session can end before the session monitor checks|
+|duration|unsigned int|Duration, in seconds, the session exists before expiring|
 |deleteSession|bool|If true, the session is deleted when the session expires. If false, only the data is deleted|
 
+<br/>
 
 Possible status values:
 

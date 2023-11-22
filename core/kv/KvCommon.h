@@ -140,10 +140,13 @@ struct PoolRequestResponse
     njson rsp = sessionInfo(status, token);
     rsp["SH_INFO_RSP"]["shared"] = shared;
     rsp["SH_INFO_RSP"]["keyCnt"] = keyCount;
-    rsp["SH_INFO_RSP"]["expiry"]["expires"] = expires;
-    rsp["SH_INFO_RSP"]["expiry"]["duration"] = duration.count();
-    rsp["SH_INFO_RSP"]["expiry"]["remaining"] = remaining.count();
-    rsp["SH_INFO_RSP"]["expiry"]["deleteSession"] = deleteOnExpire;
+    rsp["SH_INFO_RSP"]["expires"] = expires;
+    if (expires)
+    {
+      rsp["SH_INFO_RSP"]["expiry"]["duration"] = duration.count();
+      rsp["SH_INFO_RSP"]["expiry"]["remaining"] = remaining.count();
+      rsp["SH_INFO_RSP"]["expiry"]["deleteSession"] = deleteOnExpire;
+    }
     return rsp;
   }
     
