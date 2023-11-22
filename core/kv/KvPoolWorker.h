@@ -455,6 +455,8 @@ private:
           seshData["sh"]["expiry"]["duration"] = chrono::duration_cast<SessionDuration>(sesh.expireInfo.duration).count();
           seshData["sh"]["expiry"]["deleteSession"] = sesh.expireInfo.deleteOnExpire;
 
+          seshData["keys"] = njson::object();
+          
           for(const auto& [k, v] : sesh.map.map())
             seshData["keys"][k] = v;
 
@@ -564,10 +566,13 @@ public:
 
     if (auto session = sessions.start(token, isShared, duration, deleteOnExpire); session)
     {
-      for (auto& items : seshData.at("keys").object_range())
+      if (seshData.contains("keys"))
       {
-        session->get().set(items.key(), std::move(items.value()));
-        ++nKeys;
+        for (auto& items : seshData.at("keys").object_range())
+        {
+          session->get().set(items.key(), std::move(items.value()));
+          ++nKeys;
+        }
       }
 
       ++nSessions;
