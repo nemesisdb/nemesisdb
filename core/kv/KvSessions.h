@@ -160,8 +160,6 @@ public:
 
     if (itExpired != m_expiry.end() || (itExpired == m_expiry.end() && !m_expiry.empty()))
     {
-      std::multimap<SessionExpireTime, ExpiryTracking> renew;
-
       for (auto it = m_expiry.cbegin() ; it != itExpired; ++it)
       {
         if (it->second.deleteOnExpire)
@@ -174,18 +172,17 @@ public:
 
           const SessionExpireTime expireTime = SessionClock::now() + expireInfo.duration;
 
+          auto node = m_expiry.extract(it);
+
+          node.key() = expireTime;
+          node.mapped().time = expireTime;
+
+          m_expiry.insert(std::move(node));
+
           session.map.clear();
           session.expireInfo.time = expireTime;
-          
-          ExpiryTracking tracking {expireInfo};
-          tracking.time = expireTime;
-
-          renew.emplace(expireTime, std::move(tracking));
         }
       }
-
-      m_expiry.erase(m_expiry.begin(), itExpired);
-      m_expiry.insert(std::make_move_iterator(renew.begin()), std::make_move_iterator(renew.end()));
     }
   }
 
