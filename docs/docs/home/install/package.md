@@ -9,7 +9,7 @@ This is most suitable if you are running on Linux or prefer to avoid Docker.
 
 ## Download
 
-Download the latest version [here](https://releases.nemesisdb.io/package/nemesisdb_0.3.4_amd64.deb).
+Download the latest version [here](https://releases.nemesisdb.io/package/nemesisdb_0.3.5_amd64.deb).
 
 
 ## Install
@@ -18,7 +18,7 @@ Open a terminal, change to your download location and install with `dpkg`.
 For example, to install version 0.3.4:
 
 ```bash
-sudo dpkg -i nemesisdb_0.3.4_amd64.deb
+sudo dpkg -i nemesisdb_0.3.5_amd64.deb
 ```
 <br/>
 
