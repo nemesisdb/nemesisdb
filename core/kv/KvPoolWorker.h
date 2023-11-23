@@ -428,59 +428,95 @@ private:
 
     RequestStatus status = RequestStatus::SaveComplete;
 
+    auto writeSesh = [](const Sessions::SessionType& sesh, const SessionToken token, njson& data, std::size_t& i)
+    {
+      njson seshData;
+      seshData["sh"]["tkn"] = token;
+      seshData["sh"]["shared"] = sesh.shared;
+      seshData["sh"]["expiry"]["duration"] = chrono::duration_cast<SessionDuration>(sesh.expireInfo.duration).count();
+      seshData["sh"]["expiry"]["deleteSession"] = sesh.expireInfo.deleteOnExpire;
+      
+      seshData["keys"] = njson::object();
+
+      for(const auto& [k, v] : sesh.map.map())
+        seshData["keys"][k] = v;
+
+      data[i++] = std::move(seshData);
+    };
+
+
     try
     {
       if (!fs::create_directories(path))
         status = RequestStatus::SaveError;
       else
       {
-        const auto& allSessions = sessions.getSessions();        
-        const auto total = allSessions.size() ;
+        const bool haveTkns = cmd.contents.contains("tkns");
+        const auto& allSessions = sessions.getSessions();
+
         std::size_t nFiles = 0, i = 0, written = 0;        
-        std::size_t remaining = std::min<std::size_t>(total, SessionsPerFile);
         std::ofstream dataStream ;
         njson data;
 
-        if (total)
+        if (haveTkns)
         {
-          data = njson::make_array(remaining);
-          dataStream.open(path / std::to_string(nFiles));
-        }
+          const std::size_t total = allSessions.size();
+          const auto& tkns = cmd.contents.at("tkns");
 
-        for(const auto& [token, sesh] : allSessions)
-        {
-          njson seshData;
-          seshData["sh"]["tkn"] = token;
-          seshData["sh"]["shared"] = sesh.shared;
-          seshData["sh"]["expiry"]["duration"] = chrono::duration_cast<SessionDuration>(sesh.expireInfo.duration).count();
-          seshData["sh"]["expiry"]["deleteSession"] = sesh.expireInfo.deleteOnExpire;
-
-          seshData["keys"] = njson::object();
-          
-          for(const auto& [k, v] : sesh.map.map())
-            seshData["keys"][k] = v;
-
-          data[i++] = std::move(seshData);
-          --remaining;
-          ++written;
-
-          if (remaining == 0)
+          if (total)
           {
-            //std::cout << "Write stream. Remaining: " << remaining << '\n';
+            data = njson::make_array(tkns.size());
+            dataStream.open(path / std::to_string(nFiles));
+          }
 
-            data.dump(dataStream);
-            dataStream.close();
-
-            if (total - written)
+          for(const auto& item : tkns.array_range())
+          {
+            const auto token = item.as<SessionToken>();
+            if (auto it = allSessions.find(token); it != allSessions.cend())
             {
-              ++nFiles;
+              writeSesh (it->second, token, data, i);
+            }
+          }
 
-              dataStream.open(path / std::to_string(nFiles));
-              remaining = std::min<std::size_t>(total - written, SessionsPerFile);
-              data.resize(remaining);
-              i = 0;
+          data.dump(dataStream);
+          dataStream.close();
+        }
+        else
+        {
+          const std::size_t total = allSessions.size();
+          std::size_t remaining = std::min<std::size_t>(total, SessionsPerFile);
 
-              //std::cout << "New file. Remaining: " << remaining << "\n";
+          if (total)
+          {
+            data = njson::make_array(remaining);
+            dataStream.open(path / std::to_string(nFiles));
+          }
+
+          for(const auto& [token, sesh] : allSessions)
+          {
+            writeSesh(sesh, token, data, i);
+
+            --remaining;
+            ++written;
+
+            if (remaining == 0)
+            {
+              //std::cout << "Write stream. Remaining: " << remaining << '\n';
+
+              data.dump(dataStream);
+              dataStream.close();
+
+              if (total - written)
+              {
+                ++nFiles;
+
+                dataStream.open(path / std::to_string(nFiles));
+                remaining = std::min<std::size_t>(total - written, SessionsPerFile);
+                data.resize(remaining);
+                i = 0;
+
+                //std::cout << "New file. Remaining: " << remaining << "\n";
+              }
             }
           }
         }
@@ -574,7 +610,6 @@ public:
           ++nKeys;
         }
       }
-
       ++nSessions;
     }
     else 

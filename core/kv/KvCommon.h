@@ -96,6 +96,13 @@ const std::map<const KvQueryType, const std::string> QueryTypeToName =
 };
 
 
+enum class SaveType
+{
+  AllSessions = 0,
+  SelectSessions
+};
+
+
 struct PoolRequestResponse
 { 
   using enum RequestStatus;
@@ -228,8 +235,6 @@ struct StartupLoadResult
     return *this;
   }
 };
-
-
 
 
 

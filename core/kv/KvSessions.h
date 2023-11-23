@@ -18,6 +18,7 @@ using namespace nemesis::core;
 
 class Sessions
 {
+
 private:
   struct ExpireInfo
   {
@@ -57,7 +58,10 @@ private:
   };
 
 
+public:
+  using SessionType = Session;
   using SessionsMap = ankerl::unordered_dense::segmented_map<SessionToken, Session>;
+
 
 public:
 
