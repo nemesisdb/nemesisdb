@@ -171,8 +171,11 @@ public:
 
     std::cout << "-- Load --\n";
     
-    if (loadResult.status == RequestStatus::LoadComplete)
-      std::cout << "Status: Success\nSessions: " << loadResult.nSessions << "\nKeys: " << loadResult.nKeys << '\n'; 
+    if (loadResult.status != RequestStatus::LoadError)
+    {
+      std::cout << "Status: Success " << (loadResult.status == RequestStatus::LoadDuplicate ? "(Duplicates)" : "") << '\n';
+      std::cout << "Sessions: " << loadResult.nSessions << "\nKeys: " << loadResult.nKeys << '\n'; 
+    }
     else
       std::cout << "Status: Fail\n";
 

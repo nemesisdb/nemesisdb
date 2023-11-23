@@ -221,16 +221,22 @@ struct StartupLoadResult
   std::size_t nKeys{0};
   NemesisClock::duration loadTime{0};
 
+
+  static bool statusSuccess(const StartupLoadResult r)
+  {
+    return !(r.status == RequestStatus::LoadError || r.status == RequestStatus::Loading);
+  }
+
+
   StartupLoadResult& operator+=(const StartupLoadResult& r)
   {
-    if (r.status != RequestStatus::LoadComplete)
-      status = r.status;
-    else
+    if (statusSuccess(r))
     {
       nKeys += r.nKeys;
       nSessions += r.nSessions;
     }
-
+    
+    status = r.status;
     loadTime += r.loadTime; // beware when loading concurrent pools
   
     return *this;

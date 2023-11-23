@@ -571,7 +571,7 @@ private:
 
     auto updateStatus = [&status](const RequestStatus st)
     {
-      if (status != RequestStatus::LoadError)
+      if (!(status == RequestStatus::LoadError || status == RequestStatus::LoadDuplicate))
         status = st;
     };
 
@@ -584,13 +584,17 @@ private:
         {
           fs::path dir {dataDir.as_string_view()};
           for (const auto seshFile : fs::directory_iterator{dir})
+          {
             readSeshFile(sessions, seshFile.path(), status, nSessions, nKeys);
+            updateStatus(status);
+          }
         }
       }
       else
       {
         // load an individual session
         loadSession(sessions, std::move(cmd.contents.at("sesh")), status, nSessions, nKeys);
+        updateStatus(status);
       }      
     }
     catch(const std::exception& e)
@@ -598,8 +602,6 @@ private:
       std::cerr << e.what() << '\n';
       status = RequestStatus::LoadError;
     }
-
-    updateStatus(RequestStatus::LoadComplete);
 
     cmd.syncResponseHandler(std::any{StartupLoadResult{.status = status, .nSessions = nSessions, .nKeys = nKeys}});
   }
@@ -626,29 +628,30 @@ public:
 
   fc_always_inline void loadSession (Sessions& sessions, njson&& seshData, RequestStatus& status, std::size_t& nSessions, std::size_t& nKeys)
   {
-    //const auto token = std::move(seshData["sh"]["tkn"].as_string());
-    const auto token = std::move(seshData["sh"]["tkn"].as<SessionToken>());
-    const auto isShared = seshData["sh"]["shared"].as_bool();
-    const auto deleteOnExpire = seshData["sh"]["expiry"]["deleteSession"].as_bool();
-    const auto duration = SessionDuration{seshData["sh"]["expiry"]["duration"].as<std::size_t>()};
+    if (seshData.contains("sh"))  // can be empty object because sesh file is created if even pool contains no sessions
+    {
+      const auto token = seshData["sh"]["tkn"].as<SessionToken>();
+      const auto isShared = seshData["sh"]["shared"].as_bool();
+      const auto deleteOnExpire = seshData["sh"]["expiry"]["deleteSession"].as_bool();
+      const auto duration = SessionDuration{seshData["sh"]["expiry"]["duration"].as<std::size_t>()};
 
-    if (auto session = sessions.start(token, isShared, duration, deleteOnExpire); session)
-    {
-      if (seshData.contains("keys"))
+      if (auto session = sessions.start(token, isShared, duration, deleteOnExpire); session)
       {
-        for (auto& items : seshData.at("keys").object_range())
+        if (seshData.contains("keys"))
         {
-          session->get().set(items.key(), std::move(items.value()));
-          ++nKeys;
+          for (auto& items : seshData.at("keys").object_range())
+          {
+            session->get().set(items.key(), std::move(items.value()));
+            ++nKeys;
+          }
         }
+        ++nSessions;
       }
-      ++nSessions;
+      else 
+      {
+        status = RequestStatus::LoadDuplicate;
+      }
     }
-    else 
-    {
-      std::cout << "readSeshFile: failed to create session";
-      status = RequestStatus::LoadError;
-    } 
   }
 
 

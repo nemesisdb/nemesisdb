@@ -57,13 +57,13 @@ public:
 
   std::optional<std::reference_wrapper<CacheMap>> start (const SessionToken& token, const bool shared, const SessionDuration duration, const bool deleteOnExpire)
   {
-    //if (auto seshIt = m_sessions.find(token) ; seshIt != m_sessions.cend())
-      //return seshIt->second.map;
     if (m_sessions.contains(token))
       return {};  // TODO check this, if shared:true and a session with this name already exists
     else
     {
-      if (duration != SessionDuration::zero())
+      if (duration == SessionDuration::zero())
+        m_sessions[token] = Session{.token = token, .shared = shared, .expires = false};
+      else
       {
         auto expireTime = SessionClock::now() + duration;
 
@@ -72,8 +72,6 @@ public:
 
         m_expiry.emplace(std::make_pair(expireTime, ExpiryTracking{.token = token, .time = expireTime, .deleteOnExpire = deleteOnExpire, .duration = duration}));
       }
-      else
-        m_sessions[token] = Session{.token = token, .shared = shared, .expires = false};
 
       return m_sessions.at(token).map;
     }
