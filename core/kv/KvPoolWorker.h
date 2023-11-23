@@ -428,6 +428,7 @@ private:
 
     RequestStatus status = RequestStatus::SaveComplete;
 
+
     auto writeSesh = [](const Sessions::SessionType& sesh, const SessionToken token, njson& data, std::size_t& i)
     {
       njson seshData;
@@ -442,6 +443,13 @@ private:
         seshData["keys"][k] = v;
 
       data[i++] = std::move(seshData);
+    };
+
+
+
+    auto closeFile = [](std::ofstream& stream)
+    {
+      
     };
 
 
@@ -460,12 +468,13 @@ private:
 
         if (haveTkns)
         {
-          const std::size_t total = allSessions.size();
           const auto& tkns = cmd.contents.at("tkns");
+          std::size_t total = tkns.size();
+          std::size_t remaining = std::min<std::size_t>(total, SessionsPerFile);
 
           if (total)
           {
-            data = njson::make_array(tkns.size());
+            data = njson::make_array(total);
             dataStream.open(path / std::to_string(nFiles));
           }
 
@@ -475,11 +484,34 @@ private:
             if (auto it = allSessions.find(token); it != allSessions.cend())
             {
               writeSesh (it->second, token, data, i);
+
+              --remaining;
+              ++written;
+            }
+            else
+            {              
+              --remaining;
+              --total;
+            }
+
+            if (remaining == 0)
+            {
+              data.dump(dataStream);
+              dataStream.close();
+
+              if (total - written)
+              {
+                ++nFiles;
+
+                dataStream.open(path / std::to_string(nFiles));
+                remaining = std::min<std::size_t>(total - written, SessionsPerFile);
+                data.resize(remaining);
+                i = 0;
+
+                //std::cout << "New file. Remaining: " << remaining << "\n";
+              }
             }
           }
-
-          data.dump(dataStream);
-          dataStream.close();
         }
         else
         {

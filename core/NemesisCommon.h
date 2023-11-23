@@ -16,9 +16,9 @@ namespace nemesis { namespace core {
 
 #define fc_always_inline inline __attribute__((always_inline))
 
-static const char * NEMESIS_VERSION = "0.3.5";
+static const char * NEMESIS_VERSION = "0.3.6";
 static const std::size_t NEMESIS_CONFIG_VERSION = 1U;
-static const std::size_t NEMESIS_MAX_CORES = 4U;
+static const std::size_t NEMESIS_MAX_CORES = 8U; // TODO TODO temp
 
 static const std::size_t NEMESIS_KV_MINPAYLOAD = 64U;
 static const std::size_t NEMESIS_KV_MAXPAYLOAD = 2U * 1024U * 1024U;
@@ -38,8 +38,8 @@ using KvSaveClock = std::chrono::system_clock;
 using KvSaveMetaDataUnit = std::chrono::milliseconds;
 
 // session
-using SessionPoolId = std::size_t;
-using SessionToken = std::uint64_t; //std::string;
+using PoolId = std::size_t;
+using SessionToken = std::uint64_t;
 using SessionName = std::string;
 using SessionClock = std::chrono::steady_clock;
 using SessionExpireTime = SessionClock::time_point;

@@ -373,13 +373,27 @@ public:
 
       if (!(mdJson.contains("status") && mdJson.contains("pools")) || !(mdJson["status"].is_uint64() && mdJson["pools"].is_uint64()))
         return {false, "Metadata file invalid"};
-      else if (mdJson["status"] == toUnderlying(KvSaveStatus::Complete))
-      {
-        m_kvHandler->loadOnStartUp(data);
-        return {true, ""};
-      }
-      else
+      else if (mdJson["status"] != toUnderlying(KvSaveStatus::Complete))
         return {false, "Dataset is not complete, cannot load. Metadata status not Complete"};
+      else
+      {
+        SaveType saveType = SaveType::AllSessions; // default, introduced v0.3.5
+        if (mdJson.contains("saveType"))
+        {
+          if (auto i = mdJson.at("saveType").as<int>(); i < static_cast<int>(SaveType::Max))
+            saveType = static_cast<SaveType>(i);
+          else
+            saveType = SaveType::Max;
+        }
+        
+        if (saveType == SaveType::Max)
+          return {false, "metadata contains invalid saveType"};
+        else
+        {
+          m_kvHandler->loadOnStartUp(data, saveType);
+          return {true, ""};
+        }
+      }
     }
 
 

@@ -99,7 +99,8 @@ const std::map<const KvQueryType, const std::string> QueryTypeToName =
 enum class SaveType
 {
   AllSessions = 0,
-  SelectSessions
+  SelectSessions,
+  Max
 };
 
 
@@ -238,15 +239,13 @@ struct StartupLoadResult
 
 
 
-static const std::array<std::function<void(const SessionToken&, SessionPoolId&)>, 2U> SessionIndexers =
+static const std::array<std::function<void(const SessionToken&, PoolId&)>, 2U> SessionIndexers =
 {
-  [](const SessionToken& t, SessionPoolId& id) 
+  [](const SessionToken& t, PoolId& id) 
   {
-    //id = ((t[0U] + t[1U] + t[2U] + t[3U] + t[4U] + t[5U]) & 0xFFFFFFFF) % MaxPools;
     id = t % MaxPools;
   },
-
-  [](const SessionToken& t, SessionPoolId& id)
+  [](const SessionToken& t, PoolId& id)
   {
     id = 0U;
   }

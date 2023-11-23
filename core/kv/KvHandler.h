@@ -97,7 +97,7 @@ public:
   }
 
 
-  void loadOnStartUp(const fs::path& dataSetsRoot)
+  void loadOnStartUp(const fs::path& dataSetsRoot, const SaveType saveType)
   {
     std::cout << "Loading from " << dataSetsRoot << '\n';
 
@@ -117,9 +117,6 @@ public:
 
       for(auto& poolDataDir : fs::directory_iterator(dataSetsRoot))
         cmd["dirs"].emplace_back(poolDataDir.path().string());
-
-      //for (std::size_t pool = 0 ; pool < sourcePools ; ++pool)
-        //cmd["dirs"].emplace_back((dataSetsRoot / std::to_string(pool)).string());
 
       auto result = submitSync(0, KvQueryType::InternalLoad, std::move(cmd));
       loadResult = std::any_cast<StartupLoadResult> (result);
@@ -141,17 +138,18 @@ public:
         latch.count_down();
       };
       
-
-      for (std::size_t pool = 0 ; pool < hostPools ; ++pool)
+      for(auto& poolDataDir : fs::directory_iterator(dataSetsRoot))
       {
+        const auto& poolPath = poolDataDir.path();
+
         njson cmd;
-        cmd["dirs"] = njson::array();
-        cmd["dirs"].emplace_back((dataSetsRoot / std::to_string(pool)).string());
-        
-        m_pools[pool]->execute(KvCommand{ .contents = std::move(cmd),
-                                          .type = KvQueryType::InternalLoad,
-                                          .syncResponseHandler = onResult});
+        cmd["dirs"] = njson::make_array(1, poolPath.string());
+
+        m_pools[std::stoul(poolPath.filename())]->execute(KvCommand{  .contents = std::move(cmd),
+                                                                      .type = KvQueryType::InternalLoad,
+                                                                      .syncResponseHandler = onResult});
       }
+      
 
       latch.wait();
 
@@ -554,26 +552,26 @@ private:
     static const std::string queryRspName   = queryName +"_RSP";
 
     auto& cmd = json.at(queryName);
-    //const bool haveTkns = cmd.contains("tkns");
+    const bool haveTkns = cmd.contains("tkns");
 
     if (!NemesisConfig::kvSaveEnabled(m_config))
       ws->send(createErrorResponseNoTkn(queryRspName, RequestStatus::CommandDisabled).to_string(), WsSendOpCode);
     else if (!(cmd.contains("name") && cmd.at("name").is_string()))
       ws->send(createErrorResponseNoTkn(queryRspName, RequestStatus::CommandSyntax).to_string(), WsSendOpCode);
-    //else if (haveTkns && !cmd.at("tkns").is_array())
-      //ws->send(createErrorResponseNoTkn(queryRspName, RequestStatus::ValueTypeInvalid, "tkns").to_string(), WsSendOpCode);
+    else if (haveTkns && !cmd.at("tkns").is_array())
+      ws->send(createErrorResponseNoTkn(queryRspName, RequestStatus::ValueTypeInvalid, "tkns").to_string(), WsSendOpCode);
     else
     {
       //validate tkns array, if present, before continuing
       bool tknsValid = true;
-      // if (haveTkns)
-      // {
-      //   for (const auto& item : cmd.at("tkns").array_range())
-      //   {
-      //     if (tknsValid = item.is_uint64(); !tknsValid)
-      //       break;
-      //   }
-      // }
+      if (haveTkns)
+      {
+        for (const auto& item : cmd.at("tkns").array_range())
+        {
+          if (tknsValid = item.is_uint64(); !tknsValid)
+            break;
+        }
+      }
 
       if (!tknsValid)
         ws->send(createErrorResponseNoTkn(queryRspName, RequestStatus::ValueTypeInvalid, "tkns").to_string(), WsSendOpCode);
@@ -613,8 +611,7 @@ private:
           metadata["status"] = toUnderlying(KvSaveStatus::Pending);        
           metadata["pools"] = m_pools.size();
           metadata["start"] = std::chrono::time_point_cast<KvSaveMetaDataUnit>(start).time_since_epoch().count();
-          //metadata["saveType"] = haveTkns ? toUnderlying(SaveType::SelectSessions) : toUnderlying(SaveType::AllSessions);
-          metadata["saveType"] = toUnderlying(SaveType::AllSessions);
+          metadata["saveType"] = haveTkns ? toUnderlying(SaveType::SelectSessions) : toUnderlying(SaveType::AllSessions);
           metadata["complete"] = 0;
           
           metadata.dump(metaStream);
@@ -622,8 +619,8 @@ private:
           // build and send save to pools
           njson saveCmd;
           saveCmd["poolDataRoot"] = dataPath.string();
-          //if (haveTkns)
-            //saveCmd["tkns"] = std::move(cmd.at("tkns"));
+          if (haveTkns)
+            saveCmd["tkns"] = std::move(cmd.at("tkns"));
 
           auto results = submitSync(ws, queryType, queryName, queryRspName, std::move(saveCmd));
 
@@ -900,7 +897,7 @@ private:
 
 private:
   std::vector<KvPoolWorker *> m_pools;
-  std::function<void(const SessionToken&, SessionPoolId&)> m_createSessionPoolId;
+  std::function<void(const SessionToken&, PoolId&)> m_createSessionPoolId;
   njson m_config;
 };
 
