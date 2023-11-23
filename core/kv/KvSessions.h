@@ -48,16 +48,6 @@ private:
   };
 
 
-  struct ExpiryTrackingCmp
-  {
-    bool operator()(const ExpiryTracking l, const ExpiryTracking& r)
-    {
-      return l.time > r.time;
-    }
-
-  };
-
-
 public:
   using SessionType = Session;
   using SessionsMap = ankerl::unordered_dense::segmented_map<SessionToken, Session>;
