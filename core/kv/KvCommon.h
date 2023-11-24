@@ -217,7 +217,7 @@ struct ServerStats
 } * serverStats;
 
 
-struct StartupLoadResult
+struct LoadResult
 {  
   RequestStatus status;
   std::size_t nSessions{0};
@@ -225,14 +225,14 @@ struct StartupLoadResult
   NemesisClock::duration loadTime{0};
 
 
-  static bool statusSuccess(const StartupLoadResult& r)
+  static bool statusSuccess(const LoadResult& r)
   {
     // Duplicate session is not an error, only the first is created
     return r.status == RequestStatus::LoadComplete || r.status == RequestStatus::LoadDuplicate;
   }
 
 
-  StartupLoadResult& operator+=(const StartupLoadResult& r)
+  LoadResult& operator+=(const LoadResult& r)
   {
     // only set status if we're not already in an error condition, otherwise we'll mask
     // a previous load which has errored (note: Duplicate is not an error)

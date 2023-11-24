@@ -377,25 +377,24 @@ public:
         return {false, "Dataset is not complete, cannot load. Metadata status not Complete"};
       else
       {
-        m_kvHandler->loadOnStartUp(data);
-        return {true, ""};
+        const auto loadResult = m_kvHandler->load(data);
+        const auto success = LoadResult::statusSuccess(loadResult);
 
-        // SaveType saveType = SaveType::AllSessions; // default, save/load introduced v0.3.4, saveType introduced v0.3.5
-        // if (mdJson.contains("saveType"))
-        // {
-        //   if (auto i = mdJson.at("saveType").as<int>(); i < static_cast<int>(SaveType::Max))
-        //     saveType = static_cast<SaveType>(i);
-        //   else
-        //     saveType = SaveType::Max;
-        // }
+        std::cout << "-- Load --\n";
+    
+        if (success)
+        {
+          std::cout << "Status: Success " << (loadResult.status == RequestStatus::LoadDuplicate ? "(Duplicates)" : "") << '\n';
+          std::cout << "Sessions: " << loadResult.nSessions << "\nKeys: " << loadResult.nKeys << '\n'; 
+        }
+        else
+          std::cout << "Status: Fail\n";
+
+        std::cout << "Time: " << std::chrono::duration_cast<std::chrono::milliseconds>(loadResult.loadTime) << '\n';
+
+        std::cout << "----------\n";
         
-        // if (saveType == SaveType::Max)
-        //   return {false, "metadata contains invalid saveType"};
-        // else
-        // {
-        //   m_kvHandler->loadOnStartUp(data, saveType);
-        //   return {true, ""};
-        // }
+        return {success, ""};
       }
     }
 

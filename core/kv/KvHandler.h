@@ -98,14 +98,14 @@ public:
   }
 
 
-  void loadOnStartUp(const fs::path& dataSetsRoot/*, const SaveType saveType*/)
+  LoadResult load(const fs::path& dataSetsRoot/*, const SaveType saveType*/)
   {
     std::cout << "Loading from " << dataSetsRoot << '\n';
 
     const auto hostPools = m_pools.size();
     const auto sourcePools = countFiles(dataSetsRoot);
     
-    StartupLoadResult loadResult { .status = RequestStatus::LoadComplete };
+    LoadResult loadResult { .status = RequestStatus::LoadComplete };
 
     auto start = NemesisClock::now();
 
@@ -120,7 +120,7 @@ public:
         cmd["dirs"].emplace_back(poolDataDir.path().string());
 
       auto result = submitSync(0, KvQueryType::InternalLoad, std::move(cmd));
-      loadResult = std::any_cast<StartupLoadResult> (result);
+      loadResult = std::any_cast<LoadResult> (result);
     }
     else if (hostPools == sourcePools)
     {
@@ -158,7 +158,7 @@ public:
 
       // collate results
       for(auto& result : results)
-        loadResult += std::any_cast<StartupLoadResult> (result);
+        loadResult += std::any_cast<LoadResult> (result);
     }    
     else
     {
@@ -172,30 +172,16 @@ public:
     auto end = NemesisClock::now();
     loadResult.loadTime = end - start;
 
-    std::cout << "-- Load --\n";
-    
-    std::cout << "Status: " << (int)loadResult.status << '\n';
-
-    if (StartupLoadResult::statusSuccess(loadResult))
-    {
-      std::cout << "Status: Success " << (loadResult.status == RequestStatus::LoadDuplicate ? "(Duplicates)" : "") << '\n';
-      std::cout << "Sessions: " << loadResult.nSessions << "\nKeys: " << loadResult.nKeys << '\n'; 
-    }
-    else
-      std::cout << "Status: Fail\n";
-
-    std::cout << "Time: " << std::chrono::duration_cast<std::chrono::milliseconds>(loadResult.loadTime) << '\n';
-
-    std::cout << "----------\n";
+    return loadResult;
   }
 
 
 private:
   
   
-  StartupLoadResult loadRemap (const fs::path& dataSetsRoot)
+  LoadResult loadRemap (const fs::path& dataSetsRoot)
   {
-    StartupLoadResult loadResult { .status = RequestStatus::LoadComplete};
+    LoadResult loadResult { .status = RequestStatus::LoadComplete};
     std::atomic_size_t nSessions{0}, nKeys{0};
     std::atomic_bool error{false};
 
@@ -218,12 +204,12 @@ private:
 
         auto onResult = [&latch, &nSessions, &nKeys, &error](auto r)
         {
-          StartupLoadResult lr = std::any_cast<StartupLoadResult> (r);
+          LoadResult lr = std::any_cast<LoadResult> (r);
           nSessions += lr.nSessions;
           nKeys += lr.nKeys;
 
           if (!error) // if not already in an error condition
-            error = !StartupLoadResult::statusSuccess(lr);
+            error = !LoadResult::statusSuccess(lr);
 
           latch.count_down();
         };
@@ -245,7 +231,7 @@ private:
       }
     }
 
-    return StartupLoadResult{ .status = error ? RequestStatus::LoadError : RequestStatus::LoadComplete,
+    return LoadResult{ .status = error ? RequestStatus::LoadError : RequestStatus::LoadComplete,
                               .nSessions = nSessions.load(),
                               .nKeys = nKeys.load()};
   }
@@ -675,16 +661,12 @@ private:
       
       for (const auto& item : cmd.at("names").array_range())
       {
-        if (namesValid = item.is_string(); !namesValid)
+        if (namesValid = item.is_string(); namesValid)
         {
-          fs::path loadRoot = loadPath / item.as_string();
+          const fs::path loadRoot = loadPath / item.as_string();
 
-          std::cout << "Checking " << loadRoot << " exists\n";
-
-          if (namesValid = fs::exists(loadRoot); !namesValid)
+          if (namesValid = fs::exists(loadRoot); namesValid)
           {
-            std::cout << "Counting files in " << loadRoot << "\n";
-
             if (namesValid = std::distance(fs::directory_iterator{loadRoot}, fs::directory_iterator{}) != 0; !namesValid)
               break;
           }
@@ -692,12 +674,15 @@ private:
       }
 
       if (!namesValid)
-        ws->send(createErrorResponseNoTkn(queryRspName, RequestStatus::CommandSyntax, "name not string, does not exist or empty").to_string(), WsSendOpCode);
+        ws->send(createErrorResponseNoTkn(queryRspName, RequestStatus::LoadError, "name not string, does not exist or empty").to_string(), WsSendOpCode);
       else
       {
+        njson rsp;
+        
         for (const auto& item : cmd.at("names").array_range())
         {
-          fs::path loadRoot = loadPath / item.as_string();
+          const auto loadName = item.as_string();
+          fs::path loadRoot = loadPath / loadName;
 
           std::size_t max = 0;
 
@@ -710,12 +695,20 @@ private:
           const fs::path datasets = loadRoot / std::to_string(max) / "data";
 
           if (!fs::exists(datasets))
-            ws->send(createErrorResponseNoTkn(queryRspName, RequestStatus::LoadError, "data directory does not exist").to_string(), WsSendOpCode);
-          else
           {
-            loadOnStartUp(datasets);
+            rsp[queryRspName][loadName]["st"] = toUnderlying(RequestStatus::LoadError);
+            rsp[queryRspName][loadName]["m"] = "Data directory does not exist";
+          }
+          else
+          {            
+            const auto result = load(datasets);
+            rsp[queryRspName][loadName]["st"] = toUnderlying(result.status);
+            rsp[queryRspName][loadName]["sessions"] = result.nSessions;
+            rsp[queryRspName][loadName]["keys"] = result.nKeys;
           }
         }
+        
+        ws->send(rsp.to_string(), WsSendOpCode);
       }      
     }
   }

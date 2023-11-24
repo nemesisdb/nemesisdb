@@ -571,11 +571,11 @@ private:
 
   void load(KvCommand& cmd, Sessions& sessions)
   {
-    StartupLoadResult result { .status = RequestStatus::LoadComplete };
+    LoadResult result { .status = RequestStatus::LoadComplete };
 
     auto updateStatus = [&result](const RequestStatus st)
     {
-      if (StartupLoadResult::statusSuccess(result))
+      if (LoadResult::statusSuccess(result))
         result.status = st; // only overwrite status if we're not in an error condition
     };
 
@@ -642,7 +642,7 @@ public:
   {
     RequestStatus status = RequestStatus::LoadComplete;
 
-    if (seshData.contains("sh"))  // can be empty object because sesh file is created if even pool contains no sessions
+    if (seshData.contains("sh"))  // can be empty object because sesh file is created even if pool contains no sessions
     {
       const auto token = seshData["sh"]["tkn"].as<SessionToken>();
       const auto isShared = seshData["sh"]["shared"].as_bool();
