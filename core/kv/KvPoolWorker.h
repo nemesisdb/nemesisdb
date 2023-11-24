@@ -301,6 +301,7 @@ private:
       placeholder,  // SessionInfo
       placeholder,  // SessionInfoAll
       placeholder,  // SessionSave
+      placeholder,  // SessionLoad
       set,
       setQ,
       get,
@@ -372,6 +373,10 @@ private:
         else if (cmd.type == KvQueryType::ShSave)
         {
           save(cmd, sessions);
+        }
+        else if (cmd.type == KvQueryType::ShLoad)
+        {
+          
         }
         else if (cmd.type == KvQueryType::InternalSessionMonitor)
         {
@@ -566,14 +571,14 @@ private:
 
   void load(KvCommand& cmd, Sessions& sessions)
   {
-    RequestStatus status = RequestStatus::Loading;
-    std::size_t nSessions{0}, nKeys{0};
+    StartupLoadResult result { .status = RequestStatus::LoadComplete };
 
-    auto updateStatus = [&status](const RequestStatus st)
+    auto updateStatus = [&result](const RequestStatus st)
     {
-      if (!(status == RequestStatus::LoadError || status == RequestStatus::LoadDuplicate))
-        status = st;
+      if (StartupLoadResult::statusSuccess(result))
+        result.status = st; // only overwrite status if we're not in an error condition
     };
+
 
     try
     {      
@@ -585,7 +590,7 @@ private:
           fs::path dir {dataDir.as_string_view()};
           for (const auto seshFile : fs::directory_iterator{dir})
           {
-            readSeshFile(sessions, seshFile.path(), status, nSessions, nKeys);
+            auto status = readSeshFile(sessions, seshFile.path(), result.nSessions, result.nKeys);
             updateStatus(status);
           }
         }
@@ -593,41 +598,50 @@ private:
       else
       {
         // load an individual session
-        loadSession(sessions, std::move(cmd.contents.at("sesh")), status, nSessions, nKeys);
+        auto status = loadSession(sessions, std::move(cmd.contents.at("sesh")), result.nSessions, result.nKeys);
         updateStatus(status);
       }      
     }
     catch(const std::exception& e)
     {
       std::cerr << e.what() << '\n';
-      status = RequestStatus::LoadError;
+      result.status = RequestStatus::LoadError;
     }
 
-    cmd.syncResponseHandler(std::any{StartupLoadResult{.status = status, .nSessions = nSessions, .nKeys = nKeys}});
+    cmd.syncResponseHandler(std::any{std::move(result)});
   }
 
 
 public:
 
-  fc_always_inline void readSeshFile (Sessions& sessions, const fs::path path, RequestStatus& status, std::size_t& nSessions, std::size_t& nKeys)
+  fc_always_inline RequestStatus readSeshFile (Sessions& sessions, const fs::path path, std::size_t& nSessions, std::size_t& nKeys)
   {
+    RequestStatus status = RequestStatus::LoadComplete;
+
     try
     {
       std::ifstream seshStream{path};
       auto root = njson::parse(seshStream);
 
       for (auto& item : root.array_range())
-        loadSession(sessions, std::move(item), status, nSessions, nKeys);
+      {
+        if (auto st = loadSession(sessions, std::move(item), nSessions, nKeys); status != RequestStatus::LoadError)
+          status = st;
+      }
     }
     catch(const std::exception& e)
     {
       std::cerr << e.what() << '\n';
+      status = RequestStatus::LoadError;
     }
+    return status;
   };
 
 
-  fc_always_inline void loadSession (Sessions& sessions, njson&& seshData, RequestStatus& status, std::size_t& nSessions, std::size_t& nKeys)
+  fc_always_inline RequestStatus loadSession (Sessions& sessions, njson&& seshData, std::size_t& nSessions, std::size_t& nKeys)
   {
+    RequestStatus status = RequestStatus::LoadComplete;
+
     if (seshData.contains("sh"))  // can be empty object because sesh file is created if even pool contains no sessions
     {
       const auto token = seshData["sh"]["tkn"].as<SessionToken>();
@@ -652,6 +666,8 @@ public:
         status = RequestStatus::LoadDuplicate;
       }
     }
+
+    return status;
   }
 
 

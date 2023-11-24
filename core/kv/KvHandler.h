@@ -46,6 +46,7 @@ private:
     std::bind(&KvHandler::sessionInfo,      std::ref(*this), std::placeholders::_1, std::placeholders::_2),
     std::bind(&KvHandler::sessionInfoAll,   std::ref(*this), std::placeholders::_1, std::placeholders::_2),
     std::bind(&KvHandler::sessionSave,      std::ref(*this), std::placeholders::_1, std::placeholders::_2),
+    std::bind(&KvHandler::sessionLoad,      std::ref(*this), std::placeholders::_1, std::placeholders::_2),
     std::bind(&KvHandler::set,              std::ref(*this), std::placeholders::_1, std::placeholders::_2),
     std::bind(&KvHandler::setQ,             std::ref(*this), std::placeholders::_1, std::placeholders::_2),
     std::bind(&KvHandler::get,              std::ref(*this), std::placeholders::_1, std::placeholders::_2),
@@ -97,7 +98,7 @@ public:
   }
 
 
-  void loadOnStartUp(const fs::path& dataSetsRoot, const SaveType saveType)
+  void loadOnStartUp(const fs::path& dataSetsRoot/*, const SaveType saveType*/)
   {
     std::cout << "Loading from " << dataSetsRoot << '\n';
 
@@ -110,7 +111,7 @@ public:
 
     if (hostPools == 1U)
     {
-      //std::cout << "Everything to pool 0\n";
+      std::cout << "Everything to pool 0\n";
 
       njson cmd;
       cmd["dirs"] = njson::array();
@@ -123,7 +124,7 @@ public:
     }
     else if (hostPools == sourcePools)
     {
-      //std::cout << "Direct\n";
+      std::cout << "Direct\n";
 
       std::latch latch{static_cast<std::ptrdiff_t>(hostPools)};
       std::mutex resultsMux;
@@ -145,6 +146,8 @@ public:
         njson cmd;
         cmd["dirs"] = njson::make_array(1, poolPath.string());
 
+        std::cout << "cmd: " << cmd << '\n';
+
         m_pools[std::stoul(poolPath.filename())]->execute(KvCommand{  .contents = std::move(cmd),
                                                                       .type = KvQueryType::InternalLoad,
                                                                       .syncResponseHandler = onResult});
@@ -159,9 +162,9 @@ public:
     }    
     else
     {
-      //std::cout << "Re-map\n";
       // there's no shortcut to this because source and host pools can't be inferred
       // have to recalculate each source session's pool from its token
+      std::cout << "Re-map\n";      
       loadResult = loadRemap(dataSetsRoot);
     }
 
@@ -171,7 +174,9 @@ public:
 
     std::cout << "-- Load --\n";
     
-    if (loadResult.status != RequestStatus::LoadError)
+    std::cout << "Status: " << (int)loadResult.status << '\n';
+
+    if (StartupLoadResult::statusSuccess(loadResult))
     {
       std::cout << "Status: Success " << (loadResult.status == RequestStatus::LoadDuplicate ? "(Duplicates)" : "") << '\n';
       std::cout << "Sessions: " << loadResult.nSessions << "\nKeys: " << loadResult.nKeys << '\n'; 
@@ -216,16 +221,15 @@ private:
           StartupLoadResult lr = std::any_cast<StartupLoadResult> (r);
           nSessions += lr.nSessions;
           nKeys += lr.nKeys;
-          
-          if (!error)
-            error = lr.status != RequestStatus::LoadComplete;
+
+          if (!error) // if not already in an error condition
+            error = !StartupLoadResult::statusSuccess(lr);
 
           latch.count_down();
         };
 
         for(auto& sesh : sessions.array_range())
         {
-          //
           const SessionToken& token = sesh["sh"]["tkn"].as<SessionToken>();
 
           njson cmd;
@@ -651,6 +655,72 @@ private:
   }  
 
 
+  fc_always_inline void sessionLoad(KvWebSocket * ws, njson&& json)
+  {
+    static const KvQueryType queryType      = KvQueryType::ShLoad;
+    static const std::string queryName      = QueryTypeToName.at(queryType);
+    static const std::string queryRspName   = queryName +"_RSP";
+
+    const auto& loadPath = fs::path{NemesisConfig::kvSavePath(m_config)};
+
+    auto& cmd = json.at(queryName);
+
+    if (!(cmd.contains("names") && cmd.at("names").is_array()))
+      ws->send(createErrorResponseNoTkn(queryRspName, RequestStatus::CommandSyntax).to_string(), WsSendOpCode);
+    else if (!fs::exists(loadPath))
+      ws->send(createErrorResponseNoTkn(queryRspName, RequestStatus::LoadError, "load path not exist").to_string(), WsSendOpCode);
+    else
+    {
+      bool namesValid = true;
+      
+      for (const auto& item : cmd.at("names").array_range())
+      {
+        if (namesValid = item.is_string(); !namesValid)
+        {
+          fs::path loadRoot = loadPath / item.as_string();
+
+          std::cout << "Checking " << loadRoot << " exists\n";
+
+          if (namesValid = fs::exists(loadRoot); !namesValid)
+          {
+            std::cout << "Counting files in " << loadRoot << "\n";
+
+            if (namesValid = std::distance(fs::directory_iterator{loadRoot}, fs::directory_iterator{}) != 0; !namesValid)
+              break;
+          }
+        } 
+      }
+
+      if (!namesValid)
+        ws->send(createErrorResponseNoTkn(queryRspName, RequestStatus::CommandSyntax, "name not string, does not exist or empty").to_string(), WsSendOpCode);
+      else
+      {
+        for (const auto& item : cmd.at("names").array_range())
+        {
+          fs::path loadRoot = loadPath / item.as_string();
+
+          std::size_t max = 0;
+
+          for (auto& dir : fs::directory_iterator(loadRoot))
+          {
+            if (dir.is_directory())
+              max = std::max<std::size_t>(std::stoul(dir.path().filename()), max);
+          }
+
+          const fs::path datasets = loadRoot / std::to_string(max) / "data";
+
+          if (!fs::exists(datasets))
+            ws->send(createErrorResponseNoTkn(queryRspName, RequestStatus::LoadError, "data directory does not exist").to_string(), WsSendOpCode);
+          else
+          {
+            loadOnStartUp(datasets);
+          }
+        }
+      }      
+    }
+  }
+
+  
   // DATA
 
   fc_always_inline void set(KvWebSocket * ws, njson&& json)

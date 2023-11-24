@@ -27,6 +27,7 @@ enum class KvQueryType : std::uint8_t
   ShInfo,
   ShInfoAll,
   ShSave,
+  ShLoad,
   KvSet,
   KvSetQ,
   KvGet,
@@ -55,6 +56,7 @@ const std::map<const std::string_view, std::tuple<const KvQueryType>> QueryNameT
   {"SH_INFO",         {KvQueryType::ShInfo}},
   {"SH_INFO_ALL",     {KvQueryType::ShInfoAll}},
   {"SH_SAVE",         {KvQueryType::ShSave}},
+  {"SH_LOAD",         {KvQueryType::ShLoad}},
   // kv
   {"KV_SET",          {KvQueryType::KvSet}},
   {"KV_SETQ",         {KvQueryType::KvSetQ}},
@@ -80,6 +82,7 @@ const std::map<const KvQueryType, const std::string> QueryTypeToName =
   {KvQueryType::ShInfo,       "SH_INFO"},
   {KvQueryType::ShInfoAll,    "SH_INFO_ALL"},
   {KvQueryType::ShSave,       "SH_SAVE"},
+  {KvQueryType::ShLoad,       "SH_LOAD"},
   //
   {KvQueryType::KvSet,        "KV_SET"},
   {KvQueryType::KvSetQ,       "KV_SETQ"},
@@ -222,22 +225,25 @@ struct StartupLoadResult
   NemesisClock::duration loadTime{0};
 
 
-  static bool statusSuccess(const StartupLoadResult r)
+  static bool statusSuccess(const StartupLoadResult& r)
   {
-    return !(r.status == RequestStatus::LoadError || r.status == RequestStatus::Loading);
+    // Duplicate session is not an error, only the first is created
+    return r.status == RequestStatus::LoadComplete || r.status == RequestStatus::LoadDuplicate;
   }
 
 
   StartupLoadResult& operator+=(const StartupLoadResult& r)
   {
-    if (statusSuccess(r))
+    // only set status if we're not already in an error condition, otherwise we'll mask
+    // a previous load which has errored (note: Duplicate is not an error)
+    if (statusSuccess(*this))
     {
       nKeys += r.nKeys;
       nSessions += r.nSessions;
+      status = r.status;
     }
     
-    status = r.status;
-    loadTime += r.loadTime; // beware when loading concurrent pools
+    loadTime += r.loadTime; // beware when loading pools concurrently
   
     return *this;
   }

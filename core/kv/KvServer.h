@@ -347,7 +347,7 @@ public:
 
       std::size_t max = 0;
 
-      for (auto& dir : fs::directory_iterator(root, fs::directory_options::follow_directory_symlink))
+      for (auto& dir : fs::directory_iterator(root))
       {
         if (dir.is_directory())
           max = std::max<std::size_t>(std::stoul(dir.path().filename()), max);
@@ -377,22 +377,25 @@ public:
         return {false, "Dataset is not complete, cannot load. Metadata status not Complete"};
       else
       {
-        SaveType saveType = SaveType::AllSessions; // default, introduced v0.3.5
-        if (mdJson.contains("saveType"))
-        {
-          if (auto i = mdJson.at("saveType").as<int>(); i < static_cast<int>(SaveType::Max))
-            saveType = static_cast<SaveType>(i);
-          else
-            saveType = SaveType::Max;
-        }
+        m_kvHandler->loadOnStartUp(data);
+        return {true, ""};
+
+        // SaveType saveType = SaveType::AllSessions; // default, save/load introduced v0.3.4, saveType introduced v0.3.5
+        // if (mdJson.contains("saveType"))
+        // {
+        //   if (auto i = mdJson.at("saveType").as<int>(); i < static_cast<int>(SaveType::Max))
+        //     saveType = static_cast<SaveType>(i);
+        //   else
+        //     saveType = SaveType::Max;
+        // }
         
-        if (saveType == SaveType::Max)
-          return {false, "metadata contains invalid saveType"};
-        else
-        {
-          m_kvHandler->loadOnStartUp(data, saveType);
-          return {true, ""};
-        }
+        // if (saveType == SaveType::Max)
+        //   return {false, "metadata contains invalid saveType"};
+        // else
+        // {
+        //   m_kvHandler->loadOnStartUp(data, saveType);
+        //   return {true, ""};
+        // }
       }
     }
 
