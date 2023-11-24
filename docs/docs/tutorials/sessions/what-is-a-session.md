@@ -22,12 +22,9 @@ They are called sessions because data is intended to be stored for a period of t
     1. Retrieve playlist data from primary database
     2. Create session with an expiry
     3. Populate session with playlist data
-3. Their session will expire, deleting their data and freeing server memory for other users
+3. Whilst the users accessing the playlist (playing tracks, adding tracks etc) the session expiry is extended
+4. When the user stops interacting with the data (they close the app), the session will eventually expire, deleting the data 
 
-:::note
-Currently there's no method to extend a session's expiry but this will be added soon. For example,
-a 'renew' command to manually extend the session or automatically on each data access.
-:::
 
 <br/>
 
