@@ -10,6 +10,8 @@
 #include <tuple>
 #include <latch>
 #include <thread>
+#include <chrono>
+#include <iostream>
 #include <uwebsockets/App.h>
 #include <core/kv/KvCommon.h>
 #include <core/kv/KvPoolWorker.h>
@@ -390,7 +392,7 @@ public:
         else
           std::cout << "Status: Fail\n";
 
-        std::cout << "Time: " << std::chrono::duration_cast<std::chrono::milliseconds>(loadResult.loadTime) << '\n';
+        std::cout << "Time: " << std::chrono::duration_cast<std::chrono::milliseconds>(loadResult.loadTime).count() << '\n';
 
         std::cout << "----------\n";
         
