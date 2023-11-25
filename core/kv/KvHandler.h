@@ -553,6 +553,8 @@ private:
       ws->send(createErrorResponseNoTkn(queryRspName, RequestStatus::CommandSyntax).to_string(), WsSendOpCode);
     else if (haveTkns && !cmd.at("tkns").is_array())
       ws->send(createErrorResponseNoTkn(queryRspName, RequestStatus::ValueTypeInvalid, "tkns").to_string(), WsSendOpCode);
+    else if (haveTkns && cmd.at("tkns").empty())
+      ws->send(createErrorResponseNoTkn(queryRspName, RequestStatus::ValueSize, "tkns").to_string(), WsSendOpCode);
     else
     {
       //validate tkns array, if present, before continuing
@@ -632,7 +634,11 @@ private:
 
           // send command rsp
           rsp[queryRspName]["st"] = toUnderlying(st);
+
+          // duration is unpredictable, making testing responses a PITA
+          #ifndef NDB_UNIT_TEST
           rsp[queryRspName]["duration"] = std::chrono::duration_cast<KvSaveMetaDataUnit>(end-start).count();
+          #endif
 
           ws->send(rsp.to_string(), WsSendOpCode);
         }

@@ -229,7 +229,7 @@ public:
     }
     else
     {
-      #ifndef NDB_UNIT_TEST_NOMONITOR
+      #ifndef NDB_UNIT_TEST
       m_monitor = std::move(std::jthread{[this]
       {
         std::chrono::seconds period {5};
