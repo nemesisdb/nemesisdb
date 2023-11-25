@@ -43,14 +43,14 @@ testjson readSeshFile (const fs::path& f)
 }
 
 
-// TEST_F(NemesisTest, SaveDisabled)
-// {
-// 	TestClient tc;
+TEST_F(NemesisTest, SaveDisabled)
+{
+	TestClient tc;
 
-// 	ASSERT_TRUE(tc.open());
+	ASSERT_TRUE(tc.open());
 
-// 	tc.test({TestData { .request = R"({ "SH_SAVE":{} })"_json,	.expected = {R"({ "SH_SAVE_RSP":{ "st":14, "m":"" } })"_json} }});
-// }
+	tc.test({TestData { .request = R"({ "SH_SAVE":{} })"_json,	.expected = {R"({ "SH_SAVE_RSP":{ "st":14, "m":"" } })"_json} }});
+}
 
 
 

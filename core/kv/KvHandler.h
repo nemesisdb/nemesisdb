@@ -111,7 +111,7 @@ public:
 
     if (hostPools == 1U)
     {
-      std::cout << "Everything to pool 0\n";
+      //std::cout << "Everything to pool 0\n";
 
       njson cmd;
       cmd["dirs"] = njson::array();
@@ -124,7 +124,7 @@ public:
     }
     else if (hostPools == sourcePools)
     {
-      std::cout << "Direct\n";
+      //std::cout << "Direct\n";
 
       std::latch latch{static_cast<std::ptrdiff_t>(hostPools)};
       std::mutex resultsMux;
@@ -146,8 +146,6 @@ public:
         njson cmd;
         cmd["dirs"] = njson::make_array(1, poolPath.string());
 
-        std::cout << "cmd: " << cmd << '\n';
-
         m_pools[std::stoul(poolPath.filename())]->execute(KvCommand{  .contents = std::move(cmd),
                                                                       .type = KvQueryType::InternalLoad,
                                                                       .syncResponseHandler = onResult});
@@ -164,7 +162,7 @@ public:
     {
       // there's no shortcut to this because source and host pools can't be inferred
       // have to recalculate each source session's pool from its token
-      std::cout << "Re-map\n";      
+      //std::cout << "Re-map\n";      
       loadResult = loadRemap(dataSetsRoot);
     }
 
