@@ -266,18 +266,6 @@ static const std::array<std::function<void(const SessionToken&, PoolId&)>, 2U> S
 
 fc_always_inline SessionToken createSessionToken(const SessionName& name, const bool shared)
 {
-  // if (shared)
-  // {
-  //   static const std::size_t seed = 99194853094755497U;
-  //   const auto hash = std::hash<SessionName>{}(name);
-  //   return std::to_string((std::size_t)(hash | seed));
-  // }
-  // else
-  // {
-  //   static UUIDv4::UUIDGenerator<std::mt19937_64> uuidGenerator; 
-  //   const auto uuid = uuidGenerator.getUUID();
-  //   return std::to_string(uuid.hash());
-  // }
   if (shared)
   {
     static const std::size_t seed = 99194853094755497U;
@@ -302,6 +290,24 @@ fc_always_inline uuid createUuid ()
   return s;
 }
 
+
+std::filesystem::path getDefaultDataSetPath(const std::filesystem::path& loadRoot)
+{
+  std::size_t max = 0;
+
+  if (countFiles(loadRoot) == 0)
+    return {};
+  else
+  {
+    for (auto& dir : fs::directory_iterator(loadRoot))
+    {
+      if (dir.is_directory())
+        max = std::max<std::size_t>(std::stoul(dir.path().filename()), max);
+    }
+
+    return loadRoot / std::to_string(max);
+  }
+}
 
 // TODO this isn't used, but really should be
 /*

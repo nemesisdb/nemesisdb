@@ -15,9 +15,6 @@
 namespace nemesis { namespace core { namespace kv {
 
 
-namespace fs = std::filesystem;
-
-
 class KvHandler
 {
 public:
@@ -663,6 +660,7 @@ private:
     {
       bool namesValid = true;
       RequestStatus checkStatus = RequestStatus::Ok;
+      std::string msg;
       
       for (const auto& item : cmd.at("names").array_range())
       {
@@ -670,20 +668,19 @@ private:
           checkStatus = RequestStatus::ValueTypeInvalid;
         else
         {
+          // confirm load dir exists, i.e. :  <save_path>/<load_name>
           const fs::path loadRoot = loadPath / item.as_string();
 
           if (namesValid = fs::exists(loadRoot); !namesValid)
-            checkStatus = RequestStatus::LoadError;
-          else
           {
-            if (namesValid = std::distance(fs::directory_iterator{loadRoot}, fs::directory_iterator{}) != 0; !namesValid)
-              break;
+            checkStatus = RequestStatus::LoadError;
+            msg = item.as_string() + " does not exist";
           }
         } 
       }
 
       if (!namesValid)
-        ws->send(createErrorResponseNoTkn(queryRspName, checkStatus).to_string(), WsSendOpCode);
+        ws->send(createErrorResponseNoTkn(queryRspName, checkStatus, msg).to_string(), WsSendOpCode);
       else
       {
         njson rsp;
@@ -691,29 +688,30 @@ private:
         for (const auto& item : cmd.at("names").array_range())
         {
           const auto loadName = item.as_string();
-          fs::path loadRoot = loadPath / loadName;
+          const auto loadRoot = loadPath / loadName;
 
-          std::size_t max = 0;
+          rsp[queryRspName][loadName]["m"] = "";
+          rsp[queryRspName][loadName]["sessions"] = 0;
+          rsp[queryRspName][loadName]["keys"] = 0;
 
-          for (auto& dir : fs::directory_iterator(loadRoot))
-          {
-            if (dir.is_directory())
-              max = std::max<std::size_t>(std::stoul(dir.path().filename()), max);
-          }
-
-          const fs::path datasets = loadRoot / std::to_string(max) / "data";
-
-          if (!fs::exists(datasets))
-          {
-            rsp[queryRspName][loadName]["st"] = toUnderlying(RequestStatus::LoadError);
-            rsp[queryRspName][loadName]["m"] = "Data directory does not exist";
-          }
+          if (auto dataSetPath = getDefaultDataSetPath(loadRoot); dataSetPath.empty())
+            rsp[queryRspName][loadName]["st"] = toUnderlying(RequestStatus::LoadComplete);  // no datasets, not an error
           else
-          {            
-            const auto result = load(datasets);
-            rsp[queryRspName][loadName]["st"] = toUnderlying(result.status);
-            rsp[queryRspName][loadName]["sessions"] = result.nSessions;
-            rsp[queryRspName][loadName]["keys"] = result.nKeys;
+          {
+            const fs::path datasets = dataSetPath / "data";
+
+            if (!fs::exists(datasets))
+            {
+              rsp[queryRspName][loadName]["st"] = toUnderlying(RequestStatus::LoadError);
+              rsp[queryRspName][loadName]["m"] = "Data directory does not exist";
+            }
+            else
+            {            
+              const auto result = load(datasets);
+              rsp[queryRspName][loadName]["st"] = toUnderlying(result.status);              
+              rsp[queryRspName][loadName]["sessions"] = result.nSessions;
+              rsp[queryRspName][loadName]["keys"] = result.nKeys;
+            }
           }
         }
         

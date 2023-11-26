@@ -26,41 +26,77 @@ Restored sessions retain their shared and expiry settings. If a session has expi
 
 `SH_LOAD_RSP`
 
-The response is in form:
+If a name does not exist the response is in form:
+
+```json title="Dataset does not exist"
+{
+  "SH_LOAD_RSP":
+  {
+    "st": 142,
+    "m": "<name> does not exist"
+  }
+}
+```
+Where `<name>` is the name that does not exist.
+
+<br/>
+
+Otherwise, the response is in form:
 
 ```json
 {
   "SH_LOAD_RSP":
   {
-    "<loadName1>":
+    "<name1>":
     {
       "st":<status>,
       "keys":<keys>,
-      "sessions":<sessions>
+      "sessions":<sessions>,
+      "m":<msg>
+    },
+    "<name2>":
+    {
+      "st":<status>,
+      "keys":<keys>,
+      "sessions":<sessions>,
+      "m":<msg>
+    },
+    "<nameN>":
+    {
+      "st":<status>,
+      "keys":<keys>,
+      "sessions":<sessions>,
+      "m":<msg>
     }
   }
 }
 ```
+<br/>
 
 |Param|Type|Meaning|
 |:---|:---|:---|
 |st|unsigned int|Status|
-|sessions|unsigned int|Number of sessions restored|
-|keys|unsigned int|Number of keys restored|
+|sessions|unsigned int|Number of sessions loaded|
+|keys|unsigned int|Number of keys loaded|
+|m|string|Error message. Empty if `st` is `LoadComplete`|
 
+<br/>
+
+Possible values for `st`:
 
 - CommandSyntax (`names` not present or not an array)
 - ValueTypeInvalid (member of `names` is not a string)
-- LoadError (Data path or load name not found)
-- LoadComplete
+- LoadError (`m` contains error message)
+- LoadComplete (`m` is empty)
 
 
 See [response status](./../Statuses) for status values.
 
 <br/>
 
-## Example
+## Examples
 
+### Single Dataset
 With a database of data we save all sessions:
 
 ```json
@@ -92,6 +128,38 @@ Some time later after a restart or the data has been deleted:
       "st": 141,
       "sessions": 10,
       "keys": 50
+    }
+  }
+}
+```
+
+### Multiple Datasets
+
+```json title="dump2 exists but has no data"
+{
+  "SH_LOAD":
+  {
+    "names":["dump1", "dump2"]
+  }
+}
+```
+
+An empty dataset is not an error:
+
+```json title="Response"
+{
+  "SH_LOAD_RSP": {
+    "dump1": {
+      "m": "",
+      "sessions": 10,
+      "keys": 50,
+      "st": 141
+    },
+    "dump2": {
+      "m": "",
+      "sessions": 0,
+      "keys": 0,
+      "st": 141
     }
   }
 }

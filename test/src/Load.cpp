@@ -30,7 +30,7 @@ TEST_F(NemesisTest, NameInvalid)
 	tc.test({TestData { .request = R"({ "SH_LOAD":{} })"_json,	.expected = {R"({ "SH_LOAD_RSP":{ "st":13, "m":"" } })"_json} }});
 	tc.test({TestData { .request = R"({ "SH_LOAD":{ "names":2} })"_json,	.expected = {R"({ "SH_LOAD_RSP":{ "st":13, "m":"" } })"_json} }});
   tc.test({TestData { .request = R"({ "SH_LOAD":{ "names":[2]} })"_json,	.expected = {R"({ "SH_LOAD_RSP":{ "st":41, "m":"" } })"_json} }});
-	tc.test({TestData { .request = R"({ "SH_LOAD":{ "names":["_idontexist"]} })"_json,	.expected = {R"({ "SH_LOAD_RSP":{ "st":142, "m":"" } })"_json} }});
+	tc.test({TestData { .request = R"({ "SH_LOAD":{ "names":["_idontexist"]} })"_json,	.expected = {R"({ "SH_LOAD_RSP":{ "st":142, "m":"_idontexist does not exist" } })"_json} }});
 }
 
 
@@ -58,7 +58,7 @@ TEST_F(NemesisTestSaveEnable, Data)
 
   // load
 	tc.test({TestData { .request = R"({ "SH_LOAD":{"names":["Data"]} })"_json,
-											.expected = {R"({ "SH_LOAD_RSP":{ "Data":{"st":141, "sessions":1, "keys":2} } })"_json} }});
+											.expected = {R"({ "SH_LOAD_RSP":{ "Data":{"st":141, "sessions":1, "keys":2, "m":""} } })"_json} }});
 
   tc.test(TestData { 	.request = R"({ "KV_GET":{ "keys":["key1", "key2"]} })"_json,
 											.expected = {R"({ "KV_GET_RSP":{ "keys":{"key1":"v1", "key2":"v2" } }})"_json}});
@@ -72,7 +72,7 @@ TEST_F(NemesisTestSaveEnable, PrepareStartupLoad)
 
 	ASSERT_TRUE(tc.open());
 	
-  startupLoadToken = tc.token["tkn"];
+  startupLoadToken = tc.token["tkn"];	// grab the token for StartupLoad test
 
 	setData(tc);
 
