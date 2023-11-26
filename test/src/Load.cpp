@@ -10,6 +10,8 @@ using namespace nemesis::test;
 
 namespace fs = std::filesystem;
 
+SessionToken startupLoadToken ;
+
 
 void setData (TestClient& tc)
 {
@@ -19,7 +21,7 @@ void setData (TestClient& tc)
 
 
 
-TEST_F(NemesisTestSaveEnable, NameInvalid)
+TEST_F(NemesisTest, NameInvalid)
 {
 	TestClient tc;
 
@@ -61,6 +63,44 @@ TEST_F(NemesisTestSaveEnable, Data)
 											.expected = {R"({ "KV_GET_RSP":{ "keys":{"key1":"v1", "key2":"v2" } }})"_json}});
 }
 
+
+TEST_F(NemesisTestSaveEnable, PrepareStartupLoad)
+{
+	// This saves data for StartupLoad test
+	TestClient tc;
+
+	ASSERT_TRUE(tc.open());
+	
+  startupLoadToken = tc.token["tkn"];
+
+	setData(tc);
+
+	const testjson save  = {{"SH_SAVE", {{"name", LoadName}}}};
+	const testjson saveRsp1  = {{"SH_SAVE_RSP", {{"name", LoadName}, {"st", 120}}}};
+	const testjson saveRsp2  = {{"SH_SAVE_RSP", {{"name", LoadName}, {"st", 121}}}};
+
+	tc.test({TestData { .request = save,
+											.expected = {saveRsp1, saveRsp2} }});
+
+	// now we have data to load on startup in StartupLoad test
+}
+
+
+TEST_F(NemesisTestLoadOnStartup, StartupLoad)
+{
+	// NOTE this must run after PrepareStartupLoad
+	TestClient tc;
+
+	ASSERT_TRUE(tc.openNoSession());
+
+	tc.test(TestData { 	.request = R"({ "SH_INFO_ALL":{} })"_json,
+											.expected = {R"({ "SH_INFO_ALL_RSP":{ "totalSessions":1, "totalKeys":2 } })"_json}});
+
+	tc.token["tkn"] = startupLoadToken;
+
+	tc.test(TestData { 	.request = R"({ "KV_GET":{ "keys":["key1", "key2"]} })"_json,
+											.expected = {R"({ "KV_GET_RSP":{ "keys":{"key1":"v1", "key2":"v2" } }})"_json}});
+}
 
 
 int main (int argc, char ** argv)

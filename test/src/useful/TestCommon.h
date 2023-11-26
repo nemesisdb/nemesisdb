@@ -88,10 +88,32 @@ public:
 class NemesisTestSaveEnable : public nemesis::test::KvTestServer
 {
 public:
-  NemesisTestSaveEnable() : KvTestServer(EnableSaveCfg)
+  NemesisTestSaveEnable() : KvTestServer(EnableSaveCfg), LoadName("LoadOnStartupTest")
   {
 
   }
+
+protected:
+	const std::string LoadName;
+};
+
+
+class NemesisTestLoadOnStartup : public NemesisTestSaveEnable
+{
+public:
+
+  NemesisTestLoadOnStartup() : NemesisTestSaveEnable()
+  {
+
+  }
+
+	void SetUp() override
+	{
+		m_config.loadPath = "./data";	// normally set during startup when reading config
+		m_config.loadName = LoadName;
+
+		ASSERT_TRUE(m_server.run(m_config));
+	}
 };
 
 
