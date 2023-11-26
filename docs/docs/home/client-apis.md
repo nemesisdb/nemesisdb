@@ -19,24 +19,22 @@ If you have an API or plan to do so, feel free to contact via [Twitter](https://
 
 ## Sessions
 
-- A client can create many sessions
-- A session doesn't belong to a particular client - if a client has a valid session token, they can access the data
-
+- A client can create unlimited sessions (within memory limitations)
+- A session doesn't belong to a particular client/user - if a client has a valid session token, it can access the data
+- A session ends with `SH_END` or when it expires if created with a duration
+- When a session expires, there is no notification
+- Session commands always respond (`SH_SAVE` can send two responses)
 
 ## KV
 
 - All KV commands require a session token
-- Session tokens are 64-bit unsigned integers
+- Session tokens must be handled as 64-bit unsigned integers
 - `KV_SETQ` and `KV_ADDQ` only respond on error, all other commands always respond
 
 
 ## Basic Lifecycle
 
 - Open the WebSocket connection
-- Create session(s): `SH_NEW`
-- Access session data, i.e.:
-    - Store: `KV_SET`/`KV_SETQ` or `KV_ADD`/`KV_ADDQ`
-    - Get: `KV_GET`
-    - etc
-- End session(s): `SH_END`
-
+- Create session: `SH_NEW`
+- Access session data: `KV_SET`, `KV_GET`, `KV_FIND`, etc
+- End session: `SH_END` or allow to expire (if created to do so)

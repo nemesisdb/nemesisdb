@@ -662,14 +662,19 @@ private:
     else
     {
       bool namesValid = true;
+      RequestStatus checkStatus = RequestStatus::Ok;
       
       for (const auto& item : cmd.at("names").array_range())
       {
-        if (namesValid = item.is_string(); namesValid)
+        if (namesValid = item.is_string(); !namesValid)
+          checkStatus = RequestStatus::ValueTypeInvalid;
+        else
         {
           const fs::path loadRoot = loadPath / item.as_string();
 
-          if (namesValid = fs::exists(loadRoot); namesValid)
+          if (namesValid = fs::exists(loadRoot); !namesValid)
+            checkStatus = RequestStatus::LoadError;
+          else
           {
             if (namesValid = std::distance(fs::directory_iterator{loadRoot}, fs::directory_iterator{}) != 0; !namesValid)
               break;
@@ -678,7 +683,7 @@ private:
       }
 
       if (!namesValid)
-        ws->send(createErrorResponseNoTkn(queryRspName, RequestStatus::LoadError, "name not string, does not exist or empty").to_string(), WsSendOpCode);
+        ws->send(createErrorResponseNoTkn(queryRspName, checkStatus).to_string(), WsSendOpCode);
       else
       {
         njson rsp;

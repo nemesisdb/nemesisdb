@@ -29,7 +29,8 @@ TEST_F(NemesisTest, NameInvalid)
 
 	tc.test({TestData { .request = R"({ "SH_LOAD":{} })"_json,	.expected = {R"({ "SH_LOAD_RSP":{ "st":13, "m":"" } })"_json} }});
 	tc.test({TestData { .request = R"({ "SH_LOAD":{ "names":2} })"_json,	.expected = {R"({ "SH_LOAD_RSP":{ "st":13, "m":"" } })"_json} }});
-  tc.test({TestData { .request = R"({ "SH_LOAD":{ "names":[2]} })"_json,	.expected = {R"({ "SH_LOAD_RSP":{ "st":142, "m":"name not string, does not exist or empty" } })"_json} }});
+  tc.test({TestData { .request = R"({ "SH_LOAD":{ "names":[2]} })"_json,	.expected = {R"({ "SH_LOAD_RSP":{ "st":41, "m":"" } })"_json} }});
+	tc.test({TestData { .request = R"({ "SH_LOAD":{ "names":["_idontexist"]} })"_json,	.expected = {R"({ "SH_LOAD_RSP":{ "st":142, "m":"" } })"_json} }});
 }
 
 
