@@ -105,6 +105,15 @@ public:
   }
 
   
+  std::size_t clear ()
+  {
+    const auto count = m_sessions.size();
+    m_sessions.clear();
+    m_expiry.clear();
+    return count;
+  }
+
+
   SessionsMap::size_type countSessions() const
   {
     return m_sessions.size();

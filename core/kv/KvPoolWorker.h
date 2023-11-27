@@ -301,7 +301,8 @@ private:
       placeholder,  // SessionInfo
       placeholder,  // SessionInfoAll
       placeholder,  // SessionSave
-      placeholder,  // SessionLoad
+      placeholder,  // SessionLoad (set as InternalLoad)
+      placeholder,  // SessionClear
       set,
       setQ,
       get,
@@ -374,15 +375,16 @@ private:
         {
           save(cmd, sessions);
         }
-        else if (cmd.type == KvQueryType::ShLoad)
+        else if (cmd.type == KvQueryType::ShClear)
         {
-          
+          const auto count = sessions.clear();
+          cmd.syncResponseHandler(std::any{std::move(count)});
         }
         else if (cmd.type == KvQueryType::InternalSessionMonitor)
         {
           sessions.handleExpired();
         }
-        else if (cmd.type == KvQueryType::InternalLoad)
+        else if (cmd.type == KvQueryType::InternalLoad || cmd.type == KvQueryType::ShLoad)
         {
           load(cmd, sessions);
         }

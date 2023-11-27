@@ -44,6 +44,7 @@ private:
     std::bind(&KvHandler::sessionInfoAll,   std::ref(*this), std::placeholders::_1, std::placeholders::_2),
     std::bind(&KvHandler::sessionSave,      std::ref(*this), std::placeholders::_1, std::placeholders::_2),
     std::bind(&KvHandler::sessionLoad,      std::ref(*this), std::placeholders::_1, std::placeholders::_2),
+    std::bind(&KvHandler::sessionClear,     std::ref(*this), std::placeholders::_1, std::placeholders::_2),
     std::bind(&KvHandler::set,              std::ref(*this), std::placeholders::_1, std::placeholders::_2),
     std::bind(&KvHandler::setQ,             std::ref(*this), std::placeholders::_1, std::placeholders::_2),
     std::bind(&KvHandler::get,              std::ref(*this), std::placeholders::_1, std::placeholders::_2),
@@ -721,6 +722,25 @@ private:
   }
 
   
+  fc_always_inline void sessionClear(KvWebSocket * ws, njson&& json)
+  {
+    static const KvQueryType queryType      = KvQueryType::ShClear;
+    static const std::string queryName      = QueryTypeToName.at(queryType);
+    static const std::string queryRspName   = queryName + "_RSP";
+
+    const auto results = submitSync(ws, queryType, queryName, queryRspName);
+
+    std::size_t count {0};
+    std::for_each(results.cbegin(), results.cend(), [&count](const auto& result) { count += std::any_cast<std::size_t>(result);});
+
+    njson rsp;
+    rsp[queryRspName]["st"] = toUnderlying(RequestStatus::Ok);
+    rsp[queryRspName]["cnt"] = count;
+
+    ws->send(rsp.to_string(), WsSendOpCode);
+  }
+
+
   // DATA
 
   fc_always_inline void set(KvWebSocket * ws, njson&& json)
