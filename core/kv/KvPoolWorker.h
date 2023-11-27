@@ -302,7 +302,7 @@ private:
       placeholder,  // SessionInfoAll
       placeholder,  // SessionSave
       placeholder,  // SessionLoad (set as InternalLoad)
-      placeholder,  // SessionClear
+      placeholder,  // SessionEndAll
       set,
       setQ,
       get,
@@ -375,7 +375,7 @@ private:
         {
           save(cmd, sessions);
         }
-        else if (cmd.type == KvQueryType::ShClear)
+        else if (cmd.type == KvQueryType::ShEndAll)
         {
           const auto count = sessions.clear();
           cmd.syncResponseHandler(std::any{std::move(count)});
