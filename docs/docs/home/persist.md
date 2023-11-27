@@ -4,97 +4,70 @@ displayed_sidebar: homeSidebar
 ---
 
 # Persist Data
-NemesisDB is an in-memory/cache database meaning all the data is always stored in RAM. This offers performance benefits by removing calls to the filesystem and reducing complexity, but it also means if the server shutdowns all the data is lost.
+NemesisDB is an in-memory/cache database meaning all the data is always stored in RAM. This offers performance benefits but it also means if the server shutdowns all the data is lost.
 
-To help this, the data can be persisted to the filesystem using the [SH_SAVE](../api/sessions/sh-save) command. This command writes all sessions to file so they can be restored on startup.
+To help this, the data can be persisted to the filesystem and restored on startup or at runtime.
 
+More details are available in [Persist](/tutorials/persist-data/overview).
 
-The `SH_SAVE` has a server config section, which defaults to:
+<br/>
 
-```json
-"session":
-{
-  "save":
-  {
-    "enabled":false,
-    "path":"./data"
-  }
-}
-```
-
-- When `enabled` is false, the `path` is not checked so does not need to exist and `SH_SAVE` is disabled
-- When `enabled` is true, the `path` must exist and be a directory
-
-
-
-## Data Structure
-The `SH_SAVE` command requires a `name`:
-
-- A directory with this name is created in `save::path`
-- Inside `name`, a directory with the current timestamp is created, in which the data is written
-
-The purpose of creating separate directories is to allow separate save points so you can restore from a known point.
-
-For example, if we send:
+## Save
+Data is saved to the filesystem using `SH_SAVE`:
 
 ```json
 {
   "SH_SAVE":
   {
-    "name":"dump1"
+    "name":"mydata"
   }
 }
 ```
 
-A folder is created under `dump1`:
+Data is saved to `session::save::path`. 
 
-```bash title="First save"
-└── dump1
-    └── 1700435579410403857
+This commands saves all sessions but you can also save specific sessions by setting tokens:
+
+```json
+{
+  "SH_SAVE":
+  {
+    "name":"mydata",
+    "tkns":[782729387182638, 1183740548782]
+  }
+}
 ```
 
-Send another `SH_SAVE` with the same `name`:
-
-```bash title="Second save"
-└── dump1
-    ├── 1700435579410403857
-    └── 1700435945763630730
-```
-
-A new directory is created for the second save.
+This saves the data for the two sessions with those session tokens.
 
 <br/>
 
-## Restore Data
-Data is loaded using the name and the newest data is always chosen. The longer term aim is to provide a method to select the data based on the name and timestamp.
+## Restore: Startup
 
-
-:::note
-If you want to store from a particular point, use a separate name for each use of `SH_SAVE` until selecting by timestamp is implemented.
-:::
-
-Restoring data is only available during startup, using the `--loadName` switch:
+To restore data at startup use the `--loadName` switch:
 
 ```bash
-./nemesisdb --config=default.json --loadName=dump1
+./nemesisdb --config=default.json --loadName=mydata
+```
+
+This expects to find `mydata` in the `session::save::path` set in the server config. This can be overridden with `--loadPath`:
+
+```bash
+./nemesisdb --config=default.json --loadName=mydata --loadPath=/some/other/path
 ```
 
 <br/>
 
-## Performance
-Save and restore performance is mostly governed by disk i/o performance.
+## Restore: Runtime
+As of version 0.3.6, data can be loaded anytime using `SH_LOAD`:
 
-A database with 1M sessions, with each session containing 5 keys (so 5M keys total), totalling ~385MB of data on an NVME disk:
+```json
+{
+  "SH_LOAD":
+  {
+    "name":"mydata"
+  }
+}
+```
 
-- Save: 3.7 seconds
-- Load: 6.5 seconds
-
-
-:::info
-Save and load are new features, added in version 0.3.4 (Nov 2023) so improvements will follow.
-New features will be added such as:
-
-- Select to restore data from name and timestamp
-- A `SH_LOAD` command to restore data at runtime
-- `SH_SAVE` can persist individual sessions rather than all sessions
-:::
+This expects to find the data in the `session::save::path` and can't be overridden.

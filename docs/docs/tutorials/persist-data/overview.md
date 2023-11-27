@@ -63,7 +63,7 @@ If we send another save command with the same name:
 ```
 
 :::info
-The current version does not allow you load a specific timestamp, it always selects the most recent. <br/>
+The current version does not allow you to load a specific timestamp, it always selects the most recent. <br/>
 
 If you need to restore specific data, use a different name for each of the save command.
 :::
