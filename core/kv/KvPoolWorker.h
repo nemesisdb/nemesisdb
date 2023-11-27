@@ -4,7 +4,7 @@
 #include <string_view>
 #include <thread>
 #include <condition_variable>
-#include <regex>
+#include <sstream>
 #include <boost/fiber/fiber.hpp>
 #include <boost/fiber/buffered_channel.hpp>
 #include <ankerl/unordered_dense.h>
@@ -428,37 +428,12 @@ private:
 
 
   void save(KvCommand& cmd, const Sessions& sessions)
-  {
-    const std::size_t SessionsPerFile = 10'000U;
+  {    
+    const std::size_t MaxDataFileSize = 10 * 1024 * 1024;
     const auto root = cmd.contents["poolDataRoot"].as_string_view();
     const auto path = fs::path{root} / std::to_string(m_poolId);
 
     RequestStatus status = RequestStatus::SaveComplete;
-
-
-    auto writeSesh = [](const Sessions::SessionType& sesh, const SessionToken token, njson& data, std::size_t& i)
-    {
-      njson seshData;
-      seshData["sh"]["tkn"] = token;
-      seshData["sh"]["shared"] = sesh.shared;
-      seshData["sh"]["expiry"]["duration"] = chrono::duration_cast<SessionDuration>(sesh.expireInfo.duration).count();
-      seshData["sh"]["expiry"]["deleteSession"] = sesh.expireInfo.deleteOnExpire;
-      
-      seshData["keys"] = njson::object();
-
-      for(const auto& [k, v] : sesh.map.map())
-        seshData["keys"][k] = v;
-
-      data[i++] = std::move(seshData);
-    };
-
-
-
-    auto closeFile = [](std::ofstream& stream)
-    {
-      
-    };
-
 
     try
     {
@@ -475,6 +450,7 @@ private:
 
         if (haveTkns)
         {
+          const std::size_t SessionsPerFile = 10'000U;          
           const auto& tkns = cmd.contents.at("tkns");
           std::size_t total = tkns.size();
           std::size_t remaining = std::min<std::size_t>(total, SessionsPerFile);
@@ -522,42 +498,7 @@ private:
         }
         else
         {
-          const std::size_t total = allSessions.size();
-          std::size_t remaining = std::min<std::size_t>(total, SessionsPerFile);
-
-          if (total)
-          {
-            data = njson::make_array(remaining);
-            dataStream.open(path / std::to_string(nFiles));
-          }
-
-          for(const auto& [token, sesh] : allSessions)
-          {
-            writeSesh(sesh, token, data, i);
-
-            --remaining;
-            ++written;
-
-            if (remaining == 0)
-            {
-              //std::cout << "Write stream. Remaining: " << remaining << '\n';
-
-              data.dump(dataStream);
-              dataStream.close();
-
-              if (total - written)
-              {
-                ++nFiles;
-
-                dataStream.open(path / std::to_string(nFiles));
-                remaining = std::min<std::size_t>(total - written, SessionsPerFile);
-                data.resize(remaining);
-                i = 0;
-
-                //std::cout << "New file. Remaining: " << remaining << "\n";
-              }
-            }
-          }
+          saveAll (cmd, allSessions, path, MaxDataFileSize);
         }
       }
     }
@@ -568,6 +509,84 @@ private:
     } 
 
     cmd.syncResponseHandler(std::any{status});   
+  }
+
+
+  void saveAll (KvCommand& cmd, const Sessions::SessionsMap& allSessions, const fs::path& path, const std::size_t MaxDataFileSize)
+  {    
+    std::string buffer;
+    buffer.reserve(MaxDataFileSize);
+
+    std::stringstream sstream{buffer};
+    std::size_t nFiles = 0;
+
+    auto flush = [&sstream](const fs::path& path)
+    {
+      std::ofstream dataStream {path};
+      dataStream << '[' << sstream.str() << ']';  // no difference with sstream.rdbuf()
+
+      sstream.clear();
+      sstream.str(std::string{});
+    };
+
+    bool first = true;
+    for(const auto& [token, sesh] : allSessions)
+    {
+      writeSesh(first, sesh, token, sstream);
+      first = false;
+
+      if (sstream.tellp() >= MaxDataFileSize)
+      {
+        flush(path / std::to_string(nFiles));
+        ++nFiles;
+        first = true;
+      }
+    }
+
+    // leftovers (didn't reach the file size)
+    if (sstream.tellp() > 0)
+    {
+      flush(path / std::to_string(nFiles));
+    }
+  }
+
+
+  void writeSesh (const bool first, const Sessions::SessionType& sesh, const SessionToken token, std::stringstream& buffer)
+  {
+    njson seshData;
+    seshData["sh"]["tkn"] = token;
+    seshData["sh"]["shared"] = sesh.shared;
+    seshData["sh"]["expiry"]["duration"] = chrono::duration_cast<SessionDuration>(sesh.expireInfo.duration).count();
+    seshData["sh"]["expiry"]["deleteSession"] = sesh.expireInfo.deleteOnExpire;
+    
+    seshData["keys"] = njson::object();
+
+    for(const auto& [k, v] : sesh.map.map())
+      seshData["keys"][k] = v;
+
+    if (!first)
+      buffer << ',';
+
+    seshData.dump(buffer);
+
+    
+  }
+
+
+  void writeSesh (const Sessions::SessionType& sesh, const SessionToken token, njson& data, std::size_t& i)
+  {
+    njson seshData;
+    seshData["sh"]["tkn"] = token;
+    seshData["sh"]["shared"] = sesh.shared;
+    seshData["sh"]["expiry"]["duration"] = chrono::duration_cast<SessionDuration>(sesh.expireInfo.duration).count();
+    seshData["sh"]["expiry"]["deleteSession"] = sesh.expireInfo.deleteOnExpire;
+    
+    seshData["keys"] = njson::object();
+
+    for(const auto& [k, v] : sesh.map.map())
+      seshData["keys"][k] = v;
+
+    data[i++] = std::move(seshData);
   }
 
 
