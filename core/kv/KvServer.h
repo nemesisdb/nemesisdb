@@ -10,6 +10,8 @@
 #include <tuple>
 #include <latch>
 #include <thread>
+#include <chrono>
+#include <iostream>
 #include <uwebsockets/App.h>
 #include <core/kv/KvCommon.h>
 #include <core/kv/KvPoolWorker.h>
@@ -227,7 +229,7 @@ public:
     }
     else
     {
-      #ifndef NDB_UNIT_TEST_NOMONITOR
+      #ifndef NDB_UNIT_TEST
       m_monitor = std::move(std::jthread{[this]
       {
         std::chrono::seconds period {5};
@@ -347,7 +349,7 @@ public:
 
       std::size_t max = 0;
 
-      for (auto& dir : fs::directory_iterator(root, fs::directory_options::follow_directory_symlink))
+      for (auto& dir : fs::directory_iterator(root))
       {
         if (dir.is_directory())
           max = std::max<std::size_t>(std::stoul(dir.path().filename()), max);
@@ -373,13 +375,29 @@ public:
 
       if (!(mdJson.contains("status") && mdJson.contains("pools")) || !(mdJson["status"].is_uint64() && mdJson["pools"].is_uint64()))
         return {false, "Metadata file invalid"};
-      else if (mdJson["status"] == toUnderlying(KvSaveStatus::Complete))
-      {
-        m_kvHandler->loadOnStartUp(data);
-        return {true, ""};
-      }
-      else
+      else if (mdJson["status"] != toUnderlying(KvSaveStatus::Complete))
         return {false, "Dataset is not complete, cannot load. Metadata status not Complete"};
+      else
+      {
+        const auto loadResult = m_kvHandler->load(data);
+        const auto success = LoadResult::statusSuccess(loadResult);
+
+        std::cout << "-- Load --\n";
+    
+        if (success)
+        {
+          std::cout << "Status: Success " << (loadResult.status == RequestStatus::LoadDuplicate ? "(Duplicates)" : "") << '\n';
+          std::cout << "Sessions: " << loadResult.nSessions << "\nKeys: " << loadResult.nKeys << '\n'; 
+        }
+        else
+          std::cout << "Status: Fail\n";
+
+        std::cout << "Time: " << std::chrono::duration_cast<std::chrono::milliseconds>(loadResult.loadTime).count() << '\n';
+
+        std::cout << "----------\n";
+        
+        return {success, ""};
+      }
     }
 
 

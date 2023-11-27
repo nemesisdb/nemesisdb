@@ -27,6 +27,8 @@ enum class KvQueryType : std::uint8_t
   ShInfo,
   ShInfoAll,
   ShSave,
+  ShLoad,
+  ShClear,
   KvSet,
   KvSetQ,
   KvGet,
@@ -55,6 +57,8 @@ const std::map<const std::string_view, std::tuple<const KvQueryType>> QueryNameT
   {"SH_INFO",         {KvQueryType::ShInfo}},
   {"SH_INFO_ALL",     {KvQueryType::ShInfoAll}},
   {"SH_SAVE",         {KvQueryType::ShSave}},
+  {"SH_LOAD",         {KvQueryType::ShLoad}},
+  {"SH_CLEAR",        {KvQueryType::ShClear}},
   // kv
   {"KV_SET",          {KvQueryType::KvSet}},
   {"KV_SETQ",         {KvQueryType::KvSetQ}},
@@ -80,6 +84,8 @@ const std::map<const KvQueryType, const std::string> QueryTypeToName =
   {KvQueryType::ShInfo,       "SH_INFO"},
   {KvQueryType::ShInfoAll,    "SH_INFO_ALL"},
   {KvQueryType::ShSave,       "SH_SAVE"},
+  {KvQueryType::ShLoad,       "SH_LOAD"},
+  {KvQueryType::ShClear,      "SH_CLEAR"},
   //
   {KvQueryType::KvSet,        "KV_SET"},
   {KvQueryType::KvSetQ,       "KV_SETQ"},
@@ -93,6 +99,14 @@ const std::map<const KvQueryType, const std::string> QueryTypeToName =
   {KvQueryType::KvFind,       "KV_FIND"},
   {KvQueryType::KvUpdate,     "KV_UPDATE"},
   {KvQueryType::KvKeys,       "KV_KEYS"}  
+};
+
+
+enum class SaveType
+{
+  AllSessions = 0,
+  SelectSessions,
+  Max
 };
 
 
@@ -206,24 +220,33 @@ struct ServerStats
 } * serverStats;
 
 
-struct StartupLoadResult
+struct LoadResult
 {  
   RequestStatus status;
   std::size_t nSessions{0};
   std::size_t nKeys{0};
   NemesisClock::duration loadTime{0};
 
-  StartupLoadResult& operator+=(const StartupLoadResult& r)
+
+  static bool statusSuccess(const LoadResult& r)
   {
-    if (r.status != RequestStatus::LoadComplete)
-      status = r.status;
-    else
+    // Duplicate session is not an error, only the first is created
+    return r.status == RequestStatus::LoadComplete || r.status == RequestStatus::LoadDuplicate;
+  }
+
+
+  LoadResult& operator+=(const LoadResult& r)
+  {
+    // only set status if we're not already in an error condition, otherwise we'll mask
+    // a previous load which has errored (note: Duplicate is not an error)
+    if (statusSuccess(*this))
     {
       nKeys += r.nKeys;
       nSessions += r.nSessions;
+      status = r.status;
     }
-
-    loadTime += r.loadTime; // beware when loading concurrent pools
+    
+    loadTime += r.loadTime; // beware when loading pools concurrently
   
     return *this;
   }
@@ -231,17 +254,13 @@ struct StartupLoadResult
 
 
 
-
-
-static const std::array<std::function<void(const SessionToken&, SessionPoolId&)>, 2U> SessionIndexers =
+static const std::array<std::function<void(const SessionToken&, PoolId&)>, 2U> SessionIndexers =
 {
-  [](const SessionToken& t, SessionPoolId& id) 
+  [](const SessionToken& t, PoolId& id) 
   {
-    //id = ((t[0U] + t[1U] + t[2U] + t[3U] + t[4U] + t[5U]) & 0xFFFFFFFF) % MaxPools;
     id = t % MaxPools;
   },
-
-  [](const SessionToken& t, SessionPoolId& id)
+  [](const SessionToken& t, PoolId& id)
   {
     id = 0U;
   }
@@ -250,18 +269,6 @@ static const std::array<std::function<void(const SessionToken&, SessionPoolId&)>
 
 fc_always_inline SessionToken createSessionToken(const SessionName& name, const bool shared)
 {
-  // if (shared)
-  // {
-  //   static const std::size_t seed = 99194853094755497U;
-  //   const auto hash = std::hash<SessionName>{}(name);
-  //   return std::to_string((std::size_t)(hash | seed));
-  // }
-  // else
-  // {
-  //   static UUIDv4::UUIDGenerator<std::mt19937_64> uuidGenerator; 
-  //   const auto uuid = uuidGenerator.getUUID();
-  //   return std::to_string(uuid.hash());
-  // }
   if (shared)
   {
     static const std::size_t seed = 99194853094755497U;
@@ -286,6 +293,24 @@ fc_always_inline uuid createUuid ()
   return s;
 }
 
+
+std::filesystem::path getDefaultDataSetPath(const std::filesystem::path& loadRoot)
+{
+  std::size_t max = 0;
+
+  if (countFiles(loadRoot) == 0)
+    return {};
+  else
+  {
+    for (auto& dir : fs::directory_iterator(loadRoot))
+    {
+      if (dir.is_directory())
+        max = std::max<std::size_t>(std::stoul(dir.path().filename()), max);
+    }
+
+    return loadRoot / std::to_string(max);
+  }
+}
 
 // TODO this isn't used, but really should be
 /*

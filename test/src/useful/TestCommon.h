@@ -2,8 +2,7 @@
 #define NDB_TEST_COMMON_H
 
 
-#define NDB_UNIT_TEST_NOMONITOR			// disable session monitoring
-#define NDB_UNIT_TEST_NOPORTCHECK		// rapid server shutdown/startup seems the socket isn't closed immediately (check this)
+#define NDB_UNIT_TEST 1
 
 
 #include <thread>
@@ -30,17 +29,22 @@ using testjson = nlohmann::json;
 
 class KvTestServer  : public ::testing::Test
 {
+protected:
+	constexpr static auto DefaultCfg = R"({ "version":1, "kv":{ "ip":"127.0.0.1", "port":1987, "maxPayload":1024 }, "session":{"save":{"enabled":false, "path":"./data"}} })"sv;
+	constexpr static auto EnableSaveCfg = R"({ "version":1, "kv":{ "ip":"127.0.0.1", "port":1987, "maxPayload":1024 }, "session":{"save":{"enabled":true, "path":"./data"}} })"sv;
+
 public:
-  KvTestServer(NemesisConfig config = NemesisConfig { R"({ "version":1, "kv":{ "ip":"127.0.0.1", "port":1987, "maxPayload":1024 }, "session":{"save":{"enabled":false, "path":"./data"}} })"sv})
-		: m_config(config)
+  KvTestServer(const std::string_view cfg) : m_config(NemesisConfig{cfg})
   {
 
   }
 
+	virtual ~KvTestServer() = default;
 
-  void SetUp() override
+
+  virtual void SetUp() override
 	{
-    m_server.run(m_config);
+    ASSERT_TRUE(m_server.run(m_config));
 	}
 
 
@@ -49,8 +53,9 @@ public:
 		m_server.stop();
 	}
 
-private:
-  NemesisConfig m_config;
+
+protected:
+	NemesisConfig m_config;
   nemesis::core::kv::KvServer m_server;
 };
 
@@ -58,11 +63,60 @@ private:
 class NemesisTest : public nemesis::test::KvTestServer
 {
 public:
-  NemesisTest()
+  NemesisTest() : KvTestServer(DefaultCfg)
   {
 
   }
 };
+
+
+class NemesisTestSaveEnablePathNotExist : public nemesis::test::KvTestServer
+{
+public:
+  NemesisTestSaveEnablePathNotExist() : KvTestServer(EnableSaveCfg)
+  {
+
+  }
+
+	void SetUp() override
+	{
+		ASSERT_FALSE(m_server.run(m_config));
+	}
+};
+
+
+class NemesisTestSaveEnable : public nemesis::test::KvTestServer
+{
+public:
+  NemesisTestSaveEnable() : KvTestServer(EnableSaveCfg), LoadName("LoadOnStartupTest")
+  {
+
+  }
+
+protected:
+	const std::string LoadName;
+};
+
+
+class NemesisTestLoadOnStartup : public NemesisTestSaveEnable
+{
+public:
+
+  NemesisTestLoadOnStartup() : NemesisTestSaveEnable()
+  {
+
+  }
+
+	void SetUp() override
+	{
+		m_config.loadPath = "./data";	// normally set during startup when reading config
+		m_config.loadName = LoadName;
+
+		ASSERT_TRUE(m_server.run(m_config));
+	}
+};
+
+
 
 
 
@@ -165,6 +219,7 @@ struct TestClient
 	void test (TestData& td)
 	{		
 		ASSERT_FALSE(td.expected.size() && td.nResponses) << "Set either expected or nResponses";
+		ASSERT_FALSE(ws.get() == nullptr);
 
 		responses.clear();
 		td.actual.clear();

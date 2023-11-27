@@ -5,10 +5,17 @@ displayed_sidebar: homeSidebar
 
 # NemesisDB
 
-NemesisDB is an in-memory JSON database. Data can be persisted to the filesystem so it can be restored on restart.
+NemesisDB is an in-memory JSON database.
+
+- The query interface is WebSockets using JSON
+- Data can be persisted to the filesystem
+- Data can be restored from file at startup or with a command at any time
 
 NemesisDB is available as a 64-bit Debian package and Docker image for x86 (Intel/AMD) CPUs.
 
+:::info
+A session is identified with a 'session token' which is a 64-bit integer. Your client must handle 64-bit integers.
+:::
 
 ## Install
 

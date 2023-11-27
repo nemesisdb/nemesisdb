@@ -62,4 +62,9 @@ This table lists a 'friendly name' and value. The friendly name is used througho
 |SaveError|123|Could not complete `KV_SAVE`, this can be received after SaveStart|
 
 
-
+## Load
+|Name|Value|Meaning
+|:---|:---:|:---|
+|LoadComplete|141|Session(s) loaded without error|
+|LoadError|142|Error during load|
+|LoadDuplicate|143|Load success with duplicate sessions|

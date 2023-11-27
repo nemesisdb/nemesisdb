@@ -31,8 +31,8 @@
 - install vscode, postman
 - open vscode
 - select working folder as fusion repo
-- install extensions: C/C++, C++ extension pack, cmake-tool, git-rename
-- scan for kits, select GCC
+- install extensions: C/C++, C++ extension pack, git-rename
+- scan for kits, select GCC 12.3
 - build nemesisdb
 
 

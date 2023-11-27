@@ -348,7 +348,7 @@ int main (int argc, char ** argv)
       if (createLog)
       {
         std::ofstream out{"sessions.txt", std::ios_base::trunc | std::ios_base::out};
-        std::for_each(tokens.cbegin(), tokens.cend(), [&out](const auto& tkn){ out << tkn << '\n';});
+        std::for_each(tokens.cbegin(), tokens.cend(), [&out](const auto& tkn){ out << tkn << ",\n";});
       }
 
       set(serverIp, serverPort, ioc.ioc, setQ);

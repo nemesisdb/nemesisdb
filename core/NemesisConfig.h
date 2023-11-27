@@ -39,7 +39,7 @@ struct NemesisConfig
   {
     return cfg.at("session").at("save").at("enabled").as_bool();
   }
-
+  
   bool load() const
   {
     return !loadName.empty();
@@ -47,8 +47,8 @@ struct NemesisConfig
 
   njson cfg;
   bool valid;
-  std::filesystem::path loadPath;
-  std::string loadName;
+  std::filesystem::path loadPath; // only used if started with --loadName
+  std::string loadName; // set when started with --loadName
 } ;
 
 

@@ -18,6 +18,7 @@ using namespace nemesis::core;
 
 class Sessions
 {
+
 private:
   struct ExpireInfo
   {
@@ -47,29 +48,22 @@ private:
   };
 
 
-  struct ExpiryTrackingCmp
-  {
-    bool operator()(const ExpiryTracking l, const ExpiryTracking& r)
-    {
-      return l.time > r.time;
-    }
-
-  };
-
-
+public:
+  using SessionType = Session;
   using SessionsMap = ankerl::unordered_dense::segmented_map<SessionToken, Session>;
+
 
 public:
 
   std::optional<std::reference_wrapper<CacheMap>> start (const SessionToken& token, const bool shared, const SessionDuration duration, const bool deleteOnExpire)
   {
-    //if (auto seshIt = m_sessions.find(token) ; seshIt != m_sessions.cend())
-      //return seshIt->second.map;
     if (m_sessions.contains(token))
       return {};  // TODO check this, if shared:true and a session with this name already exists
     else
     {
-      if (duration != SessionDuration::zero())
+      if (duration == SessionDuration::zero())
+        m_sessions[token] = Session{.token = token, .shared = shared, .expires = false};
+      else
       {
         auto expireTime = SessionClock::now() + duration;
 
@@ -78,8 +72,6 @@ public:
 
         m_expiry.emplace(std::make_pair(expireTime, ExpiryTracking{.token = token, .time = expireTime, .deleteOnExpire = deleteOnExpire, .duration = duration}));
       }
-      else
-        m_sessions[token] = Session{.token = token, .shared = shared, .expires = false};
 
       return m_sessions.at(token).map;
     }
@@ -113,6 +105,15 @@ public:
   }
 
   
+  std::size_t clear ()
+  {
+    const auto count = m_sessions.size();
+    m_sessions.clear();
+    m_expiry.clear();
+    return count;
+  }
+
+
   SessionsMap::size_type countSessions() const
   {
     return m_sessions.size();

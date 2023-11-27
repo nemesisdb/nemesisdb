@@ -5,6 +5,17 @@ sidebar_position: 1
 # SH_NEW
 Creates a new session.
 
+If the session is created without error, the response includes a session token which a 64-bit unsigned integer. The session token is then used in the `KV_` commands to set, update, find, etc session data.
+
+A session requires at least a name but can have optional settings:
+
+- `expiry` : a session can be given a duration, which when reached, the session data is deleted. The session can also be deleted
+- `shared` : this allows clients to get a session token from the session name. This is useful if the same session data is required across separate services without having to distribute the token
+
+There is no session authentication - if a client has the token it can access the data.
+
+<br/>
+
 |Param|Type|Meaning|Required|
 |:---|:---|:---|:---:|
 |name|string|The session name.<br/> If the session is shared, the name can be used in `SH_OPEN` to get the session token. |Y|
@@ -28,6 +39,23 @@ For a session that is not shared (`"shared":false`) the name has no meaning to t
 
 If the session is shared the name can be used in [`SH_OPEN`](./sh-open.md) to get the session token from its name. This allows services/apps to access the same session without having to exchange the token.
 
+<br/>
+
+## Session Expiry
+A session's expiry time is extended by its `duration` when it is accessed by any `KV_` command. In other words, if a session is not accessed for `duration` seconds, it will expire. By accessing the session's data you are extending the expiry because it suggests that session is required.
+
+<br/>
+
+## Shared Sessions
+A session can be accessed by any client using the session token but it may be difficult to distribute a session token between clients.
+
+A shared session helps by using the `name` to generate the session token. Other clients use `SH_OPEN` with the same name and receive the same session token.
+
+:::note
+This only applies when a session is shared. If a session is not shared the `name` does not take part in token generation.
+:::
+
+<br/>
 
 ## Response
 
@@ -58,7 +86,8 @@ Possible status values:
 
 ```json
 {
-  "SH_NEW": {
+  "SH_NEW":
+  {
     "name": "user1000"
   }
 }
@@ -68,9 +97,11 @@ Possible status values:
 
 ```json
 {
-  "SH_NEW": {
+  "SH_NEW":
+  {
     "name": "sesh1",
-    "expiry": {
+    "expiry":
+    {
       "duration": 60,
       "deleteSession":true
     }
@@ -82,9 +113,11 @@ Possible status values:
 
 ```json
 {
-  "SH_NEW": {
+  "SH_NEW":
+  {
     "name": "sesh1",
-    "expiry": {
+    "expiry":
+    {
       "duration": 60,
       "deleteSession":false
     }
@@ -96,20 +129,24 @@ Possible status values:
 
 ```json
 {
-  "SH_NEW": {
-    "name": "sesh1",
+  "SH_NEW":
+  {
+    "name": "shared1",
     "shared": true
   }
 }
 ```
 
-<br/>
+Because this session is shared, a client can use `SH_OPEN` with the name to retrieve the session token:
 
+```json
+{
+  "SH_OPEN":
+  {
+    "name":"shared1"
+  }
+}
+```
 
-## Shared Sessions
-Shared sessions don't refer to authentication - a session's data can be accessed by any client using the session token, there's no session authentication.
-
-But that means clients knowing the session token. This may not be possible or practical because all services using the shared session must have the token.
-
-A shared service helps by using the `name` to generate the session tkn. Other clients then use `SH_OPEN` with the same session name and receive the same session token.
+This returns the same token as `SH_NEW`.
 

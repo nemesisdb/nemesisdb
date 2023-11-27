@@ -1,13 +1,13 @@
 {
-  "terminal.integrated.defaultProfile.linux": "bash",
-  "terminal.integrated.profiles.linux": {
-    "bash": {
-      "path": "/app/bin/host-spawn",
-      "args": ["bash"],
-      "icon": "terminal-bash",
-      "overrideName": true
-    }
-  },
+  "terminal.integrated.defaultProfile.linux": "bash (2)",
+  // "terminal.integrated.profiles.linux": {
+  //   "bash": {
+  //     "path": "/app/bin/host-spawn",
+  //     "args": ["bash"],
+  //     "icon": "terminal-bash",
+  //     "overrideName": true
+  //   }
+  // },
   // "terminal.integrated.profiles.linux": {
   //   "bash": {
   //     "path": "/usr/bin/flatpak-spawn",

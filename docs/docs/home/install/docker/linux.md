@@ -5,11 +5,6 @@ displayed_sidebar: homeSidebar
 
 # Linux
 
-:::note
-The Docker image should be ok on Mac but this has not been tested.
-:::
-
-
 ## Pull
 
 ```bash

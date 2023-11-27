@@ -11,6 +11,7 @@ fi
 
 packageName=nemesisdb_$1_amd64
 installDir=staging/$packageName/usr/local/bin/nemesisdb
+dataDir=$installDir/data
 controlFileDir=staging/$packageName/DEBIAN
 controlFilePath=$controlFileDir/control
 
@@ -24,6 +25,7 @@ echo
 
 mkdir -p $controlFileDir
 mkdir -p $installDir
+mkdir -p $dataDir
 mkdir -p ../releases
 
 echo Creating control file
