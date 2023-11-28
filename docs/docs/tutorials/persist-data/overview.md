@@ -146,4 +146,4 @@ The save process minimises memory use:
 3. Reset buffer positions
 4. Continue from 1
 
-Each data file is max size (currently 10MB). This is to control memory use during loading.
+Each data file has a max size to control memory use during loading.
