@@ -442,63 +442,15 @@ private:
       else
       {
         const bool haveTkns = cmd.contents.contains("tkns");
-        const auto& allSessions = sessions.getSessions();
-
-        std::size_t nFiles = 0, i = 0, written = 0;        
-        std::ofstream dataStream ;
-        njson data;
+        const auto& sessionsMap = sessions.getSessions();
 
         if (haveTkns)
         {
-          const std::size_t SessionsPerFile = 10'000U;          
-          const auto& tkns = cmd.contents.at("tkns");
-          std::size_t total = tkns.size();
-          std::size_t remaining = std::min<std::size_t>(total, SessionsPerFile);
-
-          if (total)
-          {
-            data = njson::make_array(total);
-            dataStream.open(path / std::to_string(nFiles));
-          }
-
-          for(const auto& item : tkns.array_range())
-          {
-            const auto token = item.as<SessionToken>();
-            if (auto it = allSessions.find(token); it != allSessions.cend())
-            {
-              writeSesh (it->second, token, data, i);
-
-              --remaining;
-              ++written;
-            }
-            else
-            {              
-              --remaining;
-              --total;
-            }
-
-            if (remaining == 0)
-            {
-              data.dump(dataStream);
-              dataStream.close();
-
-              if (total - written)
-              {
-                ++nFiles;
-
-                dataStream.open(path / std::to_string(nFiles));
-                remaining = std::min<std::size_t>(total - written, SessionsPerFile);
-                data.resize(remaining);
-                i = 0;
-
-                //std::cout << "New file. Remaining: " << remaining << "\n";
-              }
-            }
-          }
+          saveSelection(cmd, sessionsMap, path, MaxDataFileSize);
         }
         else
         {
-          saveAll (cmd, allSessions, path, MaxDataFileSize);
+          saveAll(sessionsMap, path, MaxDataFileSize);
         }
       }
     }
@@ -506,28 +458,56 @@ private:
     {
       std::cout << ex.what() << '\n';
       status = RequestStatus::SaveError;
-    } 
+    }
 
-    cmd.syncResponseHandler(std::any{status});   
+    cmd.syncResponseHandler(std::any{status});
   }
 
 
-  void saveAll (KvCommand& cmd, const Sessions::SessionsMap& allSessions, const fs::path& path, const std::size_t MaxDataFileSize)
-  {    
+  void saveSelection (KvCommand& cmd, const Sessions::SessionsMap& allSessions, const fs::path& path, const std::size_t MaxDataFileSize)
+  {
     std::string buffer;
     buffer.reserve(MaxDataFileSize);
 
     std::stringstream sstream{buffer};
     std::size_t nFiles = 0;
 
-    auto flush = [&sstream](const fs::path& path)
-    {
-      std::ofstream dataStream {path};
-      dataStream << '[' << sstream.str() << ']';  // no difference with sstream.rdbuf()
+    const auto& tkns = cmd.contents.at("tkns");
+    bool first = true;
 
-      sstream.clear();
-      sstream.str(std::string{});
-    };
+    for(const auto& item : tkns.array_range())
+    {
+      const auto token = item.as<SessionToken>();
+
+      if (auto it = allSessions.find(token); it != allSessions.cend())
+      {
+        writeSesh(first, it->second, token, sstream);
+        first = false;
+
+        if (sstream.tellp() >= MaxDataFileSize)
+        {
+          flushSaveBuffer(path / std::to_string(nFiles), sstream);
+          ++nFiles;
+          first = true;
+        }
+      }
+    }
+
+    // leftovers (didn't reach the file size)
+    if (sstream.tellp() > 0)
+    {
+      flushSaveBuffer(path / std::to_string(nFiles), sstream);
+    }
+  }
+
+
+  void saveAll (const Sessions::SessionsMap& allSessions, const fs::path& path, const std::size_t MaxDataFileSize)
+  {    
+    std::string buffer;
+    buffer.reserve(MaxDataFileSize);
+
+    std::stringstream sstream{buffer};
+    std::size_t nFiles = 0;
 
     bool first = true;
     for(const auto& [token, sesh] : allSessions)
@@ -537,7 +517,7 @@ private:
 
       if (sstream.tellp() >= MaxDataFileSize)
       {
-        flush(path / std::to_string(nFiles));
+        flushSaveBuffer(path / std::to_string(nFiles), sstream);
         ++nFiles;
         first = true;
       }
@@ -546,8 +526,18 @@ private:
     // leftovers (didn't reach the file size)
     if (sstream.tellp() > 0)
     {
-      flush(path / std::to_string(nFiles));
+      flushSaveBuffer(path / std::to_string(nFiles), sstream);
     }
+  }
+
+
+  void flushSaveBuffer (const fs::path& path, std::stringstream& sstream)
+  {
+    std::ofstream dataStream {path};
+    dataStream << '[' << sstream.str() << ']';  // no difference with sstream.rdbuf()
+
+    sstream.clear();
+    sstream.str(std::string{});
   }
 
 
@@ -568,25 +558,6 @@ private:
       buffer << ',';
 
     seshData.dump(buffer);
-
-    
-  }
-
-
-  void writeSesh (const Sessions::SessionType& sesh, const SessionToken token, njson& data, std::size_t& i)
-  {
-    njson seshData;
-    seshData["sh"]["tkn"] = token;
-    seshData["sh"]["shared"] = sesh.shared;
-    seshData["sh"]["expiry"]["duration"] = chrono::duration_cast<SessionDuration>(sesh.expireInfo.duration).count();
-    seshData["sh"]["expiry"]["deleteSession"] = sesh.expireInfo.deleteOnExpire;
-    
-    seshData["keys"] = njson::object();
-
-    for(const auto& [k, v] : sesh.map.map())
-      seshData["keys"][k] = v;
-
-    data[i++] = std::move(seshData);
   }
 
 
