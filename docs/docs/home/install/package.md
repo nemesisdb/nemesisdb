@@ -15,21 +15,23 @@ Download the latest version [here](https://releases.nemesisdb.io/package/nemesis
 ## Install
 Open a terminal, change to your download location and install with `dpkg`.
 
-For example, to install version 0.3.6:
+The install location is: `/usr/local/bin/nemesisdb/<version>`.
+
+For example, to install version 0.3.7:
 
 ```bash
-sudo dpkg -i nemesisdb_0.3.6_amd64.deb
+sudo dpkg -i nemesisdb_0.3.7_amd64.deb
 ```
 <br/>
 
-This installs the server and default config file to `/usr/local/bin/nemesisdb`.
+This installs the server and default config file to `/usr/local/bin/nemesisdb/0.3.7`.
 
 
 ## Run
 To start the server:
 
 ```bash
-cd /usr/local/bin/nemesisdb
+cd /usr/local/bin/nemesisdb/0.3.7
 ./nemesisdb --config=default.json
 ```
 

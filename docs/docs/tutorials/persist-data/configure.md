@@ -28,6 +28,3 @@ The settings for save and load are in the server config, which defaults to:
 
 <br/>
 
-:::note
-From v0.3.6, `./data` directory is created if it doesn't exist when installing via the Debian package.
-:::
