@@ -139,9 +139,11 @@ Example:
 - **Save:** 3.1 seconds 
 - **Load:** 6.5 seconds
 
-The save process is simple to minimise memory use:
+The save process minimises memory use:
 
 1. Data is prepared in a buffer
-2. When buffer reaches a defined limit flush to a data file
+2. When buffer reaches a defined limit, flush to a data file
 3. Reset buffer positions
 4. Continue from 1
+
+Each data file is max size (currently 10MB). This is to control memory use during loading.
