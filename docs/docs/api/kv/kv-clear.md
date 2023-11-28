@@ -8,7 +8,7 @@ Removes all keys from the session. If you want to remove keys individually, use 
 
 |Param|Type|Meaning|Required|
 |:---|:---|:---|:---:|
-|tkn|uint|Session token|Y|
+|tkn|unsigned int|Session token|Y|
 
 
 ## Response
@@ -18,7 +18,7 @@ Removes all keys from the session. If you want to remove keys individually, use 
 
 |Param|Type|Meaning|
 |:---|:---|:---|
-|tkn|uint|Session token|
+|tkn|unsigned int|Session token|
 |st|unsigned int|Status|
 |cnt|unsigned int|Number of keys cleared|
 

@@ -3,12 +3,16 @@ sidebar_position: 10
 ---
 
 # KV_SET
-Stores data. This command always returns a response. If you don't require a response you can use `KV_SETQ` which sends a response on failure.
+Stores key-values. If the key already exists it's value is overwritten.
+
+- If you don't want to overwrite an existing key, use `KV_ADD`
+- This command always returns a response. If you don't require a response you can use `KV_SETQ` which only sends a response on failure.
+
 
 
 |Param|Type|Meaning|Required|
 |:---|:---|:---|:---:|
-|tkn|uint|Session token|Y|
+|tkn|unsigned int|Session token|Y|
 |keys|object|Keys and values to store|Y|
 
 
@@ -16,22 +20,12 @@ Stores data. This command always returns a response. If you don't require a resp
 
 # `keys`
 
-Each key and its value are stored in the session. A value can be:
 
-- string
-- number
-- bool
-- object
-- array
-
-
-This stores three keys, "forename", "surname" and "email" with their respective string values:
-
-```json
+```json title="Store three keys (forename, surname, email)"
 {
   "KV_SET":
   {
-    "tkn":12345678,
+    "tkn":10838139838302738599,
     "keys":
     {
       "forename":"James",
@@ -42,13 +36,11 @@ This stores three keys, "forename", "surname" and "email" with their respective 
 }
 ```
 
-The above can be also stored as an object with key "profile":
-
-```json
+```json title="The above can be also stored as an object in a single key (profile)"
 {
   "KV_SET":
   {
-    "tkn":12345678,
+    "tkn":10838139838302738599,
     "keys":
     {
       "profile":
@@ -61,8 +53,6 @@ The above can be also stored as an object with key "profile":
   }
 }
 ```
-
-
 
 <br/>
 
@@ -83,6 +73,7 @@ See the [response status](./../Statuses) page for status values.
 Possible status values:
 
 - KeySet
+- KeyUpdated (if key already existed)
 - ParamMissing (`keys`)
 - ValueTypeInvalid (`keys` not an object)
 

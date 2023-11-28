@@ -10,7 +10,7 @@ This only returns the key names, not the values.
 
 |Param|Type|Meaning|Required|
 |:---|:---|:---|:---:|
-|tkn|uint|Session token|Y|
+|tkn|unsigned int|Session token|Y|
 
 
 <br/>
@@ -22,7 +22,7 @@ This only returns the key names, not the values.
 
 |Param|Type|Meaning|
 |:---|:---|:---|
-|tkn|uint|Session token|
+|tkn|unsigned int|Session token|
 |st|unsigned int|Status|
 |keys|string array|An array of key names|
 

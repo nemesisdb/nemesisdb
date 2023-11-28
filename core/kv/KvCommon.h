@@ -40,7 +40,8 @@ enum class KvQueryType : std::uint8_t
   KvContains,
   KvFind,
   KvUpdate,
-  KvKeys,  
+  KvKeys,
+  KvClearSet,
   MAX,
   InternalSessionMonitor,
   InternalLoad,
@@ -71,13 +72,14 @@ const std::map<const std::string_view, std::tuple<const KvQueryType>> QueryNameT
   {"KV_CONTAINS",     {KvQueryType::KvContains}},
   {"KV_FIND",         {KvQueryType::KvFind}},
   {"KV_UPDATE",       {KvQueryType::KvUpdate}},
-  {"KV_KEYS",         {KvQueryType::KvKeys}}
+  {"KV_KEYS",         {KvQueryType::KvKeys}},
+  {"KV_CLEAR_SET",    {KvQueryType::KvClearSet}}
 };
 
 
 const std::map<const KvQueryType, const std::string> QueryTypeToName = 
 {
-  // Session
+  // session
   {KvQueryType::ShNew,        "SH_NEW"},
   {KvQueryType::ShEnd,        "SH_END"},
   {KvQueryType::ShOpen,       "SH_OPEN"},
@@ -86,7 +88,7 @@ const std::map<const KvQueryType, const std::string> QueryTypeToName =
   {KvQueryType::ShSave,       "SH_SAVE"},
   {KvQueryType::ShLoad,       "SH_LOAD"},
   {KvQueryType::ShEndAll,     "SH_END_ALL"},
-  //
+  // kv
   {KvQueryType::KvSet,        "KV_SET"},
   {KvQueryType::KvSetQ,       "KV_SETQ"},
   {KvQueryType::KvGet,        "KV_GET"},
@@ -98,7 +100,8 @@ const std::map<const KvQueryType, const std::string> QueryTypeToName =
   {KvQueryType::KvContains,   "KV_CONTAINS"},
   {KvQueryType::KvFind,       "KV_FIND"},
   {KvQueryType::KvUpdate,     "KV_UPDATE"},
-  {KvQueryType::KvKeys,       "KV_KEYS"}  
+  {KvQueryType::KvKeys,       "KV_KEYS"},
+  {KvQueryType::KvClearSet,   "KV_CLEAR_SET"}
 };
 
 

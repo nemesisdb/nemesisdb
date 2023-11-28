@@ -12,7 +12,7 @@ This differs from `KV_SET` because `KV_SET` overwrites the entire key's value.
 
 |Param|Type|Meaning|Required|
 |:---|:---|:---|:---:|
-|tkn|uint|Session token|Y|
+|tkn|unsigned int|Session token|Y|
 |key|string|Key containing the value to update|Y|
 |path|string|JSON path which returns an element to update|Y|
 |value|various|This value will be assigned to the element returned by `path`|Y|
@@ -62,7 +62,7 @@ We want to update the `city`. We could either overwrite the entire `profile` key
 
 |Param|Type|Meaning|
 |:---|:---|:---|
-|tkn|uint|Session token|
+|tkn|unsigned int|Session token|
 |key|object|The same key as in the request|
 |cnt|unsigned int|Number of values updated|
 

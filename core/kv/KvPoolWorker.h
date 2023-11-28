@@ -56,6 +56,7 @@ public:
     m_channel.push(std::move(cmd));
   }
 
+
 private:
     
   fc_always_inline void send (KvCommand& cmd, std::string&& msg)
@@ -67,6 +68,20 @@ private:
     });
   }
   
+  
+  njson doSet (CacheMap& map, njson& keys)
+  {
+    njson rsp;
+
+    for(auto& kv : keys.object_range())
+    {
+      auto [it, inserted] = map.set(kv.key(), std::move(kv.value()));
+      rsp[kv.key()] = toUnderlying(inserted ? RequestStatus::KeySet : RequestStatus::KeyUpdated);
+    }
+
+    return rsp;
+  }
+
 
   void run ()
   {
@@ -79,13 +94,7 @@ private:
     {
       njson rsp;
       rsp["KV_SET_RSP"]["tkn"] = cmd.shtk;
-
-      for(auto& kv : cmd.contents.object_range())
-      {
-        auto [it, inserted] = map.set(kv.key(), std::move(kv.value()));
-        rsp["KV_SET_RSP"]["keys"][kv.key()] = toUnderlying(inserted ? RequestStatus::KeySet : RequestStatus::KeyUpdated);
-      }
-
+      rsp["KV_SET_RSP"]["keys"] = doSet(map, cmd.contents);
       send(cmd, rsp.to_string());
     };
 
@@ -205,6 +214,28 @@ private:
     };
 
 
+    auto clearSet = [this](CacheMap& map, KvCommand& cmd)
+    {
+      njson rsp;
+      rsp["KV_CLEAR_SET_RSP"]["tkn"] = cmd.shtk;
+
+      if (const auto[valid, size] = map.clear(); valid)
+      {
+        rsp["KV_CLEAR_SET_RSP"]["st"] = toUnderlying(RequestStatus::Ok);
+        rsp["KV_CLEAR_SET_RSP"]["cnt"] = size;
+        rsp["KV_CLEAR_SET_RSP"]["keys"] = doSet(map, cmd.contents);        
+      }
+      else
+      {
+        rsp["KV_CLEAR_SET_RSP"]["st"] = toUnderlying(RequestStatus::Unknown);
+        rsp["KV_CLEAR_SET_RSP"]["keys"] = njson::object();        
+        rsp["KV_CLEAR_SET_RSP"]["cnt"] = 0U;
+      }
+
+      send(cmd, rsp.to_string());
+    };
+
+
     auto count = [this](CacheMap& map, KvCommand& cmd)
     {
       send(cmd, PoolRequestResponse::sessionCount(cmd.shtk, map.count()).to_string());
@@ -314,7 +345,8 @@ private:
       contains,
       find,
       update,
-      keys
+      keys,
+      clearSet
     };
 
 

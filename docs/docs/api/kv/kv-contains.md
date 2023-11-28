@@ -8,7 +8,7 @@ Check if a key exists.
 
 |Param|Type|Meaning|Required|
 |:---|:---|:---|:---:|
-|tkn|uint|Session token|Y|
+|tkn|unsigned int|Session token|Y|
 |keys|array|Array of key names|Y|
 
 
@@ -29,7 +29,7 @@ Check if a key exists.
 
 |Param|Type|Meaning|
 |:---|:---|:---|
-|tkn|uint|Session token|
+|tkn|unsigned int|Session token|
 |st|unsigned int|Status|
 |keys|object|Keys with boolean flag indicating `true` (exist) or `false` (not exist)|Y|
 
