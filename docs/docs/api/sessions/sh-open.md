@@ -27,7 +27,7 @@ See the [response status](./../Statuses) page for status values.
 |Param|Type|Meaning|
 |:---|:---|:---|
 |name|string|Session name as used in the request.|
-|tkn|uint|Session token|
+|tkn|unsigned int|Session token|
 |st|unsigned int|Status|
 
 

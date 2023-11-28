@@ -3,7 +3,7 @@ sidebar_position: 7
 ---
 
 # SH_END_ALL
-Deletes all sessions and their data.
+Ends all sessions, deleting all sessions and their data.
 
 No parameters.
 
@@ -25,6 +25,7 @@ See the [response status](./../Statuses) page for status values.
 |st|unsigned int|Status|
 |cnt|unsigned int|Number of sessions deleted|
 
+<br/>
 
 Possible status values:
 
