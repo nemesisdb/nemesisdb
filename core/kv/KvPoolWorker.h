@@ -228,8 +228,8 @@ private:
       else
       {
         rsp["KV_CLEAR_SET_RSP"]["st"] = toUnderlying(RequestStatus::Unknown);
-        rsp["KV_CLEAR_SET_RSP"]["keys"] = njson::object();        
         rsp["KV_CLEAR_SET_RSP"]["cnt"] = 0U;
+        rsp["KV_CLEAR_SET_RSP"]["keys"] = njson::object();
       }
 
       send(cmd, rsp.to_string());
