@@ -10,7 +10,7 @@ fi
 # staging dir is where we put files in the appropriate dir structure before creating package
 
 packageName=nemesisdb_$1_amd64
-installDir=staging/$packageName/usr/local/bin/nemesisdb
+installDir=staging/$packageName/usr/local/bin/nemesisdb/$1
 dataDir=$installDir/data
 controlFileDir=staging/$packageName/DEBIAN
 controlFilePath=$controlFileDir/control

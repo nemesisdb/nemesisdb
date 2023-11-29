@@ -45,6 +45,12 @@ int main (int argc, char ** argv)
     config.cfg["kv"]["ip"] = "127.0.0.1";
     config.cfg["kv"]["port"] = 1987;
     config.cfg["kv"]["maxPayload"] = 2048;
+    config.cfg["session"]["save"]["enabled"] = true;
+    config.cfg["session"]["save"]["path"] = "./data";
+
+    if (!fs::exists(config.cfg["session"]["save"]["path"].as_string()))
+      fs::create_directories(config.cfg["session"]["save"]["path"].as_string());
+      
   #else
     if (config = nemesis::core::readConfig(argc, argv); !config.valid)
       return 0;

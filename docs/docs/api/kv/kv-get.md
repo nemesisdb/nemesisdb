@@ -10,7 +10,7 @@ The command requires the token and an array of keys to retrieve.
 
 |Param|Type|Meaning|Required|
 |:---|:---|:---|:---:|
-|tkn|uint|Session token|Y|
+|tkn|unsigned int|Session token|Y|
 |keys|array|Array of keys to retrieve|Y|
 
 
@@ -21,7 +21,7 @@ The command requires the token and an array of keys to retrieve.
 
 |Param|Type|Meaning|
 |:---|:---|:---|
-|tkn|uint|Session token|
+|tkn|unsigned int|Session token|
 |keys|object|The keys and values requested|Y|
 
 If a key does not exist, its value is returned as `null`.

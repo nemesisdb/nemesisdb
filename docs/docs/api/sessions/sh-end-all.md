@@ -2,13 +2,20 @@
 sidebar_position: 7
 ---
 
-# SH_CLEAR
-Deletes all sessions and their data.
+# SH_END_ALL
+Ends all sessions, deleting all sessions and their data.
 
+No parameters.
+
+```json
+{
+  "SH_END_ALL": {}
+}
+```
 
 ## Response
 
-`SH_CLEAR_RSP`
+`SH_END_ALL_RSP`
 
 See the [response status](./../Statuses) page for status values.
 
@@ -18,6 +25,7 @@ See the [response status](./../Statuses) page for status values.
 |st|unsigned int|Status|
 |cnt|unsigned int|Number of sessions deleted|
 
+<br/>
 
 Possible status values:
 

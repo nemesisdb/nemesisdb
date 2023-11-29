@@ -44,7 +44,7 @@ private:
     std::bind(&KvHandler::sessionInfoAll,   std::ref(*this), std::placeholders::_1, std::placeholders::_2),
     std::bind(&KvHandler::sessionSave,      std::ref(*this), std::placeholders::_1, std::placeholders::_2),
     std::bind(&KvHandler::sessionLoad,      std::ref(*this), std::placeholders::_1, std::placeholders::_2),
-    std::bind(&KvHandler::sessionClear,     std::ref(*this), std::placeholders::_1, std::placeholders::_2),
+    std::bind(&KvHandler::sessionEndAll,    std::ref(*this), std::placeholders::_1, std::placeholders::_2),
     std::bind(&KvHandler::set,              std::ref(*this), std::placeholders::_1, std::placeholders::_2),
     std::bind(&KvHandler::setQ,             std::ref(*this), std::placeholders::_1, std::placeholders::_2),
     std::bind(&KvHandler::get,              std::ref(*this), std::placeholders::_1, std::placeholders::_2),
@@ -56,7 +56,8 @@ private:
     std::bind(&KvHandler::contains,         std::ref(*this), std::placeholders::_1, std::placeholders::_2),
     std::bind(&KvHandler::find,             std::ref(*this), std::placeholders::_1, std::placeholders::_2),
     std::bind(&KvHandler::update,           std::ref(*this), std::placeholders::_1, std::placeholders::_2),
-    std::bind(&KvHandler::keys,             std::ref(*this), std::placeholders::_1, std::placeholders::_2)    
+    std::bind(&KvHandler::keys,             std::ref(*this), std::placeholders::_1, std::placeholders::_2),
+    std::bind(&KvHandler::clearSet,         std::ref(*this), std::placeholders::_1, std::placeholders::_2)
   };
 
 
@@ -722,9 +723,9 @@ private:
   }
 
   
-  fc_always_inline void sessionClear(KvWebSocket * ws, njson&& json)
+  fc_always_inline void sessionEndAll(KvWebSocket * ws, njson&& json)
   {
-    static const KvQueryType queryType      = KvQueryType::ShClear;
+    static const KvQueryType queryType      = KvQueryType::ShEndAll;
     static const std::string queryName      = QueryTypeToName.at(queryType);
     static const std::string queryRspName   = queryName + "_RSP";
 
@@ -987,6 +988,24 @@ private:
     }
   }
   
+
+  fc_always_inline void clearSet(KvWebSocket * ws, njson&& json)
+  {
+    static const KvQueryType queryType    = KvQueryType::KvClearSet;
+    static const std::string queryName    = QueryTypeToName.at(queryType);
+    static const std::string queryRspName = queryName +"_RSP";
+
+    auto& cmd = json.at(queryName);
+    SessionToken token;
+
+    if (!cmd.contains("keys"))
+      ws->send(createErrorResponse(queryRspName, RequestStatus::ParamMissing, "keys").to_string(), WsSendOpCode);
+    else if (!cmd.at("keys").is_object())
+      ws->send(createErrorResponse(queryRspName, RequestStatus::ValueTypeInvalid, "keys").to_string(), WsSendOpCode);
+    else if (getSessionToken(ws, queryRspName, cmd, token))
+      submit(ws, token, queryType, queryName, queryRspName, std::move(cmd.at("keys")));
+  }
+
 
 private:
   std::vector<KvPoolWorker *> m_pools;

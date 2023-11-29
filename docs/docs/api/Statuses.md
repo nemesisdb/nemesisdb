@@ -21,7 +21,7 @@ This table lists a 'friendly name' and value. The friendly name is used througho
 |CommandMultiple|11|Multiple commands in the same request|
 |CommandType|12|Command is known but it is the incorrect type (most commands are objects)|
 |CommandSyntax|13|Command is known but contains invalid syntax. `m` will contain the offending parameter if known.|
-|CommandDisabled|14|Command has been disabled (only applies to `KV_SAVE`)|
+|CommandDisabled|14|Command has been disabled (only applies to `SH_SAVE`)|
 |ParamMissing|26|A param is not in the command|
 
 
@@ -56,10 +56,10 @@ This table lists a 'friendly name' and value. The friendly name is used througho
 ## Save
 |Name|Value|Meaning
 |:---|:---:|:---|
-|SaveStart|120|`KV_SAVE` accepted and writing data begins|
-|SaveComplete|121|`KV_SAVE` finished without error|
-|SaveDirWriteFail|122|Could not create directories/files whilst preparing `KV_SAVE` (no data written)|
-|SaveError|123|Could not complete `KV_SAVE`, this can be received after SaveStart|
+|SaveStart|120|`SH_SAVE` accepted and writing data begins|
+|SaveComplete|121|`SH_SAVE` finished without error|
+|SaveDirWriteFail|122|Could not create directories/files whilst preparing `SH_SAVE` (no data written)|
+|SaveError|123|Could not complete `SH_SAVE`, this can be received after SaveStart|
 
 
 ## Load

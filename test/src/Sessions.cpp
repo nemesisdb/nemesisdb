@@ -265,6 +265,28 @@ TEST_F(NemesisTest, New_ExpiryClearOnly)
 }
 
 
+TEST_F(NemesisTest, EndAll)
+{
+   // tc3 for SH_INFO_ALL because it can't have a 'tkn' which is added if open() is used
+  TestClient tc1, tc2, tc3;
+
+  ASSERT_TRUE(tc1.open());
+  ASSERT_TRUE(tc2.open());
+  ASSERT_TRUE(tc3.openNoSession());
+
+  tc1.test(TestData { .request = R"({ "KV_SETQ":{ "keys":{"string":"string", "int":5} }})"_json});
+  tc2.test(TestData { .request = R"({ "KV_SETQ":{ "keys":{"string":"string", "int":5} }})"_json});
+
+  tc3.test(TestData { .request = R"({ "SH_INFO_ALL":{} })"_json, 
+                      .expected = { R"({ "SH_INFO_ALL_RSP":{"totalSessions":2, "totalKeys":4} } )"_json }});
+
+  tc1.test(TestData { .request = R"({ "SH_END_ALL":{} } )"_json,
+                      .expected = { R"({ "SH_END_ALL_RSP":{"st":1, "cnt":2} } )"_json }});
+
+  tc3.test(TestData { .request = R"({ "SH_INFO_ALL":{} })"_json, 
+                      .expected = { R"({ "SH_INFO_ALL_RSP":{"totalSessions":0, "totalKeys":0} } )"_json }});
+}
+
 
 int main (int argc, char ** argv)
 {

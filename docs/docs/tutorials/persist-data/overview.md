@@ -129,14 +129,21 @@ The server can be populated with particular data, cleared and then loaded with d
 <br/>
 
 ## Performance
-The governing factor for saving and restoring is the storage throughput rather than the server, particularly as the server is allowed to use more cores (current limit is 4, with one of those reading/writing data). 
+The governing factor for saving and restoring is the storage throughput rather than the server.
 
 Example:
 
 - **Database:** 1M sessions, each with five keys (so 5M keys total)
 - **Disk Space:** ~380MB
 - **Storage:** Laptop NVME
-- **Save:** 4.0 seconds 
+- **Save:** 3.1 seconds 
 - **Load:** 6.5 seconds
 
-Save and restore are new features as of v0.3.5 with `SH_LOAD` added in v0.3.6 (Nov '23) so these figures will change. For example, session data is saved in groups of 1000 sessions per data file in plain JSON, but this will change to a max file size to find a balance between I/O operations and RAM usage.
+The save process minimises memory use:
+
+1. Data is prepared in a buffer
+2. When buffer reaches a defined limit, flush to a data file
+3. Reset buffer positions
+4. Continue from 1
+
+Each data file has a max size to control memory use during loading.

@@ -3,7 +3,9 @@ sidebar_position: 30
 ---
 
 # KV_ADD
-Stores data. This command is the same as `KV_SET` but it will not overwrite an existing key, it is "store this key if it doesn't exist".
+Stores key-values if the key does not already exist.
+
+This command is the same as `KV_SET` but it will not overwrite an existing key.
 
 
 ## Response
@@ -15,7 +17,7 @@ See the [response status](./../Statuses) page for status values.
 
 |Param|Type|Meaning|
 |:---|:---|:---|
-|tkn|uint|Session token|
+|tkn|unsigned int|Session token|
 |keys|object|For each key that was set: `"<keyname>":<status>`|
 
 

@@ -4,6 +4,11 @@ displayed_sidebar: homeSidebar
 ---
 
 # Run
+
+:::info
+These instruction are for the Debian package. See [here](/category/docker) for Docker instructions.
+:::
+
 The bulk of the server config are set in a JSON [config](./config) file, which is in preference to endless command line arguments.
 
 The server includes a default config which starts the server on `127.0.0.1:1987`. If this is unsuitable, change the `kv::ip` and `kv::port` as required.
@@ -26,9 +31,6 @@ The command line arguments are preceeded with `--`:
 - You can disable save but still restore data
 :::
 
-<br/>
-
-- `--loadPath` is useful when the data was not saved by this instance so it is stored elsewhere
 
 <br/>
 
@@ -96,7 +98,7 @@ Ready
 
 <br/>
 
-```bash title="Start and restore, using explicit path"
+```bash title="Start and restore with alternative path"
 ./nemesisdb --config=default.json --loadName=mydata --loadPath=/some/other/path
 
 NemesisDB v0.3.5 starting
@@ -115,8 +117,6 @@ Time: 94ms
 Ready
 ```
 
-- In this example, there must be a `mydata` directory in `/some/other/path`.
-
 <br/>
 
 
@@ -134,14 +134,22 @@ Load name does not exist
 <br/>
 
 
-```bash title="Load name exists but contains no data"
-./nemesisdb --config=default.json --loadName=emptydataset
+```bash title="Load name exists but contains no data (not an error)"
+./nemesisdb --config=default.json --loadName=empty
 
-NemesisDB v0.3.5 starting
+NemesisDB v0.3.7 starting
 Registering signals
 Reading config
 Load Path: "./data"
-Load Name: dump1
-No data
+Load Name: empty
+Reading metadata in "./data/empty/1701179912205808300/md"
+Loading from "./data/empty/1701179912205808300/data"
+-- Load --
+Status: Success 
+Sessions: 0
+Keys: 0
+Time: 0
+----------
+Ready
 ```
 

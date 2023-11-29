@@ -5,7 +5,52 @@ sidebar_position: 1
 # SH_NEW
 Creates a new session.
 
-If the session is created without error, the response includes a session token which a 64-bit unsigned integer. The session token is then used in the `KV_` commands to set, update, find, etc session data.
+The response includes a session token which is a 64-bit unsigned integer. The session token is used in the `KV_` commands to set, update, find, etc session data.
+
+There are various options but the simplest session creation is:
+
+```json title="Create a session that never expires"
+{
+  "SH_NEW":
+  {
+    "name":"mysession"
+  }
+}
+```
+
+which produces a response:
+
+```json title="The name used in the request is included in the response with the token"
+{
+  "SH_NEW_RSP":
+  {
+    "st": 1,
+    "name": "mysession",
+    "tkn": 260071646955705531
+  }
+}
+```
+
+<br/>
+
+The session token (`tkn`) is used in subsequent `KV_` commands, for example:
+
+```json
+{
+  "KV_SET":
+  {
+    "tkn":260071646955705531,
+    "keys":
+    {
+      "forename":"Billy",
+      "surname":"Bob"
+    }
+  }
+}
+```
+<br/>
+<br/>
+
 
 A session requires at least a name but can have optional settings:
 
@@ -23,6 +68,7 @@ There is no session authentication - if a client has the token it can access the
 |expiry|object|Default: never expires <br/>Defines session expiry settings. See below.|N|
 
 <br/>
+<br/>
 
 `expiry`:
 
@@ -31,7 +77,7 @@ There is no session authentication - if a client has the token it can access the
 |duration| unsigned int|Time in seconds until the session expires |Y|
 |deleteSession| bool|Flag indicating if the session should be deleted. If `false`, only the data is deleted|Y|
 
-
+<br/>
 <br/>
 
 ## Session Name
@@ -42,12 +88,12 @@ If the session is shared the name can be used in [`SH_OPEN`](./sh-open.md) to ge
 <br/>
 
 ## Session Expiry
-A session's expiry time is extended by its `duration` when it is accessed by any `KV_` command. In other words, if a session is not accessed for `duration` seconds, it will expire. By accessing the session's data you are extending the expiry because it suggests that session is required.
+A session's expiry time is extended by its `duration` when it is accessed by any `KV_` command. In other words, if a session is not accessed for `duration` seconds, it will expire. By accessing the session's data you are extending the expiry because it suggests the data is required.
 
 <br/>
 
 ## Shared Sessions
-A session can be accessed by any client using the session token but it may be difficult to distribute a session token between clients.
+A session can be accessed by any client using the session token but it may be cumbersome to distribute a session token between clients.
 
 A shared session helps by using the `name` to generate the session token. Other clients use `SH_OPEN` with the same name and receive the same session token.
 
@@ -67,7 +113,7 @@ See the [response status](./../Statuses) page for status values.
 |Param|Type|Meaning|
 |:---|:---|:---|
 |name|string|Session name as used in the request.|
-|tkn|uint|Session token|
+|tkn|unsigned int|Session token|
 |st|unsigned int|Status|
 
 Possible status values:

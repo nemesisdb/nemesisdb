@@ -10,7 +10,7 @@ The command requires the token and an array of keys to remove.
 
 |Param|Type|Meaning|Required|
 |:---|:---|:---|:---:|
-|tkn|uint|Session token|Y|
+|tkn|unsigned int|Session token|Y|
 |keys|array|Array of keys to remove|Y|
 
 
@@ -21,7 +21,7 @@ The command requires the token and an array of keys to remove.
 
 |Param|Type|Meaning|
 |:---|:---|:---|
-|tkn|uint|Session token|
+|tkn|unsigned int|Session token|
 
 After the `tkn`, each key is listed with its removal status, typically KeyRemoved or KeyNotExist.
 

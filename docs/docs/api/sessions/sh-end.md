@@ -8,13 +8,14 @@ Ends a session, deleting the session data.
 
 |Param|Type|Meaning|Required|
 |:---|:---|:---|:---:|
-|tkn|uint|Session token|Y|
+|tkn|unsigned int|Session token|Y|
 
 
-## Ending a session before it expires
+<br/>
 
-If `SH_END` ends a session which has expiry settings, those settings are ignored and session and its data are always deleted immediately, even if the `"deleteSession":false` was set in `SH_NEW`.
-
+:::info
+`SH_END` ignores expiry settings so a session created with expiry settings is ended immediately.
+:::
 
 ## Response
 
@@ -25,7 +26,7 @@ See the [response status](./../Statuses) page for status values.
 
 |Param|Type|Meaning|
 |:---|:---|:---|
-|tkn|uint|Session token|
+|tkn|unsigned int|Session token|
 |st|unsigned int|Status|
 
 
