@@ -32,6 +32,7 @@ The response contains a bool flag for each token in the `tkns` array. If `true` 
 Possible status values:
 
 - Ok
+- CommandSyntax (`tkns` not present or not an array)
 
 <br/>
 
