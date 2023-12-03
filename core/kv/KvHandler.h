@@ -45,6 +45,7 @@ private:
     std::bind(&KvHandler::sessionSave,      std::ref(*this), std::placeholders::_1, std::placeholders::_2),
     std::bind(&KvHandler::sessionLoad,      std::ref(*this), std::placeholders::_1, std::placeholders::_2),
     std::bind(&KvHandler::sessionEndAll,    std::ref(*this), std::placeholders::_1, std::placeholders::_2),
+    std::bind(&KvHandler::sessionExists,    std::ref(*this), std::placeholders::_1, std::placeholders::_2),
     std::bind(&KvHandler::set,              std::ref(*this), std::placeholders::_1, std::placeholders::_2),
     std::bind(&KvHandler::setQ,             std::ref(*this), std::placeholders::_1, std::placeholders::_2),
     std::bind(&KvHandler::get,              std::ref(*this), std::placeholders::_1, std::placeholders::_2),
@@ -371,6 +372,40 @@ private:
   }
 
   
+  // Submit using an array of session tokens
+  fc_always_inline std::vector<std::any> submitSync(KvWebSocket * ws, const njson& tknArray, const KvQueryType queryType, const std::string_view command, const std::string_view rspName, njson&& cmd = "")
+  {
+    std::latch latch{static_cast<std::ptrdiff_t>(tknArray.size())};
+    std::vector<std::any> results;
+    std::mutex resultsMux;
+
+    auto onResult = [&latch, &results, &resultsMux](auto r)
+    {
+      {
+        std::scoped_lock lck{resultsMux};
+        results.emplace_back(std::move(r));
+      }
+      
+      latch.count_down();
+    };
+
+    for(auto& tknItem : tknArray.array_range())
+    {
+      auto tkn = tknItem.as<SessionToken>();
+      m_pools[getPoolId(tkn)]->execute(KvCommand{ .ws = ws,
+                                          .loop = uWS::Loop::get(),
+                                          .contents = std::move(cmd),
+                                          .type = queryType,
+                                          .syncResponseHandler = onResult,
+                                          .shtk = tkn});
+    }
+    
+    
+    latch.wait();
+    return results;
+  }
+
+
   // SESSION
   
   fc_always_inline void sessionNew(KvWebSocket * ws, njson&& json)
@@ -744,6 +779,34 @@ private:
     rsp[queryRspName]["cnt"] = count;
 
     send(ws, rsp.to_string());
+  }
+
+
+  fc_always_inline void sessionExists(KvWebSocket * ws, njson&& json)
+  {
+    static const KvQueryType queryType      = KvQueryType::ShExists;
+    static const std::string queryName      = QueryTypeToName.at(queryType);
+    static const std::string queryRspName   = queryName + "_RSP";
+
+    auto& cmd = json.at(queryName);
+
+    if (!(cmd.contains("tkns") && cmd.at("tkns").is_array()))
+      send(ws, createErrorResponseNoTkn(queryRspName, RequestStatus::CommandSyntax, "tkns").to_string());
+    else
+    { 
+      const auto results = submitSync(ws, cmd.at("tkns"), queryType, queryName, queryRspName);
+
+      njson rsp;
+      rsp[queryRspName]["st"] = toUnderlying(RequestStatus::Ok);
+
+      for (auto& result : results)
+      {
+        const auto [tkn, exists] = std::any_cast<std::tuple<SessionToken, bool>>(result);
+        rsp[queryRspName]["tkns"][std::to_string(tkn)] = exists;
+      }
+
+      send(ws, rsp.to_string());
+    }
   }
 
 
