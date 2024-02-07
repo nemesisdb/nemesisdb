@@ -4,9 +4,6 @@
 [submodule "unordered_dense"]
 	path = unordered_dense
 	url = https://github.com/martinus/unordered_dense.git
-[submodule "business"]
-	path = business
-	url = git@gitlab.com:dev490212/business.git
 [submodule "uuid_v4"]
 	path = uuid_v4
 	url = https://github.com/crashoz/uuid_v4.git
