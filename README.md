@@ -61,12 +61,12 @@ Session Thread:
 Externals are either GitHub submodules or managed by [vcpkg](https://vcpkg.io/en/).
 
 Server:
-- uwebsockets : WebSocket server
+- uWebsockets : WebSocket server
 - plog : logging
 - jsoncons : json
 - Boost Fiber : channels (multiple producer/multiple consumer container)
 - Boost Program Options : argv options
-- ankerl : segemented map
+- ankerl : segmented map
 - uuid_v4 : create UUIDs with SIMD
 
 Tests:
