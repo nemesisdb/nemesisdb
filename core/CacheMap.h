@@ -1,7 +1,6 @@
-#ifndef _FC_CACHEMAP_
-#define _FC_CACHEMAP_
+#ifndef _NDB_CACHEMAP_
+#define _NDB_CACHEMAP_
 
-#include <regex>
 #include <ankerl/unordered_dense.h>
 #include <core/NemesisCommon.h>
 
@@ -206,6 +205,6 @@ private:
 };
 
 } // ns core
-} // ns fusion
+} // ns nemesis
 
 #endif

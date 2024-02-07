@@ -10,16 +10,22 @@
 #include <uuid_v4/uuid_v4.h>
 #include <jsoncons/json.hpp>
 #include <jsoncons_ext/jsonpath/jsonpath.hpp>
-
-
-namespace nemesis { namespace core {
+#include <plog/Log.h>
 
 #define fc_always_inline inline __attribute__((always_inline))
 
+#ifndef NDEBUG
+  #define NDB_DEBUG
+#else
+  #define NDB_RELEASE
+#endif
+
+namespace nemesis { namespace core {
 
 namespace fs = std::filesystem;
 
-static const char * NEMESIS_VERSION = "0.3.8";
+
+static const char * NEMESIS_VERSION = "0.3.9";
 static const std::size_t NEMESIS_CONFIG_VERSION = 1U;
 static const std::size_t NEMESIS_MAX_CORES = 4U;
 

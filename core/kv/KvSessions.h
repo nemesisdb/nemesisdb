@@ -61,7 +61,7 @@ public:
       return {};  // TODO check this, if shared:true and a session with this name already exists
     else
     {
-      if (duration == SessionDuration::zero())
+      if (duration == SessionDuration::zero())  // if never expires
         m_sessions[token] = Session{.token = token, .shared = shared, .expires = false};
       else
       {
@@ -157,14 +157,14 @@ public:
 
   void handleExpired (const SessionExpireTime time = SessionClock::now())
   {    
-    auto itExpired = m_expiry.lower_bound(time);
+    const auto itExpired = m_expiry.lower_bound(time);
 
     if (itExpired != m_expiry.end() || (itExpired == m_expiry.end() && !m_expiry.empty()))
     {
       for (auto it = m_expiry.cbegin() ; it != itExpired; ++it)
       {
         if (it->second.deleteOnExpire)
-          m_sessions.erase(it->second.token);
+          m_sessions.erase(it->second.token); // TODO shouldn't this erase from m_expiry?
         else if (m_sessions.contains(it->second.token)) // should alwys be true because end() removes the entry, but sanity check
         {
           // session expired but not deleted, so clear data and reset expiry
@@ -192,7 +192,7 @@ public:
   {
     if (auto itExpire = m_expiry.find(sesh.expireInfo.time); itExpire != m_expiry.end())
     {
-      auto expireEntry = std::find_if(itExpire, m_expiry.end(), [&sesh](auto expiry) { return expiry.second.token == sesh.token; });
+      const auto expireEntry = std::find_if(itExpire, m_expiry.end(), [&sesh](auto expiry) { return expiry.second.token == sesh.token; });
       if (expireEntry != m_expiry.end())
       {
         // m_expiry uses the expire time as a key so we need to extract, update time and insert with new time
@@ -213,7 +213,7 @@ public:
 
 private:
   SessionsMap m_sessions;
-  std::multimap<SessionExpireTime, ExpiryTracking> m_expiry;
+  std::multimap<SessionExpireTime, ExpiryTracking> m_expiry; // TODO consider priority queue
 };
 
 

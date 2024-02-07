@@ -69,11 +69,13 @@ public:
   {
     RequestStatus status = RequestStatus::Ok;
     
-    if (auto itType = QueryNameToType.find(command) ; itType != QueryNameToType.cend())
+    if (const auto itType = QueryNameToType.find(command) ; itType == QueryNameToType.cend())
+      status = RequestStatus::CommandNotExist;
+    else
     {
       // TODO QueryNameToType.second is tuple from previous version, keep for now but doesn't actually need to be
-      auto [queryType] = itType->second;  
-      auto handler = Handlers[static_cast<std::size_t>(queryType)];
+      const auto [queryType] = itType->second;  
+      const auto handler = Handlers[static_cast<std::size_t>(queryType)];
 
       try
       {
@@ -84,8 +86,6 @@ public:
         status = RequestStatus::Unknown;
       }
     }
-    else
-      status = RequestStatus::CommandNotExist;
 
     return status;
   }
@@ -100,18 +100,17 @@ public:
 
   LoadResult load(const fs::path& dataSetsRoot)
   {
-    std::cout << "Loading from " << dataSetsRoot << '\n';
+    PLOGI << "Loading from " << dataSetsRoot;
 
+    const auto start = NemesisClock::now();
     const auto hostPools = m_pools.size();
     const auto sourcePools = countFiles(dataSetsRoot);
     
     LoadResult loadResult { .status = RequestStatus::LoadComplete };
 
-    auto start = NemesisClock::now();
-
     if (hostPools == 1U)
     {
-      //std::cout << "Everything to pool 0\n";
+      PLOGD << "Everything to pool 0";
 
       njson cmd;
       cmd["dirs"] = njson::array();
@@ -124,7 +123,7 @@ public:
     }
     else if (hostPools == sourcePools)
     {
-      //std::cout << "Direct\n";
+      PLOGD << "Direct";
 
       std::latch latch{static_cast<std::ptrdiff_t>(hostPools)};
       std::mutex resultsMux;
@@ -162,13 +161,12 @@ public:
     {
       // there's no shortcut to this because source and host pools can't be inferred
       // have to recalculate each source session's pool from its token
-      //std::cout << "Re-map\n";      
+      PLOGD << "Re-map";      
       loadResult = loadRemap(dataSetsRoot);
     }
 
 
-    auto end = NemesisClock::now();
-    loadResult.loadTime = end - start;
+    loadResult.loadTime = NemesisClock::now() - start;
 
     return loadResult;
   }
@@ -188,7 +186,7 @@ private:
     {
       const auto& poolPath = poolDir.path();      
 
-      std::cout << "Loading pool data from: " << poolPath << '\n';
+      PLOGD << "Loading pool data from: " << poolPath;
 
       // open each file, get token, create pool id, send to pool
       for(auto& file : fs::directory_iterator(poolPath))
@@ -196,7 +194,7 @@ private:
         std::ifstream seshStream {file.path()};
         njson sessions = njson::parse(seshStream);
 
-        //std::cout << "File " << file.path() << " has " << sessions.size() << " session" << '\n';
+        PLOGD << "File " << file.path() << " has " << sessions.size() << " session";
 
         std::latch latch{static_cast<std::ptrdiff_t>(sessions.size())};
 
@@ -454,8 +452,6 @@ private:
       else
       {
         const auto token = createSessionToken(cmd.at("name").as_string(), cmd["shared"] == true);
-        
-        PoolId poolId = getPoolId(token);
         submit(ws, token, queryType, queryName, queryRspName, std::move(cmd));
       }
     } 

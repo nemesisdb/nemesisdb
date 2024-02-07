@@ -19,6 +19,8 @@ set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O3")
 # https://github.com/boostorg/fiber/issues/301
 
 
+## TODO link statically to uSockets
+
 set(Boost_USE_STATIC_LIBS ON)
 set(Boost_USE_STATIC_RUNTIME ON)
 
@@ -31,5 +33,3 @@ add_executable(nemesisdb server.cpp)
 target_compile_features(nemesisdb PUBLIC cxx_std_20)
 target_link_libraries(nemesisdb PRIVATE "-Wl,-z,stack-size=2097152" -luSockets -lz -lboost_fiber -lboost_context -lboost_program_options)
 #target_link_libraries(nemesisdb PRIVATE "-Wl,-z,stack-size=2097152" -lboost_fiber -lboost_context -lboost_program_options)
-
-#include(CPack)

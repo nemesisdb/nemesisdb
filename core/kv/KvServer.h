@@ -41,7 +41,7 @@ public:
     }
     catch(const std::exception& e)
     {
-      std::cout << "Error during shutdown\n"; // don't care particularly
+      PLOGF << "Error during shutdown";
     }
   }
 
@@ -99,7 +99,7 @@ public:
     {
       if (auto [ok, msg] = load(config); !ok)
       {
-        std::cout << msg << '\n';
+        PLOGF << msg;
         return false;
       }
     }
@@ -149,11 +149,12 @@ public:
 
               try
               {
-                request = std::move(njson::parse(message));
+                // TODO look at pmr parse: https://github.com/danielaparker/jsoncons/blob/master/doc/Examples.md#parse-a-json-text-using-a-polymorphic_allocator-since-01710
+                request = njson::parse(message);
               }
               catch (...)
               {
-
+                // handled below, would have to check request.is_null() anyway
               }
               
               if (request.is_null())
@@ -214,17 +215,17 @@ public:
         }
         
         if (!setThreadAffinity(thread->native_handle(), core))
-          std::cout << "Failed to assign io thread to core " << core << '\n';    
+          PLOGW << "Failed to assign io thread to core " << core;    
       }
       else
-        std::cout << "Failed to create I/O thread " << i << '\n';
+        PLOGF << "Failed to create I/O thread " << i;
     }
 
     startLatch.wait();
 
     if (listenSuccess != nIoThreads)
     {
-      std::cout << "Failed to listen on " << ip << ":"  << port << std::endl;
+      PLOGF << "Failed to listen on " << ip << ":"  << port;
       return false;
     }
     else
@@ -251,7 +252,7 @@ public:
     
 
     #ifndef NDB_UNIT_TEST
-    std::cout << "Ready\n";
+    PLOGI << "Ready";
     #endif
 
     return true;
@@ -285,18 +286,18 @@ public:
         // test we can write to the kv save path
         if (std::filesystem::path path {NemesisConfig::kvSavePath(config)}; !std::filesystem::exists(path) || !std::filesystem::is_directory(path))
         {
-          std::cout << "session::save::path is not a directory or does not exist\n";
+          PLOGF << "session::save::path is not a directory or does not exist";
           return {false, 0};
         }
         else
         {
-          auto filename = createUuid();
+          const auto filename = createUuid();
           std::filesystem::path fullPath{path};
           fullPath /= filename;
 
           if (std::ofstream out{fullPath}; !out.good())
           {
-            std::cout << "Cannot write to session::save::path\n";
+            PLOGF << "Cannot write to session::save::path";
             return {false, 0};
           }
           else
@@ -310,7 +311,7 @@ public:
 
       if (const auto nCores = std::min<std::size_t>(std::thread::hardware_concurrency(), NEMESIS_MAX_CORES); nCores < 1U || nCores > 64U)
       {
-        std::cout << "Core count unexpected: " << nCores << '\n';
+        PLOGF << "Core count unexpected: " << nCores;
         return {false, 0};
       }
       else
@@ -368,7 +369,7 @@ public:
       if (!(fs::exists(md) && fs::is_directory(md)))
         return {false, "'md' directory does not exist or is not a directory"};
 
-      std::cout << "Reading metadata in " << md << "\n";
+      PLOGI << "Reading metadata in " << md;
       
       std::ifstream mdStream {md / "md.json"};
       auto mdJson = njson::parse(mdStream);

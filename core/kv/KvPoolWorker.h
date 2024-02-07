@@ -37,7 +37,7 @@ public:
     m_thread(&KvPoolWorker::run, this) 
   {
     if (!setThreadAffinity(m_thread.native_handle(), core))
-      std::cout << "Failed to assign KvPoolWorker thread: " << core << '\n';
+      PLOGE << "Failed to assign KvPoolWorker thread: " << core;
     
     //setThreadRealtime(m_thread.native_handle(), 25);
   }
@@ -438,14 +438,12 @@ private:
           else
             send(cmd, createErrorResponse(QueryTypeToName.at(cmd.type) + "_RSP", RequestStatus::SessionNotExist, cmd.shtk).to_string());
         }
-      
-        // TODO command = KvCommand{};
       }
       catch (const boost::fibers::fiber_error& fex)
       {
         if (!m_channel.is_closed())
         {
-          std::cout << "Pool Fiber Exception: " << fex.what() << '\n';
+          PLOGE << "Pool Fiber Exception: " << fex.what();
           
           // cmd::ws can be null if the exception is thrown during internal monitor check
           if (cmd.ws)
@@ -454,7 +452,7 @@ private:
       }
       catch (const std::exception& ex)
       {
-        std::cout << "Pool Exception: " << ex.what() << '\n';
+        PLOGE << "Pool Exception: " << ex.what();
 
         // cmd::ws can be null if the exception is thrown during internal monitor check
         if (cmd.ws)

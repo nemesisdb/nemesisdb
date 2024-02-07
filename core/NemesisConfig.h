@@ -49,24 +49,23 @@ struct NemesisConfig
   bool valid;
   std::filesystem::path loadPath; // only used if started with --loadName
   std::string loadName; // set when started with --loadName
-} ;
+};
 
 
 inline bool isValid (std::function<bool()> isValidCheck, const std::string_view msg)
 {
   const auto valid = isValidCheck();
   if (!valid)
-    std::cout << "\n** Config Error **\n" << msg << "\n****\n";
+    PLOGF << "\n** Config Error **\n" << msg << "\n****\n";
   return valid;
 };
 
 
 NemesisConfig parse(std::filesystem::path path)
 {
-  std::ifstream configStream{path};
-
   try
   {
+    std::ifstream configStream{path};
     njson cfg = njson::parse(configStream);
 
     bool valid = false;
@@ -101,7 +100,7 @@ NemesisConfig parse(std::filesystem::path path)
   }
   catch(const std::exception& e)
   {
-    std::cout << "Config file not valid JSON\n";
+    PLOGF << "Config file not valid JSON";
   }  
 
   return NemesisConfig{};
@@ -119,11 +118,11 @@ NemesisConfig readConfig (const int argc, char ** argv)
   common.add_options()("help, h",    "Show help");
 
   po::options_description configFile("Config file");
-  configFile.add_options()("config",  po::value<std::filesystem::path>(&cfgPath),   "Path to json config file");
+  configFile.add_options()("config",  po::value<std::filesystem::path>(&cfgPath), "Path to json config file");
 
   po::options_description load("Load data");
-  load.add_options()("loadPath",  po::value<std::string>(&loadPath),                "Path to where to find loadName. If not set, will use kv::save::path from config");
-  load.add_options()("loadName",  po::value<std::string>(&loadName),                "Name of the save point to load");
+  load.add_options()("loadPath",  po::value<std::string>(&loadPath), "Path to where to find loadName. If not set, will use kv::save::path from config");
+  load.add_options()("loadName",  po::value<std::string>(&loadName), "Name of the save point to load");
   
   
   po::options_description all;
@@ -132,39 +131,40 @@ NemesisConfig readConfig (const int argc, char ** argv)
   all.add(load);
   
   po::variables_map vm;
-  bool parsedArgs = true;
+  bool parsedArgs = false;
 
   try
   {
     po::store(po::parse_command_line(argc, argv, all), vm);
     po::notify(vm);
+    parsedArgs = true;
   }
   catch(po::error_with_option_name pex)
   {
-    std::cout << pex.what() << '\n';
-    parsedArgs = false;
+    PLOGF << pex.what();
   }
   catch(...)
   {
-    parsedArgs = false;
+    PLOGF << "Unknown error reading program options";
   }
   
+
   NemesisConfig config;
 
   if (parsedArgs)
   {
     if (vm.contains("help"))
-      std::cout << all << '\n';
+      std::cout << all << '\n'; // intentional cout
     else
     { 
-      std::cout << "Reading config\n";
+      PLOGI << "Reading config";
 
       if (vm.count("config") != 1U)
         std::cout << "Must set one --config option, with path to the JSON config file\n";
       else
       {
         if (!std::filesystem::exists(cfgPath))
-          std::cout << "Config file path not found\n";      
+          PLOGF << "Config file path not found";
         else if (config = parse(cfgPath); config.valid)
         {
           if (vm.count("loadPath") || vm.count("loadName"))
@@ -172,12 +172,12 @@ NemesisConfig readConfig (const int argc, char ** argv)
             config.loadName = loadName;
             config.loadPath = vm.count("loadPath") ? loadPath : NemesisConfig::kvSavePath(config.cfg);
 
-            std::cout << "Load Path: " << config.loadPath << '\n';
-            std::cout << "Load Name: " << config.loadName << '\n';
+            PLOGI << "Load Path: " << config.loadPath ;
+            PLOGI << "Load Name: " << config.loadName ;
 
             if (!std::filesystem::exists(config.loadPath))
             {
-              std::cout << "Load path does not exist: " << config.loadPath << '\n';
+              PLOGF << "Load path does not exist: " << config.loadPath ;
               config = NemesisConfig{};
             }
           }
@@ -192,7 +192,7 @@ NemesisConfig readConfig (const int argc, char ** argv)
 
 
 } // namespace core
-} // namespace fusion
+} // namespace nemesis
 
 #endif
 
