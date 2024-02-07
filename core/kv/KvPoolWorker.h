@@ -326,14 +326,15 @@ private:
     // CAREFUL: these have to be in the order of KvQueryType enum
     static const std::array<std::function<void(CacheMap&, KvCommand&)>, static_cast<std::size_t>(KvQueryType::MAX)> handlers = 
     {    
-      placeholder,  // SessionNew
-      placeholder,  // SessionEnd
-      placeholder,  // SessionOpen
-      placeholder,  // SessionInfo
-      placeholder,  // SessionInfoAll
-      placeholder,  // SessionSave
-      placeholder,  // SessionLoad (set as InternalLoad)
-      placeholder,  // SessionEndAll
+      placeholder,  // ShNew
+      placeholder,  // ShEnd
+      placeholder,  // ShOpen
+      placeholder,  // ShInfo
+      placeholder,  // ShInfoAll
+      placeholder,  // ShSave
+      placeholder,  // ShLoad (set as InternalLoad)
+      placeholder,  // ShEndAll
+      placeholder,  // ShExists
       set,
       setQ,
       get,
@@ -411,6 +412,11 @@ private:
         {
           const auto count = sessions.clear();
           cmd.syncResponseHandler(std::any{std::move(count)});
+        }
+        else if (cmd.type == KvQueryType::ShExists)
+        {
+          auto result = std::make_tuple(cmd.shtk, sessions.contains(cmd.shtk));
+          cmd.syncResponseHandler(result);
         }
         else if (cmd.type == KvQueryType::InternalSessionMonitor)
         {

@@ -288,6 +288,46 @@ TEST_F(NemesisTest, EndAll)
 }
 
 
+TEST_F(NemesisTest, ShExists)
+{
+  TestClient tc1, tc2, tc3;
+
+  ASSERT_TRUE(tc1.open());
+  ASSERT_TRUE(tc2.open());
+  ASSERT_TRUE(tc3.openNoSession());
+
+  tc3.test(TestData { .request = R"({ "SH_INFO_ALL":{} })"_json, 
+                      .expected = { R"({ "SH_INFO_ALL_RSP":{"totalSessions":2, "totalKeys":0} } )"_json }});
+
+  auto tc1Tkn = tc1.token["tkn"].get<SessionToken>();
+  auto tc2Tkn = tc2.token["tkn"].get<SessionToken>();
+  auto notExistTkn = 1234;
+
+  testjson exists;
+  exists["SH_EXISTS"]["tkns"] = {tc1Tkn, tc2Tkn, notExistTkn};
+
+  testjson rsp;
+  rsp["SH_EXISTS_RSP"]["st"] = (int)nemesis::core::RequestStatus::Ok;
+  rsp["SH_EXISTS_RSP"]["tkns"][std::to_string(tc1Tkn)] = true;
+  rsp["SH_EXISTS_RSP"]["tkns"][std::to_string(tc2Tkn)] = true;
+  rsp["SH_EXISTS_RSP"]["tkns"][std::to_string(notExistTkn)] = false;
+
+  tc1.test(TestData { .request = exists, 
+                      .expected = { rsp }});
+
+  // end all and check again
+  tc1.test(TestData { .request = R"({ "SH_END_ALL":{} } )"_json,
+                      .expected = { R"({ "SH_END_ALL_RSP":{"st":1, "cnt":2} } )"_json }});
+
+  rsp["SH_EXISTS_RSP"]["tkns"][std::to_string(tc1Tkn)] = false;
+  rsp["SH_EXISTS_RSP"]["tkns"][std::to_string(tc2Tkn)] = false;
+  
+  tc1.test(TestData { .request = exists, 
+                      .expected = { rsp }});
+}
+
+
+
 int main (int argc, char ** argv)
 {
 	testing::InitGoogleTest(&argc, argv);	

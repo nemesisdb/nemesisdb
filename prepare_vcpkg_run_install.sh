@@ -16,4 +16,5 @@ echo
 echo Installing ...
 echo 
 
-./vcpkg install nlohmann-json boost-fiber[numa] boost-program-options boost-beast gtest uwebsockets --clean-after-build
+# note: boost-beast used in unit tests because uwebsockets does not have a client API
+./vcpkg install nlohmann-json boost-fiber[numa] boost-program-options boost-beast gtest uwebsockets plog --clean-after-build

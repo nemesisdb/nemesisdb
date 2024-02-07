@@ -45,6 +45,7 @@ private:
     std::bind(&KvHandler::sessionSave,      std::ref(*this), std::placeholders::_1, std::placeholders::_2),
     std::bind(&KvHandler::sessionLoad,      std::ref(*this), std::placeholders::_1, std::placeholders::_2),
     std::bind(&KvHandler::sessionEndAll,    std::ref(*this), std::placeholders::_1, std::placeholders::_2),
+    std::bind(&KvHandler::sessionExists,    std::ref(*this), std::placeholders::_1, std::placeholders::_2),
     std::bind(&KvHandler::set,              std::ref(*this), std::placeholders::_1, std::placeholders::_2),
     std::bind(&KvHandler::setQ,             std::ref(*this), std::placeholders::_1, std::placeholders::_2),
     std::bind(&KvHandler::get,              std::ref(*this), std::placeholders::_1, std::placeholders::_2),
@@ -97,7 +98,7 @@ public:
   }
 
 
-  LoadResult load(const fs::path& dataSetsRoot/*, const SaveType saveType*/)
+  LoadResult load(const fs::path& dataSetsRoot)
   {
     std::cout << "Loading from " << dataSetsRoot << '\n';
 
@@ -251,7 +252,7 @@ private:
       cmd.erase("tkn");
       valid = true;
       // if (const auto& value = cmd.at("tkn").as_string(); value.empty())
-      //   ws->send(createErrorResponse(queryRspName, RequestStatus::SessionTokenInvalid).to_string(), WsSendOpCode);
+      //   send(ws, createErrorResponse(queryRspName, RequestStatus::SessionTokenInvalid).to_string());
       // else
       // {
       //   //t = std::move(cmd.at("tkn").as_string());
@@ -261,11 +262,16 @@ private:
       // }
     }
     else
-      ws->send(createErrorResponse(queryRspName, RequestStatus::SessionTokenInvalid).to_string(), WsSendOpCode);
+      send(ws, createErrorResponse(queryRspName, RequestStatus::SessionTokenInvalid).to_string());
 
     return valid;
   }
 
+
+  fc_always_inline void send (KvWebSocket * ws, const std::string& msg)
+  {
+    ws->send(msg, WsSendOpCode);
+  }
 
   // Submit asynchronously with just token
   fc_always_inline void submit(KvWebSocket * ws, const SessionToken& token, const KvQueryType queryType, const std::string_view command, const std::string_view rspName, njson&& cmd = "")
@@ -366,6 +372,40 @@ private:
   }
 
   
+  // Submit using an array of session tokens
+  fc_always_inline std::vector<std::any> submitSync(KvWebSocket * ws, const njson& tknArray, const KvQueryType queryType, const std::string_view command, const std::string_view rspName, njson&& cmd = "")
+  {
+    std::latch latch{static_cast<std::ptrdiff_t>(tknArray.size())};
+    std::vector<std::any> results;
+    std::mutex resultsMux;
+
+    auto onResult = [&latch, &results, &resultsMux](auto r)
+    {
+      {
+        std::scoped_lock lck{resultsMux};
+        results.emplace_back(std::move(r));
+      }
+      
+      latch.count_down();
+    };
+
+    for(auto& tknItem : tknArray.array_range())
+    {
+      auto tkn = tknItem.as<SessionToken>();
+      m_pools[getPoolId(tkn)]->execute(KvCommand{ .ws = ws,
+                                          .loop = uWS::Loop::get(),
+                                          .contents = std::move(cmd),
+                                          .type = queryType,
+                                          .syncResponseHandler = onResult,
+                                          .shtk = tkn});
+    }
+    
+    
+    latch.wait();
+    return results;
+  }
+
+
   // SESSION
   
   fc_always_inline void sessionNew(KvWebSocket * ws, njson&& json)
@@ -377,13 +417,13 @@ private:
     auto& cmd = json.at(queryName);
 
     if (cmd.size() < 1U || cmd.size() > 3U)
-      ws->send(createErrorResponse(queryRspName, RequestStatus::CommandSyntax).to_string(), WsSendOpCode);
+      send(ws, createErrorResponse(queryRspName, RequestStatus::CommandSyntax).to_string());
     else if (!cmd.contains("name"))
-      ws->send(createErrorResponse(queryRspName, RequestStatus::ValueMissing, "name").to_string(), WsSendOpCode);
+      send(ws, createErrorResponse(queryRspName, RequestStatus::ValueMissing, "name").to_string());
     else if (!cmd.at("name").is_string())
-      ws->send(createErrorResponse(queryRspName, RequestStatus::ValueTypeInvalid, "name").to_string(), WsSendOpCode);
+      send(ws, createErrorResponse(queryRspName, RequestStatus::ValueTypeInvalid, "name").to_string());
     else if (const auto value = cmd.at("name").as_string(); value.empty())
-      ws->send(createErrorResponse(queryRspName, RequestStatus::ValueSize, "name").to_string(), WsSendOpCode);
+      send(ws, createErrorResponse(queryRspName, RequestStatus::ValueSize, "name").to_string());
     else
     {
       bool expiryValid = true, sharedValid = true;
@@ -408,9 +448,9 @@ private:
 
       
       if (!expiryValid)
-        ws->send(createErrorResponse(queryRspName, RequestStatus::CommandSyntax, "expiry").to_string(), WsSendOpCode);
+        send(ws, createErrorResponse(queryRspName, RequestStatus::CommandSyntax, "expiry").to_string());
       else if (!sharedValid)
-        ws->send(createErrorResponse(queryRspName, RequestStatus::CommandSyntax, "shared").to_string(), WsSendOpCode);
+        send(ws, createErrorResponse(queryRspName, RequestStatus::CommandSyntax, "shared").to_string());
       else
       {
         const auto token = createSessionToken(cmd.at("name").as_string(), cmd["shared"] == true);
@@ -431,13 +471,13 @@ private:
     auto& cmd = json.at(queryName);
 
     if (cmd.size() != 1U)
-      ws->send(createErrorResponse(queryRspName, RequestStatus::CommandSyntax).to_string(), WsSendOpCode);
+      send(ws, createErrorResponse(queryRspName, RequestStatus::CommandSyntax).to_string());
     else if (!cmd.contains("name"))
-      ws->send(createErrorResponse(queryRspName, RequestStatus::ValueMissing, "name").to_string(), WsSendOpCode);
+      send(ws, createErrorResponse(queryRspName, RequestStatus::ValueMissing, "name").to_string());
     else if (!cmd.at("name").is_string())
-      ws->send(createErrorResponse(queryRspName, RequestStatus::ValueTypeInvalid, "name").to_string(), WsSendOpCode);
+      send(ws, createErrorResponse(queryRspName, RequestStatus::ValueTypeInvalid, "name").to_string());
     else if (const auto value = cmd.at("name").as_string(); value.empty())
-      ws->send(createErrorResponse(queryRspName, RequestStatus::ValueSize, "name").to_string(), WsSendOpCode);
+      send(ws, createErrorResponse(queryRspName, RequestStatus::ValueSize, "name").to_string());
     else
     {
       // ask the pool if the session token exists
@@ -466,7 +506,7 @@ private:
         rsp[queryRspName]["st"] = static_cast<int>(RequestStatus::SessionOpenFail);
       }        
 
-      ws->send(rsp.to_string(), WsSendOpCode);
+      send(ws, rsp.to_string());
     }
   }
 
@@ -480,7 +520,7 @@ private:
     auto& cmd = json.at(queryName);
 
     if (cmd.size() != 1U)
-      ws->send(createErrorResponse(queryRspName, RequestStatus::CommandSyntax).to_string(), WsSendOpCode);
+      send(ws, createErrorResponse(queryRspName, RequestStatus::CommandSyntax).to_string());
     else
     {
       SessionToken token;
@@ -500,7 +540,7 @@ private:
     auto& cmd = json.at(queryName);
 
     if (!cmd.empty())
-      ws->send(createErrorResponse(queryRspName, RequestStatus::CommandSyntax).to_string(), WsSendOpCode);
+      send(ws, createErrorResponse(queryRspName, RequestStatus::CommandSyntax).to_string());
     else
     {
       auto results = submitSync(ws, queryType, queryName, queryRspName);
@@ -517,7 +557,7 @@ private:
       rsp[queryRspName]["totalSessions"] = totalSesh;
       rsp[queryRspName]["totalKeys"] = totalKeys;
 
-      ws->send(rsp.to_string(), WsSendOpCode);
+      send(ws, rsp.to_string());
     }
   }
 
@@ -545,13 +585,13 @@ private:
     const bool haveTkns = cmd.contains("tkns");
 
     if (!NemesisConfig::kvSaveEnabled(m_config))
-      ws->send(createErrorResponseNoTkn(queryRspName, RequestStatus::CommandDisabled).to_string(), WsSendOpCode);
+      send(ws, createErrorResponseNoTkn(queryRspName, RequestStatus::CommandDisabled).to_string());
     else if (!(cmd.contains("name") && cmd.at("name").is_string()))
-      ws->send(createErrorResponseNoTkn(queryRspName, RequestStatus::CommandSyntax).to_string(), WsSendOpCode);
+      send(ws, createErrorResponseNoTkn(queryRspName, RequestStatus::CommandSyntax).to_string());
     else if (haveTkns && !cmd.at("tkns").is_array())
-      ws->send(createErrorResponseNoTkn(queryRspName, RequestStatus::ValueTypeInvalid, "tkns").to_string(), WsSendOpCode);
+      send(ws, createErrorResponseNoTkn(queryRspName, RequestStatus::ValueTypeInvalid, "tkns").to_string());
     else if (haveTkns && cmd.at("tkns").empty())
-      ws->send(createErrorResponseNoTkn(queryRspName, RequestStatus::ValueSize, "tkns").to_string(), WsSendOpCode);
+      send(ws, createErrorResponseNoTkn(queryRspName, RequestStatus::ValueSize, "tkns").to_string());
     else
     {
       //validate tkns array, if present, before continuing
@@ -566,7 +606,7 @@ private:
       }
 
       if (!tknsValid)
-        ws->send(createErrorResponseNoTkn(queryRspName, RequestStatus::ValueTypeInvalid, "tkns").to_string(), WsSendOpCode);
+        send(ws, createErrorResponseNoTkn(queryRspName, RequestStatus::ValueTypeInvalid, "tkns").to_string());
       else
       {
         const auto& name = cmd.at("name").as_string();
@@ -584,17 +624,17 @@ private:
         if (!fs::create_directories(metaPath))
         {
           rsp[queryRspName]["st"] = toUnderlying(RequestStatus::SaveDirWriteFail);
-          ws->send(rsp.to_string(), WsSendOpCode);
+          send(ws, rsp.to_string());
         }
         else if (metaStream.open(metaPath/"md.json", std::ios_base::trunc | std::ios_base::out); !metaStream.is_open())
         {
           rsp[queryRspName]["st"] = toUnderlying(RequestStatus::SaveDirWriteFail);
-          ws->send(rsp.to_string(), WsSendOpCode);
+          send(ws, rsp.to_string());
         }
         else
         {
           rsp[queryRspName]["st"] = toUnderlying(RequestStatus::SaveStart);
-          ws->send(rsp.to_string(), WsSendOpCode);
+          send(ws, rsp.to_string());
 
           // write metadata before we start incase we're interrupted mid-save
           auto start = KvSaveClock::now();
@@ -637,7 +677,7 @@ private:
           rsp[queryRspName]["duration"] = std::chrono::duration_cast<KvSaveMetaDataUnit>(end-start).count();
           #endif
 
-          ws->send(rsp.to_string(), WsSendOpCode);
+          send(ws, rsp.to_string());
         }
       }
     }
@@ -655,9 +695,9 @@ private:
     auto& cmd = json.at(queryName);
 
     if (!(cmd.contains("names") && cmd.at("names").is_array()))
-      ws->send(createErrorResponseNoTkn(queryRspName, RequestStatus::CommandSyntax).to_string(), WsSendOpCode);
+      send(ws, createErrorResponseNoTkn(queryRspName, RequestStatus::CommandSyntax).to_string());
     else if (!fs::exists(loadPath))
-      ws->send(createErrorResponseNoTkn(queryRspName, RequestStatus::LoadError, "load path not exist").to_string(), WsSendOpCode);
+      send(ws, createErrorResponseNoTkn(queryRspName, RequestStatus::LoadError, "load path not exist").to_string());
     else
     {
       bool namesValid = true;
@@ -682,7 +722,7 @@ private:
       }
 
       if (!namesValid)
-        ws->send(createErrorResponseNoTkn(queryRspName, checkStatus, msg).to_string(), WsSendOpCode);
+        send(ws, createErrorResponseNoTkn(queryRspName, checkStatus, msg).to_string());
       else
       {
         njson rsp;
@@ -717,7 +757,7 @@ private:
           }
         }
         
-        ws->send(rsp.to_string(), WsSendOpCode);
+        send(ws, rsp.to_string());
       }      
     }
   }
@@ -738,7 +778,35 @@ private:
     rsp[queryRspName]["st"] = toUnderlying(RequestStatus::Ok);
     rsp[queryRspName]["cnt"] = count;
 
-    ws->send(rsp.to_string(), WsSendOpCode);
+    send(ws, rsp.to_string());
+  }
+
+
+  fc_always_inline void sessionExists(KvWebSocket * ws, njson&& json)
+  {
+    static const KvQueryType queryType      = KvQueryType::ShExists;
+    static const std::string queryName      = QueryTypeToName.at(queryType);
+    static const std::string queryRspName   = queryName + "_RSP";
+
+    auto& cmd = json.at(queryName);
+
+    if (!(cmd.contains("tkns") && cmd.at("tkns").is_array()))
+      send(ws, createErrorResponseNoTkn(queryRspName, RequestStatus::CommandSyntax, "tkns").to_string());
+    else
+    { 
+      const auto results = submitSync(ws, cmd.at("tkns"), queryType, queryName, queryRspName);
+
+      njson rsp;
+      rsp[queryRspName]["st"] = toUnderlying(RequestStatus::Ok);
+
+      for (auto& result : results)
+      {
+        const auto [tkn, exists] = std::any_cast<std::tuple<SessionToken, bool>>(result);
+        rsp[queryRspName]["tkns"][std::to_string(tkn)] = exists;
+      }
+
+      send(ws, rsp.to_string());
+    }
   }
 
 
@@ -754,9 +822,9 @@ private:
     SessionToken token;
 
     if (!cmd.contains("keys"))
-      ws->send(createErrorResponse(queryRspName, RequestStatus::ParamMissing, "keys").to_string(), WsSendOpCode);
+      send(ws, createErrorResponse(queryRspName, RequestStatus::ParamMissing, "keys").to_string());
     else if (!cmd.at("keys").is_object())
-      ws->send(createErrorResponse(queryRspName, RequestStatus::ValueTypeInvalid, "keys").to_string(), WsSendOpCode);
+      send(ws, createErrorResponse(queryRspName, RequestStatus::ValueTypeInvalid, "keys").to_string());
     else if (getSessionToken(ws, queryRspName, cmd, token))
       submit(ws, token, queryType, queryName, queryRspName, std::move(cmd.at("keys")));
   }
@@ -772,9 +840,9 @@ private:
     SessionToken token;
 
     if (!cmd.contains("keys"))
-      ws->send(createErrorResponse(queryRspName, RequestStatus::ParamMissing, "keys").to_string(), WsSendOpCode);
+      send(ws, createErrorResponse(queryRspName, RequestStatus::ParamMissing, "keys").to_string());
     else if (!cmd.at("keys").is_object())
-      ws->send(createErrorResponse(queryRspName, RequestStatus::ValueTypeInvalid, "keys").to_string(), WsSendOpCode);
+      send(ws, createErrorResponse(queryRspName, RequestStatus::ValueTypeInvalid, "keys").to_string());
     else if (getSessionToken(ws, queryRspName, cmd, token))
       submit(ws, token, queryType, queryName, queryRspName, std::move(cmd.at("keys")));
   }
@@ -790,9 +858,9 @@ private:
     SessionToken token;
 
     if (!cmd.contains("keys"))
-      ws->send(createErrorResponse(queryRspName, RequestStatus::ParamMissing, "keys").to_string(), WsSendOpCode);
+      send(ws, createErrorResponse(queryRspName, RequestStatus::ParamMissing, "keys").to_string());
     else if (!cmd.at("keys").is_array())
-      ws->send(createErrorResponse(queryRspName, RequestStatus::ValueTypeInvalid, "keys").to_string(), WsSendOpCode);
+      send(ws, createErrorResponse(queryRspName, RequestStatus::ValueTypeInvalid, "keys").to_string());
     else if (getSessionToken(ws, queryRspName, cmd, token))
       submit(ws, token, queryType, queryName, queryRspName, std::move(cmd.at("keys")));
   }
@@ -808,9 +876,9 @@ private:
     SessionToken token;
 
     if (!cmd.contains("keys"))
-      ws->send(createErrorResponse(queryRspName, RequestStatus::ParamMissing, "keys").to_string(), WsSendOpCode);
+      send(ws, createErrorResponse(queryRspName, RequestStatus::ParamMissing, "keys").to_string());
     else if (!cmd.at("keys").is_object())
-      ws->send(createErrorResponse(queryRspName, RequestStatus::ValueTypeInvalid, "keys").to_string(), WsSendOpCode);
+      send(ws, createErrorResponse(queryRspName, RequestStatus::ValueTypeInvalid, "keys").to_string());
     else if (getSessionToken(ws, queryRspName, cmd, token))
       submit(ws, token, queryType, queryName, queryRspName, std::move(cmd.at("keys")));
   }
@@ -826,9 +894,9 @@ private:
     SessionToken token;
 
     if (!cmd.contains("keys"))
-      ws->send(createErrorResponse(queryRspName, RequestStatus::ParamMissing, "keys").to_string(), WsSendOpCode);
+      send(ws, createErrorResponse(queryRspName, RequestStatus::ParamMissing, "keys").to_string());
     else if (!cmd.at("keys").is_object())
-      ws->send(createErrorResponse(queryRspName, RequestStatus::ValueTypeInvalid, "keys").to_string(), WsSendOpCode);
+      send(ws, createErrorResponse(queryRspName, RequestStatus::ValueTypeInvalid, "keys").to_string());
     else if (getSessionToken(ws, queryRspName, cmd, token))
       submit(ws, token, queryType, queryName, queryRspName, std::move(cmd.at("keys")));
   }
@@ -844,9 +912,9 @@ private:
     SessionToken token;
 
     if (!cmd.contains("keys"))
-      ws->send(createErrorResponse(queryRspName, RequestStatus::ParamMissing, "keys").to_string(), WsSendOpCode);
+      send(ws, createErrorResponse(queryRspName, RequestStatus::ParamMissing, "keys").to_string());
     else if (!cmd.at("keys").is_array())
-      ws->send(createErrorResponse(queryRspName, RequestStatus::ValueTypeInvalid, "keys").to_string(), WsSendOpCode);
+      send(ws, createErrorResponse(queryRspName, RequestStatus::ValueTypeInvalid, "keys").to_string());
     else if (getSessionToken(ws, queryRspName, cmd, token))
       submit(ws, token, queryType, queryName, queryRspName, std::move(cmd.at("keys")));
   }
@@ -888,9 +956,9 @@ private:
     SessionToken token;
 
     if (!cmd.contains("keys"))
-      ws->send(createErrorResponse(queryRspName, RequestStatus::ParamMissing).to_string(), WsSendOpCode);
+      send(ws, createErrorResponse(queryRspName, RequestStatus::ParamMissing).to_string());
     else if (!cmd.at("keys").is_array())
-      ws->send(createErrorResponse(queryRspName, RequestStatus::ValueTypeInvalid, "keys").to_string(), WsSendOpCode);
+      send(ws, createErrorResponse(queryRspName, RequestStatus::ValueTypeInvalid, "keys").to_string());
     else if (getSessionToken(ws, queryName, cmd, token))
       submit(ws, token, queryType, queryName, queryRspName, std::move(cmd.at("keys")));
   }
@@ -909,21 +977,21 @@ private:
     {
       // getSessionToken() deletes the "tkn" so only 'path' and 'rsp' must remain, with optional 'keys'
       if (cmd.size() < 2U || cmd.size() > 3U)
-        ws->send(createErrorResponse(queryRspName, RequestStatus::CommandSyntax).to_string(), WsSendOpCode);
+        send(ws, createErrorResponse(queryRspName, RequestStatus::CommandSyntax).to_string());
       else if (!cmd.contains("path"))
-        ws->send(createErrorResponse(queryRspName, RequestStatus::NoPath).to_string(), WsSendOpCode);
+        send(ws, createErrorResponse(queryRspName, RequestStatus::NoPath).to_string());
       else if (!cmd.at("path").is_string())
-        ws->send(createErrorResponse(queryRspName, RequestStatus::ValueTypeInvalid, "path").to_string(), WsSendOpCode);
+        send(ws, createErrorResponse(queryRspName, RequestStatus::ValueTypeInvalid, "path").to_string());
       else if (const auto& path = cmd.at("path").as_string() ; path.empty())
-        ws->send(createErrorResponse(queryRspName, RequestStatus::ValueSize, "path").to_string(), WsSendOpCode);      
+        send(ws, createErrorResponse(queryRspName, RequestStatus::ValueSize, "path").to_string());      
       else if (!cmd.contains("rsp"))
-        ws->send(createErrorResponse(queryRspName, RequestStatus::ValueMissing, "rsp").to_string(), WsSendOpCode);
+        send(ws, createErrorResponse(queryRspName, RequestStatus::ValueMissing, "rsp").to_string());
       else if (!cmd.at("rsp").is_string())
-        ws->send(createErrorResponse(queryRspName, RequestStatus::ValueTypeInvalid, "rsp").to_string(), WsSendOpCode);
+        send(ws, createErrorResponse(queryRspName, RequestStatus::ValueTypeInvalid, "rsp").to_string());
       else if (cmd.at("rsp") != "paths" && cmd.at("rsp") != "kv" && cmd.at("rsp") != "keys")
-        ws->send(createErrorResponse(queryRspName, RequestStatus::CommandSyntax, "rsp").to_string(), WsSendOpCode);
+        send(ws, createErrorResponse(queryRspName, RequestStatus::CommandSyntax, "rsp").to_string());
       else if (cmd.contains("keys") && !cmd.at("keys").is_array())
-        ws->send(createErrorResponse(queryRspName, RequestStatus::ValueTypeInvalid, "keys").to_string(), WsSendOpCode);
+        send(ws, createErrorResponse(queryRspName, RequestStatus::ValueTypeInvalid, "keys").to_string());
       else
       {
         if (!cmd.contains("keys"))
@@ -953,17 +1021,17 @@ private:
     if (getSessionToken(ws, queryRspName, cmd, token))
     {
       if (cmd.size() != 3U) // after tkn removed
-        ws->send(createErrorResponse(queryRspName, RequestStatus::CommandSyntax).to_string(), WsSendOpCode);
+        send(ws, createErrorResponse(queryRspName, RequestStatus::CommandSyntax).to_string());
       else if (!cmd.contains("key"))
-        ws->send(createErrorResponse(queryRspName, RequestStatus::ParamMissing, "key").to_string(), WsSendOpCode);
+        send(ws, createErrorResponse(queryRspName, RequestStatus::ParamMissing, "key").to_string());
       else if (!cmd.at("key").is_string())
-        ws->send(createErrorResponse(queryRspName, RequestStatus::ValueTypeInvalid, "key").to_string(), WsSendOpCode);
+        send(ws, createErrorResponse(queryRspName, RequestStatus::ValueTypeInvalid, "key").to_string());
       else if (!cmd.contains("path"))
-        ws->send(createErrorResponse(queryRspName, RequestStatus::ParamMissing, "path").to_string(), WsSendOpCode);
+        send(ws, createErrorResponse(queryRspName, RequestStatus::ParamMissing, "path").to_string());
       else if (!cmd.at("path").is_string())
-        ws->send(createErrorResponse(queryRspName, RequestStatus::ValueTypeInvalid, "path").to_string(), WsSendOpCode);
+        send(ws, createErrorResponse(queryRspName, RequestStatus::ValueTypeInvalid, "path").to_string());
       else if (!cmd.contains("value"))
-        ws->send(createErrorResponse(queryRspName, RequestStatus::ParamMissing, "value").to_string(), WsSendOpCode);
+        send(ws, createErrorResponse(queryRspName, RequestStatus::ParamMissing, "value").to_string());
       else
         submit(ws, token, queryType, queryName, queryRspName, std::move(cmd));
     }
@@ -982,7 +1050,7 @@ private:
     if (getSessionToken(ws, queryRspName, cmd, token))
     {
       if (!cmd.empty()) // after tkn removed
-        ws->send(createErrorResponse(queryRspName, RequestStatus::CommandSyntax).to_string(), WsSendOpCode);
+        send(ws, createErrorResponse(queryRspName, RequestStatus::CommandSyntax).to_string());
       else
         submit(ws, token, queryType, queryName, queryRspName, std::move(cmd));
     }
@@ -999,9 +1067,9 @@ private:
     SessionToken token;
 
     if (!cmd.contains("keys"))
-      ws->send(createErrorResponse(queryRspName, RequestStatus::ParamMissing, "keys").to_string(), WsSendOpCode);
+      send(ws, createErrorResponse(queryRspName, RequestStatus::ParamMissing, "keys").to_string());
     else if (!cmd.at("keys").is_object())
-      ws->send(createErrorResponse(queryRspName, RequestStatus::ValueTypeInvalid, "keys").to_string(), WsSendOpCode);
+      send(ws, createErrorResponse(queryRspName, RequestStatus::ValueTypeInvalid, "keys").to_string());
     else if (getSessionToken(ws, queryRspName, cmd, token))
       submit(ws, token, queryType, queryName, queryRspName, std::move(cmd.at("keys")));
   }

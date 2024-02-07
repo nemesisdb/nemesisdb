@@ -29,6 +29,7 @@ enum class KvQueryType : std::uint8_t
   ShSave,
   ShLoad,
   ShEndAll,
+  ShExists,
   KvSet,
   KvSetQ,
   KvGet,
@@ -60,6 +61,7 @@ const std::map<const std::string_view, std::tuple<const KvQueryType>> QueryNameT
   {"SH_SAVE",         {KvQueryType::ShSave}},
   {"SH_LOAD",         {KvQueryType::ShLoad}},
   {"SH_END_ALL",      {KvQueryType::ShEndAll}},
+  {"SH_EXISTS",       {KvQueryType::ShExists}},
   // kv
   {"KV_SET",          {KvQueryType::KvSet}},
   {"KV_SETQ",         {KvQueryType::KvSetQ}},
@@ -88,6 +90,7 @@ const std::map<const KvQueryType, const std::string> QueryTypeToName =
   {KvQueryType::ShSave,       "SH_SAVE"},
   {KvQueryType::ShLoad,       "SH_LOAD"},
   {KvQueryType::ShEndAll,     "SH_END_ALL"},
+  {KvQueryType::ShExists,     "SH_EXISTS"},
   // kv
   {KvQueryType::KvSet,        "KV_SET"},
   {KvQueryType::KvSetQ,       "KV_SETQ"},
