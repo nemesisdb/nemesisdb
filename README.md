@@ -31,8 +31,10 @@ For example, a system which manages 100K users, each of which requires 100 keys,
 ## Design
 The design aims to separate I/O and session data threads:
 
-- Core(s) are assigned for I/O operations (WebSocket server)
-- Remaining core(s) are assigned to handle sessions
+- Core(s) are dedicated for I/O operations (WebSocket server)
+- Remaining core(s) are dedicated to handle sessions
+
+Each thread is assigned to a core.
 
 The session threads receive commands via a boost::fiber channel and execute the command. This is a convenient way to serialise the execution of commands: because a session thread fully executes the command before popping the next, we don't need to worry about the usual multithreaded issues.
 
@@ -74,6 +76,7 @@ Tests:
 - Boost Beast
 - Google test
 
+<br/>
 
 ## License
 **TODO**
