@@ -1,92 +1,90 @@
-# FusionCache2
+# NemesisDB
+NemesisDB is a session JSON database:
 
+- All data and commands are JSON
+- Each session has a dedicated map
+- A session can live forever, but the intent is for each session to have an expiry
+- When a session expires its data is deleted, and optionally the session can be deleted
 
+Examples of sessions:
+- Whilst a user is logged into an app
+- When a device comes online
+- When an One Time Password is created
+- Whilst a user is completing a multi-page online form
 
-## Getting started
+<br/>
 
-To make it easy for you to get started with GitLab, here's a list of recommended next steps.
+## Sessions
+The purpose of sessions are:
+- Each session only contains data required for that session, rather than a single large map
+- When accessing (get, set, etc) data, only the data for a particular session is accessed
 
-Already a pro? Just edit this README.md and make it your own. Want to make it easy? [Use the template at the bottom](#editing-this-readme)!
+Rather having a single large map of keys, it would be split into sessions.
 
-## Add your files
+For example, a system which manages 100K users, each of which requires 100 keys, we'd have 100K sessions, each having 100 keys:
 
-- [ ] [Create](https://docs.gitlab.com/ee/user/project/repository/web_editor.html#create-a-file) or [upload](https://docs.gitlab.com/ee/user/project/repository/web_editor.html#upload-a-file) files
-- [ ] [Add files using the command line](https://docs.gitlab.com/ee/gitlab-basics/add-file.html#add-a-file-using-the-command-line) or push an existing Git repository with the following command:
+- Managing expiring sessions is simpler because rather than monitoring 1M keys, only the 100K sessions are managed
+- When accessing session data, only an individual session's map is accessed
 
-```
-cd existing_repo
-git remote add origin https://gitlab.com/dev490212/fusioncache2.git
-git branch -M main
-git push -uf origin main
-```
+<br/>
 
-## Integrate with your tools
+## Design
+The design aims to separate threads between I/O (WebSocket) and sessions:
 
-- [ ] [Set up project integrations](https://gitlab.com/dev490212/fusioncache2/-/settings/integrations)
+- Core(s) are assigned for I/O operations
+- Remaining core(s) are assigned to handle sessions
 
-## Collaborate with your team
+The session threads receive commands via a boost::fiber channel and execute the command. This is a convenient way to serialise the execution of commands: because a session thread fully executes the command before popping the next, we don't need to worry about the usual multithreaded issues.
 
-- [ ] [Invite team members and collaborators](https://docs.gitlab.com/ee/user/project/members/)
-- [ ] [Create a new merge request](https://docs.gitlab.com/ee/user/project/merge_requests/creating_merge_requests.html)
-- [ ] [Automatically close issues from merge requests](https://docs.gitlab.com/ee/user/project/issues/managing_issues.html#closing-issues-automatically)
-- [ ] [Enable merge request approvals](https://docs.gitlab.com/ee/user/project/merge_requests/approvals/)
-- [ ] [Set auto-merge](https://docs.gitlab.com/ee/user/project/merge_requests/merge_when_pipeline_succeeds.html)
+Command execution sequence:
 
-## Test and Deploy
+I/O Thread: 
+- Receive Command
+- Parse JSON
+- Validate Command
+- Map session token to session worker thread
+- Submit to session thread (typically async, but sync for some commands)
+  - This pushes the command onto the thread's channel
 
-Use the built-in continuous integration in GitLab.
+Session Thread:
+- Wait until a command arrives on the channel then pop it
+- Execute command
+- If async:
+  - Send response on the same I/O thread that received the command
+- If sync:
+  - Call handler on session thread and send response on I/O thread
+ 
 
-- [ ] [Get started with GitLab CI/CD](https://docs.gitlab.com/ee/ci/quick_start/index.html)
-- [ ] [Analyze your code for known vulnerabilities with Static Application Security Testing(SAST)](https://docs.gitlab.com/ee/user/application_security/sast/)
-- [ ] [Deploy to Kubernetes, Amazon EC2, or Amazon ECS using Auto Deploy](https://docs.gitlab.com/ee/topics/autodevops/requirements.html)
-- [ ] [Use pull-based deployments for improved Kubernetes management](https://docs.gitlab.com/ee/user/clusters/agent/)
-- [ ] [Set up protected environments](https://docs.gitlab.com/ee/ci/environments/protected_environments.html)
+<br/>
 
-***
+## External Libraries
+Externals are either GitHub submodules or managed by [vcpkg](https://vcpkg.io/en/).
 
-# Editing this README
+Server:
+- uwebsockets : WebSocket server
+- plog : logging
+- jsoncons : json
+- Boost Fiber : channels (multiple producer/multiple consumer container)
+- Boost Program Options : argv options
+- ankerl : segemented map
+- uuid_v4 : create UUIDs with SIMD
 
-When you're ready to make this README your own, just edit this file and use the handy template below (or feel free to structure it however you want - this is just a starting point!). Thank you to [makeareadme.com](https://www.makeareadme.com/) for this template.
+Tests:
+- nlohmann json
+- Boost Beast
+- Google test
 
-## Suggestions for a good README
-Every project is different, so consider which of these sections apply to yours. The sections used in the template are suggestions for most open source projects. Also keep in mind that while a README can be too long and detailed, too long is better than too short. If you think your README is too long, consider utilizing another form of documentation rather than cutting out information.
-
-## Name
-Choose a self-explaining name for your project.
-
-## Description
-Let people know what your project can do specifically. Provide context and add a link to any reference visitors might be unfamiliar with. A list of Features or a Background subsection can also be added here. If there are alternatives to your project, this is a good place to list differentiating factors.
-
-## Badges
-On some READMEs, you may see small images that convey metadata, such as whether or not all the tests are passing for the project. You can use Shields to add some to your README. Many services also have instructions for adding a badge.
-
-## Visuals
-Depending on what you are making, it can be a good idea to include screenshots or even a video (you'll frequently see GIFs rather than actual videos). Tools like ttygif can help, but check out Asciinema for a more sophisticated method.
-
-## Installation
-Within a particular ecosystem, there may be a common way of installing things, such as using Yarn, NuGet, or Homebrew. However, consider the possibility that whoever is reading your README is a novice and would like more guidance. Listing specific steps helps remove ambiguity and gets people to using your project as quickly as possible. If it only runs in a specific context like a particular programming language version or operating system or has dependencies that have to be installed manually, also add a Requirements subsection.
-
-## Usage
-Use examples liberally, and show the expected output if you can. It's helpful to have inline the smallest example of usage that you can demonstrate, while providing links to more sophisticated examples if they are too long to reasonably include in the README.
-
-## Support
-Tell people where they can go to for help. It can be any combination of an issue tracker, a chat room, an email address, etc.
-
-## Roadmap
-If you have ideas for releases in the future, it is a good idea to list them in the README.
-
-## Contributing
-State if you are open to contributions and what your requirements are for accepting them.
-
-For people who want to make changes to your project, it's helpful to have some documentation on how to get started. Perhaps there is a script that they should run or some environment variables that they need to set. Make these steps explicit. These instructions could also be useful to your future self.
-
-You can also document commands to lint the code or run tests. These steps help to ensure high code quality and reduce the likelihood that the changes inadvertently break something. Having instructions for running tests is especially helpful if it requires external setup, such as starting a Selenium server for testing in a browser.
-
-## Authors and acknowledgment
-Show your appreciation to those who have contributed to the project.
 
 ## License
-For open source projects, say how it is licensed.
+**TODO**
 
-## Project status
-If you have run out of energy or time for your project, put a note at the top of the README saying that development has slowed down or stopped completely. Someone may choose to fork your project or volunteer to step in as a maintainer or owner, allowing your project to keep going. You can also make an explicit request for maintainers.
+
+## Project Status
+The code has been open sourced to gain users and contributors:
+
+### Source
+Code improvemements are always possible and of course bug fixes.
+
+### Client APIs
+The only client API is the test API in this repo, which is only for testing. Client APIs in friendlier languages are welcome.
+
