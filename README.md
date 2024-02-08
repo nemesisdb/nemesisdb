@@ -67,6 +67,13 @@ Session Thread:
 
 Commands for sessions that are handled by different session threads can be executed concurrently because they are handled by different threads.
 
+> [!NOTE]
+> There is a 4 thread max, so at most there will be 3 I/O threads and 1 session worker thread.
+> - The limit is set by `NEMESIS_MAX_CORES` in `NemesisCommon.h`
+> - The ratio of I/O to session pool threads is defined by `CoresToIoThreads` map in `KvServer::init()`. This defines how many threads are assigned to I/O, the remaining are for session pool(s).
+
+> 99% of testing has been with limit as 4
+
 <br/>
 
 ## Build - Linux Only
