@@ -23,9 +23,7 @@ WORKDIR /build/vcpkg
 RUN ./bootstrap-vcpkg.sh
 
 # run vcpkg install command from script
-#COPY vcpkg_run_install.sh ./
-#RUN ./vcpkg_run_install.sh
-RUN ./vcpkg install boost-fiber[numa] boost-program-options uwebsockets --clean-after-build
+RUN ./vcpkg install boost-fiber[numa] boost-program-options uwebsockets plog --clean-after-build
 
 
 # prepare: 

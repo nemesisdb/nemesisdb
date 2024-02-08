@@ -24,7 +24,7 @@
 
 
 ## Install vcpkg pacakges
-- `./prepare_vcpkg_run_install.sh`
+- `./prepare_vcpkg.sh`
 
 
 ## Additional
