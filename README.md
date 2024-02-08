@@ -61,6 +61,26 @@ Session Thread:
 - If sync:
   - Call handler on session thread and send response on I/O thread
  
+<br/>
+
+## Build - Linux Only
+1. Clone via SSH with submodules: `git clone --recursive git@github.com:nemesisdb/nemesisdb.git`
+2. Prepare and grab vcpkg libs: `cd nemesisdb && ./prepare_vcpkg.sh` (this takes a few minutes)
+3. With VS Code (assuming you have C/C++ and CMake extensions):
+    - VS Code: `code .`
+    - Select kit (only tested with GCC 12.3.0)
+    - Select Release variant
+    - Select target as nemesisdb
+    - Build
+4. Binary is in `server/Release/bin`
+
+<br/>
+
+## Run
+1. `cd server/Release/bin`
+2. `./nemesisdb --config=../../configs/default.json`
+    - Server WebSocket listening on `127.0.0.1:1987` (defined in `default.json`)
+3. `ctrl+c` to exit
 
 <br/>
 
