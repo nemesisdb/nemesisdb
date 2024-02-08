@@ -168,7 +168,10 @@ Tests:
 <br/>
 
 ## License
-**TODO**
+See LICENCE file:
+ - Use in commercial software but credit must be given
+ - No liability
+ - No use of trademark
 
 <br/>
 
