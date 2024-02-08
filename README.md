@@ -137,6 +137,16 @@ This returns the session token `tkn`, for example: `448892247316960382` .
 
 <br/>
 
+## Code
+The server is the binary, defined in `server/server.cpp` and the remaining code in `core`. 
+
+1. `server.cpp` checks the command line params, the config and then calls `core/Kv/KvServer::run()`
+2. `KvServer::run()` runs the WebSocket server, creating reusable sockets
+3. When a message arrived, the `.message` handler is called, which parses the JSON and if valid, sends the command to `KVHandler::handle()`
+4. `KvHandler` validates the command then submits it to the `KvPoolWorker` for execution
+
+<br/>
+
 ## External Libraries
 Externals are either GitHub submodules or managed by [vcpkg](https://vcpkg.io/en/).
 
