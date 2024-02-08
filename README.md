@@ -1,7 +1,11 @@
 # NemesisDB
 NemesisDB is a session JSON database:
 
+JSON:
 - All data and commands are JSON
+- Commands are submitted via a WebSocket
+
+Session:
 - Each session has a dedicated map
 - A session can live forever, but the intent is for each session to have an expiry
 - When a session expires its data is deleted, and optionally the session can be deleted
@@ -18,6 +22,7 @@ Examples of sessions:
 The purpose of sessions are:
 - Each session only contains data required for that session, rather than a single large map
 - When accessing (get, set, etc) data, only the data for a particular session is accessed
+- Controlling key expiry is simlified because it is sessions that expire, not individual keys
 
 Rather having a single large map of keys, it would be split into sessions.
 
