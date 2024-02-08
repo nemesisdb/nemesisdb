@@ -64,7 +64,9 @@ Session Thread:
   - Send response on the same I/O thread that received the command
 - If sync:
   - Call handler on session thread and send response on I/O thread
- 
+
+Commands for sessions that are handled by different session threads can be executed concurrently because they are handled by different threads.
+
 <br/>
 
 ## Build - Linux Only
