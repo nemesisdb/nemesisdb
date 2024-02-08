@@ -26,8 +26,10 @@ The purpose of sessions are:
 
 Rather having a single large map of keys, they are split into sessions.
 
-For example, a system which manages 100K users, each of which requires 100 keys, we'd have 100K sessions, each having 100 keys. Each session represents a user:
+For example, a system which manages 100K users, each of which requires 10 keys:
 
+- We have 100K sessions, each containing 10 keys.
+- Each session represents a user's data
 - Managing expiring sessions is simpler because rather than monitoring 1M keys, only the 100K sessions are managed
 - When accessing session data, only an individual session's map is accessed
 
