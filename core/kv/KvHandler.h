@@ -233,10 +233,10 @@ private:
   }
 
 
-  fc_always_inline PoolId getPoolId (const SessionToken& shtk)
+  fc_always_inline PoolId getPoolId (const SessionToken& tkn)
   {
     PoolId id;
-    m_createSessionPoolId(shtk, id);
+    m_createSessionPoolId(tkn, id);
     return id;
   }
 
@@ -285,7 +285,7 @@ private:
                                         .loop = uWS::Loop::get(),
                                         .contents = std::move(cmd),
                                         .type = queryType,
-                                        .shtk = token});
+                                        .tkn = token});
   } 
 
   
@@ -331,7 +331,7 @@ private:
                                         .contents = std::move(cmd),
                                         .type = queryType,
                                         .syncResponseHandler = onResult,
-                                        .shtk = token});
+                                        .tkn = token});
 
     latch.wait();
     return result;
@@ -395,7 +395,7 @@ private:
                                           .contents = std::move(cmd),
                                           .type = queryType,
                                           .syncResponseHandler = onResult,
-                                          .shtk = tkn});
+                                          .tkn = tkn});
     }
     
     
@@ -999,7 +999,7 @@ private:
                                             .loop = uWS::Loop::get(),
                                             .contents = std::move(cmd),
                                             .type = queryType,
-                                            .shtk = token});
+                                            .tkn = token});
       }
     }
   }

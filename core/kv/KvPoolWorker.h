@@ -93,7 +93,7 @@ private:
     auto set = [this](CacheMap& map, KvCommand& cmd)
     {
       njson rsp;
-      rsp["KV_SET_RSP"]["tkn"] = cmd.shtk;
+      rsp["KV_SET_RSP"]["tkn"] = cmd.tkn;
       rsp["KV_SET_RSP"]["keys"] = doSet(map, cmd.contents);
       send(cmd, rsp.to_string());
     };
@@ -117,7 +117,7 @@ private:
 
       if (!rsp.empty())
       {
-        rsp["KV_SETQ_RSP"]["tkn"] = cmd.shtk;
+        rsp["KV_SETQ_RSP"]["tkn"] = cmd.tkn;
         send(cmd, rsp.to_string());
       }      
     };
@@ -126,7 +126,7 @@ private:
     auto get = [this](CacheMap& map, KvCommand& cmd)
     {
       njson rsp;
-      rsp["KV_GET_RSP"]["tkn"] = cmd.shtk;
+      rsp["KV_GET_RSP"]["tkn"] = cmd.tkn;
 
       for(auto& item : cmd.contents.array_range())
       {
@@ -147,7 +147,7 @@ private:
     auto add = [this](CacheMap& map, KvCommand& cmd)
     {
       njson rsp;
-      rsp["KV_ADD_RSP"]["tkn"] = cmd.shtk;
+      rsp["KV_ADD_RSP"]["tkn"] = cmd.tkn;
 
       if (cmd.contents.empty())
       { 
@@ -181,7 +181,7 @@ private:
 
         if (!rsp.empty())
         {
-          rsp["KV_ADDQ_RSP"]["tkn"] = cmd.shtk;
+          rsp["KV_ADDQ_RSP"]["tkn"] = cmd.tkn;
           send(cmd, rsp.to_string());
         }
       }
@@ -191,7 +191,7 @@ private:
     auto remove = [this](CacheMap& map, KvCommand& cmd)
     {
       njson rsp;
-      rsp["KV_RMV_RSP"]["tkn"] = cmd.shtk;
+      rsp["KV_RMV_RSP"]["tkn"] = cmd.tkn;
 
       for(auto& value : cmd.contents.array_range())
       {
@@ -210,14 +210,14 @@ private:
     auto clear = [this](CacheMap& map, KvCommand& cmd)
     {
       const auto[valid, size] = map.clear();
-      send(cmd, PoolRequestResponse::sessionClear(cmd.shtk, valid, size).to_string());
+      send(cmd, PoolRequestResponse::sessionClear(cmd.tkn, valid, size).to_string());
     };
 
 
     auto clearSet = [this](CacheMap& map, KvCommand& cmd)
     {
       njson rsp;
-      rsp["KV_CLEAR_SET_RSP"]["tkn"] = cmd.shtk;
+      rsp["KV_CLEAR_SET_RSP"]["tkn"] = cmd.tkn;
 
       if (const auto[valid, size] = map.clear(); valid)
       {
@@ -238,7 +238,7 @@ private:
 
     auto count = [this](CacheMap& map, KvCommand& cmd)
     {
-      send(cmd, PoolRequestResponse::sessionCount(cmd.shtk, map.count()).to_string());
+      send(cmd, PoolRequestResponse::sessionCount(cmd.tkn, map.count()).to_string());
     };
 
     
@@ -246,7 +246,7 @@ private:
     {
       njson rsp;
       rsp["KV_CONTAINS_RSP"]["st"] = toUnderlying(RequestStatus::Ok);
-      rsp["KV_CONTAINS_RSP"]["tkn"] = cmd.shtk;
+      rsp["KV_CONTAINS_RSP"]["tkn"] = cmd.tkn;
 
       for (auto& item : cmd.contents.array_range())
       {
@@ -266,7 +266,7 @@ private:
       const bool paths = cmd.contents.at("rsp") == "paths";
 
       njson rsp;
-      rsp["KV_FIND_RSP"]["tkn"] = cmd.shtk;
+      rsp["KV_FIND_RSP"]["tkn"] = cmd.tkn;
 
       njson result = njson::array();
 
@@ -305,7 +305,7 @@ private:
       const auto& path = cmd.contents.at("path").as_string();
 
       njson rsp;
-      rsp["KV_UPDATE_RSP"]["tkn"] = cmd.shtk;
+      rsp["KV_UPDATE_RSP"]["tkn"] = cmd.tkn;
 
       const auto [keyExists, count] = map.update(key, path, std::move(cmd.contents.at("value")));
 
@@ -318,7 +318,7 @@ private:
 
     auto keys = [this](CacheMap& map, KvCommand& cmd)
     {
-      send(cmd, PoolRequestResponse::sessionKeys(cmd.shtk, map.keys()).to_string());
+      send(cmd, PoolRequestResponse::sessionKeys(cmd.tkn, map.keys()).to_string());
     };
 
     
@@ -367,24 +367,24 @@ private:
           const SessionDuration duration {cmd.contents.at("expiry").at("duration").as<SessionDuration::rep>()};
           const bool deleteOnExpire = cmd.contents.at("expiry").at("deleteSession").as_bool();
 
-          if (const auto cache = sessions.start(cmd.shtk, cmd.contents.at("shared") == true, duration, deleteOnExpire); cache)
-            send(cmd, PoolRequestResponse::sessionNew(RequestStatus::Ok, cmd.shtk, cmd.contents.at("name").as_string()).to_string()); 
+          if (const auto cache = sessions.start(cmd.tkn, cmd.contents.at("shared") == true, duration, deleteOnExpire); cache)
+            send(cmd, PoolRequestResponse::sessionNew(RequestStatus::Ok, cmd.tkn, cmd.contents.at("name").as_string()).to_string()); 
           else
-            send(cmd, PoolRequestResponse::sessionNew(RequestStatus::SessionNewFail, cmd.shtk, cmd.contents.at("name").as_string()).to_string()); 
+            send(cmd, PoolRequestResponse::sessionNew(RequestStatus::SessionNewFail, cmd.tkn, cmd.contents.at("name").as_string()).to_string()); 
         }
         else if (cmd.type == KvQueryType::ShEnd)
         {
-          auto status = sessions.end(cmd.shtk) ? RequestStatus::Ok : RequestStatus::SessionNotExist;
-          send(cmd, PoolRequestResponse::sessionEnd(status, cmd.shtk).to_string());
+          auto status = sessions.end(cmd.tkn) ? RequestStatus::Ok : RequestStatus::SessionNotExist;
+          send(cmd, PoolRequestResponse::sessionEnd(status, cmd.tkn).to_string());
         }
         else if (cmd.type == KvQueryType::ShOpen)
         {
-          const auto existsSharedTuple = sessions.openShared(cmd.shtk);
+          const auto existsSharedTuple = sessions.openShared(cmd.tkn);
           cmd.syncResponseHandler(std::any{existsSharedTuple});
         }
         else if (cmd.type == KvQueryType::ShInfo)
         {
-          if (auto session = sessions.get(cmd.shtk); session)
+          if (auto session = sessions.get(cmd.tkn); session)
           {
             const auto& sesh = session->get();
             const auto& expiryInfo = sesh.expireInfo;
@@ -393,11 +393,11 @@ private:
             const auto remaining = sesh.expires ?   std::chrono::duration_cast<std::chrono::seconds>(expiryInfo.time - SessionClock::now()) :
                                                     std::chrono::seconds{0};
 
-            send(cmd, PoolRequestResponse::sessionInfo( RequestStatus::Ok, cmd.shtk, sesh.shared, sesh.expires, 
+            send(cmd, PoolRequestResponse::sessionInfo( RequestStatus::Ok, cmd.tkn, sesh.shared, sesh.expires, 
                                                         expiryInfo.deleteOnExpire, expiryInfo.duration, remaining, keyCount).to_string());
           }
           else
-            send(cmd, PoolRequestResponse::sessionInfo(RequestStatus::SessionNotExist, cmd.shtk).to_string());
+            send(cmd, PoolRequestResponse::sessionInfo(RequestStatus::SessionNotExist, cmd.tkn).to_string());
         }
         else if (cmd.type == KvQueryType::ShInfoAll)
         {
@@ -415,7 +415,7 @@ private:
         }
         else if (cmd.type == KvQueryType::ShExists)
         {
-          auto result = std::make_tuple(cmd.shtk, sessions.contains(cmd.shtk));
+          auto result = std::make_tuple(cmd.tkn, sessions.contains(cmd.tkn));
           cmd.syncResponseHandler(result);
         }
         else if (cmd.type == KvQueryType::InternalSessionMonitor)
@@ -428,7 +428,7 @@ private:
         }
         else  [[likely]]
         {
-          if (auto sesh = sessions.get(cmd.shtk); sesh)
+          if (auto sesh = sessions.get(cmd.tkn); sesh)
           {
             handlers[static_cast<const std::size_t>(cmd.type)](sesh->get().map, cmd);
             
@@ -436,7 +436,7 @@ private:
               sessions.updateExpiry(sesh->get());
           }
           else
-            send(cmd, createErrorResponse(QueryTypeToName.at(cmd.type) + "_RSP", RequestStatus::SessionNotExist, cmd.shtk).to_string());
+            send(cmd, createErrorResponse(QueryTypeToName.at(cmd.type) + "_RSP", RequestStatus::SessionNotExist, cmd.tkn).to_string());
         }
       }
       catch (const boost::fibers::fiber_error& fex)

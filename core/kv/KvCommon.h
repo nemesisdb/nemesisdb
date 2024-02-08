@@ -215,7 +215,7 @@ struct KvCommand
   njson contents;
   KvQueryType type; 
   std::function<void(std::any)> syncResponseHandler; 
-  SessionToken shtk;
+  SessionToken tkn;
 };
 
 
