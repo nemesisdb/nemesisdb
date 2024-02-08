@@ -31,6 +31,8 @@ For example, a system which manages 100K users, each of which requires 100 keys,
 - Managing expiring sessions is simpler because rather than monitoring 1M keys, only the 100K sessions are managed
 - When accessing session data, only an individual session's map is accessed
 
+More info [here](https://docs.nemesisdb.io/tutorials/sessions/what-is-a-session).
+
 <br/>
 
 ## Design
@@ -81,6 +83,57 @@ Session Thread:
 2. `./nemesisdb --config=../../configs/default.json`
     - Server WebSocket listening on `127.0.0.1:1987` (defined in `default.json`)
 3. `ctrl+c` to exit
+
+<br/>
+
+## Commands
+The quickest way to get started is to use software such as [Postman](https://www.postman.com/downloads/) to query the WebSocket
+
+The [first steps](https://docs.nemesisdb.io/tutorials/first-steps/setup) guide is a good place to start.
+
+### Session Info
+```json
+{
+  "SH_INFO_ALL":{}
+}
+```
+
+### Create Session
+```json
+{
+  "SH_NEW":
+  {
+    "name":"session1"
+  }
+}
+```
+This returns the session token `tkn`, for example: `448892247316960382` .
+
+### Store String Key
+```json
+{
+  "KV_SET":
+  {
+    "tkn":448892247316960382,
+    "keys":
+    {
+      "user":"bob"
+    }
+  }
+}
+```
+
+### Get Key
+```json
+{
+  "KV_GET":
+  {
+    "tkn":448892247316960382,
+    "keys": ["user"]
+  }
+}
+```
+
 
 <br/>
 
