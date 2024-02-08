@@ -120,7 +120,9 @@ The [first steps](https://docs.nemesisdb.io/tutorials/first-steps/setup) guide i
 ```
 This returns the session token `tkn`, for example: `448892247316960382` .
 
-### Store String Key
+### Store String Keys
+Store keys `username`, `email`, `city` with string values and `age` with a number value:
+
 ```json
 {
   "KV_SET":
@@ -128,34 +130,79 @@ This returns the session token `tkn`, for example: `448892247316960382` .
     "tkn":448892247316960382,
     "keys":
     {
-      "user":"bob"
+      "username":"bob",
+      "email":"bob@email.com",
+      "city":"Paris",
+      "age":45
     }
   }
 }
 ```
 
-### Get Key
+### Store Object Key
+Rather than having separate keys, store the values in a single object with key `profile`:
+
 ```json
 {
-  "KV_GET":
+  "KV_SET":
   {
     "tkn":448892247316960382,
-    "keys": ["user"]
+    "keys":
+    {
+      "profile":
+      {
+        "username":"bob",
+        "email":"bob@email.com",
+        "age":45,
+        "city":"Paris"
+      }
+    }
   }
 }
 ```
 
+### Get Keys
+Get single key for a string:
+```json
+{
+  "KV_GET":  {
+    "tkn":448892247316960382,
+    "keys": ["username"]
+  }
+}
+```
+
+Get multiple keys:
+```json
+{
+  "KV_GET":  {
+    "tkn":448892247316960382,
+    "keys": ["username", "city", "age"]
+  }
+}
+```
+
+Get key with object value:
+```json
+{
+  "KV_GET":  {
+    "tkn":448892247316960382,
+    "keys": ["profile"]
+  }
+}
+```
 
 <br/>
 
 ## Code
-The server is the binary, defined in `server/server.cpp` and the remaining code in `core`. 
+The server is the binary in `server/server.cpp` and the remaining code in `core`.
 
 1. `server.cpp` checks the command line params, the config and then calls `core/Kv/KvServer::run()`
 2. `KvServer::run()` runs the WebSocket server, creating reusable sockets
-3. When a message arrives, the `.message` handler is called, which parses the JSON and if valid, calls `KVHandler::handle()`
+3. When a message arrives, the `.message` handler is called, which parses the JSON. If valid, it calls `KvHandler::handle()`
 4. `KvHandler` validates the command then submits it to a `KvPoolWorker`
-5. The command is initially pushed to the pool worker's channel, it'll then be popped and executed
+5. The session token is used to determine the pool worker responsible for its session data
+6. The command is pushed to pool worker's channel, which pops and executes the command
 
 <br/>
 
