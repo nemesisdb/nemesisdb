@@ -64,11 +64,11 @@ Externals are either GitHub submodules or managed by [vcpkg](https://vcpkg.io/en
 
 Server:
 - uWebsockets : WebSocket server
-- plog : logging
 - jsoncons : json
+- plog : logging
 - Boost Fiber : channels (multiple producer/multiple consumer container)
 - Boost Program Options : argv options
-- ankerl : segmented map
+- ankerl : unordered_dense::segmented map
 - uuid_v4 : create UUIDs with SIMD
 
 Tests:
@@ -84,11 +84,13 @@ Tests:
 <br/>
 
 ## Project Status
+The software is still alpha state with upcoming improvements. 
+
 The code has been open sourced to gain users and contributors:
 
 ### Source
 Code improvemements are always possible and of course bug fixes.
 
 ### Client APIs
-The only client API is the test API in this repo, which is only for testing. Client APIs in friendlier languages are welcome.
+The only client API is the test API in this repo, which is only for testing. Client APIs in more common languages are welcome, particularly JS, C# and Python.
 
