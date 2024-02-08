@@ -142,8 +142,9 @@ The server is the binary, defined in `server/server.cpp` and the remaining code 
 
 1. `server.cpp` checks the command line params, the config and then calls `core/Kv/KvServer::run()`
 2. `KvServer::run()` runs the WebSocket server, creating reusable sockets
-3. When a message arrived, the `.message` handler is called, which parses the JSON and if valid, sends the command to `KVHandler::handle()`
-4. `KvHandler` validates the command then submits it to the `KvPoolWorker` for execution
+3. When a message arrives, the `.message` handler is called, which parses the JSON and if valid, calls `KVHandler::handle()`
+4. `KvHandler` validates the command then submits it to a `KvPoolWorker`
+5. The command is initially pushed to the pool worker's channel, it'll then be popped and executed
 
 <br/>
 
