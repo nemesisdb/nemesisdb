@@ -22,11 +22,11 @@ Examples of sessions:
 The purpose of sessions are:
 - Each session only contains data required for that session, rather than a single large map
 - When accessing (get, set, etc) data, only the data for a particular session is accessed
-- Controlling key expiry is simlified because it is sessions that expire, not individual keys
+- Controlling key expiry is simplified because it is sessions that expire, not individual keys
 
-Rather having a single large map of keys, it would be split into sessions.
+Rather having a single large map of keys, they are split into sessions.
 
-For example, a system which manages 100K users, each of which requires 100 keys, we'd have 100K sessions, each having 100 keys:
+For example, a system which manages 100K users, each of which requires 100 keys, we'd have 100K sessions, each having 100 keys. Each session represents a user:
 
 - Managing expiring sessions is simpler because rather than monitoring 1M keys, only the 100K sessions are managed
 - When accessing session data, only an individual session's map is accessed
