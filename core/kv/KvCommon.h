@@ -12,7 +12,6 @@
 namespace nemesis { namespace core { namespace kv {
 
 
-using kvhaKV_t = std::uint32_t;
 using PoolId = std::size_t;
 
 const uWS::OpCode WsSendOpCode = uWS::OpCode::TEXT;
@@ -210,11 +209,11 @@ struct PoolRequestResponse
 
 struct KvCommand
 {
+  njson contents;
+  std::function<void(std::any)> syncResponseHandler; 
   uWS::WebSocket<false, true, WsSession> * ws;  // to access the websocket and userdata
   uWS::Loop * loop; // TODO can this be moved to WsSession, only set once in .open handler? the uWS event loop, so we can defer() websocket calls on an event loop thread
-  njson contents;
   KvQueryType type; 
-  std::function<void(std::any)> syncResponseHandler; 
   SessionToken tkn;
 };
 
@@ -262,18 +261,18 @@ struct LoadResult
 
 static const std::array<std::function<void(const SessionToken&, PoolId&)>, 2U> SessionIndexers =
 {
-  [](const SessionToken& t, PoolId& id) 
+  [](const SessionToken& tkn, PoolId& id) 
   {
-    id = t % MaxPools;
+    id = tkn % MaxPools;
   },
-  [](const SessionToken& t, PoolId& id)
+  [](const SessionToken& tkn, PoolId& id)
   {
     id = 0U;
   }
 };
 
 
-fc_always_inline SessionToken createSessionToken(const SessionName& name, const bool shared)
+ndb_always_inline SessionToken createSessionToken(const SessionName& name, const bool shared)
 {
   if (shared)
   {
@@ -290,7 +289,7 @@ fc_always_inline SessionToken createSessionToken(const SessionName& name, const 
 }
 
 
-fc_always_inline uuid createUuid ()
+ndb_always_inline uuid createUuid ()
 {
   static UUIDv4::UUIDGenerator<std::mt19937_64> uuidGenerator; 
   
@@ -320,7 +319,7 @@ std::filesystem::path getDefaultDataSetPath(const std::filesystem::path& loadRoo
 
 // TODO this isn't used, but really should be
 /*
-fc_always_inline bool valueTypeValid (const njson& value)
+ndb_always_inline bool valueTypeValid (const njson& value)
 {
   static const std::set<jsoncons::json_type> DisallowedTypes = 
   {

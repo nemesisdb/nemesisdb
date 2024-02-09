@@ -51,7 +51,7 @@ public:
   KvPoolWorker& operator=(KvPoolWorker&&) noexcept = default;
 
 
-  fc_always_inline void execute(KvCommand&& cmd)
+  ndb_always_inline void execute(KvCommand&& cmd)
   {
     m_channel.push(std::move(cmd));
   }
@@ -59,7 +59,7 @@ public:
 
 private:
     
-  fc_always_inline void send (KvCommand& cmd, std::string&& msg)
+  ndb_always_inline void send (KvCommand& cmd, std::string&& msg)
   {
     cmd.loop->defer([cmd, msg = std::move(msg)] () mutable
     {
@@ -642,7 +642,7 @@ private:
 
 public:
 
-  fc_always_inline RequestStatus readSeshFile (Sessions& sessions, const fs::path path, std::size_t& nSessions, std::size_t& nKeys)
+  ndb_always_inline RequestStatus readSeshFile (Sessions& sessions, const fs::path path, std::size_t& nSessions, std::size_t& nKeys)
   {
     RequestStatus status = RequestStatus::LoadComplete;
 
@@ -666,7 +666,7 @@ public:
   };
 
 
-  fc_always_inline RequestStatus loadSession (Sessions& sessions, njson&& seshData, std::size_t& nSessions, std::size_t& nKeys)
+  ndb_always_inline RequestStatus loadSession (Sessions& sessions, njson&& seshData, std::size_t& nSessions, std::size_t& nKeys)
   {
     RequestStatus status = RequestStatus::LoadComplete;
 

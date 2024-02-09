@@ -12,7 +12,7 @@
 #include <jsoncons_ext/jsonpath/jsonpath.hpp>
 #include <plog/Log.h>
 
-#define fc_always_inline inline __attribute__((always_inline))
+#define ndb_always_inline inline __attribute__((always_inline))
 
 #ifndef NDEBUG
   #define NDB_DEBUG
