@@ -45,7 +45,18 @@ The design aims to separate I/O and session data threads:
 
 Each thread is assigned to a core.
 
-The session threads receive commands via a boost::fiber channel and execute the command. This is a convenient way to serialise the execution of commands: because a session thread fully executes the command before popping the next, we don't need to worry about the usual multithreaded issues.
+With 4 cores, 3 are assigned to I/O and 1 for session data:
+
+![4 cores](https://20aac7f3a5b7ba27bcb45d6ccf5d4c71.cdn.bubble.io/f1707487526533x999369528600104800/nemesis_cores_4.png?_gl=1*b29xz5*_gcl_au*MTc4NTg0NDIyMy4xNzA3NDIwNzA2*_ga*MTcwMTY5ODQzNC4xNjk3NTQyODkw*_ga_BFPVR2DEE2*MTcwNzQ4Njc4MS4yNC4xLjE3MDc0ODc2MDIuNjAuMC4w)
+
+<br/>
+
+With 6 cores, 4 are assigned to I/O and 2 for session data:
+
+![6 cores](https://20aac7f3a5b7ba27bcb45d6ccf5d4c71.cdn.bubble.io/f1707487522110x648951654930151300/nemesis_cores_6.png?_gl=1*j7jxla*_gcl_au*MTc4NTg0NDIyMy4xNzA3NDIwNzA2*_ga*MTcwMTY5ODQzNC4xNjk3NTQyODkw*_ga_BFPVR2DEE2*MTcwNzQ4Njc4MS4yNC4xLjE3MDc0ODc2MDIuNjAuMC4w)
+
+
+If there are multiple session data threads, the data is distributed over the threads, all of which are independent (i.e. no data is shared between the session data threads). 
 
 Command execution sequence:
 
