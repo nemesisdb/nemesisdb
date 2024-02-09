@@ -263,11 +263,13 @@ public:
 
     std::tuple<bool, std::size_t> init(const njson& config)
     {
+      // TODO only 1,2,4 and 8 cores has been informally tested
       static const std::map<std::size_t, std::size_t> CoresToIoThreads =
       {
         {1, 1},
         {2, 1},
         {4, 3},
+        {6, 4},
         {8, 6},
         {10, 8},
         {12, 10},
