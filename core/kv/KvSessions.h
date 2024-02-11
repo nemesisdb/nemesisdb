@@ -95,13 +95,27 @@ public:
 
   bool end (const SessionToken& token)
   {
-    if (auto sesh = m_sessions.find(token); sesh != m_sessions.end())
+    bool ended = false;
+    if (const auto sesh = m_sessions.find(token); sesh != m_sessions.end())
     {
-      m_expiry.erase(sesh->second.expireInfo.time);
-      return m_sessions.erase(token) != 0U;
-    }
+      if (sesh->second.expires)
+      {
+        // m_expiry (multimap) uses expiry time as key so there may be several session with same expiry time
+        if (const auto it = m_expiry.equal_range(sesh->second.expireInfo.time); it.first != m_expiry.end())
+        {
+          const auto itSeshEntry = std::find_if(it.first, it.second, [&token](const auto pair) {return pair.second.token == token;});
+          if (itSeshEntry != it.second)
+          {
+            m_expiry.erase(itSeshEntry);
+            ended = true;
+          }
+        }
+      }
 
-    return false;
+      m_sessions.erase(sesh);
+    }
+    
+    return ended;
   }
 
   
@@ -161,11 +175,14 @@ public:
 
     if (itExpired != m_expiry.end() || (itExpired == m_expiry.end() && !m_expiry.empty()))
     {
-      for (auto it = m_expiry.cbegin() ; it != itExpired; ++it)
+      for (auto it = m_expiry.cbegin() ; it != itExpired; )
       {
         if (it->second.deleteOnExpire)
-          m_sessions.erase(it->second.token); // TODO shouldn't this erase from m_expiry?
-        else if (m_sessions.contains(it->second.token)) // should alwys be true because end() removes the entry, but sanity check
+        {
+          m_sessions.erase(it->second.token);
+          it = m_expiry.erase(it);
+        }
+        else if (m_sessions.contains(it->second.token)) // should always be true because end() removes the entry, but sanity check
         {
           // session expired but not deleted, so clear data and reset expiry
           auto& expireInfo = it->second;
@@ -182,6 +199,8 @@ public:
 
           session.map.clear();
           session.expireInfo.time = expireTime;
+
+          ++it;
         }
       }
     }
