@@ -243,26 +243,17 @@ private:
 
   bool getSessionToken(KvWebSocket * ws, const std::string_view queryRspName, njson& cmd, SessionToken& tkn)
   {
-    bool valid = false;
-    if (cmd.contains("tkn") && cmd.at("tkn").is_uint64())
+    if (cmd.contains("tkn") && cmd.at("tkn").is<SessionToken>())
     {
       tkn = cmd.at("tkn").as<SessionToken>();
-      cmd.erase("tkn");
-      valid = true;
-      // if (const auto& value = cmd.at("tkn").as_string(); value.empty())
-      //   send(ws, createErrorResponse(queryRspName, RequestStatus::SessionTokenInvalid).to_string());
-      // else
-      // {
-      //   //t = std::move(cmd.at("tkn").as_string());
-      //   t = cmd.at("tkn").as<SessionToken>();
-      //   cmd.erase("tkn");
-      //   valid = true;
-      // }
+      cmd.erase("tkn"); // erase tkn to simplify validating command
+      return true;
     }
     else
+    {
       send(ws, createErrorResponse(queryRspName, RequestStatus::SessionTokenInvalid).to_string());
-
-    return valid;
+      return false;
+    }
   }
 
 
@@ -270,6 +261,7 @@ private:
   {
     ws->send(msg, WsSendOpCode);
   }
+
 
   // Submit asynchronously with just token
   ndb_always_inline void submit(KvWebSocket * ws, const SessionToken& token, const KvQueryType queryType, const std::string_view command, const std::string_view rspName, njson&& cmd = "")
@@ -650,15 +642,15 @@ private:
           if (haveTkns)
             saveCmd["tkns"] = std::move(cmd.at("tkns"));
 
-          auto results = submitSync(ws, queryType, queryName, queryRspName, std::move(saveCmd));
+          const auto results = submitSync(ws, queryType, queryName, queryRspName, std::move(saveCmd));
 
           RequestStatus st = RequestStatus::Ok;
 
-          for (auto& result : results)
+          for (const auto& result : results)
             st = (std::any_cast<RequestStatus>(result) == RequestStatus::SaveComplete ? RequestStatus::SaveComplete : RequestStatus::SaveError);
           
-          auto end = KvSaveClock::now();
-
+          const auto end = KvSaveClock::now();
+          
           // update metdata
           metadata["status"] = toUnderlying(KvSaveStatus::Complete);
           metadata["complete"] = std::chrono::time_point_cast<KvSaveMetaDataUnit>(end).time_since_epoch().count();

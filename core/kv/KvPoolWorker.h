@@ -618,7 +618,7 @@ private:
           fs::path dir {dataDir.as_string_view()};
           for (const auto seshFile : fs::directory_iterator{dir})
           {
-            auto status = readSeshFile(sessions, seshFile.path(), result.nSessions, result.nKeys);
+            const auto status = readSeshFile(sessions, seshFile.path(), result.nSessions, result.nKeys);
             updateStatus(status);
           }
         }
@@ -626,7 +626,7 @@ private:
       else
       {
         // load an individual session
-        auto status = loadSession(sessions, std::move(cmd.contents.at("sesh")), result.nSessions, result.nKeys);
+        const auto status = loadSession(sessions, std::move(cmd.contents.at("sesh")), result.nSessions, result.nKeys);
         updateStatus(status);
       }      
     }

@@ -1,7 +1,7 @@
 FROM alpine:3.18.4 AS prepare
 
 
-# packages for building fusion and vcpkg (pkgconfig for nlohmann-json)
+# dependencies and vcpkg (pkgconfig for nlohmann-json)
 RUN apk --no-cache add libgcc libstdc++ g++ linux-headers openssh pkgconfig git build-base bash cmake ninja zip unzip curl 
 
 # force vcpkg to use ninja, cmake, curl we just installed (cmake fails otherwise)
@@ -26,12 +26,14 @@ RUN ./bootstrap-vcpkg.sh
 RUN ./vcpkg install boost-fiber[numa] boost-program-options uwebsockets plog --clean-after-build
 
 
-# prepare: 
+
+# preparing source
 FROM prepare AS build
 
 WORKDIR /build
 COPY server ./server/
 COPY core ./core/
+
 
 
 # configure

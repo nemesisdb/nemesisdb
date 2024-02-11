@@ -125,7 +125,6 @@ public:
           .maxBackpressure = 24 * 1024 * 1024,
           // handlers
           .upgrade = nullptr,
-          
           .open = [this](KvWebSocket * ws)
           {
             std::scoped_lock lck{m_wsClientsMux};
@@ -245,7 +244,7 @@ public:
             m_kvHandler->monitor();
             nextCheck = std::chrono::steady_clock::now() + period;
           }
-        }        
+        }
       }});
       #endif
     }
