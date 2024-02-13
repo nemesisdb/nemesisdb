@@ -702,7 +702,7 @@ public:
 
 private:
   PoolId m_poolId;
-  std::atomic_bool m_run; // TODO this doesn't need to be atomic, stop() just closes channel?
+  std::atomic_bool m_run; // atomic because destructor called from main thread
   std::jthread m_thread;
   boost::fibers::buffered_channel<KvCommand> m_channel;  
 };
