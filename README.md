@@ -37,6 +37,17 @@ More info [here](https://docs.nemesisdb.io/tutorials/sessions/what-is-a-session)
 
 <br/>
 
+## Install
+NemesisDB is available as Debian package or Docker image:
+
+- Package:  [Releases](https://github.com/nemesisdb/nemesisdb/releases) 
+- Docker: [Docker Hub](https://hub.docker.com/r/nemesisdb/nemesisdb/tags)
+
+You can also build from source, instructions below.
+
+
+<br/>
+
 ## Design
 The design aims to separate I/O and session data threads:
 
