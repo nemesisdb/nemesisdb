@@ -232,7 +232,9 @@ public:
 
 private:
   SessionsMap m_sessions;
-  std::multimap<SessionExpireTime, ExpiryTracking> m_expiry; // TODO consider priority queue
+  std::multimap<SessionExpireTime, ExpiryTracking> m_expiry;
+  // using priority_queue introduces complexities for updateExpiry() because it is not simple to update the priority_queue from the Session.
+  // more work needed, put aside for now 
 };
 
 
