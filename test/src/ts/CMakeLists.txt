@@ -12,7 +12,7 @@ link_directories("../../vcpkg/installed/x64-linux/lib")
 
 # NOTE there are some #define in TestCommon.h
 
-set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/../bin/)
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/../../bin/)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DNDB_UNIT_TEST -march=native") 
 
 

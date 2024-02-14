@@ -5,7 +5,7 @@
   {
     "ip":"0.0.0.0",
     "port":1987,
-    "maxPayload":4096,
+    "maxPayload":1024,
     "session":
     {
       "save":
