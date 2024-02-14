@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.20)
-project(fusion VERSION 0.1.0 LANGUAGES CXX)
+project(nemesisdb VERSION 0.1.0 LANGUAGES CXX)
 
 include_directories("../../")
 include_directories("../../../")
@@ -34,7 +34,6 @@ add_executable(test_keys Keys.cpp)
 add_executable(test_save Save.cpp)
 add_executable(test_load Load.cpp)
 add_executable(test_clearset ClearSet.cpp)
-
 
 target_compile_features(test_set PUBLIC cxx_std_20)
 target_compile_features(test_setq PUBLIC cxx_std_20)
@@ -75,6 +74,8 @@ target_link_libraries(test_save -luSockets -lz -lboost_fiber -lboost_program_opt
 target_link_libraries(test_load -luSockets -lz -lboost_fiber -lboost_program_options -lboost_context -lgtest)
 target_link_libraries(test_clearset -luSockets -lz -lboost_fiber -lboost_program_options -lboost_context -lgtest)
 
+
+add_subdirectory(ts)
 
 set(CMAKE_GENERATOR_PLATFORM x64)
 set(CPACK_PROJECT_NAME ${PROJECT_NAME})

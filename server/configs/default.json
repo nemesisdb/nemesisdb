@@ -1,17 +1,18 @@
 {
   "version":1,
+  "mode":"kv",
   "kv":
   {
     "ip":"127.0.0.1",
     "port":1987,
-    "maxPayload":1024
-  },
-  "session":
-  {
-    "save":
+    "maxPayload":1024,
+    "session":
     {
-      "enabled":false,
-      "path":"./data"
+      "save":
+      {
+        "enabled":false,
+        "path":"./data"
+      }
     }
-  }
+  }  
 }

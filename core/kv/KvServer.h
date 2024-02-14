@@ -287,7 +287,7 @@ public:
         // test we can write to the kv save path
         if (std::filesystem::path path {NemesisConfig::kvSavePath(config)}; !std::filesystem::exists(path) || !std::filesystem::is_directory(path))
         {
-          PLOGF << "session::save::path is not a directory or does not exist";
+          PLOGF << "kv:session::save::path is not a directory or does not exist";
           return {false, 0};
         }
         else
@@ -298,7 +298,7 @@ public:
 
           if (std::ofstream out{fullPath}; !out.good())
           {
-            PLOGF << "Cannot write to session::save::path";
+            PLOGF << "Cannot write to kv:session::save::path";
             return {false, 0};
           }
           else

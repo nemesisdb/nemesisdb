@@ -10,7 +10,9 @@
 #include <uuid_v4/uuid_v4.h>
 #include <jsoncons/json.hpp>
 #include <jsoncons_ext/jsonpath/jsonpath.hpp>
+#include <plog/Init.h>
 #include <plog/Log.h>
+#include <plog/Appenders/ColorConsoleAppender.h>
 
 #define ndb_always_inline inline __attribute__((always_inline))
 
@@ -23,6 +25,7 @@
 namespace nemesis { namespace core {
 
 namespace fs = std::filesystem;
+namespace chrono = std::chrono;
 
 
 static const char * NEMESIS_VERSION = "0.3.11";
@@ -33,27 +36,30 @@ static const std::size_t NEMESIS_KV_MINPAYLOAD = 64U;
 static const std::size_t NEMESIS_KV_MAXPAYLOAD = 2U * 1024U * 1024U;
 
 
+enum class ServerMode { None, KV, TS };
+
+
 // general
 using njson = jsoncons::ojson;
 using uuid = std::string;
-using NemesisClock = std::chrono::steady_clock;
+using NemesisClock = chrono::steady_clock;
 using NemesisTimePoint = NemesisClock::time_point;
 
 // kv
 using cachedkey = std::string;
 using cachedvalue2 = njson;
 using cachedpair2 = njson;
-using KvSaveClock = std::chrono::system_clock;
-using KvSaveMetaDataUnit = std::chrono::milliseconds;
+using KvSaveClock = chrono::system_clock;
+using KvSaveMetaDataUnit = chrono::milliseconds;
 
 // session
 using PoolId = std::size_t;
 using SessionToken = std::uint64_t;
 using SessionName = std::string;
-using SessionClock = std::chrono::steady_clock;
+using SessionClock = chrono::steady_clock;
 using SessionExpireTime = SessionClock::time_point;
-using SessionDuration = std::chrono::seconds;
-using SessionExpireTimePoint = std::chrono::time_point<SessionClock, std::chrono::seconds>;
+using SessionDuration = chrono::seconds;
+using SessionExpireTimePoint = chrono::time_point<SessionClock, std::chrono::seconds>;
 
 
 struct WsSession
@@ -128,6 +134,17 @@ enum class KvSaveStatus
   Complete,
   Error
 };
+
+
+template<class Formatter>
+static inline void initLogger (plog::ConsoleAppender<Formatter>& appender)
+{
+  #ifdef NDB_DEBUG
+    plog::init(plog::verbose, &appender);
+  #else
+    plog::init(plog::info, &appender);    
+  #endif
+}
 
 
 static inline bool setThreadAffinity(const std::thread::native_handle_type handle, const size_t core)
