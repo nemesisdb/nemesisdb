@@ -25,7 +25,7 @@ namespace nemesis { namespace core {
 namespace fs = std::filesystem;
 
 
-static const char * NEMESIS_VERSION = "0.3.10";
+static const char * NEMESIS_VERSION = "0.3.11";
 static const std::size_t NEMESIS_CONFIG_VERSION = 1U;
 static const std::size_t NEMESIS_MAX_CORES = 4U;
 
