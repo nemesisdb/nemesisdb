@@ -1,5 +1,5 @@
-#ifndef NDB_CORE_TSSERIES_H
-#define NDB_CORE_TSSERIES_H
+#ifndef NDB_CORE_TSORDEREDSERIES_H
+#define NDB_CORE_TSORDEREDSERIES_H
 
 #include <vector>
 #include <core/ts/TsCommon.h>
@@ -15,9 +15,9 @@ using namespace jsoncons::literals;
 /// Represents a time series that is always gauranteed to be ordered by the sender. 
 /// Uses parallel vectors to hold time and value data:
 ///   An event occurring at m_times[i] has metrics in m_values[i].
-class OrderedSeries
+class OrderedSeries : public BasicSeries
 {
-  using TimeVector = std::vector<SeriesDuration>;
+  using TimeVector = std::vector<SeriesTime>;
   using ValueVector = std::vector<SeriesValue>;
   using TimeVectorConstIt = TimeVector::const_iterator;
 
@@ -26,6 +26,8 @@ class OrderedSeries
   {
 
   }
+
+  
 
   void init ()
   {
@@ -38,6 +40,10 @@ class OrderedSeries
 
 public:
   
+  OrderedSeries(const OrderedSeries&) = default;
+  OrderedSeries(OrderedSeries&&) = default;
+
+
   static OrderedSeries create(const SeriesName& name)
   {
     OrderedSeries os{name};
@@ -46,22 +52,28 @@ public:
   }
   
 
-
-  void add (const SeriesDuration td, const SeriesValue value)
+  void add (const SeriesTime td, const SeriesValue value) override
   {
     m_times.push_back(td);
     m_values.push_back(std::move(value));
   }
 
 
-  njson get (const GetParams& params)
+  void add (const njson& times, njson&& values) override
+  {
+    const auto& timesVec = times.as<std::vector<SeriesTime>>();
+    const auto& valuesVec = values.as<std::vector<SeriesValue>>();
+
+    m_times.insert(m_times.cend(), timesVec.cbegin(), timesVec.cend());
+    m_values.insert(m_values.cend(), std::make_move_iterator(valuesVec.begin()), std::make_move_iterator(valuesVec.end()));
+  }
+
+
+  njson get (const GetParams& params) override
   {
     // if start not set, start is begin(), otherwise find start
-    const auto itStart = params.start == SeriesDuration::zero() ? m_times.cbegin()
-                                                                : std::lower_bound(m_times.cbegin(), m_times.cend(), params.start) ;
-
-    const auto itEnd = params.end == SeriesDuration::zero() ? m_times.cend()
-                                                            : std::upper_bound(itStart, m_times.cend(), params.end);
+    const auto itStart = params.start == 0 ? m_times.cbegin() : std::lower_bound(m_times.cbegin(), m_times.cend(), params.start) ;
+    const auto itEnd = params.end == 0 ? m_times.cend() : std::upper_bound(itStart, m_times.cend(), params.end);
 
     if (itStart == m_times.cend())
     {
@@ -70,10 +82,8 @@ public:
     }
     else  [[likely]]
     {
-      PLOGD << "Get from " << itStart->count() << " to " << (itEnd == m_times.cend() ? "end" : std::to_string(itEnd->count()));
-      
-      auto rsp = getData(itStart, itEnd);
-      return rsp;
+      PLOGD << "Get from " << *itStart << " to " << (itEnd == m_times.cend() ? "end" : std::to_string(*itEnd));
+      return getData(itStart, itEnd);
     }
   }
 
@@ -96,7 +106,7 @@ private:
 
     for (auto source = start; source < last ; ++source)
     {
-      rsp["t"].push_back(m_times[source].count());
+      rsp["t"].push_back(m_times[source]);
       rsp["v"].emplace_back(m_values[source]);
     }
 

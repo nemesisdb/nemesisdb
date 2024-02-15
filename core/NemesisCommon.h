@@ -156,7 +156,7 @@ static inline bool setThreadAffinity(const std::thread::native_handle_type handl
 }
 
 
-static njson createErrorResponse (const std::string_view commandRsp, const RequestStatus status, const std::string_view msg = "")
+static inline njson createErrorResponse (const std::string_view commandRsp, const RequestStatus status, const std::string_view msg = "")
 {
   njson rsp;
   rsp[commandRsp]["st"] = static_cast<int>(status);
@@ -166,7 +166,7 @@ static njson createErrorResponse (const std::string_view commandRsp, const Reque
 }
 
 
-static njson createErrorResponse (const std::string_view commandRsp, const RequestStatus status, const SessionToken tkn)
+static inline njson createErrorResponse (const std::string_view commandRsp, const RequestStatus status, const SessionToken tkn)
 {
   njson rsp;
   rsp[commandRsp]["st"] = static_cast<int>(status);
@@ -176,7 +176,7 @@ static njson createErrorResponse (const std::string_view commandRsp, const Reque
 }
 
 
-static njson createErrorResponseNoTkn (const std::string_view commandRsp, const RequestStatus status, const std::string_view msg = "")
+static inline njson createErrorResponseNoTkn (const std::string_view commandRsp, const RequestStatus status, const std::string_view msg = "")
 {
   njson rsp;
   rsp[commandRsp]["st"] = static_cast<int>(status);
@@ -186,7 +186,7 @@ static njson createErrorResponseNoTkn (const std::string_view commandRsp, const 
 
 
 // Response is the original command is unknown (i.e. JSON parse error).
-static njson createErrorResponse (const RequestStatus status, const std::string_view msg = "")
+static inline njson createErrorResponse (const RequestStatus status, const std::string_view msg = "")
 {
   njson rsp;
   rsp["ERR"]["st"] = static_cast<int>(status);
