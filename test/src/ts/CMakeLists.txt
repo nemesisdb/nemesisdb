@@ -18,14 +18,17 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DNDB_UNIT_TEST -march=native")
 
 add_executable(test_orderedseries OrderedSeries.cpp)
 add_executable(test_series Series.cpp)
+add_executable(test_filter Filter.cpp)
 
 
 target_compile_features(test_orderedseries PUBLIC cxx_std_20)
 target_compile_features(test_series PUBLIC cxx_std_20)
+target_compile_features(test_filter PUBLIC cxx_std_20)
 
 
 target_link_libraries(test_orderedseries -luSockets -lz -lboost_fiber -lboost_program_options -lboost_context -lgtest)
 target_link_libraries(test_series -luSockets -lz -lboost_fiber -lboost_program_options -lboost_context -lgtest)
+target_link_libraries(test_filter -luSockets -lz -lboost_fiber -lboost_program_options -lboost_context -lgtest)
 
 
 set(CMAKE_GENERATOR_PLATFORM x64)

@@ -26,13 +26,10 @@ class Series
 { 
 
 public:
-  Series () 
-  {
-
-  } 
+  Series () = default;
 
   
-  QueryResult create (const std::string& name)
+  QueryResult create (const SeriesName& name, const std::string& cmdRspName)
   {
     if (hasSeries(name))
       return TsRequestStatus::SeriesExists;
@@ -50,22 +47,22 @@ public:
   }
 
 
-  QueryResult add (njson query)
+  QueryResult add (njson query, const std::string& cmdRspName)
   {
     QueryResult qr{TsRequestStatus::Ok};
 
     const auto& name = query["ts"].as<SeriesName>();
 
     if (!hasSeries(name))
-      qr.rsp = SeriesNotExistRsp;
+      qr.rsp[cmdRspName] = SeriesNotExistRsp;
     else
     {
       try
       {
         m_series.at(name)->add(query.at("t"), std::move(query.at("v"))); 
         
-        qr.rsp["TS_ADD_RSP"]["st"]  = toUnderlying(TsRequestStatus::Ok);
-        qr.rsp["TS_ADD_RSP"]["ts"] = name;
+        qr.rsp[cmdRspName]["st"] = toUnderlying(TsRequestStatus::Ok);
+        qr.rsp[cmdRspName]["ts"] = name;
       }
       catch(const std::exception& ex)
       {
@@ -78,20 +75,20 @@ public:
   }
 
 
-  QueryResult get (const njson& query) const
+  QueryResult get (const njson& query, const std::string& cmdRspName) const
   {
     const auto& seriesNames = query["ts"].as<std::vector<SeriesName>>();
 
     QueryResult result {TsRequestStatus::Ok}; // TODO doesn't make sense for a query with multiple parts (multiple series)
 
     for (const auto& name : seriesNames)
-      result.rsp[name] = getSingle(name, makeGetParams(query));
+      result.rsp[cmdRspName][name] = getSingle(name, makeGetParams(query), cmdRspName);
 
     return result;
   }
 
 
-  QueryResult getMultipleRanges (const njson& query) const
+  QueryResult getMultipleRanges (const njson& query, const std::string& cmdRspName) const
   {
     QueryResult result {TsRequestStatus::Ok}; // doesn't make sense for a query with multiple series
 
@@ -99,7 +96,7 @@ public:
     for (const auto& series : query.object_range())
     {
       const auto& name = series.key();
-      result.rsp[name] = getSingle(name, makeGetParams(series.value()));
+      result.rsp[cmdRspName][name] = getSingle(name, makeGetParams(series.value()), cmdRspName);
     }
 
     return result;
@@ -120,7 +117,7 @@ private:
 
     if (const auto rngSize = conditions["rng"].size() ; rngSize)
     {
-      // rng[0] always start
+      // rng[0] is always start
       params.setStart(conditions["rng"][0].as<SeriesTime>());
 
       if (rngSize == 2U)
@@ -131,7 +128,7 @@ private:
   }
 
 
-  njson getSingle(const SeriesName& name, const GetParams& params) const
+  njson getSingle(const SeriesName& name, const GetParams& params, const std::string& cmdRspName) const
   {
     if (!hasSeries(name))
       return SeriesNotExistRsp;
