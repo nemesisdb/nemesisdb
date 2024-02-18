@@ -12,11 +12,10 @@ namespace nemesis { namespace core { namespace ts {
 
 
 using SeriesName = std::string;
-using SeriesClock = chrono::steady_clock;
-//using SeriesDuration = chrono::milliseconds;
-//using SeriesTimePoint = chrono::time_point<SeriesClock, SeriesDuration>;
-using SeriesTime = chrono::milliseconds::rep;
+using SeriesTime = std::int64_t;
 using SeriesValue = njson;
+using WhereType = std::string;
+using WhereViewType = std::string_view;
 
 
 enum class TsRequestStatus
@@ -65,9 +64,65 @@ struct QueryResult
 
 struct GetParams
 {
+  GetParams (const std::string where = "") : where(where)
+  {
+  }
+
+  bool isStartSet () const
+  {
+    return startSet;
+  }
+
+  bool isEndSet () const
+  {
+    return endSet;
+  }
+
+  void setStart (const SeriesTime s)
+  {
+    start = s;
+    startSet = true;
+  }
+
+  void setEnd (const SeriesTime e)
+  {
+    end = e;
+    endSet = true;
+  }
+
+
+  bool isFullRange () const
+  {
+    return !(isStartSet() && isEndSet());
+  }
+  
+
+  SeriesTime getStart() const
+  {
+    return start;
+  }
+  
+  SeriesTime getEnd() const
+  {
+    return end;
+  }
+
+  WhereType getWhere() const
+  {
+    return where;
+  }
+
+  bool hasWhere() const
+  {
+    return !where.empty();
+  }
+
+private:
+  bool startSet{false};
+  bool endSet{false};
   SeriesTime start{0};
   SeriesTime end{0};
-  std::string where;
+  WhereType where;
 };
 
 

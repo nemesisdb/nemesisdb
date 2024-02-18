@@ -73,9 +73,9 @@ public:
 
   njson get (const GetParams& params) const override
   {
-    auto [itStart, itEnd] = applyRange(params);
+    const auto [itStart, itEnd] = applyRange(params);
 
-    if (params.where.empty())
+    if (!params.hasWhere())
     {
       if (itStart == m_times.cend())
       {
@@ -90,8 +90,8 @@ public:
     }
     else
     {
-      PLOGD << "Applying filter: " << params.where;
-      return applyFilter(params.where, itStart, itEnd);
+      PLOGD << "Applying filter: " << params.getWhere();
+      return applyFilter(params.getWhere(), itStart, itEnd);
     }
   }
 
@@ -102,13 +102,13 @@ private:
   std::tuple<TimeVectorConstIt, TimeVectorConstIt> applyRange (const GetParams& params) const
   {
     // if start not set, start is begin(), otherwise find start
-    const auto itStart = params.start == 0 ? m_times.cbegin() : std::lower_bound(m_times.cbegin(), m_times.cend(), params.start) ;
-    const auto itEnd = params.end == 0 ? m_times.cend() : std::upper_bound(itStart, m_times.cend(), params.end);
+    const auto itStart = params.isStartSet() ? std::lower_bound(m_times.cbegin(), m_times.cend(), params.getStart()) : m_times.cbegin();
+    const auto itEnd = params.isEndSet() ? std::upper_bound(itStart, m_times.cend(), params.getEnd()) : m_times.cend();
     return {itStart, itEnd};
   }
 
 
-  njson applyFilter (const std::string_view& condition, const TimeVectorConstIt itStart, const TimeVectorConstIt itEnd) const
+  njson applyFilter (const WhereViewType& condition, const TimeVectorConstIt itStart, const TimeVectorConstIt itEnd) const
   {
     const auto end = std::distance(m_times.cbegin(), itEnd);
 
@@ -140,8 +140,9 @@ private:
 
     for (auto source = start; source < last ; ++source)
     {
-      rsp["t"].push_back(m_times[source]);
-      rsp["v"].emplace_back(m_values[source]);
+      getData(source, rsp["t"], rsp["v"]);
+      //rsp["t"].push_back(m_times[source]);
+      //rsp["v"].emplace_back(m_values[source]);
     }
 
     return rsp;

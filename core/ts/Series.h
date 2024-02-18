@@ -34,7 +34,7 @@ public:
   
   QueryResult create (const std::string& name)
   {
-    if (containsSeries(name))
+    if (hasSeries(name))
       return TsRequestStatus::SeriesExists;
     else
     {
@@ -56,17 +56,22 @@ public:
 
     const auto& name = query["ts"].as<SeriesName>();
 
-    try
+    if (!hasSeries(name))
+      qr.rsp = SeriesNotExistRsp;
+    else
     {
-      m_series.at(name)->add(query.at("t"), std::move(query.at("v"))); 
-      
-      qr.rsp["TS_ADD_RSP"]["st"]  = toUnderlying(TsRequestStatus::Ok);
-      qr.rsp["TS_ADD_RSP"]["ts"] = name;
-    }
-    catch(const std::exception& ex)
-    {
-      PLOGE << ex.what();
-      qr.status = TsRequestStatus::UnknownError;
+      try
+      {
+        m_series.at(name)->add(query.at("t"), std::move(query.at("v"))); 
+        
+        qr.rsp["TS_ADD_RSP"]["st"]  = toUnderlying(TsRequestStatus::Ok);
+        qr.rsp["TS_ADD_RSP"]["ts"] = name;
+      }
+      catch(const std::exception& ex)
+      {
+        PLOGE << ex.what();
+        qr.status = TsRequestStatus::UnknownError;
+      }
     }
     
     return qr;
@@ -75,15 +80,12 @@ public:
 
   QueryResult get (const njson& query) const
   {
-    const auto& names = query["ts"].as<std::vector<SeriesName>>();
-    const auto where = query.get_value_or<std::string>("where", "");
-    const auto start = query["rng"][0].as<SeriesTime>();
-    const auto end = query["rng"].size() == 2U ? query["rng"][1].as<SeriesTime>() : 0U;
+    const auto& seriesNames = query["ts"].as<std::vector<SeriesName>>();
 
     QueryResult result {TsRequestStatus::Ok}; // TODO doesn't make sense for a query with multiple parts (multiple series)
 
-    for (const auto& name : names)
-      result.rsp[name] = getSingle(name, GetParams{.start = start, .end = end, .where = where});
+    for (const auto& name : seriesNames)
+      result.rsp[name] = getSingle(name, makeGetParams(query));
 
     return result;
   }
@@ -94,20 +96,17 @@ public:
     QueryResult result {TsRequestStatus::Ok}; // doesn't make sense for a query with multiple series
 
     // each key is a series name
-    for (const auto& member : query.object_range())
+    for (const auto& series : query.object_range())
     {
-      const auto& name = member.key();
-      const auto start = member.value()["rng"][0].as<SeriesTime>();
-      const auto end = member.value()["rng"].size() == 2U ? member.value()["rng"][1].as<SeriesTime>() : 0U;
-
-      result.rsp[member.key()] = getSingle(name, GetParams{.start = start, .end = end});
+      const auto& name = series.key();
+      result.rsp[name] = getSingle(name, makeGetParams(series.value()));
     }
 
     return result;
   }
 
 
-  bool containsSeries (const SeriesName& name) const
+  bool hasSeries (const SeriesName& name) const
   {
     return m_series.contains(name);
   }
@@ -115,9 +114,26 @@ public:
 
 private:
 
+  GetParams makeGetParams (const njson& conditions) const
+  {
+    GetParams params{conditions.get_value_or<std::string>("where", "")};
+
+    if (const auto rngSize = conditions["rng"].size() ; rngSize)
+    {
+      // rng[0] always start
+      params.setStart(conditions["rng"][0].as<SeriesTime>());
+
+      if (rngSize == 2U)
+        params.setEnd(conditions["rng"][1].as<SeriesTime>());
+    }
+    
+    return params;
+  }
+
+
   njson getSingle(const SeriesName& name, const GetParams& params) const
   {
-    if (!containsSeries(name))
+    if (!hasSeries(name))
       return SeriesNotExistRsp;
     else
     {
