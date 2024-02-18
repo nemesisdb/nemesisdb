@@ -29,7 +29,6 @@ class OrderedSeries : public BasicSeries
 
   }
 
-  
 
   void init ()
   {
@@ -75,23 +74,20 @@ public:
   {
     const auto [itStart, itEnd] = applyRange(params);
 
-    if (!params.hasWhere())
+    if (itStart == m_times.cend())
     {
-      if (itStart == m_times.cend())
-      {
-        PLOGD << "No data";
-        return njson (json_object_arg, {{"t", json_array_arg_t{}}, {"v", json_array_arg_t{}}});
-      }
-      else  [[likely]]
-      {
-        PLOGD << "Get from " << *itStart << " to " << (itEnd == m_times.cend() ? "end" : std::to_string(*itEnd));
-        return getData(itStart, itEnd);
-      }
+      PLOGD << "No data";
+      return njson (json_object_arg, {{"t", json_array_arg_t{}}, {"v", json_array_arg_t{}}});
     }
-    else
+    else if (params.hasWhere())
     {
       PLOGD << "Applying filter: " << params.getWhere();
       return applyFilter(params.getWhere(), itStart, itEnd);
+    }
+    else
+    {
+      PLOGD << "Get from " << *itStart << " to " << (itEnd == m_times.cend() ? "end" : std::to_string(*itEnd));
+      return getData(itStart, itEnd);
     }
   }
 
@@ -123,7 +119,6 @@ private:
     return rsp;
   }
 
-
   
   njson getData (const TimeVectorConstIt itStart, const TimeVectorConstIt itEnd) const 
   {
@@ -139,11 +134,7 @@ private:
     rsp["v"].reserve(size);
 
     for (auto source = start; source < last ; ++source)
-    {
       getData(source, rsp["t"], rsp["v"]);
-      //rsp["t"].push_back(m_times[source]);
-      //rsp["v"].emplace_back(m_values[source]);
-    }
 
     return rsp;
   }

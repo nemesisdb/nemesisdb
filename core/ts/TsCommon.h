@@ -41,7 +41,6 @@ enum class TsCommand
 
 const std::map<const std::string_view, const TsCommand> QueryNameToType = 
 {  
-  // session
   {"TS_CREATE",         TsCommand::TsCreate},
   {"TS_ADD",            TsCommand::TsAdd},
   {"TS_GET",            TsCommand::TsGet},
@@ -132,12 +131,11 @@ using TsWebSocket = uWS::WebSocket<false, true, WsSession>;
 class BasicSeries
 {
 protected:
-  BasicSeries ()
-  {
-
-  }
+  BasicSeries () = default;
 
 public:
+  virtual ~BasicSeries() = default;
+
   virtual void add (const SeriesTime td, const SeriesValue value) = 0;
   virtual void add (const njson& times, njson&& values) = 0;
   

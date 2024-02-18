@@ -1,96 +1,25 @@
 
 #define NDB_NOLOG
 
-#include "../useful/TestCommon.h"
+#include "../useful/TsSeriesTest.h"
 #include <core/ts/OrderedSeries.h>
-#include <core/ts/Series.h>
-#include <core/LogFormatter.h>
 #include <string_view>
 #include <sstream>
 
 
 using namespace nemesis::test;
 using namespace nemesis::core::ts;
-
-static plog::ColorConsoleAppender<NdbFormatter> consoleAppender;
-
-
-class TsSeriesTest  : public ::testing::Test
-{
-public:
-  TsSeriesTest()
-  {
-
-  }
-
-	virtual ~TsSeriesTest() = default;
-
-
-  virtual void SetUp() override
-	{
-    initLogger (consoleAppender);
-	}
-
-
-	void TearDown() override
-	{
-		
-	}
-
-
-protected:
-
-  void addSimpleData(const SeriesName& name, Series& s)
-  {
-    std::stringstream ss;
-    ss << R"(
-              {
-                "TS_ADD":
-                {
-                  "ts":")" << name << R"(",
-                  "t":[1,2,3,5],
-                  "v":["1","2","3","5"]
-                }
-              }
-            )";
-
-
-    njson query = njson::parse(ss.str());
-
-    ASSERT_EQ(s.add(query.at("TS_ADD")).status, TsStatus::Ok);
-  }
-
-
-  void addComplexData(const SeriesName& name, Series& s)
-  {
-    std::stringstream ss;
-    ss << R"(
-              {
-                "TS_ADD":
-                {
-                  "ts":")" << name << R"(",
-                  "t":[10,11,12],
-                  "v":[{"x":"x10", "y":"y10"},{"x":"x11", "y":"y11"},{"x":"x12", "y":"y12"}]
-                }
-              }
-            )";
-
-
-    njson query = njson::parse(ss.str());
-
-    ASSERT_EQ(s.add(query.at("TS_ADD")).status, TsStatus::Ok);
-  }
-};
+using namespace nemesis::core;
 
 
 TEST_F(TsSeriesTest, Create)
 {
   Series s;
 
-  ASSERT_EQ(s.create("os1").status, TsStatus::Ok);
-  ASSERT_TRUE(s.containsSeries("os1"));
+  ASSERT_EQ(s.create("os1").status, TsRequestStatus::Ok);
+  ASSERT_TRUE(s.hasSeries("os1"));
 
-  ASSERT_EQ(s.create("os1").status, TsStatus::SeriesExists);
+  ASSERT_EQ(s.create("os1").status, TsRequestStatus::SeriesExists);
 }
 
 
@@ -103,7 +32,7 @@ TEST_F(TsSeriesTest, NotExist)
     const auto query = njson::parse(R"( { "TS_GET":{"ts":["os1"], "rng":[1,5]} } )");
     auto res = s.get(query.at("TS_GET"));
 
-    //ASSERT_EQ(res.status, TsStatus::SeriesNotExist);
+    //ASSERT_EQ(res.status, TsRequestStatus::SeriesNotExist);
     ASSERT_TRUE(res.rsp.contains("os1"));
     ASSERT_TRUE(res.rsp["os1"].contains("st"));
     ASSERT_TRUE(res.rsp["os1"].contains("t"));
@@ -120,7 +49,7 @@ TEST_F(TsSeriesTest, GetSimple)
 {
   Series s;
 
-  ASSERT_EQ(s.create("os1").status, TsStatus::Ok);
+  ASSERT_EQ(s.create("os1").status, TsRequestStatus::Ok);
 
   addSimpleData("os1", s);
   
@@ -130,7 +59,7 @@ TEST_F(TsSeriesTest, GetSimple)
     const auto query = njson::parse(R"( { "TS_GET":{"ts":["os1"], "rng":[1,5]} } )");
     auto res = s.get(query.at("TS_GET"));
     
-    //ASSERT_EQ(res.status, TsStatus::Ok);
+    //ASSERT_EQ(res.status, TsRequestStatus::Ok);
     ASSERT_TRUE(res.rsp.contains("os1"));
     ASSERT_TRUE(res.rsp["os1"].contains("t"));
     ASSERT_TRUE(res.rsp["os1"].contains("v"));
@@ -147,7 +76,7 @@ TEST_F(TsSeriesTest, GetSimple)
     const auto query1 = njson::parse(R"( { "TS_GET":{"ts":["os1"], "rng":[1]} } )");
     const auto res = s.get(query1.at("TS_GET"));
     
-    ASSERT_EQ(res.status, TsStatus::Ok);
+    ASSERT_EQ(res.status, TsRequestStatus::Ok);
     ASSERT_EQ(res.rsp, rspEverything);
   }
 }
@@ -157,7 +86,7 @@ TEST_F(TsSeriesTest, GetComplex)
 {
   Series s;
 
-  ASSERT_EQ(s.create("os1").status, TsStatus::Ok);
+  ASSERT_EQ(s.create("os1").status, TsRequestStatus::Ok);
 
   addComplexData("os1", s);
   
@@ -165,7 +94,7 @@ TEST_F(TsSeriesTest, GetComplex)
     const auto query = njson::parse(R"( { "TS_GET":{"ts":["os1"], "rng":[10,11]} } )");
     const auto res = s.get(query.at("TS_GET"));
     
-    //ASSERT_EQ(res.status, TsStatus::Ok);
+    //ASSERT_EQ(res.status, TsRequestStatus::Ok);
     ASSERT_TRUE(res.rsp.contains("os1"));
     ASSERT_TRUE(res.rsp["os1"].contains("t"));
     ASSERT_TRUE(res.rsp["os1"].contains("v"));
@@ -178,7 +107,7 @@ TEST_F(TsSeriesTest, GetComplex)
     const auto query = njson::parse(R"( { "TS_GET":{"ts":["os1"], "rng":[12]} } )");
     const auto res = s.get(query.at("TS_GET"));
     
-    //ASSERT_EQ(res.status, TsStatus::Ok);
+    //ASSERT_EQ(res.status, TsRequestStatus::Ok);
     ASSERT_TRUE(res.rsp.contains("os1"));
     ASSERT_TRUE(res.rsp["os1"].contains("t"));
     ASSERT_TRUE(res.rsp["os1"].contains("v"));
@@ -194,8 +123,8 @@ TEST_F(TsSeriesTest, GetMultipleSeries)
 {
   Series s;
 
-  ASSERT_EQ(s.create("os1").status, TsStatus::Ok);
-  ASSERT_EQ(s.create("os2").status, TsStatus::Ok);
+  ASSERT_EQ(s.create("os1").status, TsRequestStatus::Ok);
+  ASSERT_EQ(s.create("os2").status, TsRequestStatus::Ok);
 
   addSimpleData("os1", s);
   addSimpleData("os2", s);
@@ -203,7 +132,7 @@ TEST_F(TsSeriesTest, GetMultipleSeries)
   const auto query = njson::parse(R"( { "TS_GET":{"ts":["os1","os2"], "rng":[1,5]} } )");
   const auto res = s.get(query.at("TS_GET"));
 
-  //ASSERT_EQ(res.status, TsStatus::Ok);
+  //ASSERT_EQ(res.status, TsRequestStatus::Ok);
 
   ASSERT_TRUE(res.rsp.contains("os1"));
   ASSERT_TRUE(res.rsp.contains("os2"));
@@ -225,8 +154,8 @@ TEST_F(TsSeriesTest, GetMultipleRanges)
 {
   Series s;
 
-  ASSERT_EQ(s.create("os1").status, TsStatus::Ok);
-  ASSERT_EQ(s.create("os2").status, TsStatus::Ok);
+  ASSERT_EQ(s.create("os1").status, TsRequestStatus::Ok);
+  ASSERT_EQ(s.create("os2").status, TsRequestStatus::Ok);
 
   addSimpleData("os1", s);
   addSimpleData("os2", s);

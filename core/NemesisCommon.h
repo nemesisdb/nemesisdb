@@ -10,6 +10,7 @@
 #include <ostream>
 #include <thread>
 #include <chrono>
+#include <filesystem>
 #include <uwebsockets/App.h>
 #include <uuid_v4/uuid_v4.h>
 #include <jsoncons/json.hpp>
@@ -236,9 +237,9 @@ constexpr typename std::underlying_type<E>::type toUnderlying(const E e) noexcep
 }
 
 
-std::size_t countFiles (const std::filesystem::path& path)
+std::size_t countFiles (const fs::path& path)
 {
-  return (std::size_t)std::distance(std::filesystem::directory_iterator{path}, std::filesystem::directory_iterator{});
+  return (std::size_t)std::distance(fs::directory_iterator{path}, fs::directory_iterator{});
 };
 
 

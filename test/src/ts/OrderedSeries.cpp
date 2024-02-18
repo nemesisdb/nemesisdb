@@ -1,3 +1,5 @@
+#define NDB_NOLOG
+
 #include "../useful/TestCommon.h"
 #include <core/ts/OrderedSeries.h>
 #include <core/ts/Series.h>
@@ -65,125 +67,81 @@ protected:
 
 
 
-class TsSeriesTest  : public ::testing::Test
-{
-public:
-  TsSeriesTest()
-  {
-
-  }
-
-	virtual ~TsSeriesTest() = default;
-
-
-  virtual void SetUp() override
-	{
-    initLogger (consoleAppender);
-	}
-
-
-	void TearDown() override
-	{
-		
-	}
-
-
-protected:
-
-  void addSimpleData(const SeriesName& name, Series& s)
-  {
-    std::stringstream ss;
-    ss << R"(
-              {
-                "TS_ADD":
-                {
-                  "ts":")" << name << R"(",
-                  "t":[1,2,3,5],
-                  "v":["1","2","3","5"]
-                }
-              }
-            )";
-
-
-    njson query = njson::parse(ss.str());
-
-    std::cout << query << '\n';
-
-    ASSERT_EQ(s.add(query.at("TS_ADD")).status, TsStatus::Ok);
-  }
-};
-
-
 TEST_F(TsClassTest, GetSingle)
 {
 	OrderedSeries os = OrderedSeries::create("os1");
 
   addSimpleData(os);
 
-  auto r1 = os.get(GetParams{.start = 3});
-  std::cout << r1 << '\n';
 
-  auto r2 = os.get(GetParams{.start = 1});
-  std::cout << r2 << '\n';
+  {
+    GetParams params;
+    params.setStart(3);
 
-  auto r3 = os.get(GetParams{.start = 3, .end = 5});
-  std::cout << r3 << '\n';
+    auto r = os.get(params);
 
-  auto r4 = os.get(GetParams{.end = 4});
-  std::cout << r4 << '\n';
-
-  auto r5 = os.get(GetParams{.start = 10});
-  std::cout << r5 << '\n';
-
-  auto r6 = os.get(GetParams{.start = 20});
-  std::cout << r6 << '\n';
-
-  auto r7 = os.get(GetParams{.start = 20, .end = 25});
-  std::cout << r7 << '\n';
-}
-
-
-/* 
-TEST_F(TsSeriesTest, GetMultiple)
-{
-  Series s;
-
-  ASSERT_TRUE(s.create("os1").status);
-  ASSERT_TRUE(s.containsSeries("os1"));
-
-  addSimpleData("os1", s);
+    ASSERT_EQ(r["t"].size(), 9);
+    ASSERT_EQ(r["t"].size(), r["v"].size());
+  }
 
   
   {
-    const auto query1 = njson::parse(R"( { "TS_GET":{"ts":["os1"], "rng":[1,5]} } )");
-    const auto res1 = s.get(query1.at("TS_GET"));
-    
-    ASSERT_EQ(res1.status, TsStatus::Ok);
-    ASSERT_TRUE(res1.rsp.contains("t"));
-    ASSERT_TRUE(res1.rsp.contains("v"));
+    GetParams params;
+    params.setStart(1);
 
-    ASSERT_EQ(res1.rsp.at("t").size(), 4);
-    ASSERT_EQ(res1.rsp.at("t").size(), res1.rsp.at("v").size());
-    
-    std::cout << res1.rsp << '\n';
+    auto r = os.get(params);
+
+    ASSERT_EQ(r["t"].size(), 11);
+    ASSERT_EQ(r["t"].size(), r["v"].size());
   }
 
-  // same as before but no end set
-  {
-    const auto query1 = njson::parse(R"( { "TS_GET":{"ts":["os1"], "rng":[1]} } )");
-    const auto res1 = s.get(query1.at("TS_GET"));
-    
-    ASSERT_EQ(res1.status, TsStatus::Ok);
-    ASSERT_TRUE(res1.rsp.contains("t"));
-    ASSERT_TRUE(res1.rsp.contains("v"));
 
-    ASSERT_EQ(res1.rsp.at("t").size(), 4);
-    ASSERT_EQ(res1.rsp.at("t").size(), res1.rsp.at("v").size());
-    
-    std::cout << res1.rsp << '\n';
+  {
+    GetParams params;
+    params.setStart(3);
+    params.setEnd(5);
+
+    auto r = os.get(params);
+
+    ASSERT_EQ(r["t"].size(), 2);
+    ASSERT_EQ(r["t"].size(), r["v"].size());
+  }
+
+
+  {
+    GetParams params;
+    params.setStart(10);
+
+    auto r = os.get(params);
+
+    ASSERT_EQ(r["t"].size(), 7);
+    ASSERT_EQ(r["t"].size(), r["v"].size());
+  }
+
+
+  {
+    GetParams params;
+    params.setStart(20);
+
+    auto r = os.get(params);
+
+    ASSERT_EQ(r["t"].size(), 7);
+    ASSERT_EQ(r["t"].size(), r["v"].size());
+  }
+  
+
+  {
+    GetParams params;
+    params.setStart(20);
+    params.setEnd(25);
+
+    auto r = os.get(params);
+
+    ASSERT_EQ(r["t"].size(), 6);
+    ASSERT_EQ(r["t"].size(), r["v"].size());
   }
 }
- */
+
 
 
 int main (int argc, char ** argv)

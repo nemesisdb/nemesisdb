@@ -38,7 +38,7 @@ public:
       return TsRequestStatus::SeriesExists;
     else
     {
-      QueryResult qr;
+      QueryResult qr{TsRequestStatus::Ok};
 
       m_series[name] = std::make_unique<OrderedSeries>(OrderedSeries::create(name));
       
@@ -50,7 +50,7 @@ public:
   }
 
 
-  QueryResult add (njson&& query)
+  QueryResult add (njson query)
   {
     QueryResult qr{TsRequestStatus::Ok};
 
