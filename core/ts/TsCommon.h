@@ -3,6 +3,7 @@
 
 #include <map>
 #include <array>
+#include <functional>
 #include <uwebsockets/App.h>
 #include <core/NemesisCommon.h>
 
@@ -17,23 +18,47 @@ using SeriesClock = chrono::steady_clock;
 using SeriesTime = chrono::milliseconds::rep;
 using SeriesValue = njson;
 
-enum class TsStatus
+
+enum class TsRequestStatus
 {
   None = 0,
   Ok = 1,
-  SeriesNotExist = 10
+  UnknownError,
+  CommandNotExist,
+  SeriesNotExist = 10,
+  SeriesExists
+};
+
+
+enum class TsCommand
+{
+  TsCreate,
+  TsAdd,
+  TsGet,
+  TsGetMultipleRanges,
+  Max
+};
+
+
+const std::map<const std::string_view, const TsCommand> QueryNameToType = 
+{  
+  // session
+  {"TS_CREATE",         TsCommand::TsCreate},
+  {"TS_ADD",            TsCommand::TsAdd},
+  {"TS_GET",            TsCommand::TsGet},
+  {"TS_GET_MULTI",      TsCommand::TsGetMultipleRanges}
 };
 
 
 struct QueryResult
 {
-  QueryResult(const TsStatus st = TsStatus::None) : status(st)
+  QueryResult(const TsRequestStatus st = TsRequestStatus::None) : status(st)
   {
     
   }
 
 
-  TsStatus status;
+  TsRequestStatus status;
   njson rsp;
 };
 
@@ -42,10 +67,13 @@ struct GetParams
 {
   SeriesTime start{0};
   SeriesTime end{0};
+  std::string where;
 };
 
 
-// TODO crap name, but Series is used instead of "SeriesManager"
+using TsWebSocket = uWS::WebSocket<false, true, WsSession>;
+
+// TODO crap name, but Series is already used (instead of "SeriesManager")
 class BasicSeries
 {
 protected:
@@ -58,7 +86,7 @@ public:
   virtual void add (const SeriesTime td, const SeriesValue value) = 0;
   virtual void add (const njson& times, njson&& values) = 0;
   
-  virtual njson get (const GetParams& params) = 0;
+  virtual njson get (const GetParams& params) const  = 0;
 };
 
 } // ns ts

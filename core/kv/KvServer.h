@@ -2,8 +2,8 @@
 #define NDB_CORE_KVSERVER_H
 
 
-#include <dirent.h>     // for checking /proc
-#include <arpa/inet.h>  // for inet_pton() etc
+//#include <dirent.h>     // for checking /proc
+//#include <arpa/inet.h>  // for inet_pton() etc
 #include <functional>
 #include <vector>
 #include <set>
@@ -20,8 +20,6 @@
 
 
 namespace nemesis { namespace core { namespace kv {
-
-namespace fs = std::filesystem;
 
 
 class KvServer

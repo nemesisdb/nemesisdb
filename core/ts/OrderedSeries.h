@@ -12,14 +12,16 @@ using namespace jsoncons;
 using namespace jsoncons::literals;
 
 
-/// Represents a time series that is always gauranteed to be ordered by the sender. 
+/// Represents a time series that submitted data is always gauranteed to be ordered by the sender. 
 /// Uses parallel vectors to hold time and value data:
 ///   An event occurring at m_times[i] has metrics in m_values[i].
 class OrderedSeries : public BasicSeries
 {
   using TimeVector = std::vector<SeriesTime>;
   using ValueVector = std::vector<SeriesValue>;
+
   using TimeVectorConstIt = TimeVector::const_iterator;
+  using ValueVectorConstIt = ValueVector::const_iterator;
 
 
   OrderedSeries (const SeriesName& name) : m_name(name)
@@ -69,29 +71,61 @@ public:
   }
 
 
-  njson get (const GetParams& params) override
+  njson get (const GetParams& params) const override
   {
-    // if start not set, start is begin(), otherwise find start
-    const auto itStart = params.start == 0 ? m_times.cbegin() : std::lower_bound(m_times.cbegin(), m_times.cend(), params.start) ;
-    const auto itEnd = params.end == 0 ? m_times.cend() : std::upper_bound(itStart, m_times.cend(), params.end);
+    auto [itStart, itEnd] = applyRange(params);
 
-    if (itStart == m_times.cend())
+    if (params.where.empty())
     {
-      PLOGD << "No data";
-      return njson (json_object_arg, {{"t", json_array_arg_t{}}, {"v", json_array_arg_t{}}});
+      if (itStart == m_times.cend())
+      {
+        PLOGD << "No data";
+        return njson (json_object_arg, {{"t", json_array_arg_t{}}, {"v", json_array_arg_t{}}});
+      }
+      else  [[likely]]
+      {
+        PLOGD << "Get from " << *itStart << " to " << (itEnd == m_times.cend() ? "end" : std::to_string(*itEnd));
+        return getData(itStart, itEnd);
+      }
     }
-    else  [[likely]]
+    else
     {
-      PLOGD << "Get from " << *itStart << " to " << (itEnd == m_times.cend() ? "end" : std::to_string(*itEnd));
-      return getData(itStart, itEnd);
+      PLOGD << "Applying filter: " << params.where;
+      return applyFilter(params.where, itStart, itEnd);
     }
   }
 
 
 private:
 
+
+  std::tuple<TimeVectorConstIt, TimeVectorConstIt> applyRange (const GetParams& params) const
+  {
+    // if start not set, start is begin(), otherwise find start
+    const auto itStart = params.start == 0 ? m_times.cbegin() : std::lower_bound(m_times.cbegin(), m_times.cend(), params.start) ;
+    const auto itEnd = params.end == 0 ? m_times.cend() : std::upper_bound(itStart, m_times.cend(), params.end);
+    return {itStart, itEnd};
+  }
+
+
+  njson applyFilter (const std::string_view& condition, const TimeVectorConstIt itStart, const TimeVectorConstIt itEnd) const
+  {
+    const auto end = std::distance(m_times.cbegin(), itEnd);
+
+    njson rsp (json_object_arg, {{"t", json_array_arg_t{}}, {"v", json_array_arg_t{}}});
+
+    for (auto i = std::distance(m_times.cbegin(), itStart); i < end ; ++i)
+    {
+      if (const auto whereResult = jsonpath::json_query(m_values[i], condition, jsonpath::result_options::path | jsonpath::result_options::nodups); !whereResult.empty())
+        getData(i, rsp.at("t"), rsp.at("v"));
+    }
+
+    return rsp;
+  }
+
+
   
-  njson getData (const TimeVectorConstIt itStart, const TimeVectorConstIt itEnd)
+  njson getData (const TimeVectorConstIt itStart, const TimeVectorConstIt itEnd) const 
   {
     const auto size = std::distance(itStart, itEnd);
     const auto start = std::distance(m_times.cbegin(), itStart);    
@@ -111,6 +145,15 @@ private:
     }
 
     return rsp;
+  }
+
+
+  void getData (const std::ptrdiff_t index, njson& times, njson& values) const 
+  {
+    PLOGD << "Getting single time/value";
+    
+    times.push_back(m_times[index]);
+    values.emplace_back(m_values[index]);
   }
 
 

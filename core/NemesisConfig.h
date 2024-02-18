@@ -1,5 +1,5 @@
-#ifndef NDB_CORE_FUSIONCONFIG_H
-#define NDB_CORE_FUSIONCONFIG_H
+#ifndef NDB_CORE_NEMESISCONFIG_H
+#define NDB_CORE_NEMESISCONFIG_H
 
 #include <string_view>
 #include <mutex>
@@ -69,15 +69,13 @@ inline bool isValid (std::function<bool()> isValidCheck, const std::string_view 
 
 bool parseKv (njson& cfg)
 {
-  bool valid ;
-
   const auto& kvCfg = cfg.at("kv");
 
-  valid = isValid([&kvCfg](){ return kvCfg.contains("ip") && kvCfg.contains("port") && kvCfg.contains("maxPayload"); }, "kv requires ip, port, maxPayload and save") &&
-          isValid([&kvCfg](){ return kvCfg.at("ip").is_string() && kvCfg.at("port").is_uint64() && kvCfg.at("maxPayload").is_uint64(); }, "kv::ip must string, kv::port and kv::maxPayload must be unsigned integer") &&
-          isValid([&kvCfg](){ return kvCfg.at("maxPayload") >= nemesis::core::NEMESIS_KV_MINPAYLOAD; }, "kv::maxPayload below minimum") &&
-          isValid([&kvCfg](){ return kvCfg.at("maxPayload") <= nemesis::core::NEMESIS_KV_MAXPAYLOAD; }, "kv::maxPayload exceeds maximum") && 
-          isValid([&kvCfg](){ return kvCfg.contains("session") && kvCfg.at("session").is_object(); }, "kv requires session section as an object");
+  bool valid =  isValid([&kvCfg](){ return kvCfg.contains("ip") && kvCfg.contains("port") && kvCfg.contains("maxPayload"); }, "kv requires ip, port, maxPayload and save") &&
+                isValid([&kvCfg](){ return kvCfg.at("ip").is_string() && kvCfg.at("port").is_uint64() && kvCfg.at("maxPayload").is_uint64(); }, "kv::ip must string, kv::port and kv::maxPayload must be unsigned integer") &&
+                isValid([&kvCfg](){ return kvCfg.at("maxPayload") >= nemesis::core::NEMESIS_KV_MINPAYLOAD; }, "kv::maxPayload below minimum") &&
+                isValid([&kvCfg](){ return kvCfg.at("maxPayload") <= nemesis::core::NEMESIS_KV_MAXPAYLOAD; }, "kv::maxPayload exceeds maximum") && 
+                isValid([&kvCfg](){ return kvCfg.contains("session") && kvCfg.at("session").is_object(); }, "kv requires session section as an object");
   
   if (valid)
   {
@@ -91,6 +89,19 @@ bool parseKv (njson& cfg)
     }
   }
   
+  return valid;
+}
+
+
+bool parseTs (njson& cfg)
+{
+  const auto& tsCfg = cfg.at("ts");
+
+  bool valid =  isValid([&tsCfg](){ return tsCfg.contains("ip") && tsCfg.contains("port") && tsCfg.contains("maxPayload"); }, "kv requires ip, port, maxPayload and save") &&
+                isValid([&tsCfg](){ return tsCfg.at("ip").is_string() && tsCfg.at("port").is_uint64() && tsCfg.at("maxPayload").is_uint64(); }, "kv::ip must string, kv::port and kv::maxPayload must be unsigned integer") &&
+                isValid([&tsCfg](){ return tsCfg.at("maxPayload") >= nemesis::core::NEMESIS_TS_MINPAYLOAD; }, "ts::maxPayload below minimum") &&
+                isValid([&tsCfg](){ return tsCfg.at("maxPayload") <= nemesis::core::NEMESIS_TS_MAXPAYLOAD; }, "ts::maxPayload exceeds maximum");
+
   return valid;
 }
 
@@ -116,7 +127,9 @@ NemesisConfig parse(std::filesystem::path path)
     {
       if (cfg.at("mode") == "kv")
         valid = parseKv(cfg);
-
+      else if (cfg.at("mode") == "ts")
+        valid = parseTs(cfg);
+      
       if (valid)
         config = NemesisConfig{std::move(cfg)};
     }

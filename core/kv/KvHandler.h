@@ -22,9 +22,14 @@ public:
     m_createSessionPoolId(nPools == 1U ? SessionIndexers[1U] : SessionIndexers[0U]),
     m_config(config)
   {
-    for (std::size_t pool = 0, core = coreOffset ; pool < nPools ; ++pool, ++core)
-      m_pools.emplace_back(new KvPoolWorker{core, pool});
+    for (std::size_t pool = 0, core = coreOffset ; pool < nPools ; )
+    {
+      m_pools.emplace_back(new KvPoolWorker{core, pool}); // TODO these can be unqiue_ptr
+      ++pool;
+      ++core;
+    }
   }
+  
 
   ~KvHandler()
   {

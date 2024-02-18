@@ -8,6 +8,7 @@
 #include <core/NemesisCommon.h>
 #include <core/kv/KvCommon.h>
 #include <core/kv/KvServer.h>
+#include <core/ts/TsServer.h>
 #include <core/LogFormatter.h>
 #include <jsoncons/json_traits_macros.hpp>
 
@@ -16,6 +17,7 @@
 using namespace nemesis::core;
 
 namespace kv = nemesis::core::kv;
+namespace ts = nemesis::core::ts;
 
 static std::latch run{1U};
 static plog::ColorConsoleAppender<NdbFormatter> consoleAppender;
@@ -29,15 +31,7 @@ inline void kvSigHandle(int param)
 
 int main (int argc, char ** argv)
 {
-  // keep this as first statement of main()
-  initLogger(consoleAppender);
-
-
-  // #ifdef NDB_DEBUG
-  //   plog::init(plog::verbose, &consoleAppender);
-  // #else
-  //   plog::init(plog::info, &consoleAppender);    
-  // #endif
+  initLogger(consoleAppender); // keep this as first statement of main()
   
   PLOGI << "NemesisDB v" << NEMESIS_VERSION << " starting";
   PLOGI << "Registering signals";
@@ -51,12 +45,16 @@ int main (int argc, char ** argv)
 
   #ifdef NDB_DEBUG
     config.cfg["version"] = 1;
-    config.cfg["mode"] = "kv";
+    config.cfg["mode"] = "ts";
     config.cfg["kv"]["ip"] = "127.0.0.1";
     config.cfg["kv"]["port"] = 1987;
     config.cfg["kv"]["maxPayload"] = 2048;
     config.cfg["kv"]["session"]["save"]["enabled"] = true;
     config.cfg["kv"]["session"]["save"]["path"] = "./data";
+
+    config.cfg["ts"]["ip"] = "127.0.0.1";
+    config.cfg["ts"]["port"] = 1987;
+    config.cfg["ts"]["maxPayload"] = 2048;
 
     if (!fs::exists(config.cfg["kv"]["session"]["save"]["path"].as_string()))
       fs::create_directories(config.cfg["kv"]["session"]["save"]["path"].as_string());
@@ -88,6 +86,16 @@ int main (int argc, char ** argv)
   else if (config.serverMode() == ServerMode::TS)
   {
     PLOGI << "Mode: TS";
+
+    ts::TsServer tsServer;
+    
+    if (tsServer.run(config))
+      run.wait();
+    else
+    {
+      error = 1;
+      run.count_down();
+    }
   }
   else
   {

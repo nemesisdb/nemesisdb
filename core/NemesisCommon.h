@@ -1,6 +1,10 @@
 #ifndef NDB_CORE_FUSIONCOMMON_H
 #define NDB_CORE_FUSIONCOMMON_H
 
+#ifdef NDB_NOLOG
+  #define PLOG_DISABLE_LOGGING
+#endif
+
 #include <string_view>
 #include <mutex>
 #include <ostream>
@@ -26,7 +30,7 @@ namespace nemesis { namespace core {
 
 namespace fs = std::filesystem;
 namespace chrono = std::chrono;
-
+namespace jsonpath = jsoncons::jsonpath;
 
 static const char * NEMESIS_VERSION = "0.3.11";
 static const std::size_t NEMESIS_CONFIG_VERSION = 1U;
@@ -35,15 +39,29 @@ static const std::size_t NEMESIS_MAX_CORES = 4U;
 static const std::size_t NEMESIS_KV_MINPAYLOAD = 64U;
 static const std::size_t NEMESIS_KV_MAXPAYLOAD = 2U * 1024U * 1024U;
 
+static const std::size_t NEMESIS_TS_MINPAYLOAD = 64U;
+static const std::size_t NEMESIS_TS_MAXPAYLOAD = 2U * 1024U * 1024U;
+
 
 enum class ServerMode { None, KV, TS };
 
 
 // general
+const uWS::OpCode WsSendOpCode = uWS::OpCode::TEXT;
 using njson = jsoncons::ojson;
 using uuid = std::string;
 using NemesisClock = chrono::steady_clock;
 using NemesisTimePoint = NemesisClock::time_point;
+
+using JsonType = jsoncons::json_type;
+
+const JsonType JsonString = JsonType::string_value;
+const JsonType JsonBool = JsonType::bool_value;
+const JsonType JsonInt = JsonType::int64_value;
+const JsonType JsonUInt = JsonType::uint64_value;
+const JsonType JsonObject = JsonType::object_value;
+const JsonType JsonArray = JsonType::array_value;
+
 
 // kv
 using cachedkey = std::string;
@@ -60,6 +78,15 @@ using SessionClock = chrono::steady_clock;
 using SessionExpireTime = SessionClock::time_point;
 using SessionDuration = chrono::seconds;
 using SessionExpireTimePoint = chrono::time_point<SessionClock, std::chrono::seconds>;
+
+
+
+
+struct ServerStats
+{
+  std::atomic_size_t queryCount{0U};
+
+};
 
 
 struct WsSession
@@ -139,11 +166,18 @@ enum class KvSaveStatus
 template<class Formatter>
 static inline void initLogger (plog::ConsoleAppender<Formatter>& appender)
 {
-  #ifdef NDB_DEBUG
-    plog::init(plog::verbose, &appender);
-  #else
-    plog::init(plog::info, &appender);    
-  #endif
+  static bool init = false;
+
+  if (!init)
+  {
+    #ifdef NDB_DEBUG
+      plog::init(plog::verbose, &appender);
+    #else
+      plog::init(plog::info, &appender);    
+    #endif
+  }
+  
+  init = true;
 }
 
 
