@@ -12,6 +12,7 @@
 #include <gtest/gtest.h>
 #include <nlohmann/json.hpp>
 #include <sstream>
+#include <fstream>
 
 
 namespace nemesis { namespace test {
@@ -28,10 +29,11 @@ class TsSeriesTest : public ::testing::Test
 
 protected:
   // TODO these should come from core header
-  const std::string GetRspCmd           = "TS_GET_RSP";
-  const std::string GetMultiRspCmd      = "TS_GET_MULTI_RSP";
-  const std::string CreateRspCmd        = "TS_CREATE_RSP";
-  const std::string AddRspCmd           = "TS_ADD_RSP";
+  const std::string GetRspCmd             = "TS_GET_RSP";
+  const std::string GetMultiRspCmd        = "TS_GET_MULTI_RSP";
+  const std::string CreateRspCmd          = "TS_CREATE_RSP";
+  const std::string AddRspCmd             = "TS_ADD_RSP";
+  const std::string CreateIndexRspCmd     = "TS_CREATE_INDEX_RSP";
 
 
 public:
@@ -115,6 +117,35 @@ protected:
 
     ASSERT_EQ(s.add(data1, AddRspCmd).status, TsRequestStatus::Ok);
     ASSERT_EQ(s.add(data2, AddRspCmd).status, TsRequestStatus::Ok);
+  }
+
+
+  // the file should contain an array at the root level with two elements, both are objects: 
+  //  [0] - { "TS_CREATE": { ... } }
+  //  [1] - { "TS_ADD": { ... } }
+  void createMoreData(const fs::path& queryPath, Series& s)
+  {
+    ASSERT_TRUE(fs::exists(queryPath));
+
+    std::ifstream stream{queryPath};
+
+    ASSERT_TRUE(stream.good());
+
+    njson json = njson::parse(stream);
+
+    ASSERT_TRUE(json.is_array());
+    ASSERT_EQ(json.size(), 2);
+
+    ASSERT_TRUE(json[0].is_object());
+    ASSERT_TRUE(json[1].is_object());
+
+    ASSERT_TRUE(json[0].contains("TS_CREATE"));
+    ASSERT_TRUE(json[1].contains("TS_ADD"));
+
+    
+    ASSERT_EQ(s.create(json[0]["TS_CREATE"]["ts"].as_string(), CreateRspCmd).status, TsRequestStatus::Ok);
+    ASSERT_EQ(s.createIndex("os1", CreateIndexRspCmd, "temp").status, TsRequestStatus::Ok);
+    ASSERT_EQ(s.add(std::move(json[1]["TS_ADD"]), AddRspCmd).status, TsRequestStatus::Ok);
   }
 };
 

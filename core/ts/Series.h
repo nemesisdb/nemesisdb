@@ -109,11 +109,29 @@ public:
   }
 
 
+  QueryResult createIndex (const SeriesName& name, const std::string& cmdRspName, const std::string& key)
+  {
+    QueryResult qr;
+
+    if (!hasSeries(name))
+    {
+      qr.status = TsRequestStatus::SeriesNotExist;
+      qr.rsp = SeriesNotExistRsp;
+    }
+    else
+    {
+      qr.status = m_series.at(name)->createIndex(key) ? TsRequestStatus::Ok : TsRequestStatus::IndexExists;
+      qr.rsp[cmdRspName][name]["st"] = toUnderlying(qr.status);
+    }
+    return qr;
+  }
+
+
 private:
 
   GetParams makeGetParams (const njson& conditions) const
   {
-    GetParams params{conditions.get_value_or<std::string>("where", "")};
+    GetParams params{conditions.get_value_or<WhereType>("where", jsoncons::json_object_arg_t{})};
 
     if (const auto rngSize = conditions["rng"].size() ; rngSize)
     {

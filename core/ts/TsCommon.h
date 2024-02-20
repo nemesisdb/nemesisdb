@@ -14,8 +14,8 @@ namespace nemesis { namespace core { namespace ts {
 using SeriesName = std::string;
 using SeriesTime = std::int64_t;
 using SeriesValue = njson;
-using WhereType = std::string;
-using WhereViewType = std::string_view;
+using WhereType = njson;
+//using WhereViewType = std::string_view;
 
 
 enum class TsRequestStatus
@@ -25,7 +25,8 @@ enum class TsRequestStatus
   UnknownError,
   CommandNotExist,
   SeriesNotExist = 10,
-  SeriesExists
+  SeriesExists,
+  IndexExists = 20
 };
 
 
@@ -61,9 +62,24 @@ struct QueryResult
 };
 
 
+struct IndexNode
+{
+  std::vector<SeriesTime> times;
+};
+
+
+struct Index
+{
+  std::map<njson, IndexNode> index;
+};
+
+
+
+
+
 struct GetParams
 {
-  GetParams (const std::string where = "") : where(where)
+  GetParams (const WhereType where = jsoncons::json_object_arg_t{}) : where(where)
   {
   }
 
@@ -136,10 +152,11 @@ protected:
 public:
   virtual ~BasicSeries() = default;
 
-  virtual void add (const SeriesTime td, const SeriesValue value) = 0;
   virtual void add (const njson& times, njson&& values) = 0;
   
   virtual njson get (const GetParams& params) const  = 0;
+
+  virtual bool createIndex (const std::string& key) = 0;
 };
 
 } // ns ts

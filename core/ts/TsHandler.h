@@ -62,8 +62,8 @@ private:
 
   void create (TsWebSocket * ws, njson&& msg)
   {
-    static const auto cmdName = "TS_CREATE";
-    static const auto cmdRspName = "TS_CREATE_RSP";
+    static const auto cmdName     = "TS_CREATE";
+    static const auto cmdRspName  = "TS_CREATE_RSP";
 
     const auto& cmd = msg[cmdName];
 
@@ -78,40 +78,36 @@ private:
 
   void add (TsWebSocket * ws, njson&& msg)
   {
-    static const auto cmdName = "TS_ADD";
-    static const auto cmdRspName = "TS_ADD_RSP";
+    static const auto cmdName     = "TS_ADD";
+    static const auto cmdRspName  = "TS_ADD_RSP";
 
     auto& cmd = msg.at(cmdName);
 
     if (!isValid(cmd, {{"ts", JsonString}, {"t", JsonArray}, {"v", JsonArray}}))
       PLOGD << "Invalid";
     else
-    {
       PLOGD << m_series.add(std::move(cmd), cmdRspName).rsp;
-    }
   }
 
 
   void get (TsWebSocket * ws, njson&& msg)
   {
-    static const auto cmdName = "TS_GET";
-    static const auto cmdRspName = "TS_GET_RSP";
+    static const auto cmdName     = "TS_GET";
+    static const auto cmdRspName  = "TS_GET_RSP";
 
     auto& cmd = msg.at(cmdName);
 
     if (!isValid(cmd, {{"ts", JsonArray}, {"rng", JsonArray}}))
       PLOGD << "Invalid";
     else
-    {
-      PLOGD << m_series.get(std::move(cmd), cmdRspName).rsp;
-    }
+      PLOGD << m_series.get(cmd, cmdRspName).rsp;
   }
 
 
   void getMultipleRanges (TsWebSocket * ws, njson&& msg)
   {
-    static const auto cmdName = "TS_GET_MULTI";
-    static const auto cmdRspName = "TS_GET_MULTI_RSP";
+    static const auto cmdName     = "TS_GET_MULTI";
+    static const auto cmdRspName  = "TS_GET_MULTI_RSP";
 
     auto& cmd = msg.at(cmdName);
     
@@ -124,7 +120,7 @@ private:
       }
     }
 
-    PLOGD << m_series.getMultipleRanges(std::move(cmd), cmdRspName).rsp;
+    PLOGD << m_series.getMultipleRanges(cmd, cmdRspName).rsp;
   }
 
 

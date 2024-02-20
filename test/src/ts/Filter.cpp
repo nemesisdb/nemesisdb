@@ -11,6 +11,8 @@ using namespace nemesis::core;
 using namespace nemesis::core::ts;
 
 
+/*
+All of this invalid if disallowing json path
 
 TEST_F(TsSeriesTest, Get)
 {
@@ -133,7 +135,7 @@ TEST_F(TsSeriesTest, GetMultiple)
     ASSERT_EQ(r.rsp[GetMultiRspCmd]["os2"]["t"], njson::parse(R"([2,3,4])"));
   }
 }
-
+ */
 
 
 int main (int argc, char ** argv)
