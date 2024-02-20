@@ -1,4 +1,4 @@
-#define NDB_NOLOG
+//#define NDB_NOLOG
 
 #include "../useful/TsSeriesTest.h"
 #include <core/ts/OrderedSeries.h>
@@ -21,7 +21,7 @@ struct MeasureDuration
     result = f();
 
     #ifdef NDEBUG
-    std::cout << chrono::duration_cast<chrono::microseconds> (chrono::steady_clock::now() - start).count() << '\n';
+    PLOGI << chrono::duration_cast<chrono::microseconds> (chrono::steady_clock::now() - start).count() << '\n';
     #endif
   }
 
@@ -35,6 +35,7 @@ TEST_F(TsSeriesTest, Test100k)
   Series s;
   createMoreData({"../test_data/moredata_10k.json"}, s);
   
+  // TODO remove tests if not using JSON paths
   // {
   //   njson q = njson::parse(R"( {"ts":["os1"], "rng":[0,50], "where":"$[?($.temp >= -30 && $.temp <= 30)]"} )");
     
@@ -57,7 +58,7 @@ TEST_F(TsSeriesTest, Test100k)
   //   std::cout << "size: " << md.result["TS_GET_RSP"]["os1"]["t"].size() << '\n';
   // }
 
-  
+
   // with indexes - low: 99, high: 450, avg: 150
   {
     auto q = njson::parse(R"(
@@ -75,7 +76,154 @@ TEST_F(TsSeriesTest, Test100k)
                             )");
 
     MeasureDuration md {[&s, &q, rspName = GetRspCmd]{ return s.get(q, rspName).rsp; }};
-    std::cout << "size: " << md.result["TS_GET_RSP"]["os1"]["t"].size() << '\n';
+    //std::cout << "size: " << md.result["TS_GET_RSP"]["os1"]["t"].size() << '\n';
+  }
+
+  
+  // >
+  {
+    auto q = njson::parse(R"(
+                              {
+                                "ts":["os1"],
+                                "rng":[0,10],
+                                "where":
+                                {
+                                  "temp":
+                                  {
+                                    ">":20
+                                  }
+                                }
+                              }
+                            )");
+
+    MeasureDuration md {[&s, &q, rspName = GetRspCmd]{ return s.get(q, rspName).rsp; }};
+    ASSERT_EQ(md.result["TS_GET_RSP"]["os1"]["t"].size(),2);
+  }
+
+
+  // >=
+  {
+    auto q = njson::parse(R"(
+                              {
+                                "ts":["os1"],
+                                "rng":[0,10],
+                                "where":
+                                {
+                                  "temp":
+                                  {
+                                    ">=":20
+                                  }
+                                }
+                              }
+                            )");
+
+    MeasureDuration md {[&s, &q, rspName = GetRspCmd]{ return s.get(q, rspName).rsp; }};
+    ASSERT_EQ(md.result["TS_GET_RSP"]["os1"]["t"].size(),3);
+  }
+
+
+  // <
+  {
+    auto q = njson::parse(R"(
+                              {
+                                "ts":["os1"],
+                                "rng":[0,10],
+                                "where":
+                                {
+                                  "temp":
+                                  {
+                                    "<":-3
+                                  }
+                                }
+                              }
+                            )");
+
+    MeasureDuration md {[&s, &q, rspName = GetRspCmd]{ return s.get(q, rspName).rsp; }};
+    ASSERT_EQ(md.result["TS_GET_RSP"]["os1"]["t"].size(), 5);
+  }
+
+
+  // <=
+  {
+    auto q = njson::parse(R"(
+                              {
+                                "ts":["os1"],
+                                "rng":[0,10],
+                                "where":
+                                {
+                                  "temp":
+                                  {
+                                    "<=":-3
+                                  }
+                                }
+                              }
+                            )");
+
+    MeasureDuration md {[&s, &q, rspName = GetRspCmd]{ return s.get(q, rspName).rsp; }};
+    ASSERT_EQ(md.result["TS_GET_RSP"]["os1"]["t"].size(), 6);
+  }
+
+
+  // []
+  {
+    auto q = njson::parse(R"(
+                              {
+                                "ts":["os1"],
+                                "rng":[0,10],
+                                "where":
+                                {
+                                  "temp":
+                                  {
+                                    "[]":[-3,8]
+                                  }
+                                }
+                              }
+                            )");
+
+    MeasureDuration md {[&s, &q, rspName = GetRspCmd]{ return s.get(q, rspName).rsp; }};
+    ASSERT_EQ(md.result["TS_GET_RSP"]["os1"]["t"].size(), 2);
+  }
+
+
+  // ==
+  {
+    auto q = njson::parse(R"(
+                              {
+                                "ts":["os1"],
+                                "rng":[0,16],
+                                "where":
+                                {
+                                  "temp":
+                                  {
+                                    "==":-21
+                                  }
+                                }
+                              }
+                            )");
+
+    MeasureDuration md {[&s, &q, rspName = GetRspCmd]{ return s.get(q, rspName).rsp; }};
+    ASSERT_EQ(md.result["TS_GET_RSP"]["os1"]["t"].size(), 2);
+  }
+
+
+  // == (in full range)
+  {
+    auto q = njson::parse(R"(
+                              {
+                                "ts":["os1"],
+                                "rng":[],
+                                "where":
+                                {
+                                  "temp":
+                                  {
+                                    "==":-21
+                                  }
+                                }
+                              }
+                            )");
+
+    MeasureDuration md {[&s, &q, rspName = GetRspCmd]{ return s.get(q, rspName).rsp; }};
+    ASSERT_EQ(md.result["TS_GET_RSP"]["os1"]["t"].size(), 168);
   }
 }
 

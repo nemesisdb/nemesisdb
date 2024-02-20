@@ -86,7 +86,7 @@ public:
 
   njson get (const GetParams& params) const override
   {
-    const auto [itStart, itEnd] = applyRange(params);
+    const auto [itStart, itEnd] = applyTimeRange(params);
 
     if (itStart == m_times.cend())
     {
@@ -96,8 +96,7 @@ public:
     else if (params.hasWhere())
     {
       PLOGD << "Applying where clause";
-      // return applyFilter(params.getWhere(), itStart, itEnd);
-      return applyIndexes(params.getWhere(), itStart, itEnd);
+      return applyIndexes(params, itStart, itEnd);
     }
     else
     {
@@ -131,7 +130,7 @@ private:
       ++index;
     }
   }
-  
+
 
   bool haveIndexes () const
   {
@@ -145,28 +144,24 @@ private:
   }
 
 
-  std::tuple<TimeVectorConstIt, TimeVectorConstIt> applyRange (const GetParams& params) const
+  std::tuple<TimeVectorConstIt, TimeVectorConstIt> applyTimeRange (const GetParams& params) const
   {
-    //auto s = chrono::steady_clock::now();
-
     // if start not set, start is begin(), otherwise find start
     const auto itStart = params.isStartSet() ? std::lower_bound(m_times.cbegin(), m_times.cend(), params.getStart()) : m_times.cbegin();
     const auto itEnd = params.isEndSet() ? std::upper_bound(itStart, m_times.cend(), params.getEnd()) : m_times.cend();
-
-    //std::cout << "applyRange(): " << chrono::duration_cast<chrono::microseconds>(chrono::steady_clock::now() - s).count() << '\n';
 
     return {itStart, itEnd};
   }
 
 
-  njson applyIndexes (const WhereType& condition, const TimeVectorConstIt itStart, const TimeVectorConstIt itEnd) const
+  njson applyIndexes (const GetParams& params, const TimeVectorConstIt itStart, const TimeVectorConstIt itEnd) const
   {
     njson rsp (json_object_arg, {{"t", json_array_arg_t{}}, {"v", json_array_arg_t{}}});
 
     const auto timeMin = *itStart;
     const auto timeMax = *itEnd;
+    const auto condition = params.getWhere();
 
-    // TODO tidy this mess
     for (const auto& member : condition.object_range())  // TODO check 'where' is an object
     {
       if (const auto& indexName = member.key(); isIndexed(indexName))
@@ -176,27 +171,31 @@ private:
         for (const auto termMember : member.value().object_range())
         {
           const auto& term = termMember.key();
+          const auto& indexMap = m_indexes.at(indexName).index;
 
           if (term == ">")
           {
-            const auto& indexMap = m_indexes.at(indexName).index;
-
-            PLOGD << ">";
-            if (auto itIndex = indexMap.upper_bound(termMember.value()); itIndex != indexMap.cend())
-            {
-              while (itIndex != indexMap.cend())
-              {
-                for (const auto& time : itIndex->second.times)
-                {
-                  if (time >= timeMin && time < timeMax)
-                  {
-                    PLOGD << "Found " << time;
-                    getData(time, rsp["t"], rsp["v"]);
-                  }
-                }
-                ++itIndex;
-              }
-            }
+            gt(params, timeMin, timeMax, indexMap, termMember.value(), rsp);
+          }
+          else if (term == ">=")
+          {
+            gte(params, timeMin, timeMax, indexMap, termMember.value(), rsp);
+          }
+          else if (term == "<")
+          {
+            lt(params, timeMin, timeMax, indexMap, termMember.value(), rsp);
+          }
+          else if (term == "<=")
+          {
+            lte(params, timeMin, timeMax, indexMap, termMember.value(), rsp);
+          }
+          else if (term == "==")
+          {
+            eq(params, timeMin, timeMax, indexMap, termMember.value(), rsp);
+          }
+          else if (term == "[]")
+          {
+            valueRangeInclusive(params, timeMin, timeMax, indexMap, termMember.value(), rsp);
           }
         }
       }
@@ -207,36 +206,38 @@ private:
 
 
 
-  // njson applyFilter (const WhereViewType& condition, const TimeVectorConstIt itStart, const TimeVectorConstIt itEnd) const
-  // {
-  //   auto s = chrono::steady_clock::now();
+  /*
+  njson applyJsonPath (const WhereViewType& condition, const TimeVectorConstIt itStart, const TimeVectorConstIt itEnd) const
+  {
+    auto s = chrono::steady_clock::now();
 
-  //   njson rsp (json_object_arg, {{"t", json_array_arg_t{}}, {"v", json_array_arg_t{}}});
+    njson rsp (json_object_arg, {{"t", json_array_arg_t{}}, {"v", json_array_arg_t{}}});
 
-  //   try
-  //   {
-  //     rsp["t"].reserve(500);
-  //     rsp["v"].reserve(500); // TODO
+    try
+    {
+      rsp["t"].reserve(500);
+      rsp["v"].reserve(500); // TODO
 
-  //     const auto end = std::distance(m_times.cbegin(), itEnd);
+      const auto end = std::distance(m_times.cbegin(), itEnd);
 
-  //     for (auto i = std::distance(m_times.cbegin(), itStart); i < end ; ++i)
-  //     {
-  //       if (const auto whereResult = jsonpath::json_query(m_values[i], condition, jsonpath::result_options::path | jsonpath::result_options::nodups); !whereResult.empty())
-  //         getData(i, rsp.at("t"), rsp.at("v"));
-  //     }  
-  //   }
-  //   catch(const jsonpath::jsonpath_error& jpex)
-  //   {
-  //     PLOGE << jpex.what();
-  //     rsp["t"].clear();
-  //     rsp["v"].clear();
-  //   }
+      for (auto i = std::distance(m_times.cbegin(), itStart); i < end ; ++i)
+      {
+        if (const auto whereResult = jsonpath::json_query(m_values[i], condition, jsonpath::result_options::path | jsonpath::result_options::nodups); !whereResult.empty())
+          getData(i, rsp.at("t"), rsp.at("v"));
+      }  
+    }
+    catch(const jsonpath::jsonpath_error& jpex)
+    {
+      PLOGE << jpex.what();
+      rsp["t"].clear();
+      rsp["v"].clear();
+    }
 
-  //   std::cout << "applyFilter(): " << chrono::duration_cast<chrono::microseconds>(chrono::steady_clock::now() - s).count() << '\n';
+    std::cout << "applyJsonPath(): " << chrono::duration_cast<chrono::microseconds>(chrono::steady_clock::now() - s).count() << '\n';
 
-  //   return rsp;
-  // }
+    return rsp;
+  } */
+
 
   
   njson getData (const TimeVectorConstIt itStart, const TimeVectorConstIt itEnd) const 
@@ -265,6 +266,160 @@ private:
     
     times.push_back(m_times[index]);
     values.emplace_back(m_values[index]);
+  }
+
+
+  // operator functions
+  void eq ( const GetParams& params, const SeriesTime& timeMin, const SeriesTime& timeMax, const std::map<njson, IndexNode>& indexMap,
+            const njson& value, njson& rsp) const
+  {
+    PLOGD << "==";
+
+    if (auto [first, end] = indexMap.equal_range(value) ; first != indexMap.cend())
+    {
+      const auto isFullTimeRange = params.isFullRange();
+      while (first != end)
+      {
+        if (isFullTimeRange)
+          getDataFromIndex(first->second.times, rsp);
+        else
+          getDataFromIndex(timeMin, timeMax, first->second.times, rsp);
+
+        ++first;
+      }
+    }
+  }
+
+
+  void gt ( const GetParams& params, const SeriesTime& timeMin, const SeriesTime& timeMax, const std::map<njson, IndexNode>& indexMap,
+            const njson& value, njson& rsp) const
+  {
+    PLOGD << ">";
+    doGtGte(params, timeMin, timeMax, indexMap, rsp, [&indexMap, &value]()
+    {
+      return indexMap.upper_bound(value);
+    });    
+  }
+
+
+  void gte (  const GetParams& params, const SeriesTime& timeMin, const SeriesTime& timeMax, const std::map<njson, IndexNode>& indexMap,
+              const njson& value, njson& rsp) const
+  {
+    PLOGD << ">=";
+    doGtGte(params, timeMin, timeMax, indexMap, rsp, [&indexMap, &value]()
+    {
+      return indexMap.lower_bound(value);
+    });
+  }
+
+
+  void lt ( const GetParams& params, const SeriesTime& timeMin, const SeriesTime& timeMax, const std::map<njson, IndexNode>& indexMap,
+            const njson& value, njson& rsp) const
+  {
+    PLOGD << "<";
+    doLtLte(params, timeMin, timeMax, indexMap, rsp, [&indexMap, &value]()
+    {
+      return indexMap.lower_bound(value);
+    });    
+  }
+
+
+  void lte (  const GetParams& params, const SeriesTime& timeMin, const SeriesTime& timeMax, const std::map<njson, IndexNode>& indexMap,
+              const njson& value, njson& rsp) const
+  {
+    PLOGD << "<=";
+    doLtLte(params, timeMin, timeMax, indexMap, rsp, [&indexMap, &value]()
+    {
+      return indexMap.upper_bound(value);
+    });    
+  }
+
+
+  void doGtGte (const GetParams& params, const SeriesTime& timeMin, const SeriesTime& timeMax, const std::map<njson, IndexNode>& indexMap,
+                njson& rsp, std::function<std::map<njson, IndexNode>::const_iterator (void)> getBounds) const
+  {
+    if (auto itIndex = getBounds(); itIndex != indexMap.cend())
+    {
+      const auto isFullTimeRange = params.isFullRange();
+
+      while (itIndex != indexMap.cend())
+      {
+        if (isFullTimeRange)
+          getDataFromIndex(itIndex->second.times, rsp);
+        else
+          getDataFromIndex(timeMin, timeMax, itIndex->second.times, rsp);
+
+        ++itIndex;
+      }
+    }
+  }
+
+
+  void doLtLte (const GetParams& params, const SeriesTime& timeMin, const SeriesTime& timeMax, const std::map<njson, IndexNode>& indexMap,
+                njson& rsp, std::function<std::map<njson, IndexNode>::const_iterator (void)> getBounds) const
+  {
+    if (const auto itEnd = getBounds(); itEnd != indexMap.cend())
+    {
+      const auto isFullTimeRange = params.isFullRange();
+      
+      for (auto itIndex = indexMap.cbegin(); itIndex != itEnd ; ++itIndex)
+      {
+        if (isFullTimeRange)
+          getDataFromIndex(itIndex->second.times, rsp);
+        else
+          getDataFromIndex(timeMin, timeMax, itIndex->second.times, rsp);
+      }
+    }
+  }
+
+  
+  void valueRangeInclusive (const GetParams& params, const SeriesTime& timeMin, const SeriesTime& timeMax, const std::map<njson, IndexNode>& indexMap, const njson& range, njson& rsp) const
+  { 
+    const auto& lowValue = range[0];
+    const auto& highValue = range[1];
+
+    PLOGD << "Value Range: " << range;
+
+    if (lowValue < highValue)
+    {
+      if (const auto itRangeLow = indexMap.lower_bound(lowValue); itRangeLow != indexMap.cend())
+      {
+        if (const auto itRangeHigh = indexMap.upper_bound(highValue); itRangeHigh != indexMap.cend())
+        {
+          const auto isFullTimeRange = params.isFullRange();
+          for(auto itIndex = itRangeLow ; itIndex != itRangeHigh ; ++itIndex)
+          {
+            if (isFullTimeRange)
+              getDataFromIndex(itIndex->second.times, rsp);
+            else
+              getDataFromIndex(timeMin, timeMax, itIndex->second.times, rsp);
+          }
+        }
+      }
+    }
+  }
+
+
+  void getDataFromIndex (const SeriesTime& timeMin, const SeriesTime& timeMax, const std::vector<SeriesTime>& times, njson& rsp) const
+  {
+    for (const auto& time : times)
+    {
+      if (time >= timeMin && time < timeMax)
+      {
+        PLOGD << "Found time " << time;
+        getData(time, rsp["t"], rsp["v"]);
+      }
+    }
+  }
+
+
+  void getDataFromIndex (const std::vector<SeriesTime>& times, njson& rsp) const
+  {
+    for (const auto& time : times)
+    {
+      PLOGD << "Found time " << time;
+      getData(time, rsp["t"], rsp["v"]);
+    }
   }
 
 
