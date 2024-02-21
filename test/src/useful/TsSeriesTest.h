@@ -144,7 +144,7 @@ protected:
 
     
     ASSERT_EQ(s.create(json[0]["TS_CREATE"]["ts"].as_string(), CreateRspCmd).status, TsRequestStatus::Ok);
-    ASSERT_EQ(s.createIndex("os1", CreateIndexRspCmd, "temp").status, TsRequestStatus::Ok);
+    ASSERT_EQ(s.createIndex("os1", "temp", CreateIndexRspCmd).status, TsRequestStatus::Ok);
     ASSERT_EQ(s.add(std::move(json[1]["TS_ADD"]), AddRspCmd).status, TsRequestStatus::Ok);
   }
 };

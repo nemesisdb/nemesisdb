@@ -88,6 +88,8 @@ public:
   {
     const auto [itStart, itEnd] = applyTimeRange(params);
 
+    PLOGD << "Get from " << *itStart << " to " << (itEnd == m_times.cend() ? "end" : std::to_string(*itEnd));
+
     if (itStart == m_times.cend())
     {
       PLOGD << "No data";
@@ -100,7 +102,6 @@ public:
     }
     else
     {
-      PLOGD << "Get from " << *itStart << " to " << (itEnd == m_times.cend() ? "end" : std::to_string(*itEnd));
       return getData(itStart, itEnd);
     }
   }
@@ -114,7 +115,7 @@ private:
 
     for (const auto& val : valuesVec)
     {
-      for (const auto& member : val.object_range()) // TODO assumes object
+      for (const auto& member : val.object_range()) 
       {
         const auto& key = member.key();
         const auto& value = member.value();
@@ -122,9 +123,9 @@ private:
         if (isIndexed(key))
         {
           if (const auto itIndex = m_indexes.at(key).index.find(value); itIndex != m_indexes.at(key).index.end())
-            m_indexes.at(key).index.at(value).times.emplace_back(timesVec[index]);
+            m_indexes.at(key).index.at(value).add(timesVec[index], index);
           else
-            m_indexes.at(key).index.emplace(value, IndexNode{.times = std::vector<SeriesTime>{timesVec[index]}});
+            m_indexes.at(key).index.emplace(value, IndexNode{timesVec[index], index});
         }
       }
       ++index;
@@ -148,8 +149,7 @@ private:
   {
     // if start not set, start is begin(), otherwise find start
     const auto itStart = params.isStartSet() ? std::lower_bound(m_times.cbegin(), m_times.cend(), params.getStart()) : m_times.cbegin();
-    const auto itEnd = params.isEndSet() ? std::upper_bound(itStart, m_times.cend(), params.getEnd()) : m_times.cend();
-
+    auto itEnd = params.isEndSet() ? std::upper_bound(itStart, m_times.cend(), params.getEnd()) : m_times.cend();
     return {itStart, itEnd};
   }
 
@@ -159,14 +159,21 @@ private:
     njson rsp (json_object_arg, {{"t", json_array_arg_t{}}, {"v", json_array_arg_t{}}});
 
     const auto timeMin = *itStart;
-    const auto timeMax = *itEnd;
+    const auto timeMax = itEnd == m_times.cend() ? std::numeric_limits<SeriesTime>::max() : *itEnd;
     const auto condition = params.getWhere();
 
     for (const auto& member : condition.object_range())  // TODO check 'where' is an object
     {
-      if (const auto& indexName = member.key(); isIndexed(indexName))
+      if (const auto& indexName = member.key() ; !isIndexed(indexName))
+      {
+        PLOGD << indexName << " not an index";        
+      }
+      else
       {
         PLOGD << indexName << " is indexed";
+
+        // TODO need to sort data before it's returned: these functions should return the indexes, which are then sorted, then values are retrieved?
+        // TODO need to handle multiple indexes in "where"
 
         for (const auto termMember : member.value().object_range())
         {
@@ -281,9 +288,9 @@ private:
       while (first != end)
       {
         if (isFullTimeRange)
-          getDataFromIndex(first->second.times, rsp);
+          getDataFromIndex(first->second.getTimes(), rsp);
         else
-          getDataFromIndex(timeMin, timeMax, first->second.times, rsp);
+          getDataFromIndex(timeMin, timeMax, first->second.getTimes(), rsp);
 
         ++first;
       }
@@ -345,9 +352,9 @@ private:
       while (itIndex != indexMap.cend())
       {
         if (isFullTimeRange)
-          getDataFromIndex(itIndex->second.times, rsp);
+          getDataFromIndex(itIndex->second.getTimes(), rsp);
         else
-          getDataFromIndex(timeMin, timeMax, itIndex->second.times, rsp);
+          getDataFromIndex(timeMin, timeMax, itIndex->second.getTimes(), rsp);
 
         ++itIndex;
       }
@@ -365,9 +372,9 @@ private:
       for (auto itIndex = indexMap.cbegin(); itIndex != itEnd ; ++itIndex)
       {
         if (isFullTimeRange)
-          getDataFromIndex(itIndex->second.times, rsp);
+          getDataFromIndex(itIndex->second.getTimes(), rsp);
         else
-          getDataFromIndex(timeMin, timeMax, itIndex->second.times, rsp);
+          getDataFromIndex(timeMin, timeMax, itIndex->second.getTimes(), rsp);
       }
     }
   }
@@ -390,9 +397,9 @@ private:
           for(auto itIndex = itRangeLow ; itIndex != itRangeHigh ; ++itIndex)
           {
             if (isFullTimeRange)
-              getDataFromIndex(itIndex->second.times, rsp);
+              getDataFromIndex(itIndex->second.getTimes(), rsp);
             else
-              getDataFromIndex(timeMin, timeMax, itIndex->second.times, rsp);
+              getDataFromIndex(timeMin, timeMax, itIndex->second.getTimes(), rsp);
           }
         }
       }
@@ -400,25 +407,25 @@ private:
   }
 
 
-  void getDataFromIndex (const SeriesTime& timeMin, const SeriesTime& timeMax, const std::vector<SeriesTime>& times, njson& rsp) const
+  void getDataFromIndex (const SeriesTime& timeMin, const SeriesTime& timeMax, const IndexNode::IndexedTimes& times, njson& rsp) const
   {
-    for (const auto& time : times)
+    for (const auto& [time, index] : times)
     {
       if (time >= timeMin && time < timeMax)
       {
         PLOGD << "Found time " << time;
-        getData(time, rsp["t"], rsp["v"]);
+        getData(index, rsp["t"], rsp["v"]);
       }
     }
   }
 
 
-  void getDataFromIndex (const std::vector<SeriesTime>& times, njson& rsp) const
+  void getDataFromIndex (const IndexNode::IndexedTimes& times, njson& rsp) const
   {
-    for (const auto& time : times)
+    for (const auto& [time, index] : times)
     {
       PLOGD << "Found time " << time;
-      getData(time, rsp["t"], rsp["v"]);
+      getData(index, rsp["t"], rsp["v"]);
     }
   }
 

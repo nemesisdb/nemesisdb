@@ -109,7 +109,7 @@ public:
   }
 
 
-  QueryResult createIndex (const SeriesName& name, const std::string& cmdRspName, const std::string& key)
+  QueryResult createIndex (const SeriesName& name, const std::string& key, const std::string& cmdRspName)
   {
     QueryResult qr;
 

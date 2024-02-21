@@ -39,7 +39,7 @@ TEST_F(TsSeriesTest, Create)
     //MeasureDuration {[&s, &q, rspName = GetRspCmd]{ return s.get(q, rspName).rsp; }};
     
     ASSERT_EQ(s.create("os1", CreateRspCmd).status, TsRequestStatus::Ok);
-    ASSERT_EQ(s.createIndex("os1", CreateIndexRspCmd, "temp").status, TsRequestStatus::Ok);
+    ASSERT_EQ(s.createIndex("os1", "temp", CreateIndexRspCmd).status, TsRequestStatus::Ok);
 
     auto add = njson::parse(R"(
                                 {
@@ -66,7 +66,14 @@ TEST_F(TsSeriesTest, Create)
                                 }
                               )");
 
-    s.get(get, GetRspCmd);
+    auto r = s.get(get, GetRspCmd);
+
+    std::cout << r.rsp << '\n';
+
+    ASSERT_EQ(r.rsp["TS_GET_RSP"]["os1"]["t"].size(), 3);
+    ASSERT_EQ(r.rsp["TS_GET_RSP"]["os1"]["t"].size(), r.rsp["TS_GET_RSP"]["os1"]["v"].size());
+
+    //ASSERT_EQ(r.rsp["TS_GET_RSP"]["t"].size(), njson::parse(R"([])"));
   }
 }
 

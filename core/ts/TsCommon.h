@@ -36,6 +36,7 @@ enum class TsCommand
   TsAdd,
   TsGet,
   TsGetMultipleRanges,
+  TsCreateIndex,
   Max
 };
 
@@ -45,7 +46,8 @@ const std::map<const std::string_view, const TsCommand> QueryNameToType =
   {"TS_CREATE",         TsCommand::TsCreate},
   {"TS_ADD",            TsCommand::TsAdd},
   {"TS_GET",            TsCommand::TsGet},
-  {"TS_GET_MULTI",      TsCommand::TsGetMultipleRanges}
+  {"TS_GET_MULTI",      TsCommand::TsGetMultipleRanges},
+  {"TS_CREATE_INDEX",   TsCommand::TsCreateIndex}
 };
 
 
@@ -64,7 +66,36 @@ struct QueryResult
 
 struct IndexNode
 {
-  std::vector<SeriesTime> times;
+  using IndexedTimes = std::vector<std::tuple<SeriesTime, std::size_t>>;  // TODO priority_queue?
+
+  IndexNode () = default;
+
+  IndexNode (const SeriesTime time, const std::size_t index)
+  {
+    times.emplace_back(time, index);
+  }
+
+
+  void add (const SeriesTime time, const std::size_t index)
+  {
+    // keep times vector sorted by the index
+    const auto insertIt = std::lower_bound(times.cbegin(), times.cend(), index, [](const auto& timeToIndex, const std::size_t& index)
+    {
+      return std::get<1>(timeToIndex) < index;
+    });
+
+    times.emplace(insertIt, time, index);
+  }
+
+
+  const IndexedTimes& getTimes () const
+  {
+    return times;
+  }
+
+  
+  private:
+    IndexedTimes times;
 };
 
 
@@ -108,7 +139,7 @@ struct GetParams
 
   bool isFullRange () const
   {
-    return !(isStartSet() && isEndSet());
+    return !isStartSet() && !isEndSet();
   }
   
 
