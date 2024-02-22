@@ -3,6 +3,7 @@
 
 #include <vector>
 #include <map>
+#include <queue> // for priority_queue
 #include <core/ts/TsCommon.h>
 
 
@@ -162,17 +163,18 @@ private:
     const auto timeMax = itEnd == m_times.cend() ? std::numeric_limits<SeriesTime>::max() : *itEnd;
     const auto condition = params.getWhere();
 
+    std::vector<std::tuple<Index::IndexMapConstIt, Index::IndexMapConstIt>> indexRanges;
+
     for (const auto& member : condition.object_range())  // TODO check 'where' is an object
     {
       if (const auto& indexName = member.key() ; !isIndexed(indexName))
       {
-        PLOGD << indexName << " not an index";        
+        PLOGD << indexName << " not an index"; // TODO should bail      
       }
       else
       {
         PLOGD << indexName << " is indexed";
 
-        // TODO need to sort data before it's returned: these functions should return the indexes, which are then sorted, then values are retrieved?
         // TODO need to handle multiple indexes in "where"
 
         for (const auto termMember : member.value().object_range())
@@ -180,32 +182,78 @@ private:
           const auto& term = termMember.key();
           const auto& indexMap = m_indexes.at(indexName).index;
 
-          if (term == ">")
+          if (term == "<")
           {
-            gt(params, timeMin, timeMax, indexMap, termMember.value(), rsp);
-          }
-          else if (term == ">=")
-          {
-            gte(params, timeMin, timeMax, indexMap, termMember.value(), rsp);
-          }
-          else if (term == "<")
-          {
-            lt(params, timeMin, timeMax, indexMap, termMember.value(), rsp);
+            if (const auto [start, end] = lt(indexMap, termMember.value(), rsp); start != indexMap.cend())
+              indexRanges.emplace_back(start, end);
           }
           else if (term == "<=")
           {
-            lte(params, timeMin, timeMax, indexMap, termMember.value(), rsp);
+            if (const auto [start, end] = lte(indexMap, termMember.value(), rsp); start != indexMap.cend())
+              indexRanges.emplace_back(start, end);
           }
-          else if (term == "==")
+          else if (term == ">")
           {
-            eq(params, timeMin, timeMax, indexMap, termMember.value(), rsp);
+            if (const auto [start, end] = gt(indexMap, termMember.value(), rsp); start != indexMap.cend())
+              indexRanges.emplace_back(start, end);
+          }
+          else if (term == ">=")
+          {
+            if (const auto [start, end] = gte(indexMap, termMember.value(), rsp); start != indexMap.cend())
+              indexRanges.emplace_back(start, end);
+          }
+          else if (term == "==")  // TODO have option to only return times (if search for equality, all values will be the same)
+          {
+            if (const auto [start, end] = eq(indexMap, termMember.value(), rsp); start != indexMap.cend())
+              indexRanges.emplace_back(start, end);
           }
           else if (term == "[]")
           {
-            valueRangeInclusive(params, timeMin, timeMax, indexMap, termMember.value(), rsp);
+            if (const auto [start, end] = rng(indexMap, termMember.value(), rsp); start != indexMap.cend())
+              indexRanges.emplace_back(start, end);
           }
         }
       }
+    }
+
+
+    if (!indexRanges.empty())
+    {
+      // example:
+      //  time is: [10,11,12,13]
+      //  data is: [{"temp":1}, {"temp":2}, {"temp":1}, {"temp":3}]
+      //  search term is:
+      //    "temp": {"<":3}
+      
+      //  the index returns a range from "temp":1 to "temp":3
+      //  but "temp":1 index node contains two times because the temperature is 1 at time 10 and 12:
+      //    temp @ 1 : {10,12}
+      //    temp @ 2 : {11}
+      // we need to sort the indexes so we return in time ascending: "t":[10,11,12]
+
+
+      std::vector<std::size_t> pqCnt;
+      pqCnt.reserve(50);  // TODO can't find this value without first iterating indexRanges 
+
+      std::priority_queue<std::size_t, std::vector<std::size_t>, std::greater<std::size_t>> sorted {std::greater<std::size_t>{}, std::move(pqCnt)};
+
+      for (const auto& indexResult : indexRanges)
+      {
+        for (auto [start, end] = indexResult; start != end ; ++start)
+        {
+          const auto& times = start->second.getTimes();
+          std::for_each(times.cbegin(), times.cend(), [&sorted, timeMin, timeMax](const std::tuple<SeriesTime, std::size_t>& timeToIndex)
+          {
+            const auto [time, index] = timeToIndex; 
+            if (time >= timeMin && time < timeMax)
+              sorted.push(index);
+          });
+        }
+      }
+
+
+      for ( ; !sorted.empty() ; sorted.pop())
+        getData(sorted.top(), rsp["t"], rsp["v"]);
     }
 
     return rsp;
@@ -267,7 +315,7 @@ private:
   }
 
 
-  void getData (const std::ptrdiff_t index, njson& times, njson& values) const 
+  void getData (const std::size_t index, njson& times, njson& values) const 
   {
     PLOGD << "Getting single time/value";
     
@@ -276,157 +324,63 @@ private:
   }
 
 
-  // operator functions
-  void eq ( const GetParams& params, const SeriesTime& timeMin, const SeriesTime& timeMax, const std::map<njson, IndexNode>& indexMap,
-            const njson& value, njson& rsp) const
+  // operator functions:
+  //  each returns an iterator to the start and end to Index entries which matched the criteria
+  //  these are returned to caller, and sorted by time index (not the time value), before retrieving values and returning the response.
+
+  std::tuple<Index::IndexMapConstIt, Index::IndexMapConstIt> eq (const std::map<njson, IndexNode>& indexMap, const njson& value, njson& rsp) const
   {
     PLOGD << "==";
-
-    if (auto [first, end] = indexMap.equal_range(value) ; first != indexMap.cend())
-    {
-      const auto isFullTimeRange = params.isFullRange();
-      while (first != end)
-      {
-        if (isFullTimeRange)
-          getDataFromIndex(first->second.getTimes(), rsp);
-        else
-          getDataFromIndex(timeMin, timeMax, first->second.getTimes(), rsp);
-
-        ++first;
-      }
-    }
+    
+    if (const auto [first, end] = indexMap.equal_range(value); first == indexMap.cend())
+      return {indexMap.cend(), indexMap.cend()};
+    else
+      return {first, end};
   }
 
 
-  void gt ( const GetParams& params, const SeriesTime& timeMin, const SeriesTime& timeMax, const std::map<njson, IndexNode>& indexMap,
-            const njson& value, njson& rsp) const
-  {
-    PLOGD << ">";
-    doGtGte(params, timeMin, timeMax, indexMap, rsp, [&indexMap, &value]()
-    {
-      return indexMap.upper_bound(value);
-    });    
-  }
-
-
-  void gte (  const GetParams& params, const SeriesTime& timeMin, const SeriesTime& timeMax, const std::map<njson, IndexNode>& indexMap,
-              const njson& value, njson& rsp) const
-  {
-    PLOGD << ">=";
-    doGtGte(params, timeMin, timeMax, indexMap, rsp, [&indexMap, &value]()
-    {
-      return indexMap.lower_bound(value);
-    });
-  }
-
-
-  void lt ( const GetParams& params, const SeriesTime& timeMin, const SeriesTime& timeMax, const std::map<njson, IndexNode>& indexMap,
-            const njson& value, njson& rsp) const
+  std::tuple<Index::IndexMapConstIt, Index::IndexMapConstIt> lt (const std::map<njson, IndexNode>& indexMap, const njson& value, njson& rsp) const
   {
     PLOGD << "<";
-    doLtLte(params, timeMin, timeMax, indexMap, rsp, [&indexMap, &value]()
-    {
-      return indexMap.lower_bound(value);
-    });    
+    return {indexMap.cbegin(), indexMap.lower_bound(value)}; 
   }
 
 
-  void lte (  const GetParams& params, const SeriesTime& timeMin, const SeriesTime& timeMax, const std::map<njson, IndexNode>& indexMap,
-              const njson& value, njson& rsp) const
+  std::tuple<Index::IndexMapConstIt, Index::IndexMapConstIt> lte (const std::map<njson, IndexNode>& indexMap, const njson& value, njson& rsp) const
   {
     PLOGD << "<=";
-    doLtLte(params, timeMin, timeMax, indexMap, rsp, [&indexMap, &value]()
-    {
-      return indexMap.upper_bound(value);
-    });    
+    return {indexMap.cbegin(), indexMap.upper_bound(value)}; 
   }
 
 
-  void doGtGte (const GetParams& params, const SeriesTime& timeMin, const SeriesTime& timeMax, const std::map<njson, IndexNode>& indexMap,
-                njson& rsp, std::function<std::map<njson, IndexNode>::const_iterator (void)> getBounds) const
+  std::tuple<Index::IndexMapConstIt, Index::IndexMapConstIt> gt (const std::map<njson, IndexNode>& indexMap, const njson& value, njson& rsp) const
   {
-    if (auto itIndex = getBounds(); itIndex != indexMap.cend())
-    {
-      const auto isFullTimeRange = params.isFullRange();
-
-      while (itIndex != indexMap.cend())
-      {
-        if (isFullTimeRange)
-          getDataFromIndex(itIndex->second.getTimes(), rsp);
-        else
-          getDataFromIndex(timeMin, timeMax, itIndex->second.getTimes(), rsp);
-
-        ++itIndex;
-      }
-    }
+    PLOGD << ">";
+    return {indexMap.upper_bound(value), indexMap.cend()};
   }
 
 
-  void doLtLte (const GetParams& params, const SeriesTime& timeMin, const SeriesTime& timeMax, const std::map<njson, IndexNode>& indexMap,
-                njson& rsp, std::function<std::map<njson, IndexNode>::const_iterator (void)> getBounds) const
+  std::tuple<Index::IndexMapConstIt, Index::IndexMapConstIt> gte (const std::map<njson, IndexNode>& indexMap, const njson& value, njson& rsp) const
   {
-    if (const auto itEnd = getBounds(); itEnd != indexMap.cend())
-    {
-      const auto isFullTimeRange = params.isFullRange();
-      
-      for (auto itIndex = indexMap.cbegin(); itIndex != itEnd ; ++itIndex)
-      {
-        if (isFullTimeRange)
-          getDataFromIndex(itIndex->second.getTimes(), rsp);
-        else
-          getDataFromIndex(timeMin, timeMax, itIndex->second.getTimes(), rsp);
-      }
-    }
-  }
-
-  
-  void valueRangeInclusive (const GetParams& params, const SeriesTime& timeMin, const SeriesTime& timeMax, const std::map<njson, IndexNode>& indexMap, const njson& range, njson& rsp) const
-  { 
-    const auto& lowValue = range[0];
-    const auto& highValue = range[1];
-
-    PLOGD << "Value Range: " << range;
-
-    if (lowValue < highValue)
-    {
-      if (const auto itRangeLow = indexMap.lower_bound(lowValue); itRangeLow != indexMap.cend())
-      {
-        if (const auto itRangeHigh = indexMap.upper_bound(highValue); itRangeHigh != indexMap.cend())
-        {
-          const auto isFullTimeRange = params.isFullRange();
-          for(auto itIndex = itRangeLow ; itIndex != itRangeHigh ; ++itIndex)
-          {
-            if (isFullTimeRange)
-              getDataFromIndex(itIndex->second.getTimes(), rsp);
-            else
-              getDataFromIndex(timeMin, timeMax, itIndex->second.getTimes(), rsp);
-          }
-        }
-      }
-    }
+    PLOGD << ">=";
+    return {indexMap.lower_bound(value), indexMap.cend()};
   }
 
 
-  void getDataFromIndex (const SeriesTime& timeMin, const SeriesTime& timeMax, const IndexNode::IndexedTimes& times, njson& rsp) const
+  std::tuple<Index::IndexMapConstIt, Index::IndexMapConstIt> rng (const std::map<njson, IndexNode>& indexMap, const njson& range, njson& rsp) const
   {
-    for (const auto& [time, index] : times)
-    {
-      if (time >= timeMin && time < timeMax)
-      {
-        PLOGD << "Found time " << time;
-        getData(index, rsp["t"], rsp["v"]);
-      }
-    }
-  }
+    PLOGD << "[]";
 
+    const auto& low = range[0];
+    const auto& high = range[1];
 
-  void getDataFromIndex (const IndexNode::IndexedTimes& times, njson& rsp) const
-  {
-    for (const auto& [time, index] : times)
+    if (low < high) // TODO check this in TsHandler
     {
-      PLOGD << "Found time " << time;
-      getData(index, rsp["t"], rsp["v"]);
+      if (const auto itRangeLow = indexMap.lower_bound(low); itRangeLow != indexMap.cend())
+        return {itRangeLow, indexMap.upper_bound(high)};
     }
+
+    return {indexMap.cend(), indexMap.cend()};
   }
 
 

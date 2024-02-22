@@ -66,7 +66,7 @@ struct QueryResult
 
 struct IndexNode
 {
-  using IndexedTimes = std::vector<std::tuple<SeriesTime, std::size_t>>;  // TODO priority_queue?
+  using IndexedTimes = std::vector<std::tuple<SeriesTime, std::size_t>>;  
 
   IndexNode () = default;
 
@@ -78,13 +78,15 @@ struct IndexNode
 
   void add (const SeriesTime time, const std::size_t index)
   {
-    // keep times vector sorted by the index
-    const auto insertIt = std::lower_bound(times.cbegin(), times.cend(), index, [](const auto& timeToIndex, const std::size_t& index)
-    {
-      return std::get<1>(timeToIndex) < index;
-    });
+    times.emplace_back(time, index);
 
-    times.emplace(insertIt, time, index);
+    // keep times vector sorted by the index
+    // const auto insertIt = std::lower_bound(times.cbegin(), times.cend(), index, [](const auto& timeToIndex, const std::size_t& index)
+    // {
+    //   return std::get<1>(timeToIndex) < index;
+    // });
+
+    // times.emplace(insertIt, time, index);
   }
 
 
@@ -101,6 +103,9 @@ struct IndexNode
 
 struct Index
 {
+  using IndexMap = std::map<njson, IndexNode> ;
+  using IndexMapConstIt = std::map<njson, IndexNode>::const_iterator ;
+
   std::map<njson, IndexNode> index;
 };
 
