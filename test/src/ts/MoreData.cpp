@@ -35,31 +35,8 @@ TEST_F(TsSeriesTest, Test100k)
   Series s;
   createMoreData({"../test_data/moredata_10k.json"}, s);
   
-  // TODO remove tests if not using JSON paths
-  // {
-  //   njson q = njson::parse(R"( {"ts":["os1"], "rng":[0,50], "where":"$[?($.temp >= -30 && $.temp <= 30)]"} )");
-    
-  //   MeasureDuration {[&s, &q, rspName = GetRspCmd]{ return s.get(q, rspName).rsp; }};
-  // }
   
-
-  // {
-  //   njson q = njson::parse(R"( {"ts":["os1"], "rng":[0,50], "where":"$[?($.temp >= -30 && $.temp <= 21)]"} )");
-    
-  //   MeasureDuration {[&s, &q, rspName = GetRspCmd]{ return s.get(q, rspName).rsp; }};
-  // }
-
-
-  // low: 5880, high: 12000, avg: 6500
-  // {
-  //   njson q = njson::parse(R"( {"ts":["os1"], "rng":[4000,6000], "where":"$[?($.temp > 0)]"} )");
-    
-  //   MeasureDuration md {[&s, &q, rspName = GetRspCmd]{ return s.get(q, rspName).rsp; }};
-  //   std::cout << "size: " << md.result["TS_GET_RSP"]["os1"]["t"].size() << '\n';
-  // }
-
-
-  // with indexes - low: 99, high: 450, avg: 150
+  // >
   {
     auto q = njson::parse(R"(
                               {

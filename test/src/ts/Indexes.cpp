@@ -35,9 +35,6 @@ TEST_F(TsSeriesTest, Create)
   Series s;
   
   
-  //njson q = njson::parse(R"( {"ts":["os1"], "rng":[0,50], "where":"$[?($.temp >= -30 && $.temp <= 30)]"} )");
-  //MeasureDuration {[&s, &q, rspName = GetRspCmd]{ return s.get(q, rspName).rsp; }};
-  
   ASSERT_EQ(s.create("os1", CreateRspCmd).status, TsRequestStatus::Ok);
   ASSERT_EQ(s.createIndex("os1", "temp", CreateIndexRspCmd).status, TsRequestStatus::Ok);
 
@@ -51,7 +48,7 @@ TEST_F(TsSeriesTest, Create)
 
   s.add(add, AddRspCmd);
 
-  /*
+  
   // <
   {
     auto get = njson::parse(R"(
@@ -206,7 +203,7 @@ TEST_F(TsSeriesTest, Create)
     ASSERT_EQ(r.rsp["TS_GET_RSP"]["os1"]["t"].size(), r.rsp["TS_GET_RSP"]["os1"]["v"].size());
     ASSERT_EQ(r.rsp["TS_GET_RSP"]["os1"]["t"], njson::parse(R"([10,11,12])"));
   }
-  */
+  
 
   
   // []

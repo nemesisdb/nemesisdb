@@ -15,7 +15,6 @@ using SeriesName = std::string;
 using SeriesTime = std::int64_t;
 using SeriesValue = njson;
 using WhereType = njson;
-//using WhereViewType = std::string_view;
 
 
 enum class TsRequestStatus
@@ -179,14 +178,14 @@ private:
 
 using TsWebSocket = uWS::WebSocket<false, true, WsSession>;
 
-// TODO crap name, but Series is already used (instead of "SeriesManager")
-class BasicSeries
+
+class BaseSeries
 {
 protected:
-  BasicSeries () = default;
+  BaseSeries () = default;
 
 public:
-  virtual ~BasicSeries() = default;
+  virtual ~BaseSeries() = default;
 
   virtual void add (const njson& times, njson&& values) = 0;
   

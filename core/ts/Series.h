@@ -21,7 +21,7 @@ static inline const njson SeriesNotExistRsp (json_object_arg, { {"st", toUnderly
 
 
 /// Holds all series, keyed by the series name.
-/// This class requires that the JSON types are validated before any function calls.
+/// This class requires that the JSON is validated before any function calls.
 class Series
 { 
 
@@ -164,7 +164,7 @@ private:
 
 
 private:
-  std::map<const SeriesName, std::unique_ptr<BasicSeries>> m_series;
+  std::map<const SeriesName, std::unique_ptr<BaseSeries>> m_series;
 };
 
 

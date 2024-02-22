@@ -54,10 +54,12 @@ private:
   struct Param
   {
   private:
+    Param () = delete;
+
     Param(const JsonType type, const bool required) : type(type), isRequired(required)
     {
-
     }
+
 
   public:
     static std::pair<std::string_view, Param> required (const std::string_view name, const JsonType type)
@@ -73,18 +75,7 @@ private:
     bool isRequired;
     JsonType type;
   };
-
-
-  // bool isValid (const njson& msg, const std::map<const std::string_view, const JsonType>& required)
-  // {
-  //   for (const auto& [member, type] : required)
-  //   {
-  //     if (!(msg.contains(member) && msg.at(member).type() == type))
-  //       return false;
-  //   }
-  //   return true;
-  // }
-
+  
 
   bool isValid (const njson& msg, const std::map<const std::string_view, const Param>& params)
   {
@@ -106,7 +97,6 @@ private:
 
     const auto& cmd = msg[cmdName];
 
-    //if (!isValid(cmd, {{"name", JsonString}, {"type", JsonString}}))
     if (!isValid(cmd, {Param::required("name", JsonString), Param::required("type", JsonString)}))
       PLOGD << "Invalid";
     else if (!(cmd.at("type") == "Ordered" && !cmd.at("name").empty()))
@@ -137,7 +127,6 @@ private:
 
     auto& cmd = msg.at(cmdName);
 
-    //if (!isValid(cmd, {{"ts", JsonString}, {"t", JsonArray}, {"v", JsonArray}}))
     if (!isValid(cmd, {Param::required("ts", JsonString), Param::required("t", JsonArray), Param::required("v", JsonArray)}))
       PLOGD << "Invalid";
     else
@@ -152,16 +141,20 @@ private:
 
     auto& cmd = msg.at(cmdName);
 
-    //if (!isValid(cmd, {{"ts", JsonArray}, {"rng", JsonArray}}))
     if (!isValid(cmd, {Param::required("ts", JsonArray), Param::required("rng", JsonArray), Param::optional("where", JsonObject)}))
       PLOGD << "Invalid";
     else
     {
       bool valid = true;
 
-      if (cmd.at("rng").size() > 2)
+      if (const auto& rng = cmd.at("rng") ; rng.size() > 2)
       {
         PLOGD << "'rng' cannot have more than 2 values";
+        valid = false;
+      }
+      else if (rng[0].as<SeriesTime> () > rng[1].as<SeriesTime> ())
+      {
+        PLOGD << "'rng' invalid, first must not be greater than second ";
         valid = false;
       }
       else if (cmd.contains("where"))

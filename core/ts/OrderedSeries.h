@@ -17,7 +17,7 @@ using namespace jsoncons::literals;
 /// Represents a time series that submitted data is always gauranteed to be ordered by the sender. 
 /// Uses parallel vectors to hold time and value data:
 ///   An event occurring at m_times[i] has metrics in m_values[i].
-class OrderedSeries : public BasicSeries
+class OrderedSeries : public BaseSeries
 {
   using TimeVector = std::vector<SeriesTime>;
   using ValueVector = std::vector<SeriesValue>;
@@ -260,40 +260,6 @@ private:
   }
 
 
-
-  /*
-  njson applyJsonPath (const WhereViewType& condition, const TimeVectorConstIt itStart, const TimeVectorConstIt itEnd) const
-  {
-    auto s = chrono::steady_clock::now();
-
-    njson rsp (json_object_arg, {{"t", json_array_arg_t{}}, {"v", json_array_arg_t{}}});
-
-    try
-    {
-      rsp["t"].reserve(500);
-      rsp["v"].reserve(500); // TODO
-
-      const auto end = std::distance(m_times.cbegin(), itEnd);
-
-      for (auto i = std::distance(m_times.cbegin(), itStart); i < end ; ++i)
-      {
-        if (const auto whereResult = jsonpath::json_query(m_values[i], condition, jsonpath::result_options::path | jsonpath::result_options::nodups); !whereResult.empty())
-          getData(i, rsp.at("t"), rsp.at("v"));
-      }  
-    }
-    catch(const jsonpath::jsonpath_error& jpex)
-    {
-      PLOGE << jpex.what();
-      rsp["t"].clear();
-      rsp["v"].clear();
-    }
-
-    std::cout << "applyJsonPath(): " << chrono::duration_cast<chrono::microseconds>(chrono::steady_clock::now() - s).count() << '\n';
-
-    return rsp;
-  } */
-
-
   
   njson getData (const TimeVectorConstIt itStart, const TimeVectorConstIt itEnd) const 
   {
@@ -313,6 +279,7 @@ private:
 
     return rsp;
   }
+
 
 
   void getData (const std::size_t index, njson& times, njson& values) const 
