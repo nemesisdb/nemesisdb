@@ -77,15 +77,15 @@ struct IndexNode
 
   void add (const SeriesTime time, const std::size_t index)
   {
-    times.emplace_back(time, index);
+    //times.emplace_back(time, index);
 
     // keep times vector sorted by the index
-    // const auto insertIt = std::lower_bound(times.cbegin(), times.cend(), index, [](const auto& timeToIndex, const std::size_t& index)
-    // {
-    //   return std::get<1>(timeToIndex) < index;
-    // });
+    const auto insertIt = std::lower_bound(times.cbegin(), times.cend(), index, [](const auto& timeToIndex, const std::size_t& index)
+    {
+      return std::get<1>(timeToIndex) < index;
+    });
 
-    // times.emplace(insertIt, time, index);
+    times.emplace(insertIt, time, index);
   }
 
 

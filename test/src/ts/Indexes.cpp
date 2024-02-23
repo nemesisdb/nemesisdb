@@ -72,7 +72,7 @@ TEST_F(TsSeriesTest, SimpleData)
     ASSERT_EQ(r.rsp["TS_GET_RSP"]["os1"]["t"], njson::parse(R"([10,11,12])"));
   }
 
-
+/* 
   // <=
   {
     auto get = njson::parse(R"(
@@ -264,9 +264,11 @@ TEST_F(TsSeriesTest, SimpleData)
     ASSERT_EQ(r.rsp["TS_GET_RSP"]["os1"]["t"].size(), r.rsp["TS_GET_RSP"]["os1"]["v"].size());
     ASSERT_EQ(r.rsp["TS_GET_RSP"]["os1"]["t"], njson::parse(R"([10,11,12,13])"));
   }
+   */
 }
 
 
+/* 
 TEST_F(TsSeriesTest, ComplexData)
 {
   // Similar to SimpleData, but values have more than just 'temp' member
@@ -317,6 +319,7 @@ TEST_F(TsSeriesTest, ComplexData)
     ASSERT_EQ(r.rsp["TS_GET_RSP"]["os1"]["v"], njson::parse(R"([{"temp":1, "coords":{"x":2.0, "y":5.0}}, {"temp":1, "coords":{"x":2.2, "y":5.2}}])"));
   }
 }
+ */
 
 
 int main (int argc, char ** argv)

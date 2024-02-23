@@ -162,103 +162,142 @@ private:
     const auto timeMin = *itStart;
     const auto timeMax = itEnd == m_times.cend() ? std::numeric_limits<SeriesTime>::max() : *itEnd;
     const auto condition = params.getWhere();
-
+    
+    bool leave = false;
     std::vector<std::tuple<Index::IndexMapConstIt, Index::IndexMapConstIt>> indexRanges;
 
     for (const auto& member : condition.object_range())  // TODO check 'where' is an object
     {
       if (const auto& indexName = member.key() ; !isIndexed(indexName))
       {
-        PLOGD << indexName << " not an index"; // TODO should bail      
+        PLOGD << indexName << " not an index";
+        leave = true;
       }
       else
       {
         PLOGD << indexName << " is indexed";
 
         // TODO need to handle multiple indexes in "where"
-
+        
         for (const auto termMember : member.value().object_range())
         {
-          const auto& term = termMember.key();
+          const auto& op = termMember.key();
+          const auto& condition = termMember.value();
           const auto& indexMap = m_indexes.at(indexName).index;
+          std::tuple<Index::IndexMapConstIt,Index::IndexMapConstIt> indexRange; // start, end of indexes matching criteria
 
-          if (term == "<")
+          if (op == "<")
+            indexRange = lt(indexMap, condition, rsp);
+          else if (op == "<=")
+            indexRange = lte(indexMap, condition, rsp);
+          else if (op == ">")
+            indexRange = gt(indexMap, condition, rsp);
+          else if (op == ">=")
+            indexRange = gte(indexMap, condition, rsp);
+          else if (op == "==")
+            indexRange = eq(indexMap, condition, rsp);
+          else if (op == "[]")
+            indexRange = rng(indexMap, condition, rsp);
+
+
+          if (const auto [start, end] = indexRange; start == indexMap.cend())
           {
-            if (const auto [start, end] = lt(indexMap, termMember.value(), rsp); start != indexMap.cend())
-              indexRanges.emplace_back(start, end);
+            leave = true;  // terms are &&, i.e. if (term1 && term2), so if a term returns no results, can bail
+            break;
           }
-          else if (term == "<=")
-          {
-            if (const auto [start, end] = lte(indexMap, termMember.value(), rsp); start != indexMap.cend())
-              indexRanges.emplace_back(start, end);
-          }
-          else if (term == ">")
-          {
-            if (const auto [start, end] = gt(indexMap, termMember.value(), rsp); start != indexMap.cend())
-              indexRanges.emplace_back(start, end);
-          }
-          else if (term == ">=")
-          {
-            if (const auto [start, end] = gte(indexMap, termMember.value(), rsp); start != indexMap.cend())
-              indexRanges.emplace_back(start, end);
-          }
-          else if (term == "==")  // TODO have option to only return times (if search for equality, all values will be the same)
-          {
-            if (const auto [start, end] = eq(indexMap, termMember.value(), rsp); start != indexMap.cend())
-              indexRanges.emplace_back(start, end);
-          }
-          else if (term == "[]")
-          {
-            if (const auto [start, end] = rng(indexMap, termMember.value(), rsp); start != indexMap.cend())
-              indexRanges.emplace_back(start, end);
-          }
+          else
+            indexRanges.emplace_back(start, end);            
         }
+
+        if (leave)
+          break;
       }
     }
 
 
-    if (!indexRanges.empty())
+    if (!leave && !indexRanges.empty())
     {
-      // example:
-      //  time is: [10,11,12,13]
-      //  data is: [{"temp":1}, {"temp":2}, {"temp":1}, {"temp":3}]
-      //  search term is:
-      //    "temp": {"<":3}
+      const auto result = intersectIndexResults(indexRanges, timeMin, timeMax);
       
-      //  the index returns a range from "temp":1 to "temp":3
-      //  but "temp":1 index node contains two times because the temperature is 1 at time 10 and 12:
-      //    temp @ 1 : {10,12}
-      //    temp @ 2 : {11}
-      // we need to sort the indexes so we return in time ascending: "t":[10,11,12]
-
-
-      std::vector<std::size_t> pqCnt;
-      pqCnt.reserve(50);  // TODO can't find this value without first iterating indexRanges 
-
-      std::priority_queue<std::size_t, std::vector<std::size_t>, std::greater<std::size_t>> sorted {std::greater<std::size_t>{}, std::move(pqCnt)};
-
-      for (const auto& indexResult : indexRanges)
-      {
-        for (auto [start, end] = indexResult; start != end ; ++start)
-        {
-          const auto& times = start->second.getTimes();
-          std::for_each(times.cbegin(), times.cend(), [&sorted, timeMin, timeMax](const std::tuple<SeriesTime, std::size_t>& timeToIndex)
-          {
-            const auto [time, index] = timeToIndex; 
-            if (time >= timeMin && time < timeMax)
-              sorted.push(index);
-          });
-        }
-      }
-
-
-      for ( ; !sorted.empty() ; sorted.pop())
-        getData(sorted.top(), rsp["t"], rsp["v"]);
+      for (const auto& [time, index] : result)
+        getData(index, rsp["t"], rsp["v"]);
     }
+
 
     return rsp;
   }
 
+
+  std::vector<std::tuple<SeriesTime, std::size_t>> intersectIndexResults (const std::vector<std::tuple<Index::IndexMapConstIt, Index::IndexMapConstIt>>& allResults, const SeriesTime timeMin, const SeriesTime timeMax) const
+  {
+    // TODO don't think this is correct: this discards subsequent results unless index is not present in all, but it may be present in just one:
+    //  if (temp < 10 && sensor < 3)
+    // temp: 4, sensor: 1
+    // is valid, but current impl will dismiss this because it's not present in all sensor index nodes
+    // I think.
+
+    // something like:
+    //  intersectedResult = allResults[0] (within given time limits)
+    //  for each intersected
+    //    for each allResult
+    //      if intersected index in allResult[i] AND time within range
+    //        do nothing
+    //      else
+    //        erase from intersectedResult
+
+    auto sort = [](const std::tuple<SeriesTime, std::size_t>& a, const std::tuple<SeriesTime, std::size_t>& b)
+    {
+      return std::get<1>(a) < std::get<1>(b); // TODO possibly check time here 
+    };
+
+
+    auto inIndexRange = [sort](const Index::IndexMapConstIt& itStart, const Index::IndexMapConstIt& itEnd, const std::tuple<SeriesTime, std::size_t>& timeToIndex)
+    {
+      for (auto it = itStart ; it != itEnd ; ++it)
+      {
+        // TODO wrong , discarding whole range rather than individual indexes within each node
+        if (!std::binary_search(std::cbegin(it->second.getTimes()), std::cend(it->second.getTimes()), timeToIndex, sort))
+          return false;
+      }
+      return true;
+    };
+
+
+    std::vector<std::tuple<SeriesTime, std::size_t>> intersectedResult;
+
+    const auto [start, end] = allResults[0];
+    std::for_each(start, end, [&intersectedResult, timeMin, timeMax](const auto pair)
+    {
+      const auto& times = pair.second.getTimes();
+      std::for_each (std::cbegin(times), std::cend(times), [&intersectedResult, timeMin, timeMax](const auto timeToIndex)
+      {
+        if (const auto& [time, index] = timeToIndex; time >= timeMin && time < timeMax)
+          intersectedResult.emplace_back(time, index);
+      });
+    });
+
+
+    std::sort(std::begin(intersectedResult), std::end(intersectedResult), sort);
+
+    if (allResults.size() > 1)
+    {
+      for (auto itIntersected = intersectedResult.begin() ; itIntersected != intersectedResult.end() ; )
+      {
+        for (std::size_t i = 1 ; i < allResults.size() ; ++i)
+        {
+          const auto& [start, end] = allResults[i];
+          
+          if (!inIndexRange(start, end, *itIntersected))
+            itIntersected = intersectedResult.erase (itIntersected);
+          else
+            ++itIntersected;
+        }
+      }
+    }
+    
+
+    return intersectedResult;
+  }
 
   
   njson getData (const TimeVectorConstIt itStart, const TimeVectorConstIt itEnd) const 
@@ -293,7 +332,7 @@ private:
 
   // operator functions:
   //  each returns an iterator to the start and end to Index entries which matched the criteria
-  //  these are returned to caller, and sorted by time index (not the time value), before retrieving values and returning the response.
+  //  these are returned to caller, then sorted by the time index, before retrieving values and returning the response.
 
   std::tuple<Index::IndexMapConstIt, Index::IndexMapConstIt> eq (const std::map<njson, IndexNode>& indexMap, const njson& value, njson& rsp) const
   {
