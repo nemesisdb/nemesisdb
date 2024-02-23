@@ -230,41 +230,15 @@ private:
 
   std::vector<std::tuple<SeriesTime, std::size_t>> intersectIndexResults (const std::vector<std::tuple<Index::IndexMapConstIt, Index::IndexMapConstIt>>& allResults, const SeriesTime timeMin, const SeriesTime timeMax) const
   {
-    // TODO don't think this is correct: this discards subsequent results unless index is not present in all, but it may be present in just one:
-    //  if (temp < 10 && sensor < 3)
-    // temp: 4, sensor: 1
-    // is valid, but current impl will dismiss this because it's not present in all sensor index nodes
-    // I think.
-
-    // something like:
-    //  intersectedResult = allResults[0] (within given time limits)
-    //  for each intersected
-    //    for each allResult
-    //      if intersected index in allResult[i] AND time within range
-    //        do nothing
-    //      else
-    //        erase from intersectedResult
-
     auto sort = [](const std::tuple<SeriesTime, std::size_t>& a, const std::tuple<SeriesTime, std::size_t>& b)
     {
       return std::get<1>(a) < std::get<1>(b); // TODO possibly check time here 
     };
 
 
-    auto inIndexRange = [sort](const Index::IndexMapConstIt& itStart, const Index::IndexMapConstIt& itEnd, const std::tuple<SeriesTime, std::size_t>& timeToIndex)
-    {
-      for (auto it = itStart ; it != itEnd ; ++it)
-      {
-        // TODO wrong , discarding whole range rather than individual indexes within each node
-        if (!std::binary_search(std::cbegin(it->second.getTimes()), std::cend(it->second.getTimes()), timeToIndex, sort))
-          return false;
-      }
-      return true;
-    };
-
-
     std::vector<std::tuple<SeriesTime, std::size_t>> intersectedResult;
 
+    // initialise intersected with first result
     const auto [start, end] = allResults[0];
     std::for_each(start, end, [&intersectedResult, timeMin, timeMax](const auto pair)
     {
@@ -275,26 +249,36 @@ private:
           intersectedResult.emplace_back(time, index);
       });
     });
-
+    
 
     std::sort(std::begin(intersectedResult), std::end(intersectedResult), sort);
 
-    if (allResults.size() > 1)
+
+    auto cmp = [timeMin, timeMax](const std::tuple<SeriesTime, std::size_t>& a, const std::tuple<SeriesTime, std::size_t>& b)
     {
-      for (auto itIntersected = intersectedResult.begin() ; itIntersected != intersectedResult.end() ; )
+      const auto [timeA, indexA] = a;
+      const auto [timeB, indexB] = b;
+
+      return indexA < indexB && (timeA >= timeMin && timeA < timeMax) && (timeB >= timeMin && timeB < timeMax);
+    };
+
+
+    // for each result[i] from i=1, for each timeIndex pair, intersect with intersect, checking index is present and time within limits
+    for (std::size_t i = 1 ; i < allResults.size() ; ++i)
+    {
+      const auto [indexStart, indexEnd] = allResults[i];
+
+      for (auto itIndexNode = indexStart ; itIndexNode != indexEnd ; ++itIndexNode)
       {
-        for (std::size_t i = 1 ; i < allResults.size() ; ++i)
-        {
-          const auto& [start, end] = allResults[i];
-          
-          if (!inIndexRange(start, end, *itIntersected))
-            itIntersected = intersectedResult.erase (itIntersected);
-          else
-            ++itIntersected;
-        }
-      }
+        std::vector<std::tuple<SeriesTime, std::size_t>> out;
+
+        std::set_intersection(std::begin(intersectedResult), std::end(intersectedResult),
+                              std::begin(itIndexNode->second.getTimes()), std::end(itIndexNode->second.getTimes()),
+                              std::begin(out), cmp);
+
+        intersectedResult = std::move(out);
+      }      
     }
-    
 
     return intersectedResult;
   }
