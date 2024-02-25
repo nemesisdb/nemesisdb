@@ -67,6 +67,14 @@ struct IndexNode
 {
   using IndexedTimes = std::vector<std::tuple<SeriesTime, std::size_t>>;  
 
+  struct Comparer
+  {
+    bool operator()(const std::tuple<SeriesTime, std::size_t>& a, const std::tuple<SeriesTime, std::size_t>& b)
+    {
+      return std::get<1>(a) < std::get<1>(b);
+    }
+  };
+
   IndexNode () = default;
 
   IndexNode (const SeriesTime time, const std::size_t index)
@@ -77,15 +85,14 @@ struct IndexNode
 
   void add (const SeriesTime time, const std::size_t index)
   {
-    //times.emplace_back(time, index);
-
-    // keep times vector sorted by the index
-    const auto insertIt = std::lower_bound(times.cbegin(), times.cend(), index, [](const auto& timeToIndex, const std::size_t& index)
+    times.emplace_back(time, index);
+    std::sort(std::begin(times), std::end(times), [](const std::tuple<SeriesTime, std::size_t>& a, const std::tuple<SeriesTime, std::size_t>& b)
     {
-      return std::get<1>(timeToIndex) < index;
-    });
+      const auto& [tA,iA] = a;
+      const auto& [tB,iB] = b;
 
-    times.emplace(insertIt, time, index);
+      return iA < iB;
+    });
   }
 
 

@@ -164,8 +164,10 @@ private:
     const auto condition = params.getWhere();
     
     bool leave = false;
-    std::vector<std::tuple<Index::IndexMapConstIt, Index::IndexMapConstIt>> indexRanges;
+    //std::vector<std::tuple<Index::IndexMapConstIt, Index::IndexMapConstIt>> indexRanges;
+    std::vector<std::vector<std::tuple<SeriesTime, std::size_t>>> indexes;
 
+        
     for (const auto& member : condition.object_range())  // TODO check 'where' is an object
     {
       if (const auto& indexName = member.key() ; !isIndexed(indexName))
@@ -177,8 +179,6 @@ private:
       {
         PLOGD << indexName << " is indexed";
 
-        // TODO need to handle multiple indexes in "where"
-        
         for (const auto termMember : member.value().object_range())
         {
           const auto& op = termMember.key();
@@ -206,7 +206,32 @@ private:
             break;
           }
           else
-            indexRanges.emplace_back(start, end);            
+          {
+            // TODO this involves copying from the index nodes, try this:
+            //  An IndexResult class which stores IndexNode result ranges, grouping by term
+            //  This should make it easier to intersect results on a per node basis (without copying node values as below)
+
+            // [start, end] is a range to index nodes, each node contains times, which means a term can return multiple nodes, each with a 'times' vector
+            // this makes intersecting cumbersome, so temp solution combines the term's times into a vector
+
+            std::vector<std::tuple<SeriesTime, std::size_t>>  combined;
+            
+            for(auto it = start ; it != end ; ++it)
+            {
+              const auto& nodeTimes = it->second.getTimes();
+              for (const auto [time, index] : nodeTimes)
+              {
+                if (time >= timeMin && time < timeMax)
+                  combined.emplace_back(time, index);
+              }
+            }
+            
+            if (!combined.empty())
+            {
+              std::sort(std::begin(combined), std::end(combined), IndexNode::Comparer{});
+              indexes.emplace_back(std::move(combined));
+            }
+          }
         }
 
         if (leave)
@@ -215,9 +240,9 @@ private:
     }
 
 
-    if (!leave && !indexRanges.empty())
+    if (!leave && !indexes.empty())
     {
-      const auto result = intersectIndexResults(indexRanges, timeMin, timeMax);
+      const auto result = intersectIndexResults(indexes, timeMin, timeMax);
       
       for (const auto& [time, index] : result)
         getData(index, rsp["t"], rsp["v"]);
@@ -226,32 +251,64 @@ private:
 
     return rsp;
   }
+  
+
+  std::vector<std::tuple<SeriesTime, std::size_t>> intersectIndexResults (const std::vector<std::vector<std::tuple<SeriesTime, std::size_t>>>& allResults, const SeriesTime timeMin, const SeriesTime timeMax) const
+  {
+    #ifdef NDB_DEBUG
+    auto dumpIndexNode = [](const std::vector<std::tuple<SeriesTime, std::size_t>>& times)
+    {
+      for (const auto& [t,i] : times)
+          std::cout << '[' << t << ',' << i << ']';
+      std::cout << '\n';
+    };
+    
+
+    for (const auto& indexResult : allResults)
+      dumpIndexNode(indexResult);
+    
+    #endif
+    
+    
+    std::vector<std::tuple<SeriesTime, std::size_t>> result{std::make_move_iterator(allResults[0].begin()), std::make_move_iterator(allResults[0].end())};
+
+    for (std::size_t i = 1 ; i < allResults.size() ; ++i)
+    {
+      #ifdef NDB_DEBUG
+      std::cout << "intersecting:\n";
+      dumpIndexNode(result);
+
+      std::cout << "with:\n";
+      dumpIndexNode(allResults[i]);
+      #endif
 
 
+      std::vector<std::tuple<SeriesTime, std::size_t>> intersected;
+
+      std::set_intersection(  std::cbegin(result), std::cend(result),
+                              std::cbegin(allResults[i]), std::cend(allResults[i]),
+                              std::back_inserter(intersected), IndexNode::Comparer{});
+
+
+      #ifdef NDB_DEBUG
+      std::cout << "out:\n";
+      dumpIndexNode(out);
+      #endif
+
+      result = std::move(intersected); // TODO if out is empty can bail
+    }
+
+    return result;
+  }
+
+
+  /*
   std::vector<std::tuple<SeriesTime, std::size_t>> intersectIndexResults (const std::vector<std::tuple<Index::IndexMapConstIt, Index::IndexMapConstIt>>& allResults, const SeriesTime timeMin, const SeriesTime timeMax) const
   {
     auto sort = [](const std::tuple<SeriesTime, std::size_t>& a, const std::tuple<SeriesTime, std::size_t>& b)
     {
       return std::get<1>(a) < std::get<1>(b); // TODO possibly check time here 
     };
-
-
-    std::vector<std::tuple<SeriesTime, std::size_t>> intersectedResult;
-
-    // initialise intersected with first result
-    const auto [start, end] = allResults[0];
-    std::for_each(start, end, [&intersectedResult, timeMin, timeMax](const auto pair)
-    {
-      const auto& times = pair.second.getTimes();
-      std::for_each (std::cbegin(times), std::cend(times), [&intersectedResult, timeMin, timeMax](const auto timeToIndex)
-      {
-        if (const auto& [time, index] = timeToIndex; time >= timeMin && time < timeMax)
-          intersectedResult.emplace_back(time, index);
-      });
-    });
-    
-
-    std::sort(std::begin(intersectedResult), std::end(intersectedResult), sort);
 
 
     auto cmp = [timeMin, timeMax](const std::tuple<SeriesTime, std::size_t>& a, const std::tuple<SeriesTime, std::size_t>& b)
@@ -263,6 +320,57 @@ private:
     };
 
 
+    auto dumpIndexNode = [](const std::vector<std::tuple<SeriesTime, std::size_t>>& times)
+    {
+      for (const auto& [t,i] : times)
+          std::cout << '[' << t << ',' << i << ']';
+      std::cout << '\n';
+    };
+
+
+    auto dumpIndexRange = [dumpIndexNode](const std::tuple<Index::IndexMapConstIt, Index::IndexMapConstIt>& rng)
+    {
+      const auto [s,e] = rng;
+      std::for_each(s, e, [dumpIndexNode](const auto pair)
+      {
+        const auto& times = pair.second.getTimes();
+        dumpIndexNode(times);
+      });
+      
+    };
+
+
+    auto dump = [dumpIndexRange](const std::vector<std::tuple<Index::IndexMapConstIt, Index::IndexMapConstIt>>& r)
+    {
+      for (const auto& rng : r)
+        dumpIndexRange(rng);
+    };
+
+
+    std::cout << "allResults:\n";
+    dump(allResults);
+
+
+    std::vector<std::tuple<SeriesTime, std::size_t>> intersected;
+
+    // initialise intersected with first result
+    const auto [start, end] = allResults[0];
+    std::for_each(start, end, [&intersected, timeMin, timeMax](const auto pair)
+    {
+      const auto& times = pair.second.getTimes();
+      std::for_each (std::cbegin(times), std::cend(times), [&intersected, timeMin, timeMax](const auto timeToIndex)
+      {
+        if (const auto& [time, index] = timeToIndex; time >= timeMin && time < timeMax)
+          intersected.emplace_back(time, index);
+      });
+    });
+    
+
+    std::sort(std::begin(intersected), std::end(intersected), sort);
+
+    //std::cout << "intersected:\n";
+    //dumpIndexNode(intersected);
+
     // for each result[i] from i=1, for each timeIndex pair, intersect with intersect, checking index is present and time within limits
     for (std::size_t i = 1 ; i < allResults.size() ; ++i)
     {
@@ -272,16 +380,25 @@ private:
       {
         std::vector<std::tuple<SeriesTime, std::size_t>> out;
 
-        std::set_intersection(std::begin(intersectedResult), std::end(intersectedResult),
-                              std::begin(itIndexNode->second.getTimes()), std::end(itIndexNode->second.getTimes()),
-                              std::begin(out), cmp);
+        std::cout << "interescting:\n";
+        dumpIndexNode(intersected);
 
-        intersectedResult = std::move(out);
+        std::cout << "with:\n";
+        dumpIndexNode(itIndexNode->second.getTimes());
+
+        std::set_intersection(std::cbegin(intersected), std::cend(intersected),
+                              std::cbegin(itIndexNode->second.getTimes()), std::cend(itIndexNode->second.getTimes()),
+                              std::back_inserter(out), cmp);
+
+        std::cout << "out:\n";
+        dumpIndexNode(out);
+
+        intersected = std::move(out);
       }      
     }
 
-    return intersectedResult;
-  }
+    return intersected;
+  } */
 
   
   njson getData (const TimeVectorConstIt itStart, const TimeVectorConstIt itEnd) const 
