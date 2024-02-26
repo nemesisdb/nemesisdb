@@ -368,8 +368,9 @@ TEST_F(TsSeriesTest, TwoTerms)
     ASSERT_EQ(r.rsp["TS_GET_RSP"]["os1"]["t"].size(), r.rsp["TS_GET_RSP"]["os1"]["v"].size());
     ASSERT_EQ(r.rsp["TS_GET_RSP"]["os1"]["t"], njson::parse(R"([10,12])"));
   }
+  
 
-
+  
   // < and []
   {
     auto get = njson::parse(R"(
@@ -396,8 +397,9 @@ TEST_F(TsSeriesTest, TwoTerms)
     ASSERT_EQ(r.rsp["TS_GET_RSP"]["os1"]["t"].size(), r.rsp["TS_GET_RSP"]["os1"]["v"].size());
     ASSERT_EQ(r.rsp["TS_GET_RSP"]["os1"]["t"], njson::parse(R"([10,11,12])"));
   }
+ 
 
-
+  
   // >= and >
   {
     auto get = njson::parse(R"(
@@ -423,6 +425,34 @@ TEST_F(TsSeriesTest, TwoTerms)
     ASSERT_EQ(r.rsp["TS_GET_RSP"]["os1"]["t"].size(), 1);
     ASSERT_EQ(r.rsp["TS_GET_RSP"]["os1"]["t"].size(), r.rsp["TS_GET_RSP"]["os1"]["v"].size());
     ASSERT_EQ(r.rsp["TS_GET_RSP"]["os1"]["t"], njson::parse(R"([14])"));
+  }
+  
+
+  // >= and > (as above, but with lower max rng)
+  {
+    auto get = njson::parse(R"(
+                              {
+                                "ts":["os1"],
+                                "rng":[10,13],
+                                "where":
+                                {
+                                  "temp":
+                                  {
+                                    ">=":3
+                                  },
+                                  "pressure":
+                                  {
+                                    ">":11
+                                  }
+                                }
+                              }
+                            )");
+
+    auto r = s.get(get, GetRspCmd);
+    
+    ASSERT_EQ(r.rsp["TS_GET_RSP"]["os1"]["t"].size(), 0);
+    ASSERT_EQ(r.rsp["TS_GET_RSP"]["os1"]["t"].size(), r.rsp["TS_GET_RSP"]["os1"]["v"].size());
+    ASSERT_EQ(r.rsp["TS_GET_RSP"]["os1"]["t"], njson::parse(R"([])"));
   }
 }
 

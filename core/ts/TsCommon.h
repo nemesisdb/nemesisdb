@@ -65,14 +65,32 @@ struct QueryResult
 
 struct IndexNode
 {
-  using IndexedTimes = std::vector<std::tuple<SeriesTime, std::size_t>>;  
+  using TimeIndexTuple = std::tuple<SeriesTime, std::size_t>;
+  using IndexedTimes = std::vector<TimeIndexTuple>;  
 
-  struct Comparer
+  struct IndexComparer
   {
-    bool operator()(const std::tuple<SeriesTime, std::size_t>& a, const std::tuple<SeriesTime, std::size_t>& b)
+    bool operator()(const TimeIndexTuple& a, const TimeIndexTuple& b)
     {
       return std::get<1>(a) < std::get<1>(b);
     }
+  };
+
+  struct IndexTimeComparer
+  {
+    IndexTimeComparer (const SeriesTime& min, const SeriesTime& max) : min(min), max(max)
+    {
+
+    }
+
+    bool operator()(const TimeIndexTuple& a, const TimeIndexTuple& b)
+    {
+      return  std::get<1>(a) < std::get<1>(b) &&
+              (std::get<0>(a) >= min && std::get<0>(a) < max) &&
+              (std::get<0>(b) >= min && std::get<0>(b) < max);
+    }
+
+    SeriesTime min, max;
   };
 
   IndexNode () = default;
@@ -86,13 +104,7 @@ struct IndexNode
   void add (const SeriesTime time, const std::size_t index)
   {
     times.emplace_back(time, index);
-    std::sort(std::begin(times), std::end(times), [](const std::tuple<SeriesTime, std::size_t>& a, const std::tuple<SeriesTime, std::size_t>& b)
-    {
-      const auto& [tA,iA] = a;
-      const auto& [tB,iB] = b;
-
-      return iA < iB;
-    });
+    std::sort(std::begin(times), std::end(times), IndexComparer{});
   }
 
 
