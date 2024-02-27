@@ -23,9 +23,14 @@ enum class TsRequestStatus
   Ok = 1,
   UnknownError,
   CommandNotExist,
-  SeriesNotExist = 10,
+  ParamMissing,
+  ParamType,
+  RngSize,
+  RngValues,
+  SeriesNotExist = 20,
   SeriesExists,
-  IndexExists = 20
+  SeriesType,
+  IndexExists = 40
 };
 
 

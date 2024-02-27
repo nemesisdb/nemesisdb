@@ -82,6 +82,31 @@ using SessionExpireTimePoint = chrono::time_point<SessionClock, std::chrono::sec
 
 
 
+struct Param
+{
+private:
+  Param () = delete;
+
+  Param(const JsonType type, const bool required) : type(type), isRequired(required)
+  {
+  }
+
+
+public:
+  static std::pair<std::string_view, Param> required (const std::string_view name, const JsonType type)
+  {
+    return {name, Param {type, true}};
+  }
+
+  static std::pair<std::string_view, Param> optional (const std::string_view name, const JsonType type)
+  {
+    return {name, Param {type, false}};
+  }
+
+  bool isRequired;
+  JsonType type;
+};
+
 
 struct ServerStats
 {

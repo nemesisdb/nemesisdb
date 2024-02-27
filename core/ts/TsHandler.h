@@ -21,16 +21,16 @@ public:
   {
     static const std::array<std::function<void(TsWebSocket *, njson&&)>, static_cast<std::size_t>(TsCommand::Max)> Handlers =
     {
-      std::bind(&TsHandler::createTs, std::ref(*this), std::placeholders::_1, std::placeholders::_2),
-      std::bind(&TsHandler::add,      std::ref(*this), std::placeholders::_1, std::placeholders::_2),
-      std::bind(&TsHandler::get,      std::ref(*this), std::placeholders::_1, std::placeholders::_2),
+      std::bind(&TsHandler::createTimeSeries,   std::ref(*this), std::placeholders::_1, std::placeholders::_2),
+      std::bind(&TsHandler::add,                std::ref(*this), std::placeholders::_1, std::placeholders::_2),
+      std::bind(&TsHandler::get,                std::ref(*this), std::placeholders::_1, std::placeholders::_2),
       std::bind(&TsHandler::getMultipleRanges,  std::ref(*this), std::placeholders::_1, std::placeholders::_2),
       std::bind(&TsHandler::createIndex,        std::ref(*this), std::placeholders::_1, std::placeholders::_2)
     };
 
     TsRequestStatus status = TsRequestStatus::Ok;
 
-    if (auto it = ts::QueryNameToType.find(command); it == ts::QueryNameToType.cend())
+    if (const auto it = ts::QueryNameToType.find(command); it == ts::QueryNameToType.cend())
       return TsRequestStatus::CommandNotExist;
     else
     {
@@ -49,58 +49,42 @@ public:
   }
 
 private:
-
-  
-  struct Param
-  {
-  private:
-    Param () = delete;
-
-    Param(const JsonType type, const bool required) : type(type), isRequired(required)
-    {
-    }
-
-
-  public:
-    static std::pair<std::string_view, Param> required (const std::string_view name, const JsonType type)
-    {
-      return {name, Param {type, true}};
-    }
-
-    static std::pair<std::string_view, Param> optional (const std::string_view name, const JsonType type)
-    {
-      return {name, Param {type, false}};
-    }
-
-    bool isRequired;
-    JsonType type;
-  };
   
 
-  bool isValid (const njson& msg, const std::map<const std::string_view, const Param>& params)
+  std::tuple<TsRequestStatus, const std::string_view> isValid ( const njson& msg,
+                                                                const std::map<const std::string_view, const Param>& params,
+                                                                std::function<std::tuple<TsRequestStatus, const std::string_view>(const njson&)> onPostValidate = nullptr)
   {
     for (const auto& [member, param] : params)
     {
       if (param.isRequired && !msg.contains(member))
-        return false;
+        return {TsRequestStatus::ParamMissing, "Missing parameter"};
       else if (msg.contains(member) && msg.at(member).type() != param.type) // not required but present OR required and present: check type
-        return false;
+        return {TsRequestStatus::ParamType, "Param type incorrect"};
     }
-    return true;
+
+    return onPostValidate ? onPostValidate(msg) : std::make_tuple(TsRequestStatus::Ok, "");
   }
 
 
-  void createTs (TsWebSocket * ws, njson&& msg)
+  void createTimeSeries (TsWebSocket * ws, njson&& msg)
   {
     static const auto cmdName     = "TS_CREATE";
     static const auto cmdRspName  = "TS_CREATE_RSP";
 
+
+    auto validate = [](const njson& cmd) -> std::tuple<TsRequestStatus, const std::string_view>
+    {
+      if (!(cmd.at("type") == "Ordered" && !cmd.at("name").empty()))
+        return {TsRequestStatus::SeriesType, "Series type invalid"};
+      
+      return {TsRequestStatus::Ok, ""};
+    };
+
     const auto& cmd = msg[cmdName];
 
-    if (!isValid(cmd, {Param::required("name", JsonString), Param::required("type", JsonString)}))
-      PLOGD << "Invalid";
-    else if (!(cmd.at("type") == "Ordered" && !cmd.at("name").empty()))
-      PLOGD << "Invalid series type";
+    if (const auto [stat, msg] = isValid(cmd, {Param::required("name", JsonString), Param::required("type", JsonString)}, validate); stat != TsRequestStatus::Ok)
+      PLOGD << msg;
     else
       PLOGD << m_series.create(cmd.at("name").as_string(), cmdRspName).rsp;
   }
@@ -113,8 +97,8 @@ private:
 
     const auto& cmd = msg[cmdName];
 
-    if (!isValid(cmd, {Param::required("ts", JsonString), Param::required("key", JsonString)}))
-      PLOGD << "Invalid";
+    if (const auto [stat, msg] = isValid(cmd, {Param::required("ts", JsonString), Param::required("key", JsonString)}) ; stat != TsRequestStatus::Ok)
+      PLOGD << msg;
     else
       PLOGD << m_series.createIndex(cmd.at("ts").as_string(), cmd.at("key").as_string(), cmdRspName).rsp;
   }
@@ -127,8 +111,8 @@ private:
 
     auto& cmd = msg.at(cmdName);
 
-    if (!isValid(cmd, {Param::required("ts", JsonString), Param::required("t", JsonArray), Param::required("v", JsonArray)}))
-      PLOGD << "Invalid";
+    if (const auto [stat, msg] = isValid(cmd, {Param::required("ts", JsonString), Param::required("t", JsonArray), Param::required("v", JsonArray)}) ; stat != TsRequestStatus::Ok)
+      PLOGD << msg;
     else
       PLOGD << m_series.add(std::move(cmd), cmdRspName).rsp;
   }
@@ -138,40 +122,36 @@ private:
   {
     static const auto cmdName     = "TS_GET";
     static const auto cmdRspName  = "TS_GET_RSP";
+    
 
-    auto& cmd = msg.at(cmdName);
-
-    if (!isValid(cmd, {Param::required("ts", JsonArray), Param::required("rng", JsonArray), Param::optional("where", JsonObject)}))
-      PLOGD << "Invalid";
-    else
+    auto validate = [](const njson& cmd) -> std::tuple<TsRequestStatus, const std::string_view>
     {
-      bool valid = true;
-
       if (const auto& rng = cmd.at("rng") ; rng.size() > 2)
-      {
-        PLOGD << "'rng' cannot have more than 2 values";
-        valid = false;
-      }
-      else if (rng[0].as<SeriesTime> () > rng[1].as<SeriesTime> ())
-      {
-        PLOGD << "'rng' invalid, first must not be greater than second ";
-        valid = false;
-      }
+        return {TsRequestStatus::RngSize, "'rng' cannot have more than 2 values"};
+      else if (rng[0].as<SeriesTime>() > rng[1].as<SeriesTime>())
+        return {TsRequestStatus::RngValues,"'rng' invalid, first value must not be greater than second"};
       else if (cmd.contains("where"))
       {
         // only objects permitted in "where"
         for (const auto& member : cmd.at("where").object_range())
         {
           if (!member.value().is_object())
-          {
-            valid = false;
-            break;
-          }
+            return {TsRequestStatus::ParamType, "Member in 'where' is not an object"};
         }
       }
+      return {TsRequestStatus::Ok,""};
+    };
 
-      if (valid)
-        PLOGD << m_series.get(cmd, cmdRspName).rsp;
+
+    auto& cmd = msg.at(cmdName);
+
+    if (const auto [stat, msg] = isValid(cmd, { Param::required("ts", JsonArray),
+                                                Param::required("rng", JsonArray),
+                                                Param::optional("where", JsonObject)}, validate); stat != TsRequestStatus::Ok)
+      PLOGD << msg;
+    else
+    {
+      PLOGD << m_series.get(cmd, cmdRspName).rsp;
     }
   }
 
@@ -185,10 +165,9 @@ private:
     
     for (const auto& member : cmd.object_range())
     {
-      //if (!isValid(member.value(), {{"rng", JsonArray}}))
-      if (!isValid(member.value(), {Param::required("rng", JsonArray)}))
+      if (const auto [stat, msg] = isValid(member.value(), {Param::required("rng", JsonArray)}); stat != TsRequestStatus::Ok)
       {
-        PLOGD << "Invalid";
+        PLOGD << msg;
         return;
       }
     }
