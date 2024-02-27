@@ -14,7 +14,8 @@ using namespace jsoncons;
 using namespace jsoncons::literals;
 
 
-/// Represents a time series that submitted data is always gauranteed to be ordered by the sender. 
+/// Represents a time series where submitted data is always gauranteed to be ordered by the sender.
+/// Or in other words: OrderedSeries does not sort the data before it is stored. 
 /// Uses parallel vectors to hold time and value data:
 ///   An event occurring at m_times[i] has metrics in m_values[i].
 class OrderedSeries : public BaseSeries
@@ -123,7 +124,7 @@ private:
           const auto& value = member.value();
 
           if (const auto itIndex = m_indexes.at(key).index.find(value); itIndex != m_indexes.at(key).index.end())
-            m_indexes.at(key).index.at(value).add(timesVec[index], index);
+            itIndex->second.add(timesVec[index], index);
           else
             m_indexes.at(key).index.emplace(value, IndexNode{timesVec[index], index});
         }
@@ -149,7 +150,7 @@ private:
   {
     // if start not set, start is begin(), otherwise find start
     const auto itStart = params.isStartSet() ? std::lower_bound(m_times.cbegin(), m_times.cend(), params.getStart()) : m_times.cbegin();
-    auto itEnd = params.isEndSet() ? std::upper_bound(itStart, m_times.cend(), params.getEnd()) : m_times.cend();
+    const auto itEnd = params.isEndSet() ? std::upper_bound(itStart, m_times.cend(), params.getEnd()) : m_times.cend();
     return {itStart, itEnd};
   }
 

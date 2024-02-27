@@ -39,8 +39,8 @@ public:
 
       m_series[name] = std::make_unique<OrderedSeries>(OrderedSeries::create(name));
       
-      qr.rsp["TS_CREATE_RSP"]["st"] = toUnderlying(TsRequestStatus::Ok);
-      qr.rsp["TS_CREATE_RSP"]["name"] = name;
+      qr.rsp[cmdRspName]["st"] = toUnderlying(TsRequestStatus::Ok);
+      qr.rsp[cmdRspName]["name"] = name;
 
       return qr;
     }

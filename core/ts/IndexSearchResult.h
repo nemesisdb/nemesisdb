@@ -19,7 +19,7 @@ class IndexSearchResult
 
 public:
   IndexSearchResult() = default;
-  
+
 
   void addResult (const std::string& indexName, const std::tuple<IndexMapConstIt, IndexMapConstIt>& result)
   {
@@ -90,7 +90,7 @@ private:
 
       PLOGD << "Looking for [" << std::get<0>(sourceTimeIndex) << ',' << std::get<1>(sourceTimeIndex) << ']';
       
-      for (const auto& [start, end] : termResults)  // for each index node
+      for (const auto& [start, end] : termResults)  // for each indexed search result
       {
         for (auto indexNode = start ; indexNode != end ; ++indexNode) // for each node
         {
@@ -106,8 +106,7 @@ private:
           
           if (found)  // the same index cannot be found twice in the same search (i.e. "temp" can only be one temperate at a given time)
             break;
-        }
-        
+        }        
       }
 
       dumpIndexResult("Result: ", intersected);
