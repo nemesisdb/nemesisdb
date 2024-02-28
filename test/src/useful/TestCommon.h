@@ -30,8 +30,59 @@ using testjson = nlohmann::json;
 class KvTestServer  : public ::testing::Test
 {
 protected:
-	constexpr static auto DefaultCfg = R"({ "version":1, "kv":{ "ip":"127.0.0.1", "port":1987, "maxPayload":1024 }, "session":{"save":{"enabled":false, "path":"./data"}} })"sv;
-	constexpr static auto EnableSaveCfg = R"({ "version":1, "kv":{ "ip":"127.0.0.1", "port":1987, "maxPayload":1024 }, "session":{"save":{"enabled":true, "path":"./data"}} })"sv;
+	constexpr static auto DefaultCfg = R"(
+		{
+			"version":1,
+			"mode":"kv",
+			"kv":
+			{
+				"ip":"127.0.0.1",
+				"port":1987,
+				"maxPayload":1024,
+				"session":
+				{
+					"save":
+					{
+						"enabled":false,
+						"path":"./data"
+					}
+				}
+			},
+			"ts":
+			{
+				"ip":"127.0.0.1",
+				"port":1987,
+				"maxPayload":1024
+			}
+		})"sv;
+
+
+	constexpr static auto EnableSaveCfg = R"(
+		{
+			"version":1,
+			"mode":"kv",
+			"kv":
+			{
+				"ip":"127.0.0.1",
+				"port":1987,
+				"maxPayload":1024,
+				"session":
+				{
+					"save":
+					{
+						"enabled":true,
+						"path":"./data"
+					}
+				}
+			},
+			"ts":
+			{
+				"ip":"127.0.0.1",
+				"port":1987,
+				"maxPayload":1024
+			}
+		})"sv;
+
 
 public:
   KvTestServer(const std::string_view cfg) : m_config(NemesisConfig{cfg})

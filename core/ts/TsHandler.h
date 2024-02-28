@@ -52,7 +52,7 @@ public:
 
 private:
   
-  // Checks the params (if present and correct type). If that passes, onPostValidate() is called (if set) for custom checks
+  
   bool isValid (const njson& cmd,
                 const std::map<const std::string_view, const Param>& params,
                 std::function<std::tuple<TsRequestStatus, const std::string_view>(const njson&)> onPostValidate = nullptr)

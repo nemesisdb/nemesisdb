@@ -33,7 +33,7 @@ TEST_F(NemesisTest, NoPathRspKeys)
 
 	ASSERT_TRUE(tc.open());
 
-	tc.test({TestData { .request = R"({ "KV_FIND":{ "a":"a", "b":"b", "c":"c" } })"_json,	.expected = {R"({ "KV_FIND_RSP":{ "st":5, "m":"" } })"_json} }});
+	tc.test({TestData { .request = R"({ "KV_FIND":{ "a":"a", "b":"b", "c":"c" } })"_json,	.expected = {R"({ "KV_FIND_RSP":{ "st":26, "m":"Missing parameter" } })"_json} }});
 }
 
 
@@ -43,7 +43,7 @@ TEST_F(NemesisTest, NoRspInvalid)
 
 	ASSERT_TRUE(tc.open());
 
-	tc.test({TestData { .request = R"({ "KV_FIND":{ "keys":["a"], "path":"$", "rsp":"duff" } })"_json,	.expected = {R"({ "KV_FIND_RSP":{ "st":13, "m":"rsp" } })"_json} }});
+	tc.test({TestData { .request = R"({ "KV_FIND":{ "keys":["a"], "path":"$", "rsp":"duff" } })"_json,	.expected = {R"({ "KV_FIND_RSP":{ "st":13, "m":"'rsp' invalid value" } })"_json} }});
 }
 
 
@@ -53,7 +53,7 @@ TEST_F(NemesisTest, EmptyPath)
 
 	ASSERT_TRUE(tc.open());
 
-	tc.test({TestData { .request = R"({ "KV_FIND":{ "keys":["a"], "path":"", "rsp":"kv" } })"_json,	.expected = {R"({ "KV_FIND_RSP":{ "st":42, "m":"path" } })"_json} }});
+	tc.test({TestData { .request = R"({ "KV_FIND":{ "keys":["a"], "path":"", "rsp":"kv" } })"_json,	.expected = {R"({ "KV_FIND_RSP":{ "st":42, "m":"'path' is empty" } })"_json} }});
 }
 
 
@@ -63,7 +63,7 @@ TEST_F(NemesisTest, PathNotString)
 
 	ASSERT_TRUE(tc.open());
 
-	tc.test({TestData { .request = R"({ "KV_FIND":{ "keys":["a"], "path":2, "rsp":"kv" } })"_json,	.expected = {R"({ "KV_FIND_RSP":{ "st":41, "m":"path" } })"_json} }});
+	tc.test({TestData { .request = R"({ "KV_FIND":{ "keys":["a"], "path":2, "rsp":"kv" } })"_json,	.expected = {R"({ "KV_FIND_RSP":{ "st":41, "m":"Param type incorrect" } })"_json} }});
 }
 
 
@@ -73,7 +73,7 @@ TEST_F(NemesisTest, KeysNotArray)
 
 	ASSERT_TRUE(tc.open());
 
-	tc.test({TestData { .request = R"({ "KV_FIND":{ "keys":"a", "path":"a", "rsp":"kv" } })"_json,	.expected = {R"({ "KV_FIND_RSP":{ "st":41, "m":"keys" } })"_json} }});
+	tc.test({TestData { .request = R"({ "KV_FIND":{ "keys":"a", "path":"a", "rsp":"kv" } })"_json,	.expected = {R"({ "KV_FIND_RSP":{ "st":41, "m":"Param type incorrect" } })"_json} }});
 }
 
 

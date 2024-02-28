@@ -137,7 +137,7 @@ private:
             rsp["KV_GET_RSP"]["keys"][key] = std::move(value);
           else
             rsp["KV_GET_RSP"]["keys"][key] = njson::null();
-        }        
+        }     
       }
 
       send(cmd, rsp.to_string());
