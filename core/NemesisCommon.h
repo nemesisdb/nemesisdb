@@ -108,6 +108,23 @@ public:
 };
 
 
+template <typename StatusT, StatusT Ok, StatusT ParamMissing, StatusT ParamType>
+std::tuple<StatusT, const std::string_view> isCmdValid (const njson& msg,
+                                                        const std::map<const std::string_view, const Param>& params,
+                                                        std::function<std::tuple<StatusT, const std::string_view>(const njson&)> onPostValidate = nullptr)
+{
+  for (const auto& [member, param] : params)
+  {
+    if (param.isRequired && !msg.contains(member))
+      return {ParamMissing, "Missing parameter"};
+    else if (msg.contains(member) && msg.at(member).type() != param.type) // not required but present OR required and present: check type
+      return {ParamType, "Param type incorrect"};
+  }
+
+  return onPostValidate ? onPostValidate(msg) : std::make_tuple(Ok, "");
+}
+
+
 struct ServerStats
 {
   std::atomic_size_t queryCount{0U};

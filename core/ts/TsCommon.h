@@ -17,6 +17,9 @@ using SeriesValue = njson;
 using WhereType = njson;
 
 
+
+
+
 enum class TsRequestStatus
 {
   None = 0,
@@ -134,8 +137,6 @@ struct Index
 
 
 
-
-
 struct GetParams
 {
   GetParams (const WhereType where = jsoncons::json_object_arg_t{}) : where(where)
@@ -201,6 +202,7 @@ private:
 
 
 using TsWebSocket = uWS::WebSocket<false, true, WsSession>;
+//using isTsCmdValid = ValidateCommand<TsRequestStatus, TsRequestStatus::Ok, TsRequestStatus::ParamMissing, TsRequestStatus::ParamType>;
 
 
 class BaseSeries

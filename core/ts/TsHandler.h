@@ -11,6 +11,7 @@ namespace nemesis { namespace core { namespace ts {
 class TsHandler
 {
 public:
+
   TsHandler(const njson& config) : m_config(config)
   {
 
@@ -48,22 +49,20 @@ public:
     return status;
   }
 
+
 private:
   
-
-  std::tuple<TsRequestStatus, const std::string_view> isValid ( const njson& msg,
-                                                                const std::map<const std::string_view, const Param>& params,
-                                                                std::function<std::tuple<TsRequestStatus, const std::string_view>(const njson&)> onPostValidate = nullptr)
+  // Checks the params (if present and correct type). If that passes, onPostValidate() is called (if set) for custom checks
+  bool isValid (const njson& cmd,
+                const std::map<const std::string_view, const Param>& params,
+                std::function<std::tuple<TsRequestStatus, const std::string_view>(const njson&)> onPostValidate = nullptr)
   {
-    for (const auto& [member, param] : params)
-    {
-      if (param.isRequired && !msg.contains(member))
-        return {TsRequestStatus::ParamMissing, "Missing parameter"};
-      else if (msg.contains(member) && msg.at(member).type() != param.type) // not required but present OR required and present: check type
-        return {TsRequestStatus::ParamType, "Param type incorrect"};
-    }
-
-    return onPostValidate ? onPostValidate(msg) : std::make_tuple(TsRequestStatus::Ok, "");
+    const auto& [stat, msg] = isCmdValid<TsRequestStatus, TsRequestStatus::Ok, TsRequestStatus::ParamMissing, TsRequestStatus::ParamType>(cmd, params, onPostValidate);
+    
+    if (stat != TsRequestStatus::Ok)
+      PLOGD << msg;
+      
+    return stat == TsRequestStatus::Ok;
   }
 
 
@@ -83,9 +82,7 @@ private:
 
     const auto& cmd = msg[cmdName];
 
-    if (const auto [stat, msg] = isValid(cmd, {Param::required("name", JsonString), Param::required("type", JsonString)}, validate); stat != TsRequestStatus::Ok)
-      PLOGD << msg;
-    else
+    if (isValid(cmd, {Param::required("name", JsonString), Param::required("type", JsonString)}, validate))
       PLOGD << m_series.create(cmd.at("name").as_string(), cmdRspName).rsp;
   }
 
@@ -97,9 +94,7 @@ private:
 
     const auto& cmd = msg[cmdName];
 
-    if (const auto [stat, msg] = isValid(cmd, {Param::required("ts", JsonString), Param::required("key", JsonString)}) ; stat != TsRequestStatus::Ok)
-      PLOGD << msg;
-    else
+    if (isValid(cmd, {Param::required("ts", JsonString), Param::required("key", JsonString)}))
       PLOGD << m_series.createIndex(cmd.at("ts").as_string(), cmd.at("key").as_string(), cmdRspName).rsp;
   }
 
@@ -111,9 +106,7 @@ private:
 
     auto& cmd = msg.at(cmdName);
 
-    if (const auto [stat, msg] = isValid(cmd, {Param::required("ts", JsonString), Param::required("t", JsonArray), Param::required("v", JsonArray)}) ; stat != TsRequestStatus::Ok)
-      PLOGD << msg;
-    else
+    if (isValid(cmd, {Param::required("ts", JsonString), Param::required("t", JsonArray), Param::required("v", JsonArray)}))
       PLOGD << m_series.add(std::move(cmd), cmdRspName).rsp;
   }
 
@@ -145,14 +138,8 @@ private:
 
     auto& cmd = msg.at(cmdName);
 
-    if (const auto [stat, msg] = isValid(cmd, { Param::required("ts", JsonArray),
-                                                Param::required("rng", JsonArray),
-                                                Param::optional("where", JsonObject)}, validate); stat != TsRequestStatus::Ok)
-      PLOGD << msg;
-    else
-    {
+    if (isValid(cmd, {Param::required("ts", JsonArray),Param::required("rng", JsonArray), Param::optional("where", JsonObject)}, validate))
       PLOGD << m_series.get(cmd, cmdRspName).rsp;
-    }
   }
 
 
@@ -165,11 +152,8 @@ private:
     
     for (const auto& member : cmd.object_range())
     {
-      if (const auto [stat, msg] = isValid(member.value(), {Param::required("rng", JsonArray)}); stat != TsRequestStatus::Ok)
-      {
-        PLOGD << msg;
+      if (!isValid(member.value(), {Param::required("rng", JsonArray), Param::optional("where", JsonObject)}))
         return;
-      }
     }
 
     PLOGD << m_series.getMultipleRanges(cmd, cmdRspName).rsp;
