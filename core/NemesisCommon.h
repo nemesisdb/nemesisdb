@@ -108,6 +108,7 @@ public:
 };
 
 
+// Checks the params (if present and correct type). If that passes and onPostValidate is set, onPostValidate() is called for custom checks.
 template <typename StatusT, StatusT Ok, StatusT ParamMissing, StatusT ParamType>
 std::tuple<StatusT, const std::string_view> isCmdValid (const njson& msg,
                                                         const std::map<const std::string_view, const Param>& params,

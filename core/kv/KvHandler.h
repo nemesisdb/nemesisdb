@@ -262,8 +262,10 @@ private:
   }
 
 
+  // Send response to client: must only be called from the originating I/O thread
   ndb_always_inline void send (KvWebSocket * ws, const std::string& msg)
   {
+    // note don't need to defer() here because this is only called from the originating I/O thread
     ws->send(msg, WsSendOpCode);
   }
 
@@ -401,6 +403,22 @@ private:
   }
 
 
+  bool isValid (const std::string& queryRspName, KvWebSocket * ws, 
+                const njson& cmd, const std::map<const std::string_view, const Param>& params,
+                std::function<std::tuple<RequestStatus, const std::string_view>(const njson&)> onPostValidate = nullptr)
+  {
+    const auto& [stat, msg] = isCmdValid<RequestStatus, RequestStatus::Ok, RequestStatus::ParamMissing, RequestStatus::ValueTypeInvalid>(cmd, params, onPostValidate);
+    
+    if (stat != RequestStatus::Ok)
+    {
+      PLOGD << msg;
+      send(ws, createErrorResponse(queryRspName, stat, msg).to_string());
+    }
+      
+    return stat == RequestStatus::Ok;
+  }
+
+
   // SESSION
   
   ndb_always_inline void sessionNew(KvWebSocket * ws, njson&& json)
@@ -408,50 +426,39 @@ private:
     static const KvQueryType queryType      = KvQueryType::ShNew;
     static const std::string queryName      = QueryTypeToName.at(queryType);
     static const std::string queryRspName   = queryName +"_RSP";
+    
+    
+    auto validate = [](const njson& cmd) -> std::tuple<RequestStatus, const std::string_view>
+    {
+      if (cmd.at("name").empty())
+        return {RequestStatus::ValueSize, "Session name empty"};
+
+      return {RequestStatus::Ok, ""};
+    };
+
 
     auto& cmd = json.at(queryName);
 
-    if (cmd.size() < 1U || cmd.size() > 3U)
-      send(ws, createErrorResponse(queryRspName, RequestStatus::CommandSyntax).to_string());
-    else if (!cmd.contains("name"))
-      send(ws, createErrorResponse(queryRspName, RequestStatus::ValueMissing, "name").to_string());
-    else if (!cmd.at("name").is_string())
-      send(ws, createErrorResponse(queryRspName, RequestStatus::ValueTypeInvalid, "name").to_string());
-    else if (const auto value = cmd.at("name").as_string(); value.empty())
-      send(ws, createErrorResponse(queryRspName, RequestStatus::ValueSize, "name").to_string());
-    else
+    if (isValid(queryRspName, ws, cmd, {{Param::required("name", JsonString)}, {Param::optional("expiry", JsonObject)}, {Param::optional("shared", JsonBool)}}, validate))
     {
-      bool expiryValid = true, sharedValid = true;
+      bool valid = true;
 
       if (cmd.contains("expiry"))
-      {
-        const auto& expiry = cmd.at("expiry");
-        expiryValid = expiry.contains("duration") && expiry.at("duration").is_uint64() &&
-                      expiry.contains("deleteSession") && expiry.at("deleteSession").is_bool();
-      }        
+        valid = isValid(queryRspName, ws, cmd.at("expiry"), {{Param::required("duration", JsonUInt)}, {Param::required("deleteSession", JsonBool)}});
       else
       {
-        cmd["expiry"]["duration"] = 0U;
+        cmd["expiry"]["duration"] = 0U; // defaults to never expire
         cmd["expiry"]["deleteSession"] = true;
       }
-        
 
-      if (cmd.contains("shared"))
-        sharedValid = cmd.at("shared").is_bool();
-      else
-        cmd["shared"] = false;
+      cmd["shared"] = cmd.get_value_or<bool>("shared", false);
 
-      
-      if (!expiryValid)
-        send(ws, createErrorResponse(queryRspName, RequestStatus::CommandSyntax, "expiry").to_string());
-      else if (!sharedValid)
-        send(ws, createErrorResponse(queryRspName, RequestStatus::CommandSyntax, "shared").to_string());
-      else
+      if (valid)
       {
         const auto token = createSessionToken(cmd.at("name").as_string(), cmd["shared"] == true);
         submit(ws, token, queryType, queryName, queryRspName, std::move(cmd));
       }
-    } 
+    }
   }
 
   
@@ -461,25 +468,26 @@ private:
     static const std::string queryName      = QueryTypeToName.at(queryType);
     static const std::string queryRspName   = queryName +"_RSP";
 
+
+    auto validate = [](const njson& cmd) -> std::tuple<RequestStatus, const std::string_view>
+    {
+      if (cmd.at("name").empty())
+        return {RequestStatus::ValueSize, "Session name empty"};
+
+      return {RequestStatus::Ok, ""};
+    };
+
+
     auto& cmd = json.at(queryName);
 
-    if (cmd.size() != 1U)
-      send(ws, createErrorResponse(queryRspName, RequestStatus::CommandSyntax).to_string());
-    else if (!cmd.contains("name"))
-      send(ws, createErrorResponse(queryRspName, RequestStatus::ValueMissing, "name").to_string());
-    else if (!cmd.at("name").is_string())
-      send(ws, createErrorResponse(queryRspName, RequestStatus::ValueTypeInvalid, "name").to_string());
-    else if (const auto value = cmd.at("name").as_string(); value.empty())
-      send(ws, createErrorResponse(queryRspName, RequestStatus::ValueSize, "name").to_string());
-    else
+    if (isValid(queryRspName, ws, cmd, {{Param::required("name", JsonString)}}, validate))
     {
       // ask the pool if the session token exists
 
-      // we don't need to check if the pool is shareable because if it isn't, the token will be completely different,
-      // so it'll either go to the wrong pool or not exist in the correct pool
+      // we don't need to check if the session is shareable because if it isn't, the token will be completely different,
+      // so won't be found
       const auto token = createSessionToken(cmd.at("name").as_string(), true);
       
-      const PoolId pool = getPoolId(token);
       const auto result = submitSync(ws, token, queryType, queryName, queryRspName);
       
       const auto [exists, shared] = std::any_cast<std::tuple<bool, bool>>(result) ;
@@ -518,7 +526,7 @@ private:
     {
       SessionToken token;
     
-      if (getSessionToken(ws, queryName, json.at(queryName), token))
+      if (getSessionToken(ws, queryName, cmd, token))
         submit(ws, token, queryType, queryName, queryRspName);
     }
   }
@@ -557,9 +565,9 @@ private:
 
   ndb_always_inline void sessionEnd(KvWebSocket * ws, njson&& json)
   {
-    static const KvQueryType queryType = KvQueryType::ShEnd;
-    static const std::string queryName     = QueryTypeToName.at(queryType);
-    static const std::string queryRspName  = queryName +"_RSP";
+    static const KvQueryType queryType      = KvQueryType::ShEnd;
+    static const std::string queryName      = QueryTypeToName.at(queryType);
+    static const std::string queryRspName   = queryName +"_RSP";
 
     SessionToken token;
     
@@ -574,104 +582,108 @@ private:
     static const std::string queryName      = QueryTypeToName.at(queryType);
     static const std::string queryRspName   = queryName +"_RSP";
 
-    auto& cmd = json.at(queryName);
-    const bool haveTkns = cmd.contains("tkns");
-
-    if (!NemesisConfig::kvSaveEnabled(m_config))
-      send(ws, createErrorResponseNoTkn(queryRspName, RequestStatus::CommandDisabled).to_string());
-    else if (!(cmd.contains("name") && cmd.at("name").is_string()))
-      send(ws, createErrorResponseNoTkn(queryRspName, RequestStatus::CommandSyntax).to_string());
-    else if (haveTkns && !cmd.at("tkns").is_array())
-      send(ws, createErrorResponseNoTkn(queryRspName, RequestStatus::ValueTypeInvalid, "tkns").to_string());
-    else if (haveTkns && cmd.at("tkns").empty())
-      send(ws, createErrorResponseNoTkn(queryRspName, RequestStatus::ValueSize, "tkns").to_string());
-    else
+    
+    auto validate = [](const njson& cmd) -> std::tuple<RequestStatus, const std::string_view>
     {
-      //validate tkns array, if present, before continuing
-      bool tknsValid = true;
+      const bool haveTkns = cmd.contains("tkns");
+
       if (haveTkns)
       {
-        for (const auto& item : cmd.at("tkns").array_range())
+        if (cmd.at("tkns").empty())
+          return {RequestStatus::ValueSize, "'tkns' empty"};
+        else
         {
-          if (tknsValid = item.is_uint64(); !tknsValid)
-            break;
+          for (const auto& item : cmd.at("tkns").array_range())
+          {
+            if (!item.is_uint64())
+              return {RequestStatus::ValueTypeInvalid, "'tkns' contains invalid token"};
+          }
         }
       }
 
-      if (!tknsValid)
-        send(ws, createErrorResponseNoTkn(queryRspName, RequestStatus::ValueTypeInvalid, "tkns").to_string());
+      return {RequestStatus::Ok, ""};
+    };
+    
+
+    auto& cmd = json.at(queryName);
+
+    if (!NemesisConfig::kvSaveEnabled(m_config))
+      send(ws, createErrorResponseNoTkn(queryRspName, RequestStatus::CommandDisabled).to_string());
+    else if (isValid(queryRspName, ws, cmd, {{Param::required("name", JsonString)}, {Param::optional("tkns", JsonArray)}}, validate))
+    {
+      const auto& name = cmd.at("name").as_string();
+
+      njson rsp;
+      rsp[queryRspName]["name"] = name;
+      
+      const auto timestampDir = std::to_string(KvSaveClock::now().time_since_epoch().count());
+      const auto root = fs::path {NemesisConfig::kvSavePath(m_config)} / name / timestampDir;
+      const auto metaPath = fs::path{root} / "md";
+      const auto dataPath = fs::path{root} / "data";
+
+      std::ofstream metaStream;
+
+      if (!fs::create_directories(metaPath))
+      {
+        rsp[queryRspName]["st"] = toUnderlying(RequestStatus::SaveDirWriteFail);
+        send(ws, rsp.to_string());
+      }
+      else if (metaStream.open(metaPath/"md.json", std::ios_base::trunc | std::ios_base::out); !metaStream.is_open())
+      {
+        rsp[queryRspName]["st"] = toUnderlying(RequestStatus::SaveDirWriteFail);
+        send(ws, rsp.to_string());
+      }
       else
       {
-        const auto& name = cmd.at("name").as_string();
+        const bool haveTkns = cmd.contains("tkns");
 
-        njson rsp;
-        rsp[queryRspName]["name"] = name;
+        rsp[queryRspName]["st"] = toUnderlying(RequestStatus::SaveStart);
+        send(ws, rsp.to_string());
+
+        // write metadata before we start incase we're interrupted mid-save
+        auto start = KvSaveClock::now();
+        njson metadata;
+        metadata["name"] = name;
+        metadata["status"] = toUnderlying(KvSaveStatus::Pending);        
+        metadata["pools"] = m_pools.size();
+        metadata["start"] = std::chrono::time_point_cast<KvSaveMetaDataUnit>(start).time_since_epoch().count();
+        metadata["saveType"] = haveTkns ? toUnderlying(SaveType::SelectSessions) : toUnderlying(SaveType::AllSessions);
+        metadata["complete"] = 0;
         
-        const auto timestampDir = std::to_string(KvSaveClock::now().time_since_epoch().count());
-        const auto root = fs::path {NemesisConfig::kvSavePath(m_config)} / name / timestampDir;
-        const auto metaPath = fs::path{root} / "md";
-        const auto dataPath = fs::path{root} / "data";
+        metadata.dump(metaStream);
 
-        std::ofstream metaStream;
+        // build and send save to pools
+        njson saveCmd;
+        saveCmd["poolDataRoot"] = dataPath.string();
 
-        if (!fs::create_directories(metaPath))
-        {
-          rsp[queryRspName]["st"] = toUnderlying(RequestStatus::SaveDirWriteFail);
-          send(ws, rsp.to_string());
-        }
-        else if (metaStream.open(metaPath/"md.json", std::ios_base::trunc | std::ios_base::out); !metaStream.is_open())
-        {
-          rsp[queryRspName]["st"] = toUnderlying(RequestStatus::SaveDirWriteFail);
-          send(ws, rsp.to_string());
-        }
-        else
-        {
-          rsp[queryRspName]["st"] = toUnderlying(RequestStatus::SaveStart);
-          send(ws, rsp.to_string());
+        if (haveTkns)
+          saveCmd["tkns"] = std::move(cmd.at("tkns"));
 
-          // write metadata before we start incase we're interrupted mid-save
-          auto start = KvSaveClock::now();
-          njson metadata;
-          metadata["name"] = name;
-          metadata["status"] = toUnderlying(KvSaveStatus::Pending);        
-          metadata["pools"] = m_pools.size();
-          metadata["start"] = std::chrono::time_point_cast<KvSaveMetaDataUnit>(start).time_since_epoch().count();
-          metadata["saveType"] = haveTkns ? toUnderlying(SaveType::SelectSessions) : toUnderlying(SaveType::AllSessions);
-          metadata["complete"] = 0;
-          
-          metadata.dump(metaStream);
+        
+        const auto results = submitSync(ws, queryType, queryName, queryRspName, std::move(saveCmd));
 
-          // build and send save to pools
-          njson saveCmd;
-          saveCmd["poolDataRoot"] = dataPath.string();
-          if (haveTkns)
-            saveCmd["tkns"] = std::move(cmd.at("tkns"));
+        RequestStatus st = RequestStatus::Ok;
 
-          const auto results = submitSync(ws, queryType, queryName, queryRspName, std::move(saveCmd));
+        for (const auto& result : results)
+          st = (std::any_cast<RequestStatus>(result) == RequestStatus::SaveComplete ? RequestStatus::SaveComplete : RequestStatus::SaveError);
+        
+        const auto end = KvSaveClock::now();
+        
+        // update metdata
+        metadata["status"] = toUnderlying(KvSaveStatus::Complete);
+        metadata["complete"] = std::chrono::time_point_cast<KvSaveMetaDataUnit>(end).time_since_epoch().count();
+        metaStream.seekp(0);
+        metadata.dump(metaStream);
 
-          RequestStatus st = RequestStatus::Ok;
+        // send command rsp
+        rsp[queryRspName]["st"] = toUnderlying(st);
 
-          for (const auto& result : results)
-            st = (std::any_cast<RequestStatus>(result) == RequestStatus::SaveComplete ? RequestStatus::SaveComplete : RequestStatus::SaveError);
-          
-          const auto end = KvSaveClock::now();
-          
-          // update metdata
-          metadata["status"] = toUnderlying(KvSaveStatus::Complete);
-          metadata["complete"] = std::chrono::time_point_cast<KvSaveMetaDataUnit>(end).time_since_epoch().count();
-          metaStream.seekp(0);
-          metadata.dump(metaStream);
+        // duration is unpredictable, making testing responses a PITA
+        #ifndef NDB_UNIT_TEST
+        rsp[queryRspName]["duration"] = std::chrono::duration_cast<KvSaveMetaDataUnit>(end-start).count();
+        #endif
 
-          // send command rsp
-          rsp[queryRspName]["st"] = toUnderlying(st);
-
-          // duration is unpredictable, making testing responses a PITA
-          #ifndef NDB_UNIT_TEST
-          rsp[queryRspName]["duration"] = std::chrono::duration_cast<KvSaveMetaDataUnit>(end-start).count();
-          #endif
-
-          send(ws, rsp.to_string());
-        }
+        send(ws, rsp.to_string());
       }
     }
   }  
@@ -685,73 +697,61 @@ private:
 
     const auto& loadPath = fs::path{NemesisConfig::kvSavePath(m_config)};
 
-    auto& cmd = json.at(queryName);
-
-    if (!(cmd.contains("names") && cmd.at("names").is_array()))
-      send(ws, createErrorResponseNoTkn(queryRspName, RequestStatus::CommandSyntax).to_string());
-    else if (!fs::exists(loadPath))
-      send(ws, createErrorResponseNoTkn(queryRspName, RequestStatus::LoadError, "load path not exist").to_string());
-    else
+    auto validate = [this, loadPath](const njson& cmd) -> std::tuple<RequestStatus, const std::string_view>
     {
-      bool namesValid = true;
-      RequestStatus checkStatus = RequestStatus::Ok;
-      std::string msg;
-      
       for (const auto& item : cmd.at("names").array_range())
       {
-        if (namesValid = item.is_string(); !namesValid)
-          checkStatus = RequestStatus::ValueTypeInvalid;
+        if (!item.is_string())
+          return {RequestStatus::ValueTypeInvalid, "names contains incorrect data type"};
         else
         {
-          // confirm load dir exists, i.e. :  <save_path>/<load_name>
-          const fs::path loadRoot = loadPath / item.as_string();
-
-          if (namesValid = fs::exists(loadRoot); !namesValid)
-          {
-            checkStatus = RequestStatus::LoadError;
-            msg = item.as_string() + " does not exist";
-          }
+          // confirm load dir exists, i.e. :  <loadPath>/<loadName>
+          if (!fs::exists(loadPath / item.as_string()))
+            return {RequestStatus::LoadError, item.as_string() + " does not exist"};
         } 
       }
 
-      if (!namesValid)
-        send(ws, createErrorResponseNoTkn(queryRspName, checkStatus, msg).to_string());
-      else
-      {
-        njson rsp;
+      return {RequestStatus::Ok, ""};
+    };
+
+
+    auto& cmd = json.at(queryName);
+
+    if (isValid(queryRspName, ws, cmd, {{Param::required("names", JsonArray)}}, validate))
+    {
+      njson rsp;
         
-        for (const auto& item : cmd.at("names").array_range())
+      for (const auto& item : cmd.at("names").array_range())
+      {
+        const auto loadName = item.as_string();
+        const auto loadRoot = loadPath / loadName;
+
+        rsp[queryRspName][loadName]["m"] = "";
+        rsp[queryRspName][loadName]["sessions"] = 0;
+        rsp[queryRspName][loadName]["keys"] = 0;
+
+        if (auto dataSetPath = getDefaultDataSetPath(loadRoot); dataSetPath.empty())
+          rsp[queryRspName][loadName]["st"] = toUnderlying(RequestStatus::LoadComplete);  // no datasets, not an error
+        else
         {
-          const auto loadName = item.as_string();
-          const auto loadRoot = loadPath / loadName;
+          const fs::path datasets = dataSetPath / "data";
 
-          rsp[queryRspName][loadName]["m"] = "";
-          rsp[queryRspName][loadName]["sessions"] = 0;
-          rsp[queryRspName][loadName]["keys"] = 0;
-
-          if (auto dataSetPath = getDefaultDataSetPath(loadRoot); dataSetPath.empty())
-            rsp[queryRspName][loadName]["st"] = toUnderlying(RequestStatus::LoadComplete);  // no datasets, not an error
-          else
+          if (!fs::exists(datasets))
           {
-            const fs::path datasets = dataSetPath / "data";
-
-            if (!fs::exists(datasets))
-            {
-              rsp[queryRspName][loadName]["st"] = toUnderlying(RequestStatus::LoadError);
-              rsp[queryRspName][loadName]["m"] = "Data directory does not exist";
-            }
-            else
-            {            
-              const auto result = load(datasets);
-              rsp[queryRspName][loadName]["st"] = toUnderlying(result.status);              
-              rsp[queryRspName][loadName]["sessions"] = result.nSessions;
-              rsp[queryRspName][loadName]["keys"] = result.nKeys;
-            }
+            rsp[queryRspName][loadName]["st"] = toUnderlying(RequestStatus::LoadError);
+            rsp[queryRspName][loadName]["m"] = "Data directory does not exist";
+          }
+          else
+          {            
+            const auto result = load(datasets);
+            rsp[queryRspName][loadName]["st"] = toUnderlying(result.status);              
+            rsp[queryRspName][loadName]["sessions"] = result.nSessions;
+            rsp[queryRspName][loadName]["keys"] = result.nKeys;
           }
         }
-        
-        send(ws, rsp.to_string());
-      }      
+      }
+      
+      send(ws, rsp.to_string());
     }
   }
 
@@ -781,18 +781,19 @@ private:
     static const std::string queryName      = QueryTypeToName.at(queryType);
     static const std::string queryRspName   = queryName + "_RSP";
 
-    auto& cmd = json.at(queryName);
+    // TODO fix this:
+    //  it doesn't check each item in 'tkns' is a SessionToken type
 
-    if (!(cmd.contains("tkns") && cmd.at("tkns").is_array()))
-      send(ws, createErrorResponseNoTkn(queryRspName, RequestStatus::CommandSyntax, "tkns").to_string());
-    else
-    { 
+    auto& cmd = json.at(queryName);
+    
+    if (isValid(queryRspName, ws, cmd, {{Param::required("tkns", JsonArray)}}))
+    {
       const auto results = submitSync(ws, cmd.at("tkns"), queryType, queryName, queryRspName);
 
       njson rsp;
       rsp[queryRspName]["st"] = toUnderlying(RequestStatus::Ok);
 
-      for (auto& result : results)
+      for (const auto& result : results)
       {
         const auto [tkn, exists] = std::any_cast<std::tuple<SessionToken, bool>>(result);
         rsp[queryRspName]["tkns"][std::to_string(tkn)] = exists;
@@ -812,14 +813,13 @@ private:
     static const std::string queryRspName = queryName +"_RSP";
 
     auto& cmd = json.at(queryName);
-    SessionToken token;
-
-    if (!cmd.contains("keys"))
-      send(ws, createErrorResponse(queryRspName, RequestStatus::ParamMissing, "keys").to_string());
-    else if (!cmd.at("keys").is_object())
-      send(ws, createErrorResponse(queryRspName, RequestStatus::ValueTypeInvalid, "keys").to_string());
-    else if (getSessionToken(ws, queryRspName, cmd, token))
-      submit(ws, token, queryType, queryName, queryRspName, std::move(cmd.at("keys")));
+    
+    if (isValid(queryRspName, ws, cmd, {{Param::required("keys", JsonObject)}}))
+    {
+      SessionToken token;
+      if (getSessionToken(ws, queryRspName, cmd, token))
+        submit(ws, token, queryType, queryName, queryRspName, std::move(cmd.at("keys")));
+    }
   }
 
   
@@ -830,14 +830,13 @@ private:
     static const std::string queryRspName = queryName +"_RSP";
 
     auto& cmd = json.at(queryName);
-    SessionToken token;
-
-    if (!cmd.contains("keys"))
-      send(ws, createErrorResponse(queryRspName, RequestStatus::ParamMissing, "keys").to_string());
-    else if (!cmd.at("keys").is_object())
-      send(ws, createErrorResponse(queryRspName, RequestStatus::ValueTypeInvalid, "keys").to_string());
-    else if (getSessionToken(ws, queryRspName, cmd, token))
-      submit(ws, token, queryType, queryName, queryRspName, std::move(cmd.at("keys")));
+    
+    if (isValid(queryRspName, ws, cmd, {{Param::required("keys", JsonObject)}}))
+    {
+      SessionToken token;
+      if (getSessionToken(ws, queryRspName, cmd, token))
+        submit(ws, token, queryType, queryName, queryRspName, std::move(cmd.at("keys")));
+    }
   }
 
   
@@ -848,14 +847,13 @@ private:
     static const std::string queryRspName   = queryName +"_RSP";
 
     auto& cmd = json.at(queryName);
-    SessionToken token;
-
-    if (!cmd.contains("keys"))
-      send(ws, createErrorResponse(queryRspName, RequestStatus::ParamMissing, "keys").to_string());
-    else if (!cmd.at("keys").is_array())
-      send(ws, createErrorResponse(queryRspName, RequestStatus::ValueTypeInvalid, "keys").to_string());
-    else if (getSessionToken(ws, queryRspName, cmd, token))
-      submit(ws, token, queryType, queryName, queryRspName, std::move(cmd.at("keys")));
+    
+    if (isValid(queryRspName, ws, cmd, {{Param::required("keys", JsonArray)}}))
+    {
+      SessionToken token;
+      if (getSessionToken(ws, queryRspName, cmd, token))
+        submit(ws, token, queryType, queryName, queryRspName, std::move(cmd.at("keys")));
+    }
   }
 
   
@@ -868,12 +866,11 @@ private:
     auto& cmd = json.at(queryName);
     SessionToken token;
 
-    if (!cmd.contains("keys"))
-      send(ws, createErrorResponse(queryRspName, RequestStatus::ParamMissing, "keys").to_string());
-    else if (!cmd.at("keys").is_object())
-      send(ws, createErrorResponse(queryRspName, RequestStatus::ValueTypeInvalid, "keys").to_string());
-    else if (getSessionToken(ws, queryRspName, cmd, token))
-      submit(ws, token, queryType, queryName, queryRspName, std::move(cmd.at("keys")));
+    if (isValid(queryRspName, ws, cmd, {{Param::required("keys", JsonObject)}}))
+    {
+      if (getSessionToken(ws, queryRspName, cmd, token))
+        submit(ws, token, queryType, queryName, queryRspName, std::move(cmd.at("keys")));
+    }
   }
 
 
@@ -884,14 +881,13 @@ private:
     static const std::string queryRspName   = queryName +"_RSP";
 
     auto& cmd = json.at(queryName);
-    SessionToken token;
 
-    if (!cmd.contains("keys"))
-      send(ws, createErrorResponse(queryRspName, RequestStatus::ParamMissing, "keys").to_string());
-    else if (!cmd.at("keys").is_object())
-      send(ws, createErrorResponse(queryRspName, RequestStatus::ValueTypeInvalid, "keys").to_string());
-    else if (getSessionToken(ws, queryRspName, cmd, token))
-      submit(ws, token, queryType, queryName, queryRspName, std::move(cmd.at("keys")));
+    if (isValid(queryRspName, ws, cmd, {{Param::required("keys", JsonObject)}}))
+    {
+      SessionToken token;
+      if (getSessionToken(ws, queryRspName, cmd, token))
+        submit(ws, token, queryType, queryName, queryRspName, std::move(cmd.at("keys")));
+    }
   }
 
 
@@ -902,22 +898,21 @@ private:
     static const std::string queryRspName  = queryName +"_RSP";
 
     auto& cmd = json.at(queryName);
-    SessionToken token;
 
-    if (!cmd.contains("keys"))
-      send(ws, createErrorResponse(queryRspName, RequestStatus::ParamMissing, "keys").to_string());
-    else if (!cmd.at("keys").is_array())
-      send(ws, createErrorResponse(queryRspName, RequestStatus::ValueTypeInvalid, "keys").to_string());
-    else if (getSessionToken(ws, queryRspName, cmd, token))
-      submit(ws, token, queryType, queryName, queryRspName, std::move(cmd.at("keys")));
+    if (isValid(queryRspName, ws, cmd, {{Param::required("keys", JsonArray)}}))
+    {
+      SessionToken token;
+      if (getSessionToken(ws, queryRspName, cmd, token))
+        submit(ws, token, queryType, queryName, queryRspName, std::move(cmd.at("keys")));
+    }
   }
 
   
   ndb_always_inline void clear(KvWebSocket * ws, njson&& json)
   {
-    static const KvQueryType queryType = KvQueryType::KvClear;
-    static const std::string queryName     = QueryTypeToName.at(queryType);
-    static const std::string queryRspName  = queryName +"_RSP";
+    static const KvQueryType queryType      = KvQueryType::KvClear;
+    static const std::string queryName      = QueryTypeToName.at(queryType);
+    static const std::string queryRspName   = queryName +"_RSP";
 
     SessionToken token;
 
@@ -928,9 +923,9 @@ private:
 
   ndb_always_inline void count(KvWebSocket * ws, njson&& json)
   {
-    static const KvQueryType queryType = KvQueryType::KvCount;
-    static const std::string queryName     = QueryTypeToName.at(queryType);
-    static const std::string queryRspName  = queryName +"_RSP";
+    static const KvQueryType queryType      = KvQueryType::KvCount;
+    static const std::string queryName      = QueryTypeToName.at(queryType);
+    static const std::string queryRspName   = queryName +"_RSP";
 
     SessionToken token;
 
@@ -946,14 +941,13 @@ private:
     static const std::string queryRspName   = queryName +"_RSP";
 
     auto& cmd = json.at(queryName);
-    SessionToken token;
-
-    if (!cmd.contains("keys"))
-      send(ws, createErrorResponse(queryRspName, RequestStatus::ParamMissing).to_string());
-    else if (!cmd.at("keys").is_array())
-      send(ws, createErrorResponse(queryRspName, RequestStatus::ValueTypeInvalid, "keys").to_string());
-    else if (getSessionToken(ws, queryName, cmd, token))
-      submit(ws, token, queryType, queryName, queryRspName, std::move(cmd.at("keys")));
+    
+    if (isValid(queryRspName, ws, cmd, {{Param::required("keys", JsonArray)}}))
+    {
+      SessionToken token;      
+      if (getSessionToken(ws, queryName, cmd, token))
+        submit(ws, token, queryType, queryName, queryRspName, std::move(cmd.at("keys")));
+    }
   }
 
   
@@ -963,32 +957,26 @@ private:
     static const std::string queryName      = QueryTypeToName.at(queryType);
     static const std::string queryRspName   = queryName +"_RSP";
 
+    auto validate = [](const njson& cmd) -> std::tuple<RequestStatus, const std::string_view>
+    {
+      if (cmd.at("rsp") != "paths" && cmd.at("rsp") != "kv" && cmd.at("rsp") != "keys")
+        return {RequestStatus::CommandSyntax, "'rsp' invalid value"};
+      else if (const auto& path = cmd.at("path").as_string() ; path.empty())
+        return {RequestStatus::ValueSize, "'path' is empty"};
+
+      return {RequestStatus::Ok, ""};
+    };
+
+
     auto& cmd = json.at(queryName);
     
-    SessionToken token;
-    if (getSessionToken(ws, queryRspName, cmd, token))
+    if (isValid(queryRspName, ws, cmd, {{Param::required("path", JsonString)}, {Param::required("rsp", JsonString)}, {Param::optional("keys", JsonArray)}}, validate))
     {
-      // getSessionToken() deletes the "tkn" so only 'path' and 'rsp' must remain, with optional 'keys'
-      if (cmd.size() < 2U || cmd.size() > 3U)
-        send(ws, createErrorResponse(queryRspName, RequestStatus::CommandSyntax).to_string());
-      else if (!cmd.contains("path"))
-        send(ws, createErrorResponse(queryRspName, RequestStatus::NoPath).to_string());
-      else if (!cmd.at("path").is_string())
-        send(ws, createErrorResponse(queryRspName, RequestStatus::ValueTypeInvalid, "path").to_string());
-      else if (const auto& path = cmd.at("path").as_string() ; path.empty())
-        send(ws, createErrorResponse(queryRspName, RequestStatus::ValueSize, "path").to_string());      
-      else if (!cmd.contains("rsp"))
-        send(ws, createErrorResponse(queryRspName, RequestStatus::ValueMissing, "rsp").to_string());
-      else if (!cmd.at("rsp").is_string())
-        send(ws, createErrorResponse(queryRspName, RequestStatus::ValueTypeInvalid, "rsp").to_string());
-      else if (cmd.at("rsp") != "paths" && cmd.at("rsp") != "kv" && cmd.at("rsp") != "keys")
-        send(ws, createErrorResponse(queryRspName, RequestStatus::CommandSyntax, "rsp").to_string());
-      else if (cmd.contains("keys") && !cmd.at("keys").is_array())
-        send(ws, createErrorResponse(queryRspName, RequestStatus::ValueTypeInvalid, "keys").to_string());
-      else
+      SessionToken token;
+      if (getSessionToken(ws, queryRspName, cmd, token))
       {
         if (!cmd.contains("keys"))
-          cmd["keys"] = njson::array();
+          cmd["keys"] = njson::array(); // KvPool expects 'keys'
 
         const auto poolId = getPoolId(token);
         
@@ -1008,24 +996,22 @@ private:
     static const std::string queryName      = QueryTypeToName.at(queryType);
     static const std::string queryRspName   = queryName +"_RSP";
 
+
+    auto validate = [](const njson& cmd) -> std::tuple<RequestStatus, const std::string_view>
+    {
+      // 'value' can be any valid JSON type, so just check it's present here
+      if (!cmd.contains("value"))
+        return {RequestStatus::ParamMissing, "Missing parameter"};
+      
+      return {RequestStatus::Ok, ""};
+    };
+
     auto& cmd = json.at(queryName);
     
-    SessionToken token;
-    if (getSessionToken(ws, queryRspName, cmd, token))
+    if (isValid(queryRspName, ws, cmd, {{Param::required("key", JsonString)}, {Param::required("path", JsonString)}}, validate))
     {
-      if (cmd.size() != 3U) // after tkn removed
-        send(ws, createErrorResponse(queryRspName, RequestStatus::CommandSyntax).to_string());
-      else if (!cmd.contains("key"))
-        send(ws, createErrorResponse(queryRspName, RequestStatus::ParamMissing, "key").to_string());
-      else if (!cmd.at("key").is_string())
-        send(ws, createErrorResponse(queryRspName, RequestStatus::ValueTypeInvalid, "key").to_string());
-      else if (!cmd.contains("path"))
-        send(ws, createErrorResponse(queryRspName, RequestStatus::ParamMissing, "path").to_string());
-      else if (!cmd.at("path").is_string())
-        send(ws, createErrorResponse(queryRspName, RequestStatus::ValueTypeInvalid, "path").to_string());
-      else if (!cmd.contains("value"))
-        send(ws, createErrorResponse(queryRspName, RequestStatus::ParamMissing, "value").to_string());
-      else
+      SessionToken token;
+      if (getSessionToken(ws, queryRspName, cmd, token))
         submit(ws, token, queryType, queryName, queryRspName, std::move(cmd));
     }
   }
@@ -1057,14 +1043,13 @@ private:
     static const std::string queryRspName = queryName +"_RSP";
 
     auto& cmd = json.at(queryName);
-    SessionToken token;
-
-    if (!cmd.contains("keys"))
-      send(ws, createErrorResponse(queryRspName, RequestStatus::ParamMissing, "keys").to_string());
-    else if (!cmd.at("keys").is_object())
-      send(ws, createErrorResponse(queryRspName, RequestStatus::ValueTypeInvalid, "keys").to_string());
-    else if (getSessionToken(ws, queryRspName, cmd, token))
-      submit(ws, token, queryType, queryName, queryRspName, std::move(cmd.at("keys")));
+    
+    if (isValid(queryRspName, ws, cmd, {{Param::required("keys", JsonObject)}}))
+    {
+      SessionToken token;
+      if (getSessionToken(ws, queryRspName, cmd, token))
+        submit(ws, token, queryType, queryName, queryRspName, std::move(cmd.at("keys")));
+    }
   }
 
 
