@@ -41,31 +41,27 @@ protected:
 
   void addSimpleData(OrderedSeries& os)
   {
-    SeriesTime d1(1);
-    SeriesValue v1 = "1";
+    njson times1 {json_array_arg, {1,2,3,4}};
+    njson vals1 = njson::parse(R"([{"a":1},{"a":2},{"a":3},{"a":4}])");
 
-    SeriesTime d2(2);
-    SeriesValue v2 = "2";
-
-    SeriesTime d3(3);
-    SeriesValue v3 = "3";
-
-    SeriesTime d4(5);
-    SeriesValue v4 = "5";
-
-    os.add(d1, v1);
-    os.add(d2, v2);
-    os.add(d3, v3);
-    os.add(d4, v4);
-
-    njson times1 {json_array_arg, {20,21,22,23,24,25,30}};
-    njson vals1 {json_array_arg, {"20","21","22","23","24","25","30"}};
+    njson times2 {json_array_arg, {20,21,22,23,24,25,30}};
+    njson vals2 = njson::parse(R"([{"a":20},{"a":21},{"a":22},{"a":23},{"a":24},{"a":25},{"a":30}])");
 
     os.add(times1, std::move(vals1));
+    os.add(times2, std::move(vals2));
   }
 };
 
 
+/* Can only be tested using TsHandler because OrderedSeries and Series expect JSON to be validated
+TEST_F(TsClassTest, InvalidValues)
+{
+  {
+    njson times {json_array_arg, {1,2,3,4}};
+    njson vals {json_array_arg, {"string", 3, 3.5, true}};
+  }
+}
+ */
 
 TEST_F(TsClassTest, GetSingle)
 {
