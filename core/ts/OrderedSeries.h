@@ -76,10 +76,11 @@ public:
     const auto& timesVec = times.as<std::vector<SeriesTime>>();
     const auto& valuesVec = values.as<std::vector<SeriesValue>>();
 
+    // this is checked by TsHandler, but it's too important to not assert here
+    assert(timesVec.size() == valuesVec.size());
+
     if (haveIndexes())
-    {
       addIndexes(timesVec, valuesVec);
-    }
     
     m_times.insert(m_times.cend(), timesVec.cbegin(), timesVec.cend());
     m_values.insert(m_values.cend(), std::make_move_iterator(valuesVec.begin()), std::make_move_iterator(valuesVec.end()));

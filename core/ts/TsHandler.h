@@ -104,9 +104,24 @@ private:
     static const auto cmdName     = "TS_ADD";
     static const auto cmdRspName  = "TS_ADD_RSP";
 
+    auto validate = [](const njson& cmd) -> std::tuple<TsRequestStatus, const std::string_view>
+    {
+      if (cmd.at("t").size() != cmd.at("v").size())
+        return {TsRequestStatus::ValueSize, "'v' and 't' not same length"};
+
+      for (const auto& item : cmd.at("v").array_range())
+      {
+        if (!item.is_object())
+          return {TsRequestStatus::ParamType, "'v' must be an array of objects"};
+      }        
+      
+      return {TsRequestStatus::Ok, ""};
+    };
+
+
     auto& cmd = msg.at(cmdName);
 
-    if (isValid(cmd, {Param::required("ts", JsonString), Param::required("t", JsonArray), Param::required("v", JsonArray)}))
+    if (isValid(cmd, {Param::required("ts", JsonString), Param::required("t", JsonArray), Param::required("v", JsonArray)}, validate))
       PLOGD << m_series.add(std::move(cmd), cmdRspName).rsp;
   }
 

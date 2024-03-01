@@ -32,7 +32,10 @@ public:
   QueryResult create (const SeriesName& name, const std::string& cmdRspName)
   {
     if (hasSeries(name))
+    {
+      PLOGD << "Series name already exists";
       return TsRequestStatus::SeriesExists;
+    }
     else
     {
       QueryResult qr{TsRequestStatus::Ok};
@@ -109,19 +112,23 @@ public:
   }
 
 
-  QueryResult createIndex (const SeriesName& name, const std::string& key, const std::string& cmdRspName)
+  QueryResult createIndex (const SeriesName& seriesName, const std::string& indexName, const std::string& cmdRspName)
   {
     QueryResult qr;
 
-    if (!hasSeries(name))
+    if (!hasSeries(seriesName))
     {
       qr.status = TsRequestStatus::SeriesNotExist;
       qr.rsp = SeriesNotExistRsp;
     }
     else
     {
-      qr.status = m_series.at(name)->createIndex(key) ? TsRequestStatus::Ok : TsRequestStatus::IndexExists;
-      qr.rsp[cmdRspName][name]["st"] = toUnderlying(qr.status);
+      const auto created = m_series.at(seriesName)->createIndex(indexName);
+
+      PLOGD_IF(!created) << "Index '" << indexName << "' already exists in series " << seriesName; 
+
+      qr.status = created ? TsRequestStatus::Ok : TsRequestStatus::IndexExists;  
+      qr.rsp[cmdRspName][seriesName]["st"] = toUnderlying(qr.status);
     }
     return qr;
   }

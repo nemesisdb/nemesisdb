@@ -33,7 +33,8 @@ enum class TsRequestStatus
   SeriesNotExist = 20,
   SeriesExists,
   SeriesType,
-  IndexExists = 40
+  IndexExists = 40,
+  ValueSize = 60,
 };
 
 
