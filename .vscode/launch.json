@@ -1,0 +1,55 @@
+{
+  "configurations":
+  [
+    // Debug and Release have different working dirs (cwd) because in Debug nemesis creates a 'data' directory for saving session data, 
+    // which we do in Debug/bin rather than polluting the root of the repo
+    {
+      "name": "NemesisDB Debug",
+      "type": "cppdbg",
+      "request": "launch",
+      "program": "${workspaceFolder}/server/Debug/bin/nemesisdb",
+      "args": ["--config=../../configs/default.json"],
+      "stopAtEntry": false,
+      "cwd": "${fileDirname}",
+      "environment": [],
+      "externalConsole": false,
+      "MIMode": "gdb",
+      "setupCommands": [
+          {
+              "description": "Enable pretty-printing for gdb",
+              "text": "-enable-pretty-printing",
+              "ignoreFailures": true
+          },
+          {
+              "description": "Set Disassembly Flavor to Intel",
+              "text": "-gdb-set disassembly-flavor intel",
+              "ignoreFailures": true
+          }
+      ]
+    },
+    {
+      "name": "NemesisDB Release",
+      "type": "cppdbg",
+      "request": "launch",
+      "program": "${workspaceFolder}/server/Release/bin/nemesisdb",
+      "args": ["--config=server/configs/default.json"],
+      "stopAtEntry": false,
+      "cwd": "${workspaceFolder}",
+      "environment": [],
+      "externalConsole": false,
+      "MIMode": "gdb",
+      "setupCommands": [
+          {
+              "description": "Enable pretty-printing for gdb",
+              "text": "-enable-pretty-printing",
+              "ignoreFailures": true
+          },
+          {
+              "description": "Set Disassembly Flavor to Intel",
+              "text": "-gdb-set disassembly-flavor intel",
+              "ignoreFailures": true
+          }
+      ]
+    }
+  ]
+}

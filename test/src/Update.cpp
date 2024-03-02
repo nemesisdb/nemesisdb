@@ -53,9 +53,9 @@ TEST_F(NemesisTest, MissingParams)
 
 	ASSERT_TRUE(tc.open());
 	
-	tc.test({TestData { .request = R"({ "KV_UPDATE":{"key":"loginsFailed","xyz":"", "value":"Manc"} })"_json,	.expected = {R"({ "KV_UPDATE_RSP":{ "st":26, "m":"path" } })"_json} }});
-  tc.test({TestData { .request = R"({ "KV_UPDATE":{"key":"loginsFailed","path":"$abc", "xyz":"Manc"} })"_json,	.expected = {R"({ "KV_UPDATE_RSP":{ "st":26, "m":"value" } })"_json} }});
-  tc.test({TestData { .request = R"({ "KV_UPDATE":{"xyz":"loginsFailed","path":"$abc", "value":"Manc"} })"_json,	.expected = {R"({ "KV_UPDATE_RSP":{ "st":26, "m":"key" } })"_json} }});
+	tc.test({TestData { .request = R"({ "KV_UPDATE":{"key":"loginsFailed","xyz":"", "value":"Manc"} })"_json,	.expected = {R"({ "KV_UPDATE_RSP":{ "st":26, "m":"Missing parameter" } })"_json} }});
+  tc.test({TestData { .request = R"({ "KV_UPDATE":{"key":"loginsFailed","path":"$abc", "xyz":"Manc"} })"_json,	.expected = {R"({ "KV_UPDATE_RSP":{ "st":26, "m":"Missing parameter" } })"_json} }});
+  tc.test({TestData { .request = R"({ "KV_UPDATE":{"xyz":"loginsFailed","path":"$abc", "value":"Manc"} })"_json,	.expected = {R"({ "KV_UPDATE_RSP":{ "st":26, "m":"Missing parameter" } })"_json} }});
 }
 
 

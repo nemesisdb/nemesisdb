@@ -115,7 +115,6 @@ public:
   // TODO review this, result as json may not be required: it's always returning strings (path or keys)
   auto find (const njson& contents, const bool findPaths, njson& result) const
   {
-    namespace jsonpath = jsoncons::jsonpath;
     const auto& path = contents.at("path").as_string();
     
     try
