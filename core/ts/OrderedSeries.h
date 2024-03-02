@@ -169,9 +169,9 @@ private:
     IndexSearchResult result;
 
         
-    for (const auto& member : condition.object_range())  // TODO check 'where' is an object
+    for (const auto& termObject : condition.object_range())
     {
-      if (const auto& indexName = member.key() ; !isIndexed(indexName))
+      if (const auto& indexName = termObject.key() ; !isIndexed(indexName))
       {
         PLOGD << indexName << " not an index";
         emptyResult = true;
@@ -180,7 +180,41 @@ private:
       {
         PLOGD << indexName << " is indexed";
 
-        for (const auto& termMember : member.value().object_range())
+        assert(termObject.value().size() == 1U);
+
+        const auto& conditionObject = *(termObject.value().object_range().cbegin());
+
+        const auto& op = conditionObject.key(); // operator
+        const auto& operand = conditionObject.value();
+        const auto& indexMap = m_indexes.at(indexName).index;
+        std::tuple<Index::IndexMapConstIt,Index::IndexMapConstIt> indexRange; // [start, end] of index nodes matching criteria
+
+        if (op == "<")
+          indexRange = lt(indexMap, operand, rsp);
+        else if (op == "<=")
+          indexRange = lte(indexMap, operand, rsp);
+        else if (op == ">")
+          indexRange = gt(indexMap, operand, rsp);
+        else if (op == ">=")
+          indexRange = gte(indexMap, operand, rsp);
+        else if (op == "==")
+          indexRange = eq(indexMap, operand, rsp);
+        else if (op == "[]")
+          indexRange = rng(indexMap, operand, rsp);
+
+
+        if (const auto [start, end] = indexRange; start == indexMap.cend())
+        {
+          emptyResult = true;  // terms are &&, i.e. if (term1 && term2), so if a term returns no results, can bail
+          break;
+        }
+        else
+        {
+          result.addResult(indexName, indexRange);
+        }
+        
+        /*
+        for (const auto& termMember : terms.object_range())
         {
           const auto& op = termMember.key();
           const auto& condition = termMember.value();
@@ -211,6 +245,7 @@ private:
             result.addResult(indexName, indexRange);
           }
         }
+        */
 
         if (emptyResult)
           break;

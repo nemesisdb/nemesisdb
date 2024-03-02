@@ -29,7 +29,7 @@ struct MeasureDuration
 };
 
 
-/* 
+
 TEST_F(TsSeriesTest, SimpleData)
 {
   Series s;
@@ -318,7 +318,7 @@ TEST_F(TsSeriesTest, ComplexData)
     ASSERT_EQ(r.rsp["TS_GET_RSP"]["os1"]["v"], njson::parse(R"([{"temp":1, "coords":{"x":2.0, "y":5.0}}, {"temp":1, "coords":{"x":2.2, "y":5.2}}])"));
   }
 }
-*/
+
 
 
 

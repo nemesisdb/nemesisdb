@@ -101,8 +101,8 @@ private:
 
   void add (TsWebSocket * ws, njson&& msg)
   {
-    static const auto cmdName     = "TS_ADD";
-    static const auto cmdRspName  = "TS_ADD_RSP";
+    static const auto cmdName     = "TS_ADD_EVT";
+    static const auto cmdRspName  = "TS_ADD_EVT_RSP";
 
     auto validate = [](const njson& cmd) -> std::tuple<TsRequestStatus, const std::string_view>
     {
@@ -140,11 +140,15 @@ private:
         return {TsRequestStatus::RngValues,"'rng' invalid, first value must not be greater than second"};
       else if (cmd.contains("where"))
       {
-        // only objects permitted in "where"
+        // only objects permitted in "where" and must not be empty
         for (const auto& member : cmd.at("where").object_range())
         {
-          if (!member.value().is_object())
-            return {TsRequestStatus::ParamType, "Member in 'where' is not an object"};
+          const auto& term = member.value();
+
+          if (!term.is_object())
+            return {TsRequestStatus::ParamType, "Term in 'where' is not an object"};
+          else if (term.size() != 1)
+            return {TsRequestStatus::ValueSize, "Term in 'where' must have one member"};
         }
       }
       return {TsRequestStatus::Ok,""};

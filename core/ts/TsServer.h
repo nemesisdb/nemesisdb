@@ -36,9 +36,6 @@ public:
   {
     m_run = false;
 
-    // if (m_monitor.joinable())
-    //   m_monitor.join();
-
     {
       std::scoped_lock lck{m_wsClientsMux};
       for (auto ws : m_wsClients)
@@ -195,7 +192,7 @@ public:
 
 private:
   std::atomic_bool m_run;
-  std::shared_ptr<TsHandler> m_handler;
+  std::shared_ptr<TsHandler> m_handler; // TODO this is copy constructed on every call to uWs's 'message' lambda, check performance vs raw pointer
   std::shared_ptr<ServerStats> m_serverStats;
   std::vector<std::unique_ptr<std::jthread>> m_threads;
   std::vector<us_listen_socket_t *> m_sockets;  

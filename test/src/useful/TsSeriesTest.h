@@ -32,7 +32,7 @@ protected:
   const std::string GetRspCmd             = "TS_GET_RSP";
   const std::string GetMultiRspCmd        = "TS_GET_MULTI_RSP";
   const std::string CreateRspCmd          = "TS_CREATE_RSP";
-  const std::string AddRspCmd             = "TS_ADD_RSP";
+  const std::string AddRspCmd             = "TS_ADD_EVT_RSP";
   const std::string CreateIndexRspCmd     = "TS_CREATE_INDEX_RSP";
 
 
@@ -140,12 +140,12 @@ protected:
     ASSERT_TRUE(json[1].is_object());
 
     ASSERT_TRUE(json[0].contains("TS_CREATE"));
-    ASSERT_TRUE(json[1].contains("TS_ADD"));
+    ASSERT_TRUE(json[1].contains("TS_ADD_EVT"));
 
     
     ASSERT_EQ(s.create(json[0]["TS_CREATE"]["ts"].as_string(), CreateRspCmd).status, TsRequestStatus::Ok);
     ASSERT_EQ(s.createIndex("os1", "temp", CreateIndexRspCmd).status, TsRequestStatus::Ok);
-    ASSERT_EQ(s.add(std::move(json[1]["TS_ADD"]), AddRspCmd).status, TsRequestStatus::Ok);
+    ASSERT_EQ(s.add(std::move(json[1]["TS_ADD_EVT"]), AddRspCmd).status, TsRequestStatus::Ok);
   }
 };
 

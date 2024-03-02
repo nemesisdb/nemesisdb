@@ -41,7 +41,7 @@ enum class TsRequestStatus
 enum class TsCommand
 {
   TsCreate,
-  TsAdd,
+  TsAddEvt,
   TsGet,
   TsGetMultipleRanges,
   TsCreateIndex,
@@ -51,11 +51,11 @@ enum class TsCommand
 
 const std::map<const std::string_view, const TsCommand> QueryNameToType = 
 {  
-  {"TS_CREATE",         TsCommand::TsCreate},
-  {"TS_ADD",            TsCommand::TsAdd},
-  {"TS_GET",            TsCommand::TsGet},
-  {"TS_GET_MULTI",      TsCommand::TsGetMultipleRanges},
-  {"TS_CREATE_INDEX",   TsCommand::TsCreateIndex}
+  {"TS_CREATE",             TsCommand::TsCreate},
+  {"TS_ADD_EVT",            TsCommand::TsAddEvt},
+  {"TS_GET",                TsCommand::TsGet},
+  {"TS_GET_MULTI",          TsCommand::TsGetMultipleRanges},
+  {"TS_CREATE_INDEX",       TsCommand::TsCreateIndex}
 };
 
 
