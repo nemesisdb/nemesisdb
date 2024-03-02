@@ -170,8 +170,7 @@ public:
           m_threads.emplace_back(thread);
         }
         
-        // if (!setThreadAffinity(thread->native_handle(), core))
-        //   PLOGW << "Failed to assign io thread to core " << core;    
+        PLOGW_IF(!setThreadAffinity(thread->native_handle(), core)) << "Failed to assign io thread to core " << core;
       }
       else
         PLOGF << "Failed to create I/O thread " << i;
@@ -184,28 +183,7 @@ public:
       PLOGF << "Failed to listen on " << ip << ":"  << port;
       return false;
     }
-    else
-    {
-      // #ifndef NDB_UNIT_TEST
-      // m_monitor = std::move(std::jthread{[this]
-      // {
-      //   std::chrono::seconds period {5};
-      //   std::chrono::steady_clock::time_point nextCheck = std::chrono::steady_clock::now() + period;
 
-      //   while (m_run)
-      //   {
-      //     std::this_thread::sleep_for(chrono::seconds{1});
-
-      //     if (m_run && chrono::steady_clock::now() >= nextCheck)
-      //     {
-      //       m_kvHandler->monitor();
-      //       nextCheck = chrono::steady_clock::now() + period;
-      //     }
-      //   }
-      // }});
-      // #endif
-    }
-    
 
     #ifndef NDB_UNIT_TEST
     PLOGI << "Ready";

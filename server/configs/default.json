@@ -1,6 +1,6 @@
 {
-  "version":1,
-  "mode":"ts",
+  "version":2,
+  "mode":"kv",  // "ts" for "TimeSeries" or "kv" "KeyValue" (default)
   "kv":
   {
     "ip":"127.0.0.1",
