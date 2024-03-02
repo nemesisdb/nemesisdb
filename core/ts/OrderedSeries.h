@@ -17,7 +17,7 @@ using namespace jsoncons::literals;
 /// Represents a time series where submitted data is always gauranteed to be ordered by the sender.
 /// Or in other words: OrderedSeries does not sort the data before it is stored. 
 /// Uses parallel vectors to hold time and value data:
-///   An event occurring at m_times[i] has metrics in m_values[i].
+///   An event occurring at m_times[i] has metrics in m_events[i].
 class OrderedSeries : public BaseSeries
 {
   using TimeVector = std::vector<SeriesTime>;
@@ -42,7 +42,7 @@ class OrderedSeries : public BaseSeries
     static const std::size_t MinSize = 1000U; // TODO arbitrary
 
     m_times.reserve(MinSize);
-    m_values.reserve(MinSize);
+    m_events.reserve(MinSize);
   }
 
 
@@ -64,26 +64,26 @@ public:
   {
     if (!isIndexed(key))
     {
-      m_indexes.emplace(key, Index{});
+      buildIndex(key);
       return true;
     }
     return false;
   }
   
 
-  void add (const njson& times, njson&& values) override
+  void add (const njson& times, njson&& events) override
   {
     const auto& timesVec = times.as<std::vector<SeriesTime>>();
-    const auto& valuesVec = values.as<std::vector<SeriesValue>>();
+    const auto& eventsVec = events.as<std::vector<SeriesValue>>();
 
-    // this is checked by TsHandler, but it's too important to not assert here
-    assert(timesVec.size() == valuesVec.size());
+    // should always be checked by TsHandler, but it's too important to not assert here
+    assert(timesVec.size() == eventsVec.size());
 
     if (haveIndexes())
-      addIndexes(timesVec, valuesVec);
-    
-    m_times.insert(m_times.cend(), timesVec.cbegin(), timesVec.cend());
-    m_values.insert(m_values.cend(), std::make_move_iterator(valuesVec.begin()), std::make_move_iterator(valuesVec.end()));
+      addIndexes(timesVec, eventsVec);
+
+    m_times.insert(m_times.cend(), timesVec.cbegin(), timesVec.cend());  
+    m_events.insert(m_events.cend(), std::make_move_iterator(eventsVec.begin()), std::make_move_iterator(eventsVec.end()));
   }
 
 
@@ -112,25 +112,46 @@ public:
   
 private:
 
-  void addIndexes(const std::vector<SeriesTime>& timesVec, const std::vector<SeriesValue>& valuesVec)
-  {
-    std::size_t index = 0;
 
-    for (const auto& val : valuesVec)
+  // Indexes existing data
+  void buildIndex (const std::string& key)
+  {
+    m_indexes.emplace(key, Index{});
+
+    for (std::size_t pos = 0 ; pos < m_events.size() ; ++pos)
     {
-      for (const auto& member : val.object_range()) 
+      // if event contains the key (event is always a JSON object and only top level members can be indexed)
+      if (const auto& evt = m_events[pos]; evt.contains(key))
+      {
+        const auto& evtValue = evt.at(key);
+
+        // create/add to index
+        if (const auto itIndex = m_indexes.at(key).index.find(evtValue); itIndex != m_indexes.at(key).index.end())
+          itIndex->second.add(m_times[pos], pos);
+        else
+          m_indexes.at(key).index.emplace(evtValue, IndexNode{m_times[pos], pos});
+      }
+    }
+  }
+
+
+  // Indexes data received by add()
+  void addIndexes(const std::vector<SeriesTime>& times, const std::vector<SeriesValue>& events)
+  {
+    for (std::size_t i = 0, pos = m_times.size() ; i < events.size() ; ++i, ++pos)
+    {
+      for (const auto& member : events[i].object_range())
       {
         if (const auto& key = member.key(); isIndexed(key))
         {
           const auto& value = member.value();
 
           if (const auto itIndex = m_indexes.at(key).index.find(value); itIndex != m_indexes.at(key).index.end())
-            itIndex->second.add(timesVec[index], index);
+            itIndex->second.add(times[i], pos);
           else
-            m_indexes.at(key).index.emplace(value, IndexNode{timesVec[index], index});
+            m_indexes.at(key).index.emplace(value, IndexNode{times[i], pos});
         }
       }
-      ++index;
     }
   }
 
@@ -293,7 +314,7 @@ private:
     PLOGD << "Getting single time/value";
     
     times.push_back(m_times[index]);
-    values.emplace_back(m_values[index]);
+    values.emplace_back(m_events[index]);
   }
 
 
@@ -360,7 +381,7 @@ private:
 private:
   SeriesName m_name;
   TimeVector m_times;
-  ValueVector m_values;
+  ValueVector m_events;
   Indexes m_indexes;
 };
 

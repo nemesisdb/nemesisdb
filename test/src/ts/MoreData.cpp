@@ -12,28 +12,10 @@ using namespace nemesis::core::ts;
 
 
 
-struct MeasureDuration
-{
-  MeasureDuration (std::function<njson()> f)
-  {
-    const auto start = chrono::steady_clock::now();
-
-    result = f();
-
-    #ifdef NDEBUG
-    PLOGI << chrono::duration_cast<chrono::microseconds> (chrono::steady_clock::now() - start).count() << '\n';
-    #endif
-  }
-
-  njson result;
-};
-
-
-
-TEST_F(TsSeriesTest, Test100k)
+TEST_F(TsSeriesTest, Test10k_Index)
 {
   Series s;
-  createMoreData({"../test_data/moredata_10k.json"}, s);
+  createMoreData({"../test_data/moredata_10k.json"}, s, true);
   
   
   // >
@@ -181,6 +163,47 @@ TEST_F(TsSeriesTest, Test100k)
     MeasureDuration md {[&s, &q, rspName = GetRspCmd]{ return s.get(q, rspName).rsp; }};
     ASSERT_EQ(md.result["TS_GET_RSP"]["os1"]["t"].size(), 2);
   }
+  
+
+  // == (in full range)
+  {
+    auto q = njson::parse(R"(
+                              {
+                                "ts":["os1"],
+                                "rng":[],
+                                "where":
+                                {
+                                  "temp":
+                                  {
+                                    "==":-21
+                                  }
+                                }
+                              }
+                            )");
+
+    MeasureDuration md {[&s, &q, rspName = GetRspCmd]{ return s.get(q, rspName).rsp; }};
+    ASSERT_EQ(md.result["TS_GET_RSP"]["os1"]["t"].size(), 168);
+  }
+}
+
+
+// As Test10K_Index, but create the index *after* data is added, to force build index
+TEST_F(TsSeriesTest, Test10k_NoIndex)
+{
+  Series s;
+  createMoreData({"../test_data/moredata_10k.json"}, s, false);
+
+
+  // data added by createMoreData(), now create index
+  {
+    #ifdef NDEBUG
+    BasicMeasureDuration<TsRequestStatus> md{[CreateIndexRspCmd = CreateIndexRspCmd, &s](){ return s.createIndex("os1", "temp", CreateIndexRspCmd).status;}, "Create Index"};
+    ASSERT_EQ(md.result, TsRequestStatus::Ok);
+    #else
+    ASSERT_EQ(s.createIndex("os1", "temp", CreateIndexRspCmd).status, TsRequestStatus::Ok);
+    #endif
+  }
+  
   
 
   // == (in full range)

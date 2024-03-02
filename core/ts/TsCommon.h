@@ -77,6 +77,28 @@ struct IndexNode
   using TimeIndexTuple = std::tuple<SeriesTime, std::size_t>;
   using IndexedTimes = std::vector<TimeIndexTuple>;  
 
+  
+  // TODO something like this, so we add everything to index before calling sort()
+  // struct AddToken
+  // {
+  //   AddToken(IndexedTimes& times, const std::size_t size) : times(times), size(size)
+  //   {
+
+  //   }
+
+  //   ~AddToken()
+  //   {
+  //     if (times.size() != size)
+  //      std::sort(std::begin(times), std::end(times), IndexComparer{});
+  //   }
+
+  //   private:
+  //     IndexedTimes& times; // maybe reference_wrap this
+  //     std::size_t size;
+  // };
+
+  
+
   struct IndexComparer
   {
     bool operator()(const TimeIndexTuple& a, const TimeIndexTuple& b)
@@ -101,6 +123,7 @@ struct IndexNode
 
     SeriesTime min, max;
   };
+
 
   IndexNode () = default;
 

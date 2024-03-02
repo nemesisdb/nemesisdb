@@ -24,6 +24,28 @@ using namespace nemesis::core::ts;
 static inline plog::ColorConsoleAppender<NdbFormatter> consoleAppender;
 
 
+template<typename R>
+struct BasicMeasureDuration
+{
+  BasicMeasureDuration (std::function<R()> f, const std::string_view msg = "")
+  {
+    const auto start = chrono::steady_clock::now();
+
+    result = f();
+
+    #ifdef NDEBUG
+    PLOGI << msg << ":" << chrono::duration_cast<chrono::microseconds> (chrono::steady_clock::now() - start).count() << '\n';
+    #endif
+  }
+
+  R result;
+};
+
+
+using MeasureDuration = BasicMeasureDuration<njson>;
+
+
+
 class TsSeriesTest : public ::testing::Test
 {
 
@@ -37,10 +59,7 @@ protected:
 
 
 public:
-  TsSeriesTest()
-  {
-
-  }
+  TsSeriesTest() = default;
 
 	virtual ~TsSeriesTest() = default;
 
@@ -123,7 +142,7 @@ protected:
   // the file should contain an array at the root level with two elements, both are objects: 
   //  [0] - { "TS_CREATE": { ... } }
   //  [1] - { "TS_ADD": { ... } }
-  void createMoreData(const fs::path& queryPath, Series& s)
+  void createMoreData(const fs::path& queryPath, Series& s, const bool createIndex)
   {
     ASSERT_TRUE(fs::exists(queryPath));
 
@@ -142,10 +161,13 @@ protected:
     ASSERT_TRUE(json[0].contains("TS_CREATE"));
     ASSERT_TRUE(json[1].contains("TS_ADD_EVT"));
 
-    
     ASSERT_EQ(s.create(json[0]["TS_CREATE"]["ts"].as_string(), CreateRspCmd).status, TsRequestStatus::Ok);
-    ASSERT_EQ(s.createIndex("os1", "temp", CreateIndexRspCmd).status, TsRequestStatus::Ok);
-    ASSERT_EQ(s.add(std::move(json[1]["TS_ADD_EVT"]), AddRspCmd).status, TsRequestStatus::Ok);
+
+    if (createIndex)
+      ASSERT_EQ(s.createIndex("os1", "temp", CreateIndexRspCmd).status, TsRequestStatus::Ok);
+
+    BasicMeasureDuration<TsRequestStatus> md {[&s, &json, AddRspCmd = AddRspCmd](){ return s.add(std::move(json[1]["TS_ADD_EVT"]), AddRspCmd).status;}, "TS_ADD"};
+    ASSERT_EQ(md.result, TsRequestStatus::Ok);
   }
 };
 

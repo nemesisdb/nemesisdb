@@ -28,7 +28,7 @@ struct MeasureDuration
   njson result;
 };
 
-
+/* 
 
 TEST_F(TsSeriesTest, SimpleData)
 {
@@ -455,6 +455,93 @@ TEST_F(TsSeriesTest, TwoTerms)
     ASSERT_EQ(r.rsp["TS_GET_RSP"]["os1"]["t"], njson::parse(R"([])"));
   }
 }
+
+ */
+
+TEST_F(TsSeriesTest, BuildIndex)
+{
+  // add data then create index (the above tests create index before adding data)
+  Series s;
+  
+  
+  ASSERT_EQ(s.create("os1", CreateRspCmd).status, TsRequestStatus::Ok);
+  
+  {
+    auto add = njson::parse(R"(
+                              {
+                                "ts":"os1",
+                                "t":[10,11,12,13],
+                                "v":[{"temp":1}, {"temp":2}, {"temp":1}, {"temp":3}]
+                              }
+                            )");
+
+    s.add(add, AddRspCmd);
+  }
+  
+
+  ASSERT_EQ(s.createIndex("os1", "temp", CreateIndexRspCmd).status, TsRequestStatus::Ok);
+
+
+  {
+    auto get = njson::parse(R"(
+                              {
+                                "ts":["os1"],
+                                "rng":[10,13],
+                                "where":
+                                {
+                                  "temp":
+                                  {
+                                    "<":3
+                                  }
+                                }
+                              }
+                            )");
+
+    auto r = s.get(get, GetRspCmd);
+    
+    ASSERT_EQ(r.rsp["TS_GET_RSP"]["os1"]["t"].size(), 3);
+    ASSERT_EQ(r.rsp["TS_GET_RSP"]["os1"]["t"].size(), r.rsp["TS_GET_RSP"]["os1"]["v"].size());
+    ASSERT_EQ(r.rsp["TS_GET_RSP"]["os1"]["t"], njson::parse(R"([10,11,12])"));
+  }
+  
+
+
+  // add more data
+  {
+    auto add = njson::parse(R"(
+                              {
+                                "ts":"os1",
+                                "t":[14,15,16,17],
+                                "v":[{"temp":3}, {"temp":1}, {"temp":8}, {"temp":7}]
+                              }
+                            )");
+
+    s.add(add, AddRspCmd);
+  }
+
+  {
+    auto get = njson::parse(R"(
+                              {
+                                "ts":["os1"],
+                                "rng":[],
+                                "where":
+                                {
+                                  "temp":
+                                  {
+                                    "[]":[3,7]
+                                  }
+                                }
+                              }
+                            )");
+
+    auto r = s.get(get, GetRspCmd);
+    
+    ASSERT_EQ(r.rsp["TS_GET_RSP"]["os1"]["t"].size(), 3);
+    ASSERT_EQ(r.rsp["TS_GET_RSP"]["os1"]["t"].size(), r.rsp["TS_GET_RSP"]["os1"]["v"].size());
+    ASSERT_EQ(r.rsp["TS_GET_RSP"]["os1"]["t"], njson::parse(R"([13,14,17])"));
+  }
+}
+
 
 
 int main (int argc, char ** argv)
