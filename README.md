@@ -1,13 +1,110 @@
 # NemesisDB
-NemesisDB is a session JSON database:
+NemesisDB is a JSON database, supporting key-value and timeseries data:
 
-JSON:
-- All data and commands are JSON
+- All data and commands are JSON over WebSockets
 - Commands are submitted via a WebSocket
 
-Session:
+<br/>
+
+# Time Series
+The time series implementation is intentionally simple. Data is stored by relating an event to a time:
+
+After creating a time series called "temperatures" we add events:
+
+```json
+{
+  "TS_ADD_EVT":
+  {
+    "ts":"temperatures",
+    "t":[10,11,12,13,14],
+    "v":
+    [
+      {"temp":20},
+      {"temp":21},
+      {"temp":25},
+      {"temp":21},
+      {"temp":23}
+    ]
+  }
+}
+```
+
+- `ts` : the name of time series
+- `t` : time values
+- `v` : event values
+
+At time `10` the temperate was `20`, at time `11` it was `21`, etc. 
+
+We can get event data:
+
+```json
+{
+  "TS_GET":
+  {
+    "ts":["temperatures"],
+    "rng":[10,12]
+  }
+}
+```
+
+- `rng` : means "range" with the min and max values inclusive
+
+This returns the temperates at times between `10` and `12` inclusive.
+
+- `rng` can be empty (`[]`) to use the whole time range
+
+If an event key is indexed, it can be used in a `where` clause:
+
+```json
+{
+  "TS_GET":
+  {
+    "ts":["temperatures"],
+    "rng":[10,12],
+    "where":
+    {
+      "temp":
+      {
+        ">=":21
+      }
+    }
+  }
+}
+```
+
+- Get the events when the `temp` was `>= 21` between times 10 and 12 (inclusive)
+- Returning the event at time `11`
+
+Another example:
+
+```json
+{
+  "TS_GET":
+  {
+    "ts":["temperatures"],
+    "rng":[],
+    "where":
+    {
+      "temp":
+      {
+        "[]":[21,23]
+      }
+    }
+  }
+}
+```
+
+- Search the whole time series (`"rng":[]`)
+- When the `temp` was between `21` and `23` (inclusive)
+- This returns event data for times: 11, 13 and 14
+
+<br/>
+
+# Key Value
+Rather than one large map, key-values are split into sessions:
+
 - Each session has a dedicated map
-- A session can live forever, but the intent is for each session to have an expiry
+- A session can live forever or expire after a given time
 - When a session expires its data is deleted, and optionally the session can be deleted
 
 Examples of sessions:
@@ -18,7 +115,7 @@ Examples of sessions:
 
 <br/>
 
-## Sessions
+# Sessions
 The purpose of sessions are:
 - Each session only contains data required for that session, rather than a single large map
 - When accessing (get, set, etc) data, only the data for a particular session is accessed
@@ -37,8 +134,8 @@ More info [here](https://docs.nemesisdb.io/tutorials/sessions/what-is-a-session)
 
 <br/>
 
-## Install
-NemesisDB is available as Debian package or Docker image:
+# Install
+NemesisDB is available as a Debian package or Docker image:
 
 - Package:  [Releases](https://github.com/nemesisdb/nemesisdb/releases) 
 - Docker: [Docker Hub](https://hub.docker.com/r/nemesisdb/nemesisdb/tags)
@@ -48,8 +145,23 @@ You can also build from source, instructions below.
 
 <br/>
 
-## Design
-The design aims to separate I/O and session data threads:
+# Design
+
+
+<br/>
+
+## Time Series
+This uses parallel vectors to store data:
+
+- Two vectors, `m_times` and `m_events`, store the times and events
+- An event at `m_events[i]` occured at `m_times[i]`
+
+This means in a  query such as `"rng":[10,14]`, we can search `m_times` for those times, and the event data is found at the same offsets in `m_events`. This approach also benefits from cache locality.
+
+The first release of timeseries is single threaded.
+
+## Key Value
+The design separates I/O and session data threads:
 
 - Core(s) are dedicated for I/O operations (WebSocket server)
 - Remaining core(s) are dedicated to handle sessions
@@ -69,25 +181,6 @@ With 6 cores, 4 are assigned to I/O and 2 for session data:
 
 If there are multiple session data threads, the data is distributed over the threads, all of which are independent (i.e. no data is shared between the session data threads). 
 
-Command execution sequence:
-
-I/O Thread: 
-- Receive Command
-- Parse JSON
-- Validate Command
-- Map session token to session worker thread
-- Submit to session thread (typically async, but sync for some commands)
-  - This pushes the command onto the thread's channel
-
-Session Thread:
-- Wait until a command arrives on the channel then pop it
-- Execute command
-- If async:
-  - Send response on the same I/O thread that received the command
-- If sync:
-  - Call handler on session thread and send response on I/O thread
-
-Commands for sessions that are handled by different session threads can be executed concurrently because they are handled by different threads.
 
 > [!NOTE]
 > There is a 4 thread max, so at most there will be 3 I/O threads and 1 session worker thread.
@@ -96,9 +189,10 @@ Commands for sessions that are handled by different session threads can be execu
 >
 > 99% of testing has been with limit as 4
 
+
 <br/>
 
-## Build - Linux Only
+# Build - Linux Only
 1. Clone via SSH with submodules: `git clone --recursive git@github.com:nemesisdb/nemesisdb.git`
 2. Prepare and grab vcpkg libs: `cd nemesisdb && ./prepare_vcpkg.sh` (this takes a few minutes)
 3. With VS Code (assuming you have C/C++ and CMake extensions):
@@ -111,7 +205,7 @@ Commands for sessions that are handled by different session threads can be execu
 
 <br/>
 
-## Run
+# Run
 1. `cd server/Release/bin`
 2. `./nemesisdb --config=../../configs/default.json`
     - Server WebSocket listening on `127.0.0.1:1987` (defined in `default.json`)
@@ -119,19 +213,13 @@ Commands for sessions that are handled by different session threads can be execu
 
 <br/>
 
-## Commands
+# Key Value Commands
 The quickest way to get started is to use software such as [Postman](https://www.postman.com/downloads/) to query the WebSocket
 
 The [first steps](https://docs.nemesisdb.io/tutorials/first-steps/setup) guide is a good place to start.
 
-### Session Info
-```json
-{
-  "SH_INFO_ALL":{}
-}
-```
 
-### Create Session
+## Create Session
 ```json
 {
   "SH_NEW":
@@ -142,7 +230,8 @@ The [first steps](https://docs.nemesisdb.io/tutorials/first-steps/setup) guide i
 ```
 This returns the session token `tkn`, for example: `448892247316960382` .
 
-### Store String Keys
+
+## Store String Keys
 Store keys `username`, `email`, `city` with string values and `age` with a number value:
 
 ```json
@@ -161,7 +250,7 @@ Store keys `username`, `email`, `city` with string values and `age` with a numbe
 }
 ```
 
-### Store Object Key
+## Store Object Key
 Rather than having separate keys, store the values in a single object with key `profile`:
 
 ```json
@@ -183,7 +272,7 @@ Rather than having separate keys, store the values in a single object with key `
 }
 ```
 
-### Get Keys
+## Get Keys
 Get single key for a string:
 ```json
 {
@@ -216,11 +305,11 @@ Get key with object value:
 
 <br/>
 
-## Code
-The server is the binary in `server/server.cpp` and the remaining code in `core`.
+# Code
+The server binary implementation is `server/server.cpp`:
 
 1. `server.cpp` checks the command line params, the config and then calls `core/Kv/KvServer::run()`
-2. `KvServer::run()` runs the WebSocket server, creating reusable sockets
+2. `KvServer::run()` runs the WebSocket server
 3. When a message arrives, the `.message` handler is called, which parses the JSON. If valid, it calls `KvHandler::handle()`
 4. `KvHandler` validates the command then submits it to a `KvPoolWorker`
 5. The session token is used to determine the pool worker responsible for its session data
@@ -228,7 +317,7 @@ The server is the binary in `server/server.cpp` and the remaining code in `core`
 
 <br/>
 
-## External Libraries
+# External Libraries
 Externals are either GitHub submodules or managed by [vcpkg](https://vcpkg.io/en/).
 
 Server:
@@ -247,22 +336,6 @@ Tests:
 
 <br/>
 
-## License
-See LICENCE file:
- - Use in commercial software but credit must be given
- - No liability
- - No use of trademark
-
-<br/>
-
-## Project Status
-The software is still alpha state with upcoming improvements. 
-
-The code has been open sourced to gain users and contributors:
-
-### Source
-Code improvemements are always possible and of course bug fixes.
-
-### Client APIs
-The only client API is the test API in this repo, which is only for testing. Client APIs in more common languages are welcome, particularly JS, C# and Python.
+# License
+See LICENSE file.
 
