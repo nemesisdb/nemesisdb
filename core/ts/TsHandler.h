@@ -131,33 +131,9 @@ private:
     static const auto cmdName     = "TS_GET";
     static const auto cmdRspName  = "TS_GET_RSP";
     
-
-    auto validate = [](const njson& cmd) -> std::tuple<TsRequestStatus, const std::string_view>
-    {
-      if (const auto& rng = cmd.at("rng") ; rng.size() > 2)
-        return {TsRequestStatus::RngSize, "'rng' cannot have more than 2 values"};
-      else if (rng[0].as<SeriesTime>() > rng[1].as<SeriesTime>())
-        return {TsRequestStatus::RngValues,"'rng' invalid, first value must not be greater than second"};
-      else if (cmd.contains("where"))
-      {
-        // only objects permitted in "where" and must not be empty
-        for (const auto& member : cmd.at("where").object_range())
-        {
-          const auto& term = member.value();
-
-          if (!term.is_object())
-            return {TsRequestStatus::ParamType, "Term in 'where' is not an object"};
-          else if (term.size() != 1)
-            return {TsRequestStatus::ValueSize, "Term in 'where' must have one member"};
-        }
-      }
-      return {TsRequestStatus::Ok,""};
-    };
-
-
     auto& cmd = msg.at(cmdName);
 
-    if (isValid(cmd, {Param::required("ts", JsonArray),Param::required("rng", JsonArray), Param::optional("where", JsonObject)}, validate))
+    if (isValid(cmd, {Param::required("ts", JsonArray),Param::required("rng", JsonArray), Param::optional("where", JsonObject)}, std::bind_front(&TsHandler::validateGet, this)))
       PLOGD << m_series.get(cmd, cmdRspName).rsp;
   }
 
@@ -171,13 +147,38 @@ private:
     
     for (const auto& member : cmd.object_range())
     {
-      if (!isValid(member.value(), {Param::required("rng", JsonArray), Param::optional("where", JsonObject)}))
+      if (!isValid(member.value(), {Param::required("rng", JsonArray), Param::optional("where", JsonObject)}, std::bind_front(&TsHandler::validateGet, this)))
         return;
     }
 
     PLOGD << m_series.getMultipleRanges(cmd, cmdRspName).rsp;
   }
 
+
+  std::tuple<TsRequestStatus, const std::string_view> validateGet(const njson& cmd)
+  {
+    if (const auto& rng = cmd.at("rng") ; rng.size() > 2)
+      return {TsRequestStatus::RngSize, "'rng' cannot have more than 2 values"};
+    else if (rng[0].as<SeriesTime>() > rng[1].as<SeriesTime>())
+      return {TsRequestStatus::RngValues,"'rng' invalid, first value must not be greater than second"};
+    else if (cmd.contains("where"))
+    {
+      if (cmd.at("where").empty())
+        return {TsRequestStatus::ValueSize, "'where' has no terms"};
+
+      // only objects permitted in "where" and must not be empty
+      for (const auto& member : cmd.at("where").object_range())
+      {
+        const auto& term = member.value();
+
+        if (!term.is_object())
+          return {TsRequestStatus::ParamType, "Term in 'where' is not an object"};
+        else if (term.size() != 1)
+          return {TsRequestStatus::ValueSize, "Term in 'where' must have one member"};
+      }
+    }
+    return {TsRequestStatus::Ok,""};
+  }
 
 private:
   njson m_config;
