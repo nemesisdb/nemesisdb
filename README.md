@@ -33,7 +33,7 @@ After creating a time series called "temperatures" we add events:
 - `t` : time values
 - `v` : event values
 
-At time `10` the temperate was `20`, at time `11` it was `21`, etc. 
+At time `10` the temperature was `20`, at time `11` it was `21`, etc. 
 
 We can get event data:
 
