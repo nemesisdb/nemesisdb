@@ -3,13 +3,17 @@
 
 #include <core/NemesisCommon.h>
 #include <core/ts/Series.h>
+#include <string_view>
 
 
 namespace nemesis { namespace core { namespace ts {
 
+using namespace std::string_literals; 
+
 
 class TsHandler
 {
+
 public:
 
   TsHandler(const njson& config) : m_config(config)
@@ -51,16 +55,57 @@ public:
 
 
 private:
+
+  // Send response to client: must only be called from the originating I/O thread
+  ndb_always_inline void send (TsWebSocket * ws, const std::string& msg)
+  {
+    #ifdef NDB_DEBUG
+    PLOGD << msg;
+    #endif
+
+    ws->send(msg, WsSendOpCode);
+  }
+
+
+  // Send response to client: must only be called from the originating I/O thread
+  ndb_always_inline void send (TsWebSocket * ws, const std::string_view msg)
+  {
+    #ifdef NDB_DEBUG
+    PLOGD << msg;
+    #endif
+
+    ws->send(msg, WsSendOpCode);
+  }
+
+
+  ndb_always_inline void send (TsWebSocket * ws, njson&& msg)
+  {
+    send(ws, msg.to_string());
+  }
+
+
+  ndb_always_inline void send (TsWebSocket * ws, const njson& msg)
+  {
+    send(ws, msg.to_string());
+  }
+
   
-  
-  bool isValid (const njson& cmd,
+  bool isValid (TsWebSocket * ws, const std::string& cmdRspName, const njson& cmd, 
                 const std::map<const std::string_view, const Param>& params,
                 std::function<std::tuple<TsRequestStatus, const std::string_view>(const njson&)> onPostValidate = nullptr)
   {
     const auto& [stat, msg] = isCmdValid<TsRequestStatus, TsRequestStatus::Ok, TsRequestStatus::ParamMissing, TsRequestStatus::ParamType>(cmd, params, onPostValidate);
     
     if (stat != TsRequestStatus::Ok)
-      PLOGD << msg;
+    {
+      static njson ErrRsp (jsoncons::json_object_arg, {});
+
+      njson rsp {ErrRsp};
+      rsp[cmdRspName]["st"] = toUnderlying(stat);
+      rsp[cmdRspName]["msg"] = msg;
+
+      send(ws, rsp);
+    }      
       
     return stat == TsRequestStatus::Ok;
   }
@@ -68,8 +113,8 @@ private:
 
   void createTimeSeries (TsWebSocket * ws, njson&& msg)
   {
-    static const auto cmdName     = "TS_CREATE";
-    static const auto cmdRspName  = "TS_CREATE_RSP";
+    static const auto cmdName     = "TS_CREATE"s;
+    static const auto cmdRspName  = "TS_CREATE_RSP"s;
 
 
     auto validate = [](const njson& cmd) -> std::tuple<TsRequestStatus, const std::string_view>
@@ -82,27 +127,27 @@ private:
 
     const auto& cmd = msg[cmdName];
 
-    if (isValid(cmd, {Param::required("name", JsonString), Param::required("type", JsonString)}, validate))
-      PLOGD << m_series.create(cmd.at("name").as_string(), cmdRspName).rsp;
+    if (isValid(ws, cmdRspName, cmd, {Param::required("name", JsonString), Param::required("type", JsonString)}, validate))
+      send(ws, m_series.create(cmd.at("name").as_string(), cmdRspName).rsp);
   }
 
 
   void createIndex (TsWebSocket * ws, njson&& msg)
   {
-    static const auto cmdName     = "TS_CREATE_INDEX";
-    static const auto cmdRspName  = "TS_CREATE_INDEX_RSP";
+    static const auto cmdName     = "TS_CREATE_INDEX"s;
+    static const auto cmdRspName  = "TS_CREATE_INDEX_RSP"s;
 
     const auto& cmd = msg[cmdName];
 
-    if (isValid(cmd, {Param::required("ts", JsonString), Param::required("key", JsonString)}))
-      PLOGD << m_series.createIndex(cmd.at("ts").as_string(), cmd.at("key").as_string(), cmdRspName).rsp;
+    if (isValid(ws, cmdRspName, cmd, {Param::required("ts", JsonString), Param::required("key", JsonString)}))
+      send(ws, m_series.createIndex(cmd.at("ts").as_string(), cmd.at("key").as_string(), cmdRspName).rsp);
   }
 
 
   void add (TsWebSocket * ws, njson&& msg)
   {
-    static const auto cmdName     = "TS_ADD_EVT";
-    static const auto cmdRspName  = "TS_ADD_EVT_RSP";
+    static const auto cmdName     = "TS_ADD_EVT"s;
+    static const auto cmdRspName  = "TS_ADD_EVT_RSP"s;
 
     auto validate = [](const njson& cmd) -> std::tuple<TsRequestStatus, const std::string_view>
     {
@@ -121,37 +166,37 @@ private:
 
     auto& cmd = msg.at(cmdName);
 
-    if (isValid(cmd, {Param::required("ts", JsonString), Param::required("t", JsonArray), Param::required("v", JsonArray)}, validate))
-      PLOGD << m_series.add(std::move(cmd), cmdRspName).rsp;
+    if (isValid(ws, cmdRspName, cmd, {Param::required("ts", JsonString), Param::required("t", JsonArray), Param::required("v", JsonArray)}, validate))
+      send(ws, m_series.add(std::move(cmd), cmdRspName).rsp);
   }
 
 
   void get (TsWebSocket * ws, njson&& msg)
   {
-    static const auto cmdName     = "TS_GET";
-    static const auto cmdRspName  = "TS_GET_RSP";
+    static const auto cmdName     = "TS_GET"s;
+    static const auto cmdRspName  = "TS_GET_RSP"s;
     
     auto& cmd = msg.at(cmdName);
 
-    if (isValid(cmd, {Param::required("ts", JsonArray),Param::required("rng", JsonArray), Param::optional("where", JsonObject)}, std::bind_front(&TsHandler::validateGet, this)))
-      PLOGD << m_series.get(cmd, cmdRspName).rsp;
+    if (isValid(ws, cmdRspName, cmd, {Param::required("ts", JsonArray),Param::required("rng", JsonArray), Param::optional("where", JsonObject)}, std::bind_front(&TsHandler::validateGet, this)))
+      send(ws, m_series.get(cmd, cmdRspName).rsp);
   }
 
 
   void getMultipleRanges (TsWebSocket * ws, njson&& msg)
   {
-    static const auto cmdName     = "TS_GET_MULTI";
-    static const auto cmdRspName  = "TS_GET_MULTI_RSP";
+    static const auto cmdName     = "TS_GET_MULTI"s;
+    static const auto cmdRspName  = "TS_GET_MULTI_RSP"s;
 
     auto& cmd = msg.at(cmdName);
     
     for (const auto& member : cmd.object_range())
     {
-      if (!isValid(member.value(), {Param::required("rng", JsonArray), Param::optional("where", JsonObject)}, std::bind_front(&TsHandler::validateGet, this)))
+      if (!isValid(ws, cmdRspName, member.value(), {Param::required("rng", JsonArray), Param::optional("where", JsonObject)}, std::bind_front(&TsHandler::validateGet, this)))
         return;
     }
 
-    PLOGD << m_series.getMultipleRanges(cmd, cmdRspName).rsp;
+    send(ws, m_series.getMultipleRanges(cmd, cmdRspName).rsp);
   }
 
 
