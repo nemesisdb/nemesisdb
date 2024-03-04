@@ -407,7 +407,7 @@ private:
                 const njson& cmd, const std::map<const std::string_view, const Param>& params,
                 std::function<std::tuple<RequestStatus, const std::string_view>(const njson&)> onPostValidate = nullptr)
   {
-    const auto& [stat, msg] = isCmdValid<RequestStatus, RequestStatus::Ok, RequestStatus::ParamMissing, RequestStatus::ValueTypeInvalid>(cmd, params, onPostValidate);
+    const auto [stat, msg] = isCmdValid<RequestStatus, RequestStatus::Ok, RequestStatus::ParamMissing, RequestStatus::ValueTypeInvalid>(cmd, params, onPostValidate);
     
     if (stat != RequestStatus::Ok)
     {
@@ -707,7 +707,7 @@ private:
         {
           // confirm load dir exists, i.e. :  <loadPath>/<loadName>
           if (!fs::exists(loadPath / item.as_string()))
-            return {RequestStatus::LoadError, item.as_string() + " does not exist"};
+            return {RequestStatus::LoadError, "Load path does not exist"};
         } 
       }
 

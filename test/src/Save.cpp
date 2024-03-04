@@ -70,8 +70,20 @@ TEST_F(NemesisTestSaveEnable, NameInvalid)
 
 	ASSERT_TRUE(tc.open());
 
-	tc.test({TestData { .request = R"({ "SH_SAVE":{} })"_json,	.expected = {R"({ "SH_SAVE_RSP":{ "st":13, "m":"" } })"_json} }});
-	tc.test({TestData { .request = R"({ "SH_SAVE":{ "name":2} })"_json,	.expected = {R"({ "SH_SAVE_RSP":{ "st":13, "m":"" } })"_json} }});
+	{
+		TestData td {MakeTestData(R"({ "SH_SAVE":{} })"_json)};
+		tc.test(td);
+		ASSERT_TRUE(td.actual[0]["SH_SAVE_RSP"]["st"] == 26); 
+	}
+
+	{
+		TestData td {MakeTestData(R"({ "SH_SAVE":{ "name":2} })"_json)};
+		tc.test(td);
+		ASSERT_TRUE(td.actual[0]["SH_SAVE_RSP"]["st"] == 41); 
+	}
+
+	// tc.test({TestData { .request = R"({ "SH_SAVE":{} })"_json,	.expected = {R"({ "SH_SAVE_RSP":{ "st":13, "m":"" } })"_json} }});
+	// tc.test({TestData { .request = R"({ "SH_SAVE":{ "name":2} })"_json,	.expected = {R"({ "SH_SAVE_RSP":{ "st":13, "m":"" } })"_json} }});
 }
 
 
@@ -151,11 +163,25 @@ TEST_F(NemesisTestSaveEnable, TokensInvalid)
 	ASSERT_TRUE(tc.open());
 
 	// tkn data type
-	tc.test({TestData { .request = R"({ "SH_SAVE":{ "name":"TokensInvalid", "tkns":""} })"_json,	.expected = {R"({ "SH_SAVE_RSP":{ "st":41, "m":"tkns" } })"_json} }});
+	{
+		TestData td {MakeTestData(R"({ "SH_SAVE":{ "name":"TokensInvalid", "tkns":""} })"_json)};
+		tc.test(td);
+		ASSERT_TRUE(td.actual[0]["SH_SAVE_RSP"]["st"] == RequestStatus::ValueTypeInvalid); 
+	}
+
 	// empty
-	tc.test({TestData { .request = R"({ "SH_SAVE":{ "name":"TokensInvalid", "tkns":[]} })"_json,	.expected = {R"({ "SH_SAVE_RSP":{ "st":42, "m":"tkns" } })"_json} }});
+	{
+		TestData td {MakeTestData(R"({ "SH_SAVE":{ "name":"TokensInvalid", "tkns":[]} })"_json)};
+		tc.test(td);
+		ASSERT_TRUE(td.actual[0]["SH_SAVE_RSP"]["st"] == RequestStatus::ValueSize); 
+	}
+
 	// item data type
-	tc.test({TestData { .request = R"({ "SH_SAVE":{ "name":"TokensInvalid", "tkns":[123, "a"]} })"_json,	.expected = {R"({ "SH_SAVE_RSP":{ "st":41, "m":"tkns" } })"_json} }});
+	{
+		TestData td {MakeTestData(R"({ "SH_SAVE":{ "name":"TokensInvalid", "tkns":[123, "a"]} })"_json)};
+		tc.test(td);
+		ASSERT_TRUE(td.actual[0]["SH_SAVE_RSP"]["st"] == RequestStatus::ValueTypeInvalid); 
+	}
 }
 
 

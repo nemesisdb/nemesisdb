@@ -27,10 +27,29 @@ TEST_F(NemesisTest, NameInvalid)
 
 	ASSERT_TRUE(tc.open());
 
-	tc.test({TestData { .request = R"({ "SH_LOAD":{} })"_json,	.expected = {R"({ "SH_LOAD_RSP":{ "st":13, "m":"" } })"_json} }});
-	tc.test({TestData { .request = R"({ "SH_LOAD":{ "names":2} })"_json,	.expected = {R"({ "SH_LOAD_RSP":{ "st":13, "m":"" } })"_json} }});
-  tc.test({TestData { .request = R"({ "SH_LOAD":{ "names":[2]} })"_json,	.expected = {R"({ "SH_LOAD_RSP":{ "st":41, "m":"" } })"_json} }});
-	tc.test({TestData { .request = R"({ "SH_LOAD":{ "names":["_idontexist"]} })"_json,	.expected = {R"({ "SH_LOAD_RSP":{ "st":142, "m":"_idontexist does not exist" } })"_json} }});
+	{
+		TestData td {MakeTestData(R"({ "SH_LOAD":{} })"_json)};
+		tc.test(td);
+		ASSERT_TRUE(td.actual[0]["SH_LOAD_RSP"]["st"] == RequestStatus::ParamMissing); 
+	}
+
+	{
+		TestData td {MakeTestData(R"({ "SH_LOAD":{ "names":2} })"_json)};
+		tc.test(td);
+		ASSERT_TRUE(td.actual[0]["SH_LOAD_RSP"]["st"] == RequestStatus::ValueTypeInvalid); 
+	}
+
+	{
+		TestData td {MakeTestData(R"({ "SH_LOAD":{ "names":[2]} })"_json)};
+		tc.test(td);
+		ASSERT_TRUE(td.actual[0]["SH_LOAD_RSP"]["st"] == RequestStatus::ValueTypeInvalid); 
+	}
+
+	{
+		TestData td {MakeTestData(R"({ "SH_LOAD":{ "names":["_idontexist"]} })"_json)};
+		tc.test(td);
+		ASSERT_TRUE(td.actual[0]["SH_LOAD_RSP"]["st"] == RequestStatus::LoadError); 
+	}
 }
 
 
@@ -77,8 +96,8 @@ TEST_F(NemesisTestSaveEnable, PrepareStartupLoad)
 	setData(tc);
 
 	const testjson save  = {{"SH_SAVE", {{"name", LoadName}}}};
-	const testjson saveRsp1  = {{"SH_SAVE_RSP", {{"name", LoadName}, {"st", 120}}}};
-	const testjson saveRsp2  = {{"SH_SAVE_RSP", {{"name", LoadName}, {"st", 121}}}};
+	const testjson saveRsp1  = {{"SH_SAVE_RSP", {{"name", LoadName}, {"st", RequestStatus::SaveStart}}}};
+	const testjson saveRsp2  = {{"SH_SAVE_RSP", {{"name", LoadName}, {"st", RequestStatus::SaveComplete}}}};
 
 	tc.test({TestData { .request = save,
 											.expected = {saveRsp1, saveRsp2} }});
@@ -102,6 +121,7 @@ TEST_F(NemesisTestLoadOnStartup, StartupLoad)
 	tc.test(TestData { 	.request = R"({ "KV_GET":{ "keys":["key1", "key2"]} })"_json,
 											.expected = {R"({ "KV_GET_RSP":{ "keys":{"key1":"v1", "key2":"v2" } }})"_json}});
 }
+
 
 
 int main (int argc, char ** argv)

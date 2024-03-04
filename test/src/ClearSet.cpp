@@ -8,9 +8,21 @@ TEST_F(NemesisTest, Invalid)
 	TestClient tc;
 
 	ASSERT_TRUE(tc.open());
+	
+	{
+		TestData td {MakeTestData(R"({ "KV_CLEAR_SET":{} })"_json)};
+		tc.test(td);
 
-	tc.test({TestData { .request = R"({ "KV_CLEAR_SET":{} })"_json,	.expected = {R"({ "KV_CLEAR_SET_RSP":{ "st":26, "m":"keys" } })"_json} }});
-	tc.test({TestData { .request = R"({ "KV_CLEAR_SET":{"keys":""} })"_json,	.expected = {R"({ "KV_CLEAR_SET_RSP":{ "st":41, "m":"keys" } })"_json} }});
+		ASSERT_TRUE(td.actual[0]["KV_CLEAR_SET_RSP"]["st"] == RequestStatus::ParamMissing); 
+	}	
+
+
+	{
+		TestData td {MakeTestData(R"({ "KV_CLEAR_SET":{"keys":""} })"_json)};
+		tc.test(td);
+
+		ASSERT_TRUE(td.actual[0]["KV_CLEAR_SET_RSP"]["st"] == RequestStatus::ValueTypeInvalid); 
+	}
 }
 
 

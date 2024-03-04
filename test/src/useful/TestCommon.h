@@ -225,6 +225,13 @@ struct TestData
 };
 
 
+// Convenience function to create TestData for a test which will check the response in the test fixture (rather than in TestClient::test())
+TestData MakeTestData (testjson request, const std::size_t nResponses = 1)
+{
+	return TestData{.request = std::move(request), .nResponses = nResponses, .checkResponses = false};
+}
+
+
 struct TestClient
 {
 	TestClient () : ioc(), client(*ioc.ioc)
