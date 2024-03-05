@@ -105,9 +105,10 @@ private:
       rsp[cmdRspName]["msg"] = msg;
 
       send(ws, rsp);
-    }      
-      
-    return stat == TsRequestStatus::Ok;
+      return false;
+    }
+    else
+      return true;
   }
 
 

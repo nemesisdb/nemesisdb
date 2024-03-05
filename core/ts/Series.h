@@ -85,7 +85,10 @@ public:
     QueryResult result {TsRequestStatus::Ok}; // TODO doesn't make sense for a query with multiple parts (multiple series)
 
     for (const auto& name : seriesNames)
-      result.rsp[cmdRspName][name] = getSingle(name, makeGetParams(query), cmdRspName);
+    {
+      const auto& [stat, rsp] = getSingle(name, makeGetParams(query), cmdRspName);
+      result.rsp[cmdRspName][name] = std::move(rsp);
+    }
 
     return result;
   }
@@ -99,7 +102,9 @@ public:
     for (const auto& series : query.object_range())
     {
       const auto& name = series.key();
-      result.rsp[cmdRspName][name] = getSingle(name, makeGetParams(series.value()), cmdRspName);
+      
+      const auto& [stat, rsp] = getSingle(name, makeGetParams(series.value()), cmdRspName);
+      result.rsp[cmdRspName][name] = std::move(rsp);
     }
 
     return result;
@@ -153,19 +158,24 @@ private:
   }
 
 
-  njson getSingle(const SeriesName& name, const GetParams& params, const std::string& cmdRspName) const
+  std::tuple<TsRequestStatus,njson> getSingle(const SeriesName& name, const GetParams& params, const std::string& cmdRspName) const
   {
     if (!hasSeries(name))
-      return SeriesNotExistRsp;
+      return {TsRequestStatus::SeriesNotExist, SeriesNotExistRsp};
     else
     {
       njson seriesRsp(json_object_arg, {{"st", toUnderlying(TsRequestStatus::Ok)},
                                         {"t", json_array_arg_t{}},
                                         {"v", json_array_arg_t{}}});
 
-      seriesRsp.merge_or_update(m_series.at(name)->get(params));
+      auto [stat, result] = m_series.at(name)->get(params);
 
-      return seriesRsp;
+      if (stat == TsRequestStatus::Ok)
+        seriesRsp.merge_or_update(std::move(result));
+      else
+        seriesRsp["st"] = toUnderlying(stat);
+
+      return {stat, seriesRsp};
     }
   }
 

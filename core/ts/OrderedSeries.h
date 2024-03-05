@@ -13,6 +13,8 @@ namespace nemesis { namespace core { namespace ts {
 using namespace jsoncons;
 using namespace jsoncons::literals;
 
+inline static const njson EmptyResult (json_object_arg, {{"t", json_array_arg_t{}}, {"v", json_array_arg_t{}}});
+
 
 /// Represents a time series where submitted data is always gauranteed to be ordered by the sender.
 /// Or in other words: OrderedSeries does not sort the data before it is stored. 
@@ -87,7 +89,7 @@ public:
   }
 
 
-  njson get (const GetParams& params) const override
+  std::tuple<TsRequestStatus,njson> get (const GetParams& params) const override
   {
     const auto [itStart, itEnd] = applyTimeRange(params);
 
@@ -96,7 +98,7 @@ public:
     if (itStart == m_times.cend())
     {
       PLOGD << "No data";
-      return njson (json_object_arg, {{"t", json_array_arg_t{}}, {"v", json_array_arg_t{}}});
+      return {TsRequestStatus::Ok, EmptyResult};
     }
     else if (params.hasWhere())
     {
@@ -177,13 +179,14 @@ private:
   }
 
 
-  njson applyIndexes (const GetParams& params, const TimeVectorConstIt itStart, const TimeVectorConstIt itEnd) const
+  std::tuple<TsRequestStatus,njson> applyIndexes (const GetParams& params, const TimeVectorConstIt itStart, const TimeVectorConstIt itEnd) const
   {
     njson rsp (json_object_arg, {{"t", json_array_arg_t{}}, {"v", json_array_arg_t{}}});
+    TsRequestStatus status = TsRequestStatus::Ok;
 
     const auto timeMin = *itStart;
     const auto timeMax = itEnd == m_times.cend() ? std::numeric_limits<SeriesTime>::max() : *itEnd;
-    const auto condition = params.getWhere();
+    const auto& condition = params.getWhere();
     
     bool emptyResult = false;
     std::vector<std::vector<std::tuple<SeriesTime, std::size_t>>> indexes;
@@ -194,8 +197,9 @@ private:
     {
       if (const auto& indexName = termObject.key() ; !isIndexed(indexName))
       {
-        PLOGD << indexName << " not an index";
+        PLOGE << indexName << " not an index";
         emptyResult = true;
+        status = TsRequestStatus::NotIndexed;
       }
       else
       {
@@ -233,40 +237,6 @@ private:
         {
           result.addResult(indexName, indexRange);
         }
-        
-        /*
-        for (const auto& termMember : terms.object_range())
-        {
-          const auto& op = termMember.key();
-          const auto& condition = termMember.value();
-          const auto& indexMap = m_indexes.at(indexName).index;
-          std::tuple<Index::IndexMapConstIt,Index::IndexMapConstIt> indexRange; // start, end of indexes matching criteria
-
-          if (op == "<")
-            indexRange = lt(indexMap, condition, rsp);
-          else if (op == "<=")
-            indexRange = lte(indexMap, condition, rsp);
-          else if (op == ">")
-            indexRange = gt(indexMap, condition, rsp);
-          else if (op == ">=")
-            indexRange = gte(indexMap, condition, rsp);
-          else if (op == "==")
-            indexRange = eq(indexMap, condition, rsp);
-          else if (op == "[]")
-            indexRange = rng(indexMap, condition, rsp);
-
-
-          if (const auto [start, end] = indexRange; start == indexMap.cend())
-          {
-            emptyResult = true;  // terms are &&, i.e. if (term1 && term2), so if a term returns no results, can bail
-            break;
-          }
-          else
-          {
-            result.addResult(indexName, indexRange);
-          }
-        }
-        */
 
         if (emptyResult)
           break;
@@ -284,11 +254,11 @@ private:
     }
 
 
-    return rsp;
+    return {status, rsp};
   }
   
   
-  njson getData (const TimeVectorConstIt itStart, const TimeVectorConstIt itEnd) const 
+  std::tuple<TsRequestStatus,njson> getData (const TimeVectorConstIt itStart, const TimeVectorConstIt itEnd) const 
   {
     const auto size = std::distance(itStart, itEnd);
     const auto start = std::distance(m_times.cbegin(), itStart);    
@@ -304,7 +274,7 @@ private:
     for (auto source = start; source < last ; ++source)
       getData(source, rsp["t"], rsp["v"]);
 
-    return rsp;
+    return {TsRequestStatus::Ok, rsp};
   }
 
 

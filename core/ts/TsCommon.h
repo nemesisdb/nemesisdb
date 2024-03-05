@@ -34,6 +34,7 @@ enum class TsRequestStatus
   SeriesExists,
   SeriesType,
   IndexExists = 40,
+  NotIndexed,
   ValueSize = 60,
 };
 
@@ -67,7 +68,7 @@ struct QueryResult
   }
 
 
-  TsRequestStatus status;
+  TsRequestStatus status; // TODO may want to remove/repurpose this, doesn't make sense when returning results from multiple series
   njson rsp;
 };
 
@@ -238,7 +239,7 @@ public:
 
   virtual void add (const njson& times, njson&& values) = 0;
   
-  virtual njson get (const GetParams& params) const  = 0;
+  virtual std::tuple<TsRequestStatus,njson> get (const GetParams& params) const  = 0;
 
   virtual bool createIndex (const std::string& key) = 0;
 };
