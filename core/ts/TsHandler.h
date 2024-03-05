@@ -220,6 +220,15 @@ private:
           return {TsRequestStatus::ParamType, "Term in 'where' is not an object"};
         else if (term.size() != 1)
           return {TsRequestStatus::ValueSize, "Term in 'where' must have one member"};
+
+        // confirm operators have valid value types
+        const auto& op = term.object_range().cbegin()->key();
+        const auto& operand = term.object_range().cbegin()->value();
+        // disallow these operators with object and bool (">=":{"a":1} or ">":true  don't mean anything)
+        if ((op == ">" || op == ">="|| op == "<" || op == "<=") && (operand.is_object() || operand.is_bool()))
+          return {TsRequestStatus::ParamType, "Operator in 'where' has an invalid operand type"};
+        else if (op == "[]" && !(operand.is_array() && operand.size() == 2))
+          return {TsRequestStatus::ParamType, "Operator [] in 'where' value must be an array of two items"};
       }
     }
     return {TsRequestStatus::Ok,""};
