@@ -36,10 +36,10 @@ TEST_F(TsSeriesTest, NotExist)
     ASSERT_TRUE(res.rsp[GetRspCmd].contains("os1"));
     ASSERT_TRUE(res.rsp[GetRspCmd]["os1"].contains("st"));
     ASSERT_TRUE(res.rsp[GetRspCmd]["os1"].contains("t"));
-    ASSERT_TRUE(res.rsp[GetRspCmd]["os1"].contains("v"));
+    ASSERT_TRUE(res.rsp[GetRspCmd]["os1"].contains("evt"));
 
     ASSERT_TRUE(res.rsp[GetRspCmd]["os1"]["t"].empty());
-    ASSERT_TRUE(res.rsp[GetRspCmd]["os1"]["v"].empty());
+    ASSERT_TRUE(res.rsp[GetRspCmd]["os1"]["evt"].empty());
   }
   
 }
@@ -62,11 +62,11 @@ TEST_F(TsSeriesTest, GetSimple)
     //ASSERT_EQ(res.status, TsRequestStatus::Ok);
     ASSERT_TRUE(res.rsp[GetRspCmd].contains("os1"));
     ASSERT_TRUE(res.rsp[GetRspCmd]["os1"].contains("t"));
-    ASSERT_TRUE(res.rsp[GetRspCmd]["os1"].contains("v"));
+    ASSERT_TRUE(res.rsp[GetRspCmd]["os1"].contains("evt"));
     ASSERT_TRUE(res.rsp[GetRspCmd]["os1"].contains("st"));
 
     ASSERT_EQ(res.rsp[GetRspCmd]["os1"]["t"].size(), 4);
-    ASSERT_EQ(res.rsp[GetRspCmd]["os1"]["t"].size(), res.rsp[GetRspCmd]["os1"]["v"].size());
+    ASSERT_EQ(res.rsp[GetRspCmd]["os1"]["t"].size(), res.rsp[GetRspCmd]["os1"]["evt"].size());
     
     rspEverything = res.rsp;
   }
@@ -97,10 +97,10 @@ TEST_F(TsSeriesTest, GetComplex)
     //ASSERT_EQ(res.status, TsRequestStatus::Ok);
     ASSERT_TRUE(res.rsp[GetRspCmd].contains("os1"));
     ASSERT_TRUE(res.rsp[GetRspCmd]["os1"].contains("t"));
-    ASSERT_TRUE(res.rsp[GetRspCmd]["os1"].contains("v"));
+    ASSERT_TRUE(res.rsp[GetRspCmd]["os1"].contains("evt"));
 
     ASSERT_EQ(res.rsp[GetRspCmd]["os1"]["t"].size(), 2);
-    ASSERT_EQ(res.rsp[GetRspCmd]["os1"]["t"].size(), res.rsp[GetRspCmd]["os1"]["v"].size());    
+    ASSERT_EQ(res.rsp[GetRspCmd]["os1"]["t"].size(), res.rsp[GetRspCmd]["os1"]["evt"].size());    
   }
 
   {
@@ -110,10 +110,10 @@ TEST_F(TsSeriesTest, GetComplex)
     //ASSERT_EQ(res.status, TsRequestStatus::Ok);
     ASSERT_TRUE(res.rsp[GetRspCmd].contains("os1"));
     ASSERT_TRUE(res.rsp[GetRspCmd]["os1"].contains("t"));
-    ASSERT_TRUE(res.rsp[GetRspCmd]["os1"].contains("v"));
+    ASSERT_TRUE(res.rsp[GetRspCmd]["os1"].contains("evt"));
 
     ASSERT_EQ(res.rsp[GetRspCmd]["os1"]["t"].size(), 1);
-    ASSERT_EQ(res.rsp[GetRspCmd]["os1"]["t"].size(), res.rsp[GetRspCmd]["os1"]["v"].size());
+    ASSERT_EQ(res.rsp[GetRspCmd]["os1"]["t"].size(), res.rsp[GetRspCmd]["os1"]["evt"].size());
   }
 }
 
@@ -138,14 +138,14 @@ TEST_F(TsSeriesTest, GetMultipleSeries)
   ASSERT_TRUE(res.rsp[GetRspCmd].contains("os2"));
   
   ASSERT_TRUE(res.rsp[GetRspCmd]["os1"].contains("t"));
-  ASSERT_TRUE(res.rsp[GetRspCmd]["os1"].contains("v"));
+  ASSERT_TRUE(res.rsp[GetRspCmd]["os1"].contains("evt"));
   ASSERT_TRUE(res.rsp[GetRspCmd]["os2"].contains("t"));
-  ASSERT_TRUE(res.rsp[GetRspCmd]["os2"].contains("v"));
+  ASSERT_TRUE(res.rsp[GetRspCmd]["os2"].contains("evt"));
 
   ASSERT_EQ(res.rsp[GetRspCmd]["os1"]["t"].size(), 4);
-  ASSERT_EQ(res.rsp[GetRspCmd]["os1"]["t"].size(), res.rsp[GetRspCmd]["os1"]["v"].size());
+  ASSERT_EQ(res.rsp[GetRspCmd]["os1"]["t"].size(), res.rsp[GetRspCmd]["os1"]["evt"].size());
   ASSERT_EQ(res.rsp[GetRspCmd]["os2"]["t"].size(), 4);
-  ASSERT_EQ(res.rsp[GetRspCmd]["os2"]["t"].size(), res.rsp[GetRspCmd]["os2"]["v"].size());
+  ASSERT_EQ(res.rsp[GetRspCmd]["os2"]["t"].size(), res.rsp[GetRspCmd]["os2"]["evt"].size());
 }
 
 
@@ -167,14 +167,14 @@ TEST_F(TsSeriesTest, GetMultipleRanges)
   ASSERT_TRUE(res.rsp[GetMultiRspCmd].contains("os2"));
 
   ASSERT_TRUE(res.rsp[GetMultiRspCmd]["os1"].contains("t"));
-  ASSERT_TRUE(res.rsp[GetMultiRspCmd]["os1"].contains("v"));
+  ASSERT_TRUE(res.rsp[GetMultiRspCmd]["os1"].contains("evt"));
   ASSERT_TRUE(res.rsp[GetMultiRspCmd]["os2"].contains("t"));
-  ASSERT_TRUE(res.rsp[GetMultiRspCmd]["os2"].contains("v"));
+  ASSERT_TRUE(res.rsp[GetMultiRspCmd]["os2"].contains("evt"));
 
   ASSERT_EQ(res.rsp[GetMultiRspCmd]["os1"]["t"].size(), 3);
-  ASSERT_EQ(res.rsp[GetMultiRspCmd]["os1"]["t"].size(), res.rsp[GetMultiRspCmd]["os1"]["v"].size());
+  ASSERT_EQ(res.rsp[GetMultiRspCmd]["os1"]["t"].size(), res.rsp[GetMultiRspCmd]["os1"]["evt"].size());
   ASSERT_EQ(res.rsp[GetMultiRspCmd]["os2"]["t"].size(), 4);
-  ASSERT_EQ(res.rsp[GetMultiRspCmd]["os2"]["t"].size(), res.rsp[GetMultiRspCmd]["os2"]["v"].size());
+  ASSERT_EQ(res.rsp[GetMultiRspCmd]["os2"]["t"].size(), res.rsp[GetMultiRspCmd]["os2"]["evt"].size());
 }
 
 

@@ -13,7 +13,7 @@ namespace nemesis { namespace core { namespace ts {
 using namespace jsoncons;
 using namespace jsoncons::literals;
 
-inline static const njson EmptyResult (json_object_arg, {{"t", json_array_arg_t{}}, {"v", json_array_arg_t{}}});
+inline static const njson EmptyResult (json_object_arg, {{"t", json_array_arg_t{}}, {"evt", json_array_arg_t{}}});
 
 
 /// Represents a time series where submitted data is always gauranteed to be ordered by the sender.
@@ -137,7 +137,7 @@ private:
   }
 
 
-  // Indexes data received by add()
+  // Index data received by add()
   void addIndexes(const std::vector<SeriesTime>& times, const std::vector<SeriesValue>& events)
   {
     for (std::size_t i = 0, pos = m_times.size() ; i < events.size() ; ++i, ++pos)
@@ -181,7 +181,7 @@ private:
 
   std::tuple<TsRequestStatus,njson> applyIndexes (const GetParams& params, const TimeVectorConstIt itStart, const TimeVectorConstIt itEnd) const
   {
-    njson rsp (json_object_arg, {{"t", json_array_arg_t{}}, {"v", json_array_arg_t{}}});
+    njson rsp (json_object_arg, {{"t", json_array_arg_t{}}, {"evt", json_array_arg_t{}}});
     TsRequestStatus status = TsRequestStatus::Ok;
 
     const auto timeMin = *itStart;
@@ -247,10 +247,14 @@ private:
     if (!emptyResult && result.haveResults())
     {
       result.intersect(timeMin, timeMax);
+
       const auto& intersectedResult = result.result();
       
+      rsp["t"].reserve(intersectedResult.size());
+      rsp["evt"].reserve(intersectedResult.size());
+
       for (const auto& [time, index] : intersectedResult)
-        getData(index, rsp["t"], rsp["v"]);
+        getData(index, rsp["t"], rsp["evt"]);
     }
 
 
@@ -266,25 +270,25 @@ private:
 
     PLOGD << "Getting " << size << " time/values";
 
-    njson rsp (json_object_arg, {{"t", json_array_arg_t{}}, {"v", json_array_arg_t{}}});
+    njson rsp (json_object_arg, {{"t", json_array_arg_t{}}, {"evt", json_array_arg_t{}}});
 
     rsp["t"].reserve(size);
-    rsp["v"].reserve(size);
+    rsp["evt"].reserve(size);
 
     for (auto source = start; source < last ; ++source)
-      getData(source, rsp["t"], rsp["v"]);
+      getData(source, rsp["t"], rsp["evt"]);
 
     return {TsRequestStatus::Ok, rsp};
   }
 
 
 
-  void getData (const std::size_t index, njson& times, njson& values) const 
+  void getData (const std::size_t index, njson& times, njson& events) const 
   {
     PLOGD << "Getting single time/value";
     
     times.push_back(m_times[index]);
-    values.emplace_back(m_events[index]);
+    events.emplace_back(m_events[index]);
   }
 
 
@@ -338,7 +342,7 @@ private:
     const auto& low = range[0];
     const auto& high = range[1];
 
-    if (low < high) // TODO check this in TsHandler
+    if (low < high) // TODO check in TsHandler
     {
       if (const auto itRangeLow = indexMap.lower_bound(low); itRangeLow != indexMap.cend())
         return {itRangeLow, indexMap.upper_bound(high)};

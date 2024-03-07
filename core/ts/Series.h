@@ -17,7 +17,7 @@ using namespace jsoncons::literals;
 
 static inline const njson SeriesNotExistRsp (json_object_arg, { {"st", toUnderlying(TsRequestStatus::SeriesNotExist)},
                                                                 {"t", json_array_arg_t{}},
-                                                                {"v", json_array_arg_t{}}});
+                                                                {"evt", json_array_arg_t{}}});
 
 
 /// Holds all series, keyed by the series name.
@@ -62,7 +62,7 @@ public:
     {
       try
       {
-        m_series.at(name)->add(query.at("t"), std::move(query.at("v"))); 
+        m_series.at(name)->add(query.at("t"), std::move(query.at("evt"))); 
         
         qr.rsp[cmdRspName]["st"] = toUnderlying(TsRequestStatus::Ok);
         qr.rsp[cmdRspName]["ts"] = name;
@@ -102,7 +102,7 @@ public:
     for (const auto& series : query.object_range())
     {
       const auto& name = series.key();
-      
+
       const auto& [stat, rsp] = getSingle(name, makeGetParams(series.value()), cmdRspName);
       result.rsp[cmdRspName][name] = std::move(rsp);
     }
@@ -166,7 +166,7 @@ private:
     {
       njson seriesRsp(json_object_arg, {{"st", toUnderlying(TsRequestStatus::Ok)},
                                         {"t", json_array_arg_t{}},
-                                        {"v", json_array_arg_t{}}});
+                                        {"evt", json_array_arg_t{}}});
 
       auto [stat, result] = m_series.at(name)->get(params);
 

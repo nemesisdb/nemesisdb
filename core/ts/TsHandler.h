@@ -26,11 +26,11 @@ public:
   {
     static const std::array<std::function<void(TsWebSocket *, njson&&)>, static_cast<std::size_t>(TsCommand::Max)> Handlers =
     {
-      std::bind(&TsHandler::createTimeSeries,   std::ref(*this), std::placeholders::_1, std::placeholders::_2),
-      std::bind(&TsHandler::add,                std::ref(*this), std::placeholders::_1, std::placeholders::_2),
-      std::bind(&TsHandler::get,                std::ref(*this), std::placeholders::_1, std::placeholders::_2),
-      std::bind(&TsHandler::getMultipleRanges,  std::ref(*this), std::placeholders::_1, std::placeholders::_2),
-      std::bind(&TsHandler::createIndex,        std::ref(*this), std::placeholders::_1, std::placeholders::_2)
+      std::bind_front(&TsHandler::createTimeSeries,   std::ref(*this)),
+      std::bind_front(&TsHandler::addEvt,             std::ref(*this)),
+      std::bind_front(&TsHandler::get,                std::ref(*this)),
+      std::bind_front(&TsHandler::getMultipleRanges,  std::ref(*this)),
+      std::bind_front(&TsHandler::createIndex,        std::ref(*this))
     };
 
     TsRequestStatus status = TsRequestStatus::Ok;
@@ -145,20 +145,20 @@ private:
   }
 
 
-  void add (TsWebSocket * ws, njson&& msg)
+  void addEvt (TsWebSocket * ws, njson&& msg)
   {
     static const auto cmdName     = "TS_ADD_EVT"s;
     static const auto cmdRspName  = "TS_ADD_EVT_RSP"s;
 
     auto validate = [](const njson& cmd) -> std::tuple<TsRequestStatus, const std::string_view>
     {
-      if (cmd.at("t").size() != cmd.at("v").size())
-        return {TsRequestStatus::ValueSize, "'v' and 't' not same length"};
+      if (cmd.at("t").size() != cmd.at("evt").size())
+        return {TsRequestStatus::ValueSize, "'evt' and 't' not same length"};
 
-      for (const auto& item : cmd.at("v").array_range())
+      for (const auto& item : cmd.at("evt").array_range())
       {
         if (!item.is_object())
-          return {TsRequestStatus::ParamType, "'v' must be an array of objects"};
+          return {TsRequestStatus::ParamType, "'evt' must be an array of objects"};
       }        
       
       return {TsRequestStatus::Ok, ""};
@@ -167,7 +167,7 @@ private:
 
     auto& cmd = msg.at(cmdName);
 
-    if (isValid(ws, cmdRspName, cmd, {Param::required("ts", JsonString), Param::required("t", JsonArray), Param::required("v", JsonArray)}, validate))
+    if (isValid(ws, cmdRspName, cmd, {Param::required("ts", JsonString), Param::required("t", JsonArray), Param::required("evt", JsonArray)}, validate))
       send(ws, m_series.add(std::move(cmd), cmdRspName).rsp);
   }
 

@@ -74,10 +74,10 @@ TEST_F(TsClassTest, GetSingle)
     GetParams params;
     params.setStart(3);
 
-    auto r = os.get(params);
+    auto [stat, r] = os.get(params);
 
     ASSERT_EQ(r["t"].size(), 9);
-    ASSERT_EQ(r["t"].size(), r["v"].size());
+    ASSERT_EQ(r["t"].size(), r["evt"].size());
   }
 
   
@@ -85,10 +85,10 @@ TEST_F(TsClassTest, GetSingle)
     GetParams params;
     params.setStart(1);
 
-    auto r = os.get(params);
+    auto [stat, r] = os.get(params);
 
     ASSERT_EQ(r["t"].size(), 11);
-    ASSERT_EQ(r["t"].size(), r["v"].size());
+    ASSERT_EQ(r["t"].size(), r["evt"].size());
   }
 
 
@@ -97,10 +97,10 @@ TEST_F(TsClassTest, GetSingle)
     params.setStart(3);
     params.setEnd(5);
 
-    auto r = os.get(params);
+    auto [stat, r] = os.get(params);
 
     ASSERT_EQ(r["t"].size(), 2);
-    ASSERT_EQ(r["t"].size(), r["v"].size());
+    ASSERT_EQ(r["t"].size(), r["evt"].size());
   }
 
 
@@ -108,10 +108,10 @@ TEST_F(TsClassTest, GetSingle)
     GetParams params;
     params.setStart(10);
 
-    auto r = os.get(params);
+    auto [stat, r] = os.get(params);
 
     ASSERT_EQ(r["t"].size(), 7);
-    ASSERT_EQ(r["t"].size(), r["v"].size());
+    ASSERT_EQ(r["t"].size(), r["evt"].size());
   }
 
 
@@ -119,10 +119,10 @@ TEST_F(TsClassTest, GetSingle)
     GetParams params;
     params.setStart(20);
 
-    auto r = os.get(params);
+    auto [stat, r] = os.get(params);
 
     ASSERT_EQ(r["t"].size(), 7);
-    ASSERT_EQ(r["t"].size(), r["v"].size());
+    ASSERT_EQ(r["t"].size(), r["evt"].size());
   }
   
 
@@ -131,10 +131,10 @@ TEST_F(TsClassTest, GetSingle)
     params.setStart(20);
     params.setEnd(25);
 
-    auto r = os.get(params);
+    auto [stat, r] = os.get(params);
 
     ASSERT_EQ(r["t"].size(), 6);
-    ASSERT_EQ(r["t"].size(), r["v"].size());
+    ASSERT_EQ(r["t"].size(), r["evt"].size());
   }
 }
 

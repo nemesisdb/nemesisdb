@@ -85,7 +85,7 @@ protected:
               {
                 "ts":")" << name << R"(",
                 "t":[1,2,3,5],
-                "v":["1","2","3","5"]
+                "evt":["1","2","3","5"]
               }
             )";
 
@@ -103,7 +103,7 @@ protected:
               {
                 "ts":")" << name << R"(",
                 "t":[10,11,12],
-                "v":[{"x":"x10", "y":"y10"},{"x":"x11", "y":"y11"},{"x":"x12", "y":"y12"}]
+                "evt":[{"x":"x10", "y":"y10"},{"x":"x11", "y":"y11"},{"x":"x12", "y":"y12"}]
               }
             )";
 
@@ -124,7 +124,7 @@ protected:
               {
                 "ts":"os1",
                 "t":[1,2,3,4,5],
-                "v":[{"temp":10},{"temp":5},{"temp":8},{"temp":4},{"temp":2}]
+                "evt":[{"temp":10},{"temp":5},{"temp":8},{"temp":4},{"temp":2}]
               }
             )";
 
@@ -132,7 +132,7 @@ protected:
     
     njson data2 = data1;
     data2["ts"] = "os2";
-    data2["v"] = njson::parse(R"([{"temp":15},{"temp":5},{"temp":7},{"temp":3},{"temp":2}])");
+    data2["evt"] = njson::parse(R"([{"temp":15},{"temp":5},{"temp":7},{"temp":3},{"temp":2}])");
 
     ASSERT_EQ(s.add(data1, AddRspCmd).status, TsRequestStatus::Ok);
     ASSERT_EQ(s.add(data2, AddRspCmd).status, TsRequestStatus::Ok);
