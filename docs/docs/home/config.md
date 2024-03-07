@@ -9,13 +9,14 @@ The configuration has settings:
 
 |Param|Type|Description|
 |:---|:---:|:---|
-|version|unsigned integer|Must be 1|
-|kv|object|Settings for the WebSocket server|
-|session|object|Settings for saving session data so they can be restored on startup|
+|version|unsigned integer|Must be 2|
+|mode|string|"kv" for key-value, "ts" for timeseries|
+|kv|object|Settings for key-value|
+|ts|object|Settings for timeseries|
 
 <br/>
 
-## `kv`
+# `kv`
 
 |Param|Type|Description|
 |:---|:---:|:---|
@@ -25,13 +26,7 @@ The configuration has settings:
 
 <br/>
 
-## `session`
-
-|Param|Type|Description|
-|:---|:---:|:---|
-|save|object|Settings used by `SH_SAVE`|
-
-### `session::save`
+## `save`
 
 |Param|Type|Description|
 |:---|:---:|:---|
@@ -40,6 +35,16 @@ The configuration has settings:
 
 See [SH_SAVE](../api/sessions/sh-save) for more.
 
+<br/>
+
+# `ts`
+
+|Param|Type|Description|
+|:---|:---:|:---|
+|ip|string|IP address of the WebSocket server|
+|port|unsigned int|Port of the WebSocket server|
+|maxPayload|unsigned int|Max bytes per query. A query larger than this will be rejected.<br/>Absolute min/max are 64 bytes and 2MB.|
+
 
 <br/>
 
@@ -47,24 +52,32 @@ See [SH_SAVE](../api/sessions/sh-save) for more.
 
 There is a default configuration included in the install package/Docker image. 
 
-The default settings listen on `127.0.0.1:1987` with `SH_SAVE` disabled (so `session:save::path` does not need to exist):
+The default settings listen on `127.0.0.1:1987` with `SH_SAVE` disabled (so `kv:save::path` does not need to exist):
 
 ```json title="default.json"
 {
-  "version":1,
+  "version":2,
+  "mode":"kv",
   "kv":
   {
     "ip":"127.0.0.1",
     "port":1987,
-    "maxPayload":1024
-  },
-  "session":
-  {
-    "save":
+    "maxPayload":1024,
+    "session":
     {
-      "enabled":false,
-      "path":"./data"
+      "save":
+      {
+        "enabled":false,
+        "path":"./data"
+      }
     }
+  },
+  "ts":
+  {
+    "ip":"127.0.0.1",
+    "port":1987,
+    "maxPayload":1024
   }
 }
+
 ```

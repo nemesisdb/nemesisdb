@@ -5,17 +5,15 @@ displayed_sidebar: homeSidebar
 
 # NemesisDB
 
-NemesisDB is an in-memory JSON database.
+NemesisDB is an in-memory JSON key-value and timeseries database.
 
 - The query interface is WebSockets using JSON
-- Data can be persisted to the filesystem
-- Data can be restored from file at startup or with a command at any time
+- Key-value data can be persisted to the filesystem
+- Key-value data can be restored from file at startup or with a command at any time
 
 NemesisDB is available as a 64-bit Debian package and Docker image for x86 (Intel/AMD) CPUs.
 
-:::info
-A session is identified with a 'session token' which is a 64-bit integer. Your client must handle 64-bit integers.
-:::
+<br/>
 
 ## Install
 
@@ -29,13 +27,11 @@ The install includes a default config to start the server on `127.0.0.1:1987`. T
 - [Docker](./home/install/docker/windows)
 
 
-
-
 <br/>
 
 # Next Steps
 
-- [TLDR](./home/tldr)
-- [Session Basics](/tutorials/sessions/what-is-a-session)
+- [Key Value TLDR](./home/tldr-kv)
+- [Time Series TLDR](./home/tldr-ts)
 - [First Steps](/tutorials/first-steps/setup)
 
