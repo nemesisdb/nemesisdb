@@ -69,6 +69,64 @@ With these members indexed they can be used in `TS_GET`:
 - This says, "Get the events which occured between times 1 and 3000 inclusive, where the temperature is greater then 3 and the pressure is between 15 and 25 inclusive.
 
 
+## Examples
+
+- Add three events at times 100, 102 and 105:
+
+```json
+{
+  "TS_ADD_EVT":
+  {
+    "ts":"user_login",
+    "t":[100, 102, 105],
+    "evt":
+    [
+      {"userId":"1000", "action":"login"},
+      {"userId":"1001", "action":"login"},
+      {"userId":"1002", "action":"logout"}
+    ]
+  }
+}
+```
+
+- You can have multiple occurences of the same time:
+
+```json
+{
+  "TS_ADD_EVT":
+  {
+    "ts":"user_login",
+    "t":[110, 110, 112],
+    "evt":
+    [
+      {"userId":"1000", "action":"logout"},
+      {"userId":"1001", "action":"logout"},
+      {"userId":"1003", "action":"login"}
+    ]
+  }
+}
+```
+
+
+- Events can contain more than strings
+
+```json
+{
+  "TS_ADD_EVT":
+  {
+    "ts":"log",
+    "t":[500, 505],
+    "evt":
+    [
+      {"program":"nemesisdb", "args":["--config=/etc/nemesisdb/config.json"], "user":"ndb", "root":false},
+      {"program":"redis-server", "args":["/etc/redis/config.conf"], "user":"redis", "root":false}
+    ]
+  }
+}
+```
+
+
+
 ## Response
 
 `TS_CREATE_INDEX_RSP`

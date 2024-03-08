@@ -1,5 +1,5 @@
 ---
-sidebar_position: 10
+sidebar_position: 5
 ---
 
 # TS_CREATE_INDEX
