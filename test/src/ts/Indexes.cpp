@@ -53,7 +53,7 @@ TEST_F(TsSeriesTest, SimpleData)
   {
     auto get = njson::parse(R"(
                               {
-                                "ts":["os1"],
+                                "ts":"os1",
                                 "rng":[10,13],
                                 "where":
                                 {
@@ -67,9 +67,9 @@ TEST_F(TsSeriesTest, SimpleData)
 
     auto r = s.get(get, GetRspCmd);
     
-    ASSERT_EQ(r.rsp["TS_GET_RSP"]["os1"]["t"].size(), 3);
-    ASSERT_EQ(r.rsp["TS_GET_RSP"]["os1"]["t"].size(), r.rsp["TS_GET_RSP"]["os1"]["evt"].size());
-    ASSERT_EQ(r.rsp["TS_GET_RSP"]["os1"]["t"], njson::parse(R"([10,11,12])"));
+    ASSERT_EQ(r.rsp["TS_GET_RSP"]["t"].size(), 3);
+    ASSERT_EQ(r.rsp["TS_GET_RSP"]["t"].size(), r.rsp["TS_GET_RSP"]["evt"].size());
+    ASSERT_EQ(r.rsp["TS_GET_RSP"]["t"], njson::parse(R"([10,11,12])"));
   }
 
 
@@ -77,7 +77,7 @@ TEST_F(TsSeriesTest, SimpleData)
   {
     auto get = njson::parse(R"(
                               {
-                                "ts":["os1"],
+                                "ts":"os1",
                                 "rng":[10,13],
                                 "where":
                                 {
@@ -91,9 +91,9 @@ TEST_F(TsSeriesTest, SimpleData)
 
     auto r = s.get(get, GetRspCmd);
 
-    ASSERT_EQ(r.rsp["TS_GET_RSP"]["os1"]["t"].size(), 2);
-    ASSERT_EQ(r.rsp["TS_GET_RSP"]["os1"]["t"].size(), r.rsp["TS_GET_RSP"]["os1"]["evt"].size());
-    ASSERT_EQ(r.rsp["TS_GET_RSP"]["os1"]["t"], njson::parse(R"([10,12])"));
+    ASSERT_EQ(r.rsp["TS_GET_RSP"]["t"].size(), 2);
+    ASSERT_EQ(r.rsp["TS_GET_RSP"]["t"].size(), r.rsp["TS_GET_RSP"]["evt"].size());
+    ASSERT_EQ(r.rsp["TS_GET_RSP"]["t"], njson::parse(R"([10,12])"));
   }
   
 
@@ -101,7 +101,7 @@ TEST_F(TsSeriesTest, SimpleData)
   {
     auto get = njson::parse(R"(
                               {
-                                "ts":["os1"],
+                                "ts":"os1",
                                 "rng":[10,13],
                                 "where":
                                 {
@@ -115,9 +115,9 @@ TEST_F(TsSeriesTest, SimpleData)
 
     auto r = s.get(get, GetRspCmd);
 
-    ASSERT_EQ(r.rsp["TS_GET_RSP"]["os1"]["t"].size(), 1);
-    ASSERT_EQ(r.rsp["TS_GET_RSP"]["os1"]["t"].size(), r.rsp["TS_GET_RSP"]["os1"]["evt"].size());
-    ASSERT_EQ(r.rsp["TS_GET_RSP"]["os1"]["t"], njson::parse(R"([13])"));
+    ASSERT_EQ(r.rsp["TS_GET_RSP"]["t"].size(), 1);
+    ASSERT_EQ(r.rsp["TS_GET_RSP"]["t"].size(), r.rsp["TS_GET_RSP"]["evt"].size());
+    ASSERT_EQ(r.rsp["TS_GET_RSP"]["t"], njson::parse(R"([13])"));
   }
 
 
@@ -125,7 +125,7 @@ TEST_F(TsSeriesTest, SimpleData)
   {
     auto get = njson::parse(R"(
                               {
-                                "ts":["os1"],
+                                "ts":"os1",
                                 "rng":[10,13],
                                 "where":
                                 {
@@ -139,9 +139,9 @@ TEST_F(TsSeriesTest, SimpleData)
 
     auto r = s.get(get, GetRspCmd);
 
-    ASSERT_EQ(r.rsp["TS_GET_RSP"]["os1"]["t"].size(), 2);
-    ASSERT_EQ(r.rsp["TS_GET_RSP"]["os1"]["t"].size(), r.rsp["TS_GET_RSP"]["os1"]["evt"].size());
-    ASSERT_EQ(r.rsp["TS_GET_RSP"]["os1"]["t"], njson::parse(R"([11,13])"));
+    ASSERT_EQ(r.rsp["TS_GET_RSP"]["t"].size(), 2);
+    ASSERT_EQ(r.rsp["TS_GET_RSP"]["t"].size(), r.rsp["TS_GET_RSP"]["evt"].size());
+    ASSERT_EQ(r.rsp["TS_GET_RSP"]["t"], njson::parse(R"([11,13])"));
   }
   
 
@@ -149,7 +149,7 @@ TEST_F(TsSeriesTest, SimpleData)
   {
     auto get = njson::parse(R"(
                               {
-                                "ts":["os1"],
+                                "ts":"os1",
                                 "rng":[10,13],
                                 "where":
                                 {
@@ -163,9 +163,9 @@ TEST_F(TsSeriesTest, SimpleData)
 
     auto r = s.get(get, GetRspCmd);
 
-    ASSERT_EQ(r.rsp["TS_GET_RSP"]["os1"]["t"].size(), 2);
-    ASSERT_EQ(r.rsp["TS_GET_RSP"]["os1"]["t"].size(), r.rsp["TS_GET_RSP"]["os1"]["evt"].size());
-    ASSERT_EQ(r.rsp["TS_GET_RSP"]["os1"]["t"], njson::parse(R"([10,12])"));
+    ASSERT_EQ(r.rsp["TS_GET_RSP"]["t"].size(), 2);
+    ASSERT_EQ(r.rsp["TS_GET_RSP"]["t"].size(), r.rsp["TS_GET_RSP"]["evt"].size());
+    ASSERT_EQ(r.rsp["TS_GET_RSP"]["t"], njson::parse(R"([10,12])"));
   }
 
 
@@ -173,7 +173,7 @@ TEST_F(TsSeriesTest, SimpleData)
   {
     auto get = njson::parse(R"(
                               {
-                                "ts":["os1"],
+                                "ts":"os1",
                                 "rng":[10,13],
                                 "where":
                                 {
@@ -187,9 +187,9 @@ TEST_F(TsSeriesTest, SimpleData)
 
     auto r = s.get(get, GetRspCmd);
 
-    ASSERT_EQ(r.rsp["TS_GET_RSP"]["os1"]["t"].size(), 3);
-    ASSERT_EQ(r.rsp["TS_GET_RSP"]["os1"]["t"].size(), r.rsp["TS_GET_RSP"]["os1"]["evt"].size());
-    ASSERT_EQ(r.rsp["TS_GET_RSP"]["os1"]["t"], njson::parse(R"([10,11,12])"));
+    ASSERT_EQ(r.rsp["TS_GET_RSP"]["t"].size(), 3);
+    ASSERT_EQ(r.rsp["TS_GET_RSP"]["t"].size(), r.rsp["TS_GET_RSP"]["evt"].size());
+    ASSERT_EQ(r.rsp["TS_GET_RSP"]["t"], njson::parse(R"([10,11,12])"));
   }
   
 
@@ -198,7 +198,7 @@ TEST_F(TsSeriesTest, SimpleData)
   {
     auto get = njson::parse(R"(
                               {
-                                "ts":["os1"],
+                                "ts":"os1",
                                 "rng":[10,13],
                                 "where":
                                 {
@@ -212,9 +212,9 @@ TEST_F(TsSeriesTest, SimpleData)
 
     auto r = s.get(get, GetRspCmd);
 
-    ASSERT_EQ(r.rsp["TS_GET_RSP"]["os1"]["t"].size(), 4);
-    ASSERT_EQ(r.rsp["TS_GET_RSP"]["os1"]["t"].size(), r.rsp["TS_GET_RSP"]["os1"]["evt"].size());
-    ASSERT_EQ(r.rsp["TS_GET_RSP"]["os1"]["t"], njson::parse(R"([10,11,12,13])"));
+    ASSERT_EQ(r.rsp["TS_GET_RSP"]["t"].size(), 4);
+    ASSERT_EQ(r.rsp["TS_GET_RSP"]["t"].size(), r.rsp["TS_GET_RSP"]["evt"].size());
+    ASSERT_EQ(r.rsp["TS_GET_RSP"]["t"], njson::parse(R"([10,11,12,13])"));
   }
 
 
@@ -222,7 +222,7 @@ TEST_F(TsSeriesTest, SimpleData)
   {
     auto get = njson::parse(R"(
                               {
-                                "ts":["os1"],
+                                "ts":"os1",
                                 "rng":[10,13],
                                 "where":
                                 {
@@ -236,9 +236,9 @@ TEST_F(TsSeriesTest, SimpleData)
 
     auto r = s.get(get, GetRspCmd);
 
-    ASSERT_EQ(r.rsp["TS_GET_RSP"]["os1"]["t"].size(), 3);
-    ASSERT_EQ(r.rsp["TS_GET_RSP"]["os1"]["t"].size(), r.rsp["TS_GET_RSP"]["os1"]["evt"].size());
-    ASSERT_EQ(r.rsp["TS_GET_RSP"]["os1"]["t"], njson::parse(R"([10,11,12])"));
+    ASSERT_EQ(r.rsp["TS_GET_RSP"]["t"].size(), 3);
+    ASSERT_EQ(r.rsp["TS_GET_RSP"]["t"].size(), r.rsp["TS_GET_RSP"]["evt"].size());
+    ASSERT_EQ(r.rsp["TS_GET_RSP"]["t"], njson::parse(R"([10,11,12])"));
   }
 
 
@@ -246,7 +246,7 @@ TEST_F(TsSeriesTest, SimpleData)
   {
     auto get = njson::parse(R"(
                               {
-                                "ts":["os1"],
+                                "ts":"os1",
                                 "rng":[10,13],
                                 "where":
                                 {
@@ -260,9 +260,9 @@ TEST_F(TsSeriesTest, SimpleData)
 
     auto r = s.get(get, GetRspCmd);
 
-    ASSERT_EQ(r.rsp["TS_GET_RSP"]["os1"]["t"].size(), 4);
-    ASSERT_EQ(r.rsp["TS_GET_RSP"]["os1"]["t"].size(), r.rsp["TS_GET_RSP"]["os1"]["evt"].size());
-    ASSERT_EQ(r.rsp["TS_GET_RSP"]["os1"]["t"], njson::parse(R"([10,11,12,13])"));
+    ASSERT_EQ(r.rsp["TS_GET_RSP"]["t"].size(), 4);
+    ASSERT_EQ(r.rsp["TS_GET_RSP"]["t"].size(), r.rsp["TS_GET_RSP"]["evt"].size());
+    ASSERT_EQ(r.rsp["TS_GET_RSP"]["t"], njson::parse(R"([10,11,12,13])"));
   }
 }
 
@@ -298,7 +298,7 @@ TEST_F(TsSeriesTest, ComplexData)
   {
     auto get = njson::parse(R"(
                               {
-                                "ts":["os1"],
+                                "ts":"os1",
                                 "rng":[10,13],
                                 "where":
                                 {
@@ -312,10 +312,10 @@ TEST_F(TsSeriesTest, ComplexData)
 
     auto r = s.get(get, GetRspCmd);
 
-    ASSERT_EQ(r.rsp["TS_GET_RSP"]["os1"]["t"].size(), 2);
-    ASSERT_EQ(r.rsp["TS_GET_RSP"]["os1"]["t"].size(), r.rsp["TS_GET_RSP"]["os1"]["evt"].size());
-    ASSERT_EQ(r.rsp["TS_GET_RSP"]["os1"]["t"], njson::parse(R"([10,12])"));
-    ASSERT_EQ(r.rsp["TS_GET_RSP"]["os1"]["evt"], njson::parse(R"([{"temp":1, "coords":{"x":2.0, "y":5.0}}, {"temp":1, "coords":{"x":2.2, "y":5.2}}])"));
+    ASSERT_EQ(r.rsp["TS_GET_RSP"]["t"].size(), 2);
+    ASSERT_EQ(r.rsp["TS_GET_RSP"]["t"].size(), r.rsp["TS_GET_RSP"]["evt"].size());
+    ASSERT_EQ(r.rsp["TS_GET_RSP"]["t"], njson::parse(R"([10,12])"));
+    ASSERT_EQ(r.rsp["TS_GET_RSP"]["evt"], njson::parse(R"([{"temp":1, "coords":{"x":2.0, "y":5.0}}, {"temp":1, "coords":{"x":2.2, "y":5.2}}])"));
   }
 }
 
@@ -346,7 +346,7 @@ TEST_F(TsSeriesTest, TwoTerms)
   {
     auto get = njson::parse(R"(
                               {
-                                "ts":["os1"],
+                                "ts":"os1",
                                 "rng":[10,13],
                                 "where":
                                 {
@@ -364,9 +364,9 @@ TEST_F(TsSeriesTest, TwoTerms)
 
     auto r = s.get(get, GetRspCmd);
     
-    ASSERT_EQ(r.rsp["TS_GET_RSP"]["os1"]["t"].size(), 2);
-    ASSERT_EQ(r.rsp["TS_GET_RSP"]["os1"]["t"].size(), r.rsp["TS_GET_RSP"]["os1"]["evt"].size());
-    ASSERT_EQ(r.rsp["TS_GET_RSP"]["os1"]["t"], njson::parse(R"([10,12])"));
+    ASSERT_EQ(r.rsp["TS_GET_RSP"]["t"].size(), 2);
+    ASSERT_EQ(r.rsp["TS_GET_RSP"]["t"].size(), r.rsp["TS_GET_RSP"]["evt"].size());
+    ASSERT_EQ(r.rsp["TS_GET_RSP"]["t"], njson::parse(R"([10,12])"));
   }
   
 
@@ -375,7 +375,7 @@ TEST_F(TsSeriesTest, TwoTerms)
   {
     auto get = njson::parse(R"(
                               {
-                                "ts":["os1"],
+                                "ts":"os1",
                                 "rng":[10,13],
                                 "where":
                                 {
@@ -393,9 +393,9 @@ TEST_F(TsSeriesTest, TwoTerms)
 
     auto r = s.get(get, GetRspCmd);
     
-    ASSERT_EQ(r.rsp["TS_GET_RSP"]["os1"]["t"].size(), 3);
-    ASSERT_EQ(r.rsp["TS_GET_RSP"]["os1"]["t"].size(), r.rsp["TS_GET_RSP"]["os1"]["evt"].size());
-    ASSERT_EQ(r.rsp["TS_GET_RSP"]["os1"]["t"], njson::parse(R"([10,11,12])"));
+    ASSERT_EQ(r.rsp["TS_GET_RSP"]["t"].size(), 3);
+    ASSERT_EQ(r.rsp["TS_GET_RSP"]["t"].size(), r.rsp["TS_GET_RSP"]["evt"].size());
+    ASSERT_EQ(r.rsp["TS_GET_RSP"]["t"], njson::parse(R"([10,11,12])"));
   }
  
 
@@ -404,7 +404,7 @@ TEST_F(TsSeriesTest, TwoTerms)
   {
     auto get = njson::parse(R"(
                               {
-                                "ts":["os1"],
+                                "ts":"os1",
                                 "rng":[10,14],
                                 "where":
                                 {
@@ -422,9 +422,9 @@ TEST_F(TsSeriesTest, TwoTerms)
 
     auto r = s.get(get, GetRspCmd);
     
-    ASSERT_EQ(r.rsp["TS_GET_RSP"]["os1"]["t"].size(), 1);
-    ASSERT_EQ(r.rsp["TS_GET_RSP"]["os1"]["t"].size(), r.rsp["TS_GET_RSP"]["os1"]["evt"].size());
-    ASSERT_EQ(r.rsp["TS_GET_RSP"]["os1"]["t"], njson::parse(R"([14])"));
+    ASSERT_EQ(r.rsp["TS_GET_RSP"]["t"].size(), 1);
+    ASSERT_EQ(r.rsp["TS_GET_RSP"]["t"].size(), r.rsp["TS_GET_RSP"]["evt"].size());
+    ASSERT_EQ(r.rsp["TS_GET_RSP"]["t"], njson::parse(R"([14])"));
   }
   
 
@@ -432,7 +432,7 @@ TEST_F(TsSeriesTest, TwoTerms)
   {
     auto get = njson::parse(R"(
                               {
-                                "ts":["os1"],
+                                "ts":"os1",
                                 "rng":[10,13],
                                 "where":
                                 {
@@ -450,9 +450,9 @@ TEST_F(TsSeriesTest, TwoTerms)
 
     auto r = s.get(get, GetRspCmd);
     
-    ASSERT_EQ(r.rsp["TS_GET_RSP"]["os1"]["t"].size(), 0);
-    ASSERT_EQ(r.rsp["TS_GET_RSP"]["os1"]["t"].size(), r.rsp["TS_GET_RSP"]["os1"]["evt"].size());
-    ASSERT_EQ(r.rsp["TS_GET_RSP"]["os1"]["t"], njson::parse(R"([])"));
+    ASSERT_EQ(r.rsp["TS_GET_RSP"]["t"].size(), 0);
+    ASSERT_EQ(r.rsp["TS_GET_RSP"]["t"].size(), r.rsp["TS_GET_RSP"]["evt"].size());
+    ASSERT_EQ(r.rsp["TS_GET_RSP"]["t"], njson::parse(R"([])"));
   }
 }
 
@@ -485,7 +485,7 @@ TEST_F(TsSeriesTest, BuildIndex)
   {
     auto get = njson::parse(R"(
                               {
-                                "ts":["os1"],
+                                "ts":"os1",
                                 "rng":[10,13],
                                 "where":
                                 {
@@ -499,9 +499,9 @@ TEST_F(TsSeriesTest, BuildIndex)
 
     auto r = s.get(get, GetRspCmd);
     
-    ASSERT_EQ(r.rsp["TS_GET_RSP"]["os1"]["t"].size(), 3);
-    ASSERT_EQ(r.rsp["TS_GET_RSP"]["os1"]["t"].size(), r.rsp["TS_GET_RSP"]["os1"]["evt"].size());
-    ASSERT_EQ(r.rsp["TS_GET_RSP"]["os1"]["t"], njson::parse(R"([10,11,12])"));
+    ASSERT_EQ(r.rsp["TS_GET_RSP"]["t"].size(), 3);
+    ASSERT_EQ(r.rsp["TS_GET_RSP"]["t"].size(), r.rsp["TS_GET_RSP"]["evt"].size());
+    ASSERT_EQ(r.rsp["TS_GET_RSP"]["t"], njson::parse(R"([10,11,12])"));
   }
   
 
@@ -522,7 +522,7 @@ TEST_F(TsSeriesTest, BuildIndex)
   {
     auto get = njson::parse(R"(
                               {
-                                "ts":["os1"],
+                                "ts":"os1",
                                 "rng":[],
                                 "where":
                                 {
@@ -536,9 +536,9 @@ TEST_F(TsSeriesTest, BuildIndex)
 
     auto r = s.get(get, GetRspCmd);
     
-    ASSERT_EQ(r.rsp["TS_GET_RSP"]["os1"]["t"].size(), 3);
-    ASSERT_EQ(r.rsp["TS_GET_RSP"]["os1"]["t"].size(), r.rsp["TS_GET_RSP"]["os1"]["evt"].size());
-    ASSERT_EQ(r.rsp["TS_GET_RSP"]["os1"]["t"], njson::parse(R"([13,14,17])"));
+    ASSERT_EQ(r.rsp["TS_GET_RSP"]["t"].size(), 3);
+    ASSERT_EQ(r.rsp["TS_GET_RSP"]["t"].size(), r.rsp["TS_GET_RSP"]["evt"].size());
+    ASSERT_EQ(r.rsp["TS_GET_RSP"]["t"], njson::parse(R"([13,14,17])"));
   }
 }
 

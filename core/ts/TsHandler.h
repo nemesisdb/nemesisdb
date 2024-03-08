@@ -78,12 +78,6 @@ private:
   }
 
 
-  ndb_always_inline void send (TsWebSocket * ws, njson&& msg)
-  {
-    send(ws, msg.to_string());
-  }
-
-
   ndb_always_inline void send (TsWebSocket * ws, const njson& msg)
   {
     send(ws, msg.to_string());
@@ -179,7 +173,7 @@ private:
     
     auto& cmd = msg.at(cmdName);
 
-    if (isValid(ws, cmdRspName, cmd, {Param::required("ts", JsonArray),Param::required("rng", JsonArray), Param::optional("where", JsonObject)}, std::bind_front(&TsHandler::validateGet, this)))
+    if (isValid(ws, cmdRspName, cmd, {Param::required("ts", JsonString),Param::required("rng", JsonArray), Param::optional("where", JsonObject)}, std::bind_front(&TsHandler::validateGet, this)))
       send(ws, m_series.get(cmd, cmdRspName).rsp);
   }
 
@@ -231,8 +225,13 @@ private:
         // disallow these operators with object and bool (">=":{"a":1} or ">":true  don't mean anything)
         if ((op == ">" || op == ">="|| op == "<" || op == "<=") && (operand.is_object() || operand.is_bool()))
           return {TsRequestStatus::ParamType, "Operator in 'where' has an invalid operand type"};
-        else if (op == "[]" && !(operand.is_array() && operand.size() == 2))
-          return {TsRequestStatus::ParamType, "Operator [] in 'where' value must be an array of two items"};
+        else if (op == "[]")
+        {
+          if (!(operand.is_array() && operand.size() == 2))
+            return {TsRequestStatus::ParamType, "Operator [] in 'where' value must be an array of two items"};
+          else if (operand[0] > operand[1])
+            return {TsRequestStatus::ParamType, "Range operator in 'where' has min is greater than max"};
+        }
       }
     }
     return {TsRequestStatus::Ok,""};

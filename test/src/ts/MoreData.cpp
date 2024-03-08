@@ -22,7 +22,7 @@ TEST_F(TsSeriesTest, Test10k_Index)
   {
     auto q = njson::parse(R"(
                               {
-                                "ts":["os1"],
+                                "ts":"os1",
                                 "rng":[4000,6000],
                                 "where":
                                 {
@@ -35,7 +35,6 @@ TEST_F(TsSeriesTest, Test10k_Index)
                             )");
 
     MeasureDuration md {[&s, &q, rspName = GetRspCmd]{ return s.get(q, rspName).rsp; }};
-    //std::cout << "size: " << md.result["TS_GET_RSP"]["os1"]["t"].size() << '\n';
   }
 
   
@@ -43,7 +42,7 @@ TEST_F(TsSeriesTest, Test10k_Index)
   {
     auto q = njson::parse(R"(
                               {
-                                "ts":["os1"],
+                                "ts":"os1",
                                 "rng":[0,10],
                                 "where":
                                 {
@@ -56,7 +55,7 @@ TEST_F(TsSeriesTest, Test10k_Index)
                             )");
 
     MeasureDuration md {[&s, &q, rspName = GetRspCmd]{ return s.get(q, rspName).rsp; }};
-    ASSERT_EQ(md.result["TS_GET_RSP"]["os1"]["t"].size(),2);
+    ASSERT_EQ(md.result["TS_GET_RSP"]["t"].size(),2);
   }
 
   
@@ -64,7 +63,7 @@ TEST_F(TsSeriesTest, Test10k_Index)
   {
     auto q = njson::parse(R"(
                               {
-                                "ts":["os1"],
+                                "ts":"os1",
                                 "rng":[0,10],
                                 "where":
                                 {
@@ -77,7 +76,7 @@ TEST_F(TsSeriesTest, Test10k_Index)
                             )");
 
     MeasureDuration md {[&s, &q, rspName = GetRspCmd]{ return s.get(q, rspName).rsp; }};
-    ASSERT_EQ(md.result["TS_GET_RSP"]["os1"]["t"].size(),3);
+    ASSERT_EQ(md.result["TS_GET_RSP"]["t"].size(),3);
   }
 
 
@@ -85,7 +84,7 @@ TEST_F(TsSeriesTest, Test10k_Index)
   {
     auto q = njson::parse(R"(
                               {
-                                "ts":["os1"],
+                                "ts":"os1",
                                 "rng":[0,10],
                                 "where":
                                 {
@@ -98,7 +97,7 @@ TEST_F(TsSeriesTest, Test10k_Index)
                             )");
 
     MeasureDuration md {[&s, &q, rspName = GetRspCmd]{ return s.get(q, rspName).rsp; }};
-    ASSERT_EQ(md.result["TS_GET_RSP"]["os1"]["t"].size(), 5);
+    ASSERT_EQ(md.result["TS_GET_RSP"]["t"].size(), 5);
   }
 
 
@@ -106,7 +105,7 @@ TEST_F(TsSeriesTest, Test10k_Index)
   {
     auto q = njson::parse(R"(
                               {
-                                "ts":["os1"],
+                                "ts":"os1",
                                 "rng":[0,10],
                                 "where":
                                 {
@@ -119,7 +118,7 @@ TEST_F(TsSeriesTest, Test10k_Index)
                             )");
 
     MeasureDuration md {[&s, &q, rspName = GetRspCmd]{ return s.get(q, rspName).rsp; }};
-    ASSERT_EQ(md.result["TS_GET_RSP"]["os1"]["t"].size(), 6);
+    ASSERT_EQ(md.result["TS_GET_RSP"]["t"].size(), 6);
   }
 
 
@@ -127,7 +126,7 @@ TEST_F(TsSeriesTest, Test10k_Index)
   {
     auto q = njson::parse(R"(
                               {
-                                "ts":["os1"],
+                                "ts":"os1",
                                 "rng":[0,10],
                                 "where":
                                 {
@@ -140,7 +139,7 @@ TEST_F(TsSeriesTest, Test10k_Index)
                             )");
 
     MeasureDuration md {[&s, &q, rspName = GetRspCmd]{ return s.get(q, rspName).rsp; }};
-    ASSERT_EQ(md.result["TS_GET_RSP"]["os1"]["t"].size(), 2);
+    ASSERT_EQ(md.result["TS_GET_RSP"]["t"].size(), 2);
   }
 
 
@@ -148,7 +147,7 @@ TEST_F(TsSeriesTest, Test10k_Index)
   {
     auto q = njson::parse(R"(
                               {
-                                "ts":["os1"],
+                                "ts":"os1",
                                 "rng":[0,16],
                                 "where":
                                 {
@@ -161,7 +160,7 @@ TEST_F(TsSeriesTest, Test10k_Index)
                             )");
 
     MeasureDuration md {[&s, &q, rspName = GetRspCmd]{ return s.get(q, rspName).rsp; }};
-    ASSERT_EQ(md.result["TS_GET_RSP"]["os1"]["t"].size(), 2);
+    ASSERT_EQ(md.result["TS_GET_RSP"]["t"].size(), 2);
   }
   
 
@@ -169,7 +168,7 @@ TEST_F(TsSeriesTest, Test10k_Index)
   {
     auto q = njson::parse(R"(
                               {
-                                "ts":["os1"],
+                                "ts":"os1",
                                 "rng":[],
                                 "where":
                                 {
@@ -182,7 +181,7 @@ TEST_F(TsSeriesTest, Test10k_Index)
                             )");
 
     MeasureDuration md {[&s, &q, rspName = GetRspCmd]{ return s.get(q, rspName).rsp; }};
-    ASSERT_EQ(md.result["TS_GET_RSP"]["os1"]["t"].size(), 168);
+    ASSERT_EQ(md.result["TS_GET_RSP"]["t"].size(), 168);
   }
 }
 
@@ -210,7 +209,7 @@ TEST_F(TsSeriesTest, Test10k_NoIndex)
   {
     auto q = njson::parse(R"(
                               {
-                                "ts":["os1"],
+                                "ts":"os1",
                                 "rng":[],
                                 "where":
                                 {
@@ -223,7 +222,7 @@ TEST_F(TsSeriesTest, Test10k_NoIndex)
                             )");
 
     MeasureDuration md {[&s, &q, rspName = GetRspCmd]{ return s.get(q, rspName).rsp; }};
-    ASSERT_EQ(md.result["TS_GET_RSP"]["os1"]["t"].size(), 168);
+    ASSERT_EQ(md.result["TS_GET_RSP"]["t"].size(), 168);
   }
 }
 

@@ -80,15 +80,15 @@ public:
 
   QueryResult get (const njson& query, const std::string& cmdRspName) const
   {
-    const auto& seriesNames = query["ts"].as<std::vector<SeriesName>>();
+    const auto& seriesName = query["ts"].as<SeriesName>();
 
-    QueryResult result {TsRequestStatus::Ok}; // TODO doesn't make sense for a query with multiple parts (multiple series)
+    QueryResult result; 
+    result.rsp[cmdRspName]["ts"] = seriesName;
 
-    for (const auto& name : seriesNames)
-    {
-      const auto& [stat, rsp] = getSingle(name, makeGetParams(query), cmdRspName);
-      result.rsp[cmdRspName][name] = std::move(rsp);
-    }
+    const auto& [stat, rsp] = getSingle(seriesName, makeGetParams(query), cmdRspName);
+    
+    result.rsp[cmdRspName].merge_or_update(std::move(rsp));
+    result.status = stat;
 
     return result;
   }
@@ -140,6 +140,7 @@ public:
 
 
 private:
+
 
   GetParams makeGetParams (const njson& conditions) const
   {

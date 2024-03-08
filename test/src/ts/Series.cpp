@@ -29,17 +29,15 @@ TEST_F(TsSeriesTest, NotExist)
 
   // single series
   {
-    const auto query = njson::parse(R"( {"ts":["os1"], "rng":[1,5]} )");
+    const auto query = njson::parse(R"( {"ts":"os1", "rng":[1,5]} )");
     auto res = s.get(query, GetRspCmd);
 
-    //ASSERT_EQ(res.status, TsRequestStatus::SeriesNotExist);
-    ASSERT_TRUE(res.rsp[GetRspCmd].contains("os1"));
-    ASSERT_TRUE(res.rsp[GetRspCmd]["os1"].contains("st"));
-    ASSERT_TRUE(res.rsp[GetRspCmd]["os1"].contains("t"));
-    ASSERT_TRUE(res.rsp[GetRspCmd]["os1"].contains("evt"));
+    ASSERT_TRUE(res.rsp[GetRspCmd].contains("st"));
+    ASSERT_TRUE(res.rsp[GetRspCmd].contains("t"));
+    ASSERT_TRUE(res.rsp[GetRspCmd].contains("evt"));
 
-    ASSERT_TRUE(res.rsp[GetRspCmd]["os1"]["t"].empty());
-    ASSERT_TRUE(res.rsp[GetRspCmd]["os1"]["evt"].empty());
+    ASSERT_TRUE(res.rsp[GetRspCmd]["t"].empty());
+    ASSERT_TRUE(res.rsp[GetRspCmd]["evt"].empty());
   }
   
 }
@@ -56,24 +54,23 @@ TEST_F(TsSeriesTest, GetSimple)
   njson rspEverything;
 
   {
-    const auto query = njson::parse(R"( {"ts":["os1"], "rng":[1,5]} )");
+    const auto query = njson::parse(R"( {"ts":"os1", "rng":[1,5]} )");
     auto res = s.get(query, GetRspCmd);
     
     //ASSERT_EQ(res.status, TsRequestStatus::Ok);
-    ASSERT_TRUE(res.rsp[GetRspCmd].contains("os1"));
-    ASSERT_TRUE(res.rsp[GetRspCmd]["os1"].contains("t"));
-    ASSERT_TRUE(res.rsp[GetRspCmd]["os1"].contains("evt"));
-    ASSERT_TRUE(res.rsp[GetRspCmd]["os1"].contains("st"));
+    ASSERT_TRUE(res.rsp[GetRspCmd].contains("t"));
+    ASSERT_TRUE(res.rsp[GetRspCmd].contains("evt"));
+    ASSERT_TRUE(res.rsp[GetRspCmd].contains("st"));
 
-    ASSERT_EQ(res.rsp[GetRspCmd]["os1"]["t"].size(), 4);
-    ASSERT_EQ(res.rsp[GetRspCmd]["os1"]["t"].size(), res.rsp[GetRspCmd]["os1"]["evt"].size());
+    ASSERT_EQ(res.rsp[GetRspCmd]["t"].size(), 4);
+    ASSERT_EQ(res.rsp[GetRspCmd]["t"].size(), res.rsp[GetRspCmd]["evt"].size());
     
     rspEverything = res.rsp;
   }
 
   // same as before but no end set
   {
-    const auto query1 = njson::parse(R"( {"ts":["os1"], "rng":[1]} )");
+    const auto query1 = njson::parse(R"( {"ts":"os1", "rng":[1]} )");
     const auto res = s.get(query1, GetRspCmd);
     
     ASSERT_EQ(res.status, TsRequestStatus::Ok);
@@ -91,61 +88,26 @@ TEST_F(TsSeriesTest, GetComplex)
   addComplexData("os1", s);
   
   {
-    const auto query = njson::parse(R"( {"ts":["os1"], "rng":[10,11]} )");
+    const auto query = njson::parse(R"( {"ts":"os1", "rng":[10,11]} )");
     const auto res = s.get(query, GetRspCmd);
     
-    //ASSERT_EQ(res.status, TsRequestStatus::Ok);
-    ASSERT_TRUE(res.rsp[GetRspCmd].contains("os1"));
-    ASSERT_TRUE(res.rsp[GetRspCmd]["os1"].contains("t"));
-    ASSERT_TRUE(res.rsp[GetRspCmd]["os1"].contains("evt"));
+    ASSERT_TRUE(res.rsp[GetRspCmd].contains("t"));
+    ASSERT_TRUE(res.rsp[GetRspCmd].contains("evt"));
 
-    ASSERT_EQ(res.rsp[GetRspCmd]["os1"]["t"].size(), 2);
-    ASSERT_EQ(res.rsp[GetRspCmd]["os1"]["t"].size(), res.rsp[GetRspCmd]["os1"]["evt"].size());    
+    ASSERT_EQ(res.rsp[GetRspCmd]["t"].size(), 2);
+    ASSERT_EQ(res.rsp[GetRspCmd]["t"].size(), res.rsp[GetRspCmd]["evt"].size());    
   }
 
   {
-    const auto query = njson::parse(R"( {"ts":["os1"], "rng":[12]} )");
+    const auto query = njson::parse(R"( {"ts":"os1", "rng":[12]} )");
     const auto res = s.get(query, GetRspCmd);
     
-    //ASSERT_EQ(res.status, TsRequestStatus::Ok);
-    ASSERT_TRUE(res.rsp[GetRspCmd].contains("os1"));
-    ASSERT_TRUE(res.rsp[GetRspCmd]["os1"].contains("t"));
-    ASSERT_TRUE(res.rsp[GetRspCmd]["os1"].contains("evt"));
+    ASSERT_TRUE(res.rsp[GetRspCmd].contains("t"));
+    ASSERT_TRUE(res.rsp[GetRspCmd].contains("evt"));
 
-    ASSERT_EQ(res.rsp[GetRspCmd]["os1"]["t"].size(), 1);
-    ASSERT_EQ(res.rsp[GetRspCmd]["os1"]["t"].size(), res.rsp[GetRspCmd]["os1"]["evt"].size());
+    ASSERT_EQ(res.rsp[GetRspCmd]["t"].size(), 1);
+    ASSERT_EQ(res.rsp[GetRspCmd]["t"].size(), res.rsp[GetRspCmd]["evt"].size());
   }
-}
-
-
-/// Multiple series, same range for each
-TEST_F(TsSeriesTest, GetMultipleSeries)
-{
-  Series s;
-
-  ASSERT_EQ(s.create("os1", CreateRspCmd).status, TsRequestStatus::Ok);
-  ASSERT_EQ(s.create("os2", CreateRspCmd).status, TsRequestStatus::Ok);
-
-  addSimpleData("os1", s);
-  addSimpleData("os2", s);
-  
-  const auto query = njson::parse(R"( {"ts":["os1","os2"], "rng":[1,5]} )");
-  const auto res = s.get(query, GetRspCmd);
-
-  //ASSERT_EQ(res.status, TsRequestStatus::Ok);
-
-  ASSERT_TRUE(res.rsp[GetRspCmd].contains("os1"));
-  ASSERT_TRUE(res.rsp[GetRspCmd].contains("os2"));
-  
-  ASSERT_TRUE(res.rsp[GetRspCmd]["os1"].contains("t"));
-  ASSERT_TRUE(res.rsp[GetRspCmd]["os1"].contains("evt"));
-  ASSERT_TRUE(res.rsp[GetRspCmd]["os2"].contains("t"));
-  ASSERT_TRUE(res.rsp[GetRspCmd]["os2"].contains("evt"));
-
-  ASSERT_EQ(res.rsp[GetRspCmd]["os1"]["t"].size(), 4);
-  ASSERT_EQ(res.rsp[GetRspCmd]["os1"]["t"].size(), res.rsp[GetRspCmd]["os1"]["evt"].size());
-  ASSERT_EQ(res.rsp[GetRspCmd]["os2"]["t"].size(), 4);
-  ASSERT_EQ(res.rsp[GetRspCmd]["os2"]["t"].size(), res.rsp[GetRspCmd]["os2"]["evt"].size());
 }
 
 
