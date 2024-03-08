@@ -203,9 +203,12 @@ private:
 
   std::tuple<TsRequestStatus, const std::string_view> validateGet(const njson& cmd)
   {
-    if (const auto& rng = cmd.at("rng") ; rng.size() > 2)
-      return {TsRequestStatus::RngSize, "'rng' cannot have more than 2 values"};
-    else if (rng[0].as<SeriesTime>() > rng[1].as<SeriesTime>())
+    const auto& rng = cmd.at("rng");
+    const auto rngSize = rng.size();
+
+    if (!(rngSize == 2 || rngSize == 0))
+      return {TsRequestStatus::RngSize, "'rng' must have zero or two values"};
+    else if (rngSize == 2 && rng[0].as<SeriesTime>() > rng[1].as<SeriesTime>())
       return {TsRequestStatus::RngValues,"'rng' invalid, first value must not be greater than second"};
     else if (cmd.contains("where"))
     {
