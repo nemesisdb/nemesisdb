@@ -2,15 +2,15 @@
 sidebar_position: 10
 ---
 
-# TS_CREATE_INDEX
-Creates an index in a time series.
+# TS_ADD_EVT
+Add event(s) to a time series.
 
-Indexed members are required to use the `where` in `TS_GET` and `TS_GET_MULTI`.
 
 |Param|Type|Description|
 |:---|:---:|:---|
 |ts|string|Name for the series|
-|key|string|Name of a top level member to index|
+|t|array  of times|An array of timestamps (64-bit integers)|
+|evt|array of objects|Each object represents an event|
 
 <br/>
 
@@ -40,7 +40,7 @@ We can index `temperature` but not `value` because it is not a top level member.
 }
 ```
 
-Now we can index `temperature` and `pressure`.
+Now we can index both `temperature` and `pressure`.
 
 
 With these members indexed they can be used in `TS_GET`:
@@ -49,7 +49,7 @@ With these members indexed they can be used in `TS_GET`:
 {
   "TS_GET":
   {
-    "ts":["sensors"],
+    "ts":"sensors",
     "rng":[1,3000],
     "where":
     {
@@ -66,7 +66,7 @@ With these members indexed they can be used in `TS_GET`:
 }
 ```
 
-- This says, "Get the events which occured between times 1 and 3000 inclusive, where the temperature is greater then 3 **and** the pressure is between 15 and 25 inclusive.
+- This says, "Get the events which occured between times 1 and 3000 inclusive, where the temperature is greater then 3 and the pressure is between 15 and 25 inclusive.
 
 
 ## Response

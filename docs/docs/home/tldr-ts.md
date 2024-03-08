@@ -63,7 +63,7 @@ Top level event members can be indexed, allowing to use them in the `where` clau
 {
   "TS_GET":
   {
-    "ts":["series1"],
+    "ts":"series1",
     "rng":[15,25],
     "where":
     {
@@ -89,7 +89,7 @@ We could also get events for temperatures in a range:
 {
   "TS_GET":
   {
-    "ts":["series1"],
+    "ts":"series1",
     "rng":[],
     "where":
     {
