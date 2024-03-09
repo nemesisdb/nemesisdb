@@ -7,7 +7,7 @@ NemesisDB is a JSON database, supporting key-value and timeseries data:
 <br/>
 
 # Time Series
-The time series implementation is intentionally simple. Data is stored by creating an array of times and an array of events.
+Data is stored by creating an array of times and an array of events.
 
 With temperature readings to store:
 
@@ -62,7 +62,7 @@ Add five events:
 - `evt` : event objects
 
 
-Get event data:
+Get event data between times `10` and `12` inclusive:
 
 ```json
 {
@@ -74,7 +74,7 @@ Get event data:
 }
 ```
 
-- `rng` is "time range" with min and max inclusive, returning the data for times between `10` and `12` inclusive
+- `rng` is "time range" with min and max inclusive
 - `rng` can be empty (`[]`) to use get whole time range
 
 <br/>
@@ -103,7 +103,7 @@ Get events where `temperature` is greater than or equal to 23:
 - Returning data for times `12` and `14`
 
 
-The range `[]` operator is used in `where` terms to limit the temperature value: 
+The range `[]` operator is used in `where` terms to limit the temperature value to between `21` and `22` inclusive: 
 
 ```json
 {
@@ -136,7 +136,7 @@ Rather than one large map, key-values are split into sessions:
 
 - Each session has a dedicated map
 - A session can live forever or expire after a given time
-- When a session expires its data is deleted, and optionally the session can be deleted
+- When a session expires its data is always deleted, and optionally the session can be deleted
 
 Examples of sessions:
 - Whilst a user is logged into an app
@@ -152,6 +152,7 @@ The purpose of sessions are:
 - When accessing (get, set, etc) data, only the data for a particular session is accessed
 - Controlling key expiry is simplified because it is sessions that expire, not individual keys
 
+You can create as many sessions as required (within memory limitations). When a session is created, a session token is returned (an integer), so to switch between sessions only requires using the appropriate token.
 
 More info [here](https://docs.nemesisdb.io/tutorials/sessions/what-is-a-session).
 
@@ -189,10 +190,13 @@ If we have these values:
 |20|2|
 |25|6|
 
-They can be visualised as:
+This can be visualised as:
 
 
 ![TimeSeries Design](https://20aac7f3a5b7ba27bcb45d6ccf5d4c71.cdn.bubble.io/f1710001659309x923605728983864200/tldr-ts-parallel.svg?_gl=1*1biw9dg*_gcl_au*MTc4NTg0NDIyMy4xNzA3NDIwNzA2*_ga*MTcwMTY5ODQzNC4xNjk3NTQyODkw*_ga_BFPVR2DEE2*MTcxMDAwMTYxOC4yNi4xLjE3MTAwMDE2MzkuMzkuMC4w)
+
+
+The first release of time series support is single threaded. 
 
 <br/>
 
