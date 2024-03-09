@@ -14,12 +14,16 @@ NemesisDB is a JSON in-memory database:
 ## Structure
 The time series implementation is intentionally simple:
 
-- An event occured at a particular time
 - A time series is created, identified by a unique name
+- An event occured at a particular time
 - Time is a signed 64-bit integer
 - An event is a JSON object
 - Top level event members can be indexed
 
+:::note
+In the current version time series data cannot be deleted. A future release will address this,
+likely by a partitioning scheme so time series data before a cut-off time is deleted. This is in preference to deleting data at particular times.
+:::
 
 Internally, time and event data are stored in parallel vectors (resizeable arrays). This is straight forward to find an event from its time (and vice versa) and also benefits from cache/spatial locality because vectors are contiguous in memory.
 
@@ -50,7 +54,7 @@ To record four temperature readings at times 10, 15, 20 and 25:
 
 An event at `evt[i]` occured at `t[i]`.
 
-At time 15 the temperature was 4 (`15` is at `t[1]` and `v[1]` is `{"temp":4}`).
+At time 15 the temperature was 4 (`15` is at `t[1]` and `evt[1]` is `{"temp":4}`).
 
 ![time series structure](img/tldr-ts-parallel.svg)
 

@@ -69,6 +69,11 @@ With these members indexed they can be used in `TS_GET`:
 - This says, "Get the events which occured between times 1 and 3000 inclusive, where the temperature is greater then 3 **and** the pressure is between 15 and 25 inclusive.
 
 
+## Notes
+
+1. Not all events require to have the member present, i.e. in the above example, if an event object does not contain `temperature` and/or `pressure` members, it is not an error
+
+
 ## Response
 
 `TS_CREATE_INDEX_RSP`

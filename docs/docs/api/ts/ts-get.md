@@ -8,13 +8,13 @@ Search a time series, returning time and event values.
 
 |Param|Type|Description|
 |:---|:---:|:---|
-|ts|string|Name for the series|
+|ts|string|Name of the series|
 |rng|array of **zero or two** times|Empty array means search all times, otherwise a min and max are provided. The min and max are inclusive|
 |where|One or multiple object|**Optional** <br/>Each object key is the name of an event member which must be indexed, see below for details|
 
 <br/>
 
-`TS_GET` can be with or without `where`. Without `where`, all events are returned that meet the `rng` criteria.
+`TS_GET` can be with or without `where`. Without `where`, all events are returned that meet the time `rng` criteria.
 
 - Get everything in the whole time series
 
@@ -191,10 +191,3 @@ Possible status values:
 - Ok
 - SeriesNotExist
 - NotIndexed
-
-
-For example, if we added data:
-
-```json
-
-```
