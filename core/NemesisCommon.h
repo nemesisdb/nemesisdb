@@ -276,6 +276,7 @@ static inline njson createErrorResponse (const RequestStatus status, const std::
 template <typename E>
 constexpr typename std::underlying_type<E>::type toUnderlying(const E e) noexcept
 {
+  // replace with std::to_underlying() in C++23
   return static_cast<typename std::underlying_type_t<E>>(e);
 }
 

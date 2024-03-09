@@ -255,7 +255,7 @@ public:
 static inline njson createErrorResponse (const TsRequestStatus status, const std::string_view msg = "")
 {
   njson rsp;
-  rsp["ERR"]["st"] = static_cast<int>(status);
+  rsp["ERR"]["st"] = toUnderlying(status);
   rsp["ERR"]["msg"] = msg;
   return rsp;
 }
