@@ -56,7 +56,7 @@ protected:
   const std::string CreateRspCmd          = "TS_CREATE_RSP";
   const std::string AddRspCmd             = "TS_ADD_EVT_RSP";
   const std::string CreateIndexRspCmd     = "TS_CREATE_INDEX_RSP";
-  const std::string DeleteRspCmd          = "TS_DELETE";
+  const std::string DeleteRspCmd          = "TS_DELETE_RSP";
 
 
 public:

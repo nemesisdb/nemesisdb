@@ -149,6 +149,7 @@ TEST_F(TsSeriesTest, DeleteSeriesNotExist)
   auto result = s.deleteSeries("os1", DeleteRspCmd);
 
   ASSERT_EQ(result.status, TsRequestStatus::SeriesNotExist); 
+  ASSERT_TRUE(result.rsp[DeleteRspCmd]["name"] == "os1");
   ASSERT_TRUE(result.rsp[DeleteRspCmd]["st"] == (int) TsRequestStatus::SeriesNotExist); 
 }
 
@@ -165,6 +166,7 @@ TEST_F(TsSeriesTest, DeleteSeries)
     auto result = s.deleteSeries("os1", DeleteRspCmd);
 
     ASSERT_EQ(result.status, TsRequestStatus::Ok);
+    ASSERT_TRUE(result.rsp[DeleteRspCmd]["name"] == "os1");
     ASSERT_TRUE(result.rsp[DeleteRspCmd]["st"] == (int)TsRequestStatus::Ok); 
   }
   
@@ -178,6 +180,7 @@ TEST_F(TsSeriesTest, DeleteSeries)
     auto result = s.deleteSeries("os1", DeleteRspCmd);
 
     ASSERT_EQ(result.status, TsRequestStatus::Ok);
+    ASSERT_TRUE(result.rsp[DeleteRspCmd]["name"] == "os1");
     ASSERT_TRUE(result.rsp[DeleteRspCmd]["st"] == (int)TsRequestStatus::Ok);
   }
 }

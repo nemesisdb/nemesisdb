@@ -67,7 +67,7 @@ public:
     }
 
     qr.rsp[cmdRspName]["st"] = toUnderlying(qr.status);
-    qr.rsp[cmdRspName]["ts"] = name;
+    qr.rsp[cmdRspName]["name"] = name;
 
     return qr;
   }
@@ -149,19 +149,18 @@ public:
     QueryResult qr;
 
     if (!hasSeries(seriesName))
-    {
       qr.status = TsRequestStatus::SeriesNotExist;
-      qr.rsp = SeriesNotExistRsp;
-    }
     else
     {
       const auto created = m_series.at(seriesName)->createIndex(indexName);
+      qr.status = created ? TsRequestStatus::Ok : TsRequestStatus::IndexExists;  
 
       PLOGD_IF(!created) << "Index '" << indexName << "' already exists in series " << seriesName; 
-
-      qr.status = created ? TsRequestStatus::Ok : TsRequestStatus::IndexExists;  
-      qr.rsp[cmdRspName][seriesName]["st"] = toUnderlying(qr.status);
     }
+
+    qr.rsp[cmdRspName]["ts"] = seriesName;
+    qr.rsp[cmdRspName]["st"] = toUnderlying(qr.status);
+
     return qr;
   }
 

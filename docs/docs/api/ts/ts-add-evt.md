@@ -9,64 +9,87 @@ Add event(s) to a time series.
 |Param|Type|Description|
 |:---|:---:|:---|
 |ts|string|Name for the series|
-|t|array  of times|An array of timestamps (64-bit integers)|
+|t|array  of times|An array of timestamps (64-bit integers), in ascending order|
 |evt|array of objects|Each object represents an event|
 
 <br/>
 
-Existing data in the time series is indexed before the response is returned. Thereafter it is updated on each call to `TS_ADD_EVT`.
+`TS_ADD_EVT` appends to the series, so the times (`t`) must be in order over the lifetime of the series.
 
+Each `TS_ADD_EVT` must not submit a time that is lower than the current time in the series (i.e. it can be equal to or greater than the current time).
 
-## Indexes
-Only top level event members can be indexed. For example, a time series which stores events for temperature and pressure sensor readings, could look like:
+:::warning
+To reduce compute, the server does not check the time ordering.
+
+A future release could check the ordering as an option of the time series, returning an error if incorrect.
+:::
+
+<br/>
+
+Sending this:
 
 ```json
 {
-  "temperature":5.5,
-  "pressure":
+  "TS_ADD_EVT":
   {
-    "value":23
+    "ts":"temps",
+    "t":[100, 101, 103],
+    "evt":
+    [
+      {"temp":3},
+      {"temp":4},
+      {"temp":5}
+    ]
   }
 }
 ```
 
-We can index `temperature` but not `value` because it is not a top level member. We must move `pressure` to the top level:
+The series times are:
 
+![first](img/ts-add-evt-times_0.svg)
 
-```json
-{
-  "temperature":5.5,
-  "pressure": 23
-}
-```
-
-Now we can index both `temperature` and `pressure`.
-
-
-With these members indexed they can be used in `TS_GET`:
+Followed by:
 
 ```json
 {
-  "TS_GET":
+  "TS_ADD_EVT":
   {
-    "ts":"sensors",
-    "rng":[1,3000],
-    "where":
-    {
-      "temperature":
-      {
-        ">":3.0
-      },
-      "pressure":
-      {
-        "[]":[15,25]
-      }
-    }
+    "ts":"temps",
+    "t":[102, 105],
+    "evt":
+    [
+      {"temp":6},
+      {"temp":7}
+    ]
   }
 }
 ```
 
-- This says, "Get the events which occured between times 1 and 3000 inclusive, where the temperature is greater then 3 and the pressure is between 15 and 25 inclusive.
+Is invalid because the second command starts at time `102`, but the time series is at time `103`.
+
+![second](img/ts-add-evt-times_1.svg)
+
+
+But you could send:
+
+```json
+{
+  "TS_ADD_EVT":
+  {
+    "ts":"temps",
+    "t":[103, 105],
+    "evt":
+    [
+      {"temp":6},
+      {"temp":7}
+    ]
+  }
+}
+```
+
+Because it starts at time `103` which is **not less** than series current time (`103`). After this command the current time becomes `105`:
+
+![second](img/ts-add-evt-times_2.svg)
 
 
 ## Examples
