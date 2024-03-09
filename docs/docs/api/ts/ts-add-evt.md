@@ -9,7 +9,7 @@ Add event(s) to a time series.
 |Param|Type|Description|
 |:---|:---:|:---|
 |ts|string|Name for the series|
-|t|array  of times|An array of timestamps (64-bit integers), in ascending order|
+|t|array  of times|An array of timestamps (64-bit signed integers), in ascending order|
 |evt|array of objects|Each object represents an event|
 
 <br/>
