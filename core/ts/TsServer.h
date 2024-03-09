@@ -97,7 +97,7 @@ public:
             ++serverStats->queryCount;
 
             if (opCode != uWS::OpCode::TEXT)
-              ws->send(createErrorResponse(RequestStatus::OpCodeInvalid).to_string(), WsSendOpCode);
+              ws->send(createErrorResponse(TsRequestStatus::OpCodeInvalid).to_string(), WsSendOpCode);
             else
             {
               njson request = njson::null();
@@ -108,22 +108,22 @@ public:
               }
               catch (...)
               {
+                // request remains null
               }
               
+              // can't reliably parse command if JSON is invalid so send a general "ERR" response
               if (request.is_null())
-                PLOGD << "Duff json";
+                ws->send(createErrorResponse(TsRequestStatus::JsonInvalid).to_string(), WsSendOpCode);
               else if (request.empty() || !request.is_object())
-                PLOGD << "Query empty or not an object";
+                ws->send(createErrorResponse(TsRequestStatus::CommandSyntax).to_string(), WsSendOpCode);
               else
               {
                 const auto& commandName = request.object_range().cbegin()->key();
 
                 PLOGD << commandName;
 
-                if (request.at(commandName).empty())
-                  PLOGD << "Command empty";
-                else if (const auto status = handler->handle(ws, commandName, std::move(request)); status != TsRequestStatus::Ok)
-                  PLOGD << "Some handle error";
+                if (const auto status = handler->handle(ws, commandName, std::move(request)); status != TsRequestStatus::Ok)
+                  ws->send(createErrorResponse(status).to_string(), WsSendOpCode);
               }
             }
           },

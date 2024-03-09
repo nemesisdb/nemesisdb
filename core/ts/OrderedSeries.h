@@ -56,6 +56,8 @@ public:
 
   static OrderedSeries create(const SeriesName& name)
   {
+    PLOGD << "Creating OrderedSeries " << name;
+
     OrderedSeries os{name};
     os.init();
     return os;

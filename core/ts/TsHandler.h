@@ -27,6 +27,7 @@ public:
     static const std::array<std::function<void(TsWebSocket *, njson&&)>, static_cast<std::size_t>(TsCommand::Max)> Handlers =
     {
       std::bind_front(&TsHandler::createTimeSeries,   std::ref(*this)),
+      std::bind_front(&TsHandler::deleteTimeSeries,   std::ref(*this)),
       std::bind_front(&TsHandler::addEvt,             std::ref(*this)),
       std::bind_front(&TsHandler::get,                std::ref(*this)),
       std::bind_front(&TsHandler::getMultipleRanges,  std::ref(*this)),
@@ -127,6 +128,27 @@ private:
   }
 
 
+  void deleteTimeSeries (TsWebSocket * ws, njson&& msg)
+  {
+    static const auto cmdName     = "TS_DELETE"s;
+    static const auto cmdRspName  = "TS_DELETE_RSP"s;
+
+
+    auto validate = [](const njson& cmd) -> std::tuple<TsRequestStatus, const std::string_view>
+    {
+      if (cmd.at("name").empty())
+        return {TsRequestStatus::ParamValue, "Series name empty"};
+      
+      return {TsRequestStatus::Ok, ""};
+    };
+
+    const auto& cmd = msg[cmdName];
+
+    if (isValid(ws, cmdRspName, cmd, {Param::required("name", JsonString)}, validate))
+      send(ws, m_series.deleteSeries(cmd.at("name").as_string(), cmdRspName).rsp);
+  }
+
+
   void createIndex (TsWebSocket * ws, njson&& msg)
   {
     static const auto cmdName     = "TS_CREATE_INDEX"s;
@@ -147,7 +169,7 @@ private:
     auto validate = [](const njson& cmd) -> std::tuple<TsRequestStatus, const std::string_view>
     {
       if (cmd.at("t").size() != cmd.at("evt").size())
-        return {TsRequestStatus::ValueSize, "'evt' and 't' not same length"};
+        return {TsRequestStatus::ParamValue, "'evt' and 't' not same length"};
 
       for (const auto& item : cmd.at("evt").array_range())
       {
@@ -207,7 +229,7 @@ private:
     else if (cmd.contains("where"))
     {
       if (cmd.at("where").empty())
-        return {TsRequestStatus::ValueSize, "'where' has no terms"};
+        return {TsRequestStatus::ParamValue, "'where' has no terms"};
 
       // only objects permitted in "where" and must not be empty
       for (const auto& member : cmd.at("where").object_range())
@@ -217,7 +239,7 @@ private:
         if (!term.is_object())
           return {TsRequestStatus::ParamType, "Term in 'where' is not an object"};
         else if (term.size() != 1)
-          return {TsRequestStatus::ValueSize, "Term in 'where' must have one member"};
+          return {TsRequestStatus::ParamValue, "Term in 'where' must have one member"};
 
         // confirm operators have valid value types
         const auto& op = term.object_range().cbegin()->key();

@@ -11,7 +11,7 @@ NemesisDB is an in-memory JSON key-value and timeseries database.
 - Key-value data can be persisted to the filesystem
 - Key-value data can be restored from file at startup or with a command at any time
 
-NemesisDB is available as a 64-bit Debian package and Docker image for x86 (Intel/AMD) CPUs.
+NemesisDB is available as an x86 64-bit Debian package and Docker image.
 
 <br/>
 

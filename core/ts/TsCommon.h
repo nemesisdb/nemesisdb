@@ -24,24 +24,28 @@ enum class TsRequestStatus
 {
   None = 0,
   Ok = 1,
+  OpCodeInvalid,
+  JsonInvalid,
   UnknownError,
+  CommandSyntax,
   CommandNotExist,
   ParamMissing,
   ParamType,
+  ParamValue,
   RngSize,
   RngValues,
   SeriesNotExist = 20,
   SeriesExists,
   SeriesType,
   IndexExists = 40,
-  NotIndexed,
-  ValueSize = 60,
+  NotIndexed
 };
 
 
 enum class TsCommand
 {
   TsCreate,
+  TsDelete,
   TsAddEvt,
   TsGet,
   TsGetMultipleRanges,
@@ -53,6 +57,7 @@ enum class TsCommand
 const std::map<const std::string_view, const TsCommand> QueryNameToType = 
 {  
   {"TS_CREATE",             TsCommand::TsCreate},
+  {"TS_DELETE",             TsCommand::TsDelete},
   {"TS_ADD_EVT",            TsCommand::TsAddEvt},
   {"TS_GET",                TsCommand::TsGet},
   {"TS_GET_MULTI",          TsCommand::TsGetMultipleRanges},
@@ -79,24 +84,26 @@ struct IndexNode
   using IndexedTimes = std::vector<TimeIndexTuple>;  
 
   
-  // TODO something like this, so we add everything to index before calling sort()
-  // struct AddToken
-  // {
-  //   AddToken(IndexedTimes& times, const std::size_t size) : times(times), size(size)
-  //   {
+  // TODO something like this, so add everything to index before calling sort()
+  /*
+  struct AddToken
+  {
+    AddToken(IndexedTimes& times, const std::size_t size) : times(times), size(size)
+    {
 
-  //   }
+    }
 
-  //   ~AddToken()
-  //   {
-  //     if (times.size() != size)
-  //      std::sort(std::begin(times), std::end(times), IndexComparer{});
-  //   }
+    ~AddToken()
+    {
+      if (times.size() != size)
+       std::sort(std::begin(times), std::end(times), IndexComparer{});
+    }
 
-  //   private:
-  //     IndexedTimes& times; // maybe reference_wrap this
-  //     std::size_t size;
-  // };
+    private:
+      IndexedTimes& times; // maybe reference_wrap this
+      std::size_t size;
+  };
+  */
 
   
 
@@ -243,6 +250,16 @@ public:
 
   virtual bool createIndex (const std::string& key) = 0;
 };
+
+
+static inline njson createErrorResponse (const TsRequestStatus status, const std::string_view msg = "")
+{
+  njson rsp;
+  rsp["ERR"]["st"] = static_cast<int>(status);
+  rsp["ERR"]["msg"] = msg;
+  return rsp;
+}
+
 
 } // ns ts
 } // ns core

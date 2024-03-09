@@ -140,6 +140,52 @@ TEST_F(TsSeriesTest, GetMultipleRanges)
 }
 
 
+TEST_F(TsSeriesTest, DeleteSeriesNotExist)
+{
+  Series s;
+
+  ASSERT_FALSE(s.hasSeries("os1"));
+  
+  auto result = s.deleteSeries("os1", DeleteRspCmd);
+
+  ASSERT_EQ(result.status, TsRequestStatus::SeriesNotExist); 
+  ASSERT_TRUE(result.rsp[DeleteRspCmd]["st"] == (int) TsRequestStatus::SeriesNotExist); 
+}
+
+
+TEST_F(TsSeriesTest, DeleteSeries)
+{
+  Series s;
+
+  // create, delete
+  {
+    ASSERT_EQ(s.create("os1", CreateRspCmd).status, TsRequestStatus::Ok);
+    ASSERT_TRUE(s.hasSeries("os1"));
+
+    auto result = s.deleteSeries("os1", DeleteRspCmd);
+
+    ASSERT_EQ(result.status, TsRequestStatus::Ok);
+    ASSERT_TRUE(result.rsp[DeleteRspCmd]["st"] == (int)TsRequestStatus::Ok); 
+  }
+  
+  // create, add, delete
+  {
+    ASSERT_EQ(s.create("os1", CreateRspCmd).status, TsRequestStatus::Ok);
+    ASSERT_TRUE(s.hasSeries("os1"));
+
+    addSimpleData("os1", s);
+
+    auto result = s.deleteSeries("os1", DeleteRspCmd);
+
+    ASSERT_EQ(result.status, TsRequestStatus::Ok);
+    ASSERT_TRUE(result.rsp[DeleteRspCmd]["st"] == (int)TsRequestStatus::Ok);
+  }
+}
+
+
+
+
+
 int main (int argc, char ** argv)
 {
 	testing::InitGoogleTest(&argc, argv);	

@@ -31,49 +31,76 @@ public:
   
   QueryResult create (const SeriesName& name, const std::string& cmdRspName)
   {
+    QueryResult qr {TsRequestStatus::Ok};
+    qr.rsp[cmdRspName]["name"] = name;
+
     if (hasSeries(name))
     {
-      PLOGD << "Series name already exists";
-      return TsRequestStatus::SeriesExists;
+      PLOGD << "Series " << name << " already exists";
+      qr.status = TsRequestStatus::SeriesExists;
+    }
+    else
+    {      
+      m_series[name] = std::make_unique<OrderedSeries>(OrderedSeries::create(name));
+      qr.status = TsRequestStatus::Ok;
+    }
+
+    qr.rsp[cmdRspName]["st"] = toUnderlying(qr.status);
+
+    return qr;
+  }
+
+
+  QueryResult deleteSeries (const SeriesName& name, const std::string& cmdRspName)
+  {
+    QueryResult qr {TsRequestStatus::Ok};
+    
+    if (!hasSeries(name))
+    {
+      PLOGD << "Series name does not exist";
+      qr.status = TsRequestStatus::SeriesNotExist;
     }
     else
     {
-      QueryResult qr{TsRequestStatus::Ok};
-
-      m_series[name] = std::make_unique<OrderedSeries>(OrderedSeries::create(name));
-      
-      qr.rsp[cmdRspName]["st"] = toUnderlying(TsRequestStatus::Ok);
-      qr.rsp[cmdRspName]["name"] = name;
-
-      return qr;
+      if (m_series.erase(name) != 1U)
+        qr.status = TsRequestStatus::UnknownError;
     }
+
+    qr.rsp[cmdRspName]["st"] = toUnderlying(qr.status);
+    qr.rsp[cmdRspName]["ts"] = name;
+
+    return qr;
   }
 
 
   QueryResult add (njson query, const std::string& cmdRspName)
   {
-    QueryResult qr{TsRequestStatus::Ok};
-
     const auto& name = query["ts"].as<SeriesName>();
 
+    QueryResult qr{TsRequestStatus::Ok};
+    qr.rsp[cmdRspName]["ts"] = name;
+
     if (!hasSeries(name))
+    {
+      PLOGD << "Series name does not exist";
       qr.rsp[cmdRspName] = SeriesNotExistRsp;
+      qr.status = TsRequestStatus::SeriesNotExist;
+    }
     else
     {
       try
       {
-        m_series.at(name)->add(query.at("t"), std::move(query.at("evt"))); 
-        
-        qr.rsp[cmdRspName]["st"] = toUnderlying(TsRequestStatus::Ok);
-        qr.rsp[cmdRspName]["ts"] = name;
+        m_series.at(name)->add(query.at("t"), std::move(query.at("evt")));
       }
       catch(const std::exception& ex)
       {
         PLOGE << ex.what();
         qr.status = TsRequestStatus::UnknownError;
       }
+
+      qr.rsp[cmdRspName]["st"] = toUnderlying(qr.status);
     }
-    
+
     return qr;
   }
 
