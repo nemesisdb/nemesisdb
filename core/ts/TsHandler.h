@@ -168,8 +168,19 @@ private:
 
     auto validate = [](const njson& cmd) -> std::tuple<TsRequestStatus, const std::string_view>
     {
-      if (cmd.at("t").size() != cmd.at("evt").size())
+      const auto tSize = cmd.at("t").size();
+      const auto evtSize = cmd.at("evt").size();
+
+      if (tSize == 0 || evtSize == 0)
+        return {TsRequestStatus::ParamValue, "'evt' and/or 't' are empty"};
+      else if (tSize != evtSize)
         return {TsRequestStatus::ParamValue, "'evt' and 't' not same length"};
+
+      for (const auto& item : cmd.at("t").array_range())
+      {
+        if (!item.is<SeriesTime>())
+          return {TsRequestStatus::ParamType, "'t' must be an array of signed integers"};
+      }  
 
       for (const auto& item : cmd.at("evt").array_range())
       {

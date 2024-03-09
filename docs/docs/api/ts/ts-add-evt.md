@@ -152,7 +152,7 @@ Because it starts at time `103` which is **not less** than series current time (
 
 ## Response
 
-`TS_CREATE_INDEX_RSP`
+`TS_ADD_EVT_RSP`
 
 See the [response status](./../TS-Statuses) page for status values.
 
@@ -161,10 +161,16 @@ See the [response status](./../TS-Statuses) page for status values.
 |:---|:---|:---|
 |st|unsigned int|Status|
 
+<br/>
 
 Possible status values:
 
 - Ok
 - SeriesNotExist
-- IndexExists
+- ParamValue
+  - `t` and `evt` are not the same size
+  - `t` or `evt` is empty
+- ParamType
+  - `evt` is not an array of objects
+  - `t` is not an array of signed integers
 
