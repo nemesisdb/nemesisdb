@@ -7,9 +7,37 @@ NemesisDB is a JSON database, supporting key-value and timeseries data:
 <br/>
 
 # Time Series
-The time series implementation is intentionally simple. Data is stored by relating an event to a time:
+The time series implementation is intentionally simple. Data is stored by creating an array of times and an array of events.
 
-After creating a time series called "temperatures" we add events:
+With temperature readings to store:
+
+|Time|Temperature|
+|:---:|:---:|
+|10|20|
+|11|21|
+|12|25|
+|13|22|
+|14|23|
+
+
+Create a time series:
+
+```json
+{
+  "TS_CREATE":
+  {
+    "name":"temperatures",
+    "type":"Ordered"
+  }
+}
+```
+
+- `name`: name of the series
+- `type`: only "Ordered" available at the moment
+
+<br/>
+
+Add five events:
 
 ```json
 {
@@ -17,13 +45,13 @@ After creating a time series called "temperatures" we add events:
   {
     "ts":"temperatures",
     "t":[10,11,12,13,14],
-    "v":
+    "evt":
     [
-      {"temp":20},
-      {"temp":21},
-      {"temp":25},
-      {"temp":21},
-      {"temp":23}
+      {"temperature":20},
+      {"temperature":21},
+      {"temperature":25},
+      {"temperature":22},
+      {"temperature":23}
     ]
   }
 }
@@ -31,11 +59,10 @@ After creating a time series called "temperatures" we add events:
 
 - `ts` : the name of time series
 - `t` : time values
-- `v` : event values
+- `evt` : event objects
 
-At time `10` the temperature was `20`, at time `11` it was `21`, etc. 
 
-We can get event data:
+Get event data:
 
 ```json
 {
@@ -47,35 +74,14 @@ We can get event data:
 }
 ```
 
-- `rng` : means "range" with the min and max values inclusive
+- `rng` is "time range" with min and max inclusive, returning the data for times between `10` and `12` inclusive
+- `rng` can be empty (`[]`) to use get whole time range
 
-This returns the temperates at times between `10` and `12` inclusive.
+<br/>
 
-- `rng` can be empty (`[]`) to use the whole time range
+If an event member is indexed, it can be used in a `where` clause.
 
-If an event key is indexed, it can be used in a `where` clause:
-
-```json
-{
-  "TS_GET":
-  {
-    "ts":["temperatures"],
-    "rng":[10,12],
-    "where":
-    {
-      "temp":
-      {
-        ">=":21
-      }
-    }
-  }
-}
-```
-
-- Get the events when the `temp` was `>= 21` between times 10 and 12 (inclusive)
-- Returning the event at time `11`
-
-Another example:
+Get events where `temperature` is greater than or equal to 23:
 
 ```json
 {
@@ -85,19 +91,44 @@ Another example:
     "rng":[],
     "where":
     {
-      "temp":
+      "temperature":
       {
-        "[]":[21,23]
+        ">=":23
       }
     }
   }
 }
 ```
 
-- Search the whole time series (`"rng":[]`)
-- When the `temp` was between `21` and `23` (inclusive)
-- This returns event data for times: 11, 13 and 14
+- Returning data for times `12` and `14`
 
+
+The range `[]` operator is used in `where` terms to limit the temperature value: 
+
+```json
+{
+  "TS_GET":
+  {
+    "ts":["temperatures"],
+    "rng":[],
+    "where":
+    {
+      "temperature":
+      {
+        "[]":[21,22]
+      }
+    }
+  }
+}
+```
+
+- Returning data for times `11` and `13`
+
+<br/>
+
+More information [here](https://docs.nemesisdb.io/home/tldr-ts).
+
+<br/>
 <br/>
 
 # Key Value
@@ -115,23 +146,16 @@ Examples of sessions:
 
 <br/>
 
-# Sessions
+## Sessions
 The purpose of sessions are:
 - Each session only contains data required for that session, rather than a single large map
 - When accessing (get, set, etc) data, only the data for a particular session is accessed
 - Controlling key expiry is simplified because it is sessions that expire, not individual keys
 
-Rather having a single large map of keys, they are split into sessions.
-
-For example, a system which manages 100K users, each of which requires 10 keys:
-
-- We have 100K sessions, each containing 10 keys.
-- Each session represents a user's data
-- Managing expiring sessions is simpler because rather than monitoring 1M keys, only the 100K sessions are managed
-- When accessing session data, only an individual session's map is accessed
 
 More info [here](https://docs.nemesisdb.io/tutorials/sessions/what-is-a-session).
 
+<br/>
 <br/>
 
 # Install
@@ -144,9 +168,9 @@ You can also build from source, instructions below.
 
 
 <br/>
+<br/>
 
 # Design
-
 
 <br/>
 
@@ -156,14 +180,26 @@ This uses parallel vectors to store data:
 - Two vectors, `m_times` and `m_events`, store the times and events
 - An event at `m_events[i]` occured at `m_times[i]`
 
-This means in a  query such as `"rng":[10,14]`, we can search `m_times` for those times, and the event data is found at the same offsets in `m_events`. This approach also benefits from cache locality.
+If we have these values:
 
-The first release of timeseries is single threaded.
+|Time|Temperature|
+|:---:|:---:|
+|10|5|
+|15|4|
+|20|2|
+|25|6|
+
+They can be visualised as:
+
+
+![TimeSeries Design](https://20aac7f3a5b7ba27bcb45d6ccf5d4c71.cdn.bubble.io/f1710001659309x923605728983864200/tldr-ts-parallel.svg?_gl=1*1biw9dg*_gcl_au*MTc4NTg0NDIyMy4xNzA3NDIwNzA2*_ga*MTcwMTY5ODQzNC4xNjk3NTQyODkw*_ga_BFPVR2DEE2*MTcxMDAwMTYxOC4yNi4xLjE3MTAwMDE2MzkuMzkuMC4w)
+
+<br/>
 
 ## Key Value
 The design separates I/O and session data threads:
 
-- Core(s) are dedicated for I/O operations (WebSocket server)
+- Core(s) are dedicated for I/O operations (the WebSocket server)
 - Remaining core(s) are dedicated to handle sessions
 
 Each thread is assigned to a core.
@@ -179,7 +215,7 @@ With 6 cores, 4 are assigned to I/O and 2 for session data:
 ![6 cores](https://20aac7f3a5b7ba27bcb45d6ccf5d4c71.cdn.bubble.io/f1707487522110x648951654930151300/nemesis_cores_6.png?_gl=1*j7jxla*_gcl_au*MTc4NTg0NDIyMy4xNzA3NDIwNzA2*_ga*MTcwMTY5ODQzNC4xNjk3NTQyODkw*_ga_BFPVR2DEE2*MTcwNzQ4Njc4MS4yNC4xLjE3MDc0ODc2MDIuNjAuMC4w)
 
 
-If there are multiple session data threads, the data is distributed over the threads, all of which are independent (i.e. no data is shared between the session data threads). 
+In the second image, there are two session map threads, each managing a subset of the sessions. There is no data shared between the session map threads so they process concurrently.
 
 
 > [!NOTE]
@@ -187,9 +223,10 @@ If there are multiple session data threads, the data is distributed over the thr
 > - The limit is set by `NEMESIS_MAX_CORES` in `NemesisCommon.h`
 > - The ratio of I/O to session pool threads is defined by `CoresToIoThreads` map in `KvServer::init()`. This defines how many threads are assigned to I/O, the remaining are for session pool(s).
 >
-> 99% of testing has been with limit as 4
+> Most testing has been with limit as 4
 
 
+<br/>
 <br/>
 
 # Build - Linux Only
@@ -338,4 +375,5 @@ Tests:
 
 # License
 See LICENSE file.
+
 
