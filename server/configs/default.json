@@ -1,5 +1,5 @@
 {
-  "version":2,
+  "version":2,  // config version 2 from NemesisDB v0.4
   "mode":"kv",  // "ts" for "TimeSeries" or "kv" "KeyValue" (default)
   "kv":
   {
