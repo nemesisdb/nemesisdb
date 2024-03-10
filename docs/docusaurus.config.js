@@ -85,9 +85,8 @@ const config = {
       colorMode:
       {
         defaultMode: 'dark',
-        disableSwitch: false,        
-        respectPrefersColorScheme: false,
-        darkCodeTheme: darkCodeTheme,
+        disableSwitch: true,        
+        respectPrefersColorScheme: false
       },
       footer:
       {
