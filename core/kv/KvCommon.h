@@ -14,9 +14,12 @@ namespace nemesis { namespace core { namespace kv {
 
 using PoolId = std::size_t;
 
-const uWS::OpCode WsSendOpCode = uWS::OpCode::TEXT;
+
+inline ServerStats * serverStats;
+
 
 static PoolId MaxPools = 1U;
+
 
 enum class KvQueryType : std::uint8_t
 { 
@@ -216,13 +219,6 @@ struct KvCommand
   KvQueryType type; 
   SessionToken tkn;
 };
-
-
-struct ServerStats
-{
-  std::atomic_size_t queryCount{0U};
-
-} * serverStats;
 
 
 struct LoadResult

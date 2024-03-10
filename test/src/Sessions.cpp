@@ -12,9 +12,12 @@ TEST_F(NemesisTest, New_NoName)
 
 	ASSERT_TRUE(tc.openNoSession());
 
-	tc.test(TestData {  .request =  R"({ "SH_NEW":{ }})"_json,
-											.expected = {R"({ "SH_NEW_RSP":{"st":13, "m":"", "tkn":null}})"_json},
-                      .checkToken = true});
+  {
+		TestData td {MakeTestData(R"({ "SH_NEW":{ }})"_json)};
+		tc.test(td);
+		ASSERT_TRUE(td.actual[0]["SH_NEW_RSP"]["st"] == RequestStatus::ParamMissing); 
+    ASSERT_TRUE(td.actual[0]["SH_NEW_RSP"]["tkn"].is_null());
+	}
 }
 
 
@@ -24,9 +27,12 @@ TEST_F(NemesisTest, New_NameEmpty)
 
 	ASSERT_TRUE(tc.openNoSession());
 
-	tc.test(TestData {  .request =  R"({ "SH_NEW":{ "name":"" }})"_json,
-											.expected = {R"({ "SH_NEW_RSP":{"st":42, "m":"name", "tkn":null}})"_json},
-                      .checkToken = true});
+  {
+		TestData td {MakeTestData(R"({ "SH_NEW":{ "name":"" }})"_json)};
+		tc.test(td);
+		ASSERT_TRUE(td.actual[0]["SH_NEW_RSP"]["st"] == RequestStatus::ValueSize); 
+    ASSERT_TRUE(td.actual[0]["SH_NEW_RSP"]["tkn"].is_null());
+	}
 }
 
 
@@ -36,9 +42,12 @@ TEST_F(NemesisTest, New_NameNotString)
 
 	ASSERT_TRUE(tc.openNoSession());
 
-	tc.test(TestData {  .request =  R"({ "SH_NEW":{ "name":523423 }})"_json,
-											.expected = {R"({ "SH_NEW_RSP":{"st":41, "m":"name", "tkn":null}})"_json},
-                      .checkToken = true});
+  {
+		TestData td {MakeTestData(R"({ "SH_NEW":{ "name":523423 }})"_json)};
+		tc.test(td);
+		ASSERT_TRUE(td.actual[0]["SH_NEW_RSP"]["st"] == RequestStatus::ValueTypeInvalid); 
+    ASSERT_TRUE(td.actual[0]["SH_NEW_RSP"]["tkn"].is_null());
+	}
 }
 
 
@@ -47,10 +56,13 @@ TEST_F(NemesisTest, New_SharedWrongType)
 	TestClient tc;
 
 	ASSERT_TRUE(tc.openNoSession());
-
-	tc.test(TestData {  .request =  R"({ "SH_NEW":{ "name":"sesh1", "shared":"a" }})"_json,
-											.expected = {R"({ "SH_NEW_RSP":{"st":13, "m":"shared", "tkn":null}})"_json},
-                      .checkToken = true});
+  
+  {
+		TestData td {MakeTestData(R"({ "SH_NEW":{ "name":"sesh1", "shared":"a" }})"_json)};
+		tc.test(td);
+		ASSERT_TRUE(td.actual[0]["SH_NEW_RSP"]["st"] == RequestStatus::ValueTypeInvalid); 
+    ASSERT_TRUE(td.actual[0]["SH_NEW_RSP"]["tkn"].is_null());
+	}
 }
 
 
@@ -60,9 +72,12 @@ TEST_F(NemesisTest, New_ExpiryWrongType)
 
 	ASSERT_TRUE(tc.openNoSession());
 
-	tc.test(TestData {  .request =  R"({ "SH_NEW":{ "name":"sesh1", "expiry":"aye" }})"_json,
-											.expected = {R"({ "SH_NEW_RSP":{"st":13, "m":"expiry", "tkn":null}})"_json},
-                      .checkToken = true});
+  {
+		TestData td {MakeTestData(R"({ "SH_NEW":{ "name":"sesh1", "expiry":"aye" }})"_json)};
+		tc.test(td);
+		ASSERT_TRUE(td.actual[0]["SH_NEW_RSP"]["st"] == RequestStatus::ValueTypeInvalid); 
+    ASSERT_TRUE(td.actual[0]["SH_NEW_RSP"]["tkn"].is_null());
+	}
 }
 
 
@@ -72,12 +87,12 @@ TEST_F(NemesisTest, New_ExpiryClearNotSet)
 
 	ASSERT_TRUE(tc.openNoSession());
 
-  // not shared
-  TestData sesh1 {  .request =  R"({ "SH_NEW":{ "name":"sesh1", "shared":false, "expiry":{"duration":10} }})"_json,
-									  .expected = {R"({ "SH_NEW_RSP":{"st":13, "m":"expiry", "tkn":null}})"_json},
-                    .checkToken = true};
-
-  tc.test(sesh1);
+  {
+		TestData td {MakeTestData(R"({ "SH_NEW":{ "name":"sesh1", "shared":false, "expiry":{"duration":10} }})"_json)};
+		tc.test(td);
+		ASSERT_TRUE(td.actual[0]["SH_NEW_RSP"]["st"] == RequestStatus::ParamMissing); 
+    ASSERT_TRUE(td.actual[0]["SH_NEW_RSP"]["tkn"].is_null());
+	}
 }
 
 

@@ -111,8 +111,11 @@ public:
           }
         }
       }
-
-      m_sessions.erase(sesh);
+      else
+      {        
+        m_sessions.erase(sesh);
+        ended = true;
+      }
     }
     
     return ended;

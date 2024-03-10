@@ -33,7 +33,12 @@ TEST_F(NemesisTest, NoPathRspKeys)
 
 	ASSERT_TRUE(tc.open());
 
-	tc.test({TestData { .request = R"({ "KV_FIND":{ "a":"a", "b":"b", "c":"c" } })"_json,	.expected = {R"({ "KV_FIND_RSP":{ "st":5, "m":"" } })"_json} }});
+	{
+		TestData td {MakeTestData(R"({ "KV_FIND":{ "a":"a", "b":"b", "c":"c" } })"_json)};
+		tc.test(td);
+
+		ASSERT_TRUE(td.actual[0]["KV_FIND_RSP"]["st"] == RequestStatus::ParamMissing); 
+	}
 }
 
 
@@ -43,7 +48,12 @@ TEST_F(NemesisTest, NoRspInvalid)
 
 	ASSERT_TRUE(tc.open());
 
-	tc.test({TestData { .request = R"({ "KV_FIND":{ "keys":["a"], "path":"$", "rsp":"duff" } })"_json,	.expected = {R"({ "KV_FIND_RSP":{ "st":13, "m":"rsp" } })"_json} }});
+	{
+		TestData td {MakeTestData(R"({ "KV_FIND":{ "keys":["a"], "path":"$", "rsp":"duff" } })"_json)};
+		tc.test(td);
+
+		ASSERT_TRUE(td.actual[0]["KV_FIND_RSP"]["st"] == RequestStatus::CommandSyntax); 
+	}
 }
 
 
@@ -53,7 +63,12 @@ TEST_F(NemesisTest, EmptyPath)
 
 	ASSERT_TRUE(tc.open());
 
-	tc.test({TestData { .request = R"({ "KV_FIND":{ "keys":["a"], "path":"", "rsp":"kv" } })"_json,	.expected = {R"({ "KV_FIND_RSP":{ "st":42, "m":"path" } })"_json} }});
+	{
+		TestData td {MakeTestData(R"({ "KV_FIND":{ "keys":["a"], "path":"", "rsp":"kv" } })"_json)};
+		tc.test(td);
+
+		ASSERT_TRUE(td.actual[0]["KV_FIND_RSP"]["st"] == RequestStatus::ValueSize); 
+	}
 }
 
 
@@ -62,8 +77,13 @@ TEST_F(NemesisTest, PathNotString)
 	TestClient tc;
 
 	ASSERT_TRUE(tc.open());
+	
+	{
+		TestData td {MakeTestData(R"({ "KV_FIND":{ "keys":["a"], "path":2, "rsp":"kv" } })"_json)};
+		tc.test(td);
 
-	tc.test({TestData { .request = R"({ "KV_FIND":{ "keys":["a"], "path":2, "rsp":"kv" } })"_json,	.expected = {R"({ "KV_FIND_RSP":{ "st":41, "m":"path" } })"_json} }});
+		ASSERT_TRUE(td.actual[0]["KV_FIND_RSP"]["st"] == RequestStatus::ValueTypeInvalid); 
+	}
 }
 
 
@@ -73,19 +93,13 @@ TEST_F(NemesisTest, KeysNotArray)
 
 	ASSERT_TRUE(tc.open());
 
-	tc.test({TestData { .request = R"({ "KV_FIND":{ "keys":"a", "path":"a", "rsp":"kv" } })"_json,	.expected = {R"({ "KV_FIND_RSP":{ "st":41, "m":"keys" } })"_json} }});
+	{
+		TestData td {MakeTestData(R"({ "KV_FIND":{ "keys":"a", "path":"a", "rsp":"kv" } })"_json)};
+		tc.test(td);
+
+		ASSERT_TRUE(td.actual[0]["KV_FIND_RSP"]["st"] == RequestStatus::ValueTypeInvalid); 
+	}
 }
-
-
-// TEST_F(NemesisTest, PathInvalid)
-// {
-// 	TestClient tc;
-
-// 	ASSERT_TRUE(tc.open()); 
-
-// 	//note the space at the end of the path value to avoid ending the raw literal 
-// 	tc.test({TestData { .request = R"({ "KV_FIND":{ "keys":["a"], "path":"$.(@ == 'a') ", "rsp":"kv" } })"_json,	.expected = {R"({ "KV_FIND_RSP":{ "st":4, "m":"" } })"_json} }});
-// }
 
 
 //Happy cases

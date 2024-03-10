@@ -2,8 +2,8 @@
 #define NDB_CORE_KVSERVER_H
 
 
-#include <dirent.h>     // for checking /proc
-#include <arpa/inet.h>  // for inet_pton() etc
+//#include <dirent.h>     // for checking /proc
+//#include <arpa/inet.h>  // for inet_pton() etc
 #include <functional>
 #include <vector>
 #include <set>
@@ -20,8 +20,6 @@
 
 
 namespace nemesis { namespace core { namespace kv {
-
-namespace fs = std::filesystem;
 
 
 class KvServer
@@ -287,7 +285,7 @@ public:
         // test we can write to the kv save path
         if (std::filesystem::path path {NemesisConfig::kvSavePath(config)}; !std::filesystem::exists(path) || !std::filesystem::is_directory(path))
         {
-          PLOGF << "session::save::path is not a directory or does not exist";
+          PLOGF << "kv:session::save::path is not a directory or does not exist";
           return {false, 0};
         }
         else
@@ -298,7 +296,7 @@ public:
 
           if (std::ofstream out{fullPath}; !out.good())
           {
-            PLOGF << "Cannot write to session::save::path";
+            PLOGF << "Cannot write to kv:session::save::path";
             return {false, 0};
           }
           else

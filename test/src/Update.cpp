@@ -53,9 +53,23 @@ TEST_F(NemesisTest, MissingParams)
 
 	ASSERT_TRUE(tc.open());
 	
-	tc.test({TestData { .request = R"({ "KV_UPDATE":{"key":"loginsFailed","xyz":"", "value":"Manc"} })"_json,	.expected = {R"({ "KV_UPDATE_RSP":{ "st":26, "m":"path" } })"_json} }});
-  tc.test({TestData { .request = R"({ "KV_UPDATE":{"key":"loginsFailed","path":"$abc", "xyz":"Manc"} })"_json,	.expected = {R"({ "KV_UPDATE_RSP":{ "st":26, "m":"value" } })"_json} }});
-  tc.test({TestData { .request = R"({ "KV_UPDATE":{"xyz":"loginsFailed","path":"$abc", "value":"Manc"} })"_json,	.expected = {R"({ "KV_UPDATE_RSP":{ "st":26, "m":"key" } })"_json} }});
+	{
+		TestData td {MakeTestData(R"({ "KV_UPDATE":{"key":"loginsFailed", "value":"Manc"} })"_json)};
+		tc.test(td);
+		ASSERT_TRUE(td.actual[0]["KV_UPDATE_RSP"]["st"] == RequestStatus::ParamMissing); 
+	}
+
+	{
+		TestData td {MakeTestData(R"({ "KV_UPDATE":{"key":"loginsFailed","path":"$abc"} })"_json)};
+		tc.test(td);
+		ASSERT_TRUE(td.actual[0]["KV_UPDATE_RSP"]["st"] == RequestStatus::ParamMissing); 
+	}
+
+	{
+		TestData td {MakeTestData(R"({ "KV_UPDATE":{"path":"$abc", "value":"Manc"} })"_json)};
+		tc.test(td);
+		ASSERT_TRUE(td.actual[0]["KV_UPDATE_RSP"]["st"] == RequestStatus::ParamMissing); 
+	}
 }
 
 
