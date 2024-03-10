@@ -5,47 +5,38 @@ displayed_sidebar: apiSidebar
 
 # Overview
 
-There are two APIs: Session and KeyValue.
+There are seperate APIs for time series and key-values (which also requires the session's API).
 
-Important points:
 
-- All commands must be in upper case and all parameters are in lower case unless the docs say otherwise (i.e. `SH_NEW` has a `deleteSession` parameter).
-- All commands are a JSON object, i.e. for `SH_NEW`:
-```json
-{
-  "SH_NEW": {
-    "name":"session1"
-  }
-}
-```
-- Many commands return a response that contains a status (`st`) which is an unsigned integer. Possible values are listed [here](./Statuses).
+- All commands must be in upper case
+- All parameters are in lower case unless stated otherwise
+- All commands are a JSON object
+- Commands which return a response contain a status (`st`) which is an unsigned integer
 
-:::tip
-Command names must be uppercase.
+There is a TLDR for [time series](../home/tldr-ts) and [key value](../home/tldr-kv).
+<br/>
 
-Parameters are case-sensitive.
-:::
+## Time Series
+These are to create and delete time series, add events and search for events.
+
+Use [`TS_CREATE`](ts/ts-create-series) after which you add events with [`TS_ADD_EVT`](ts/ts-add-evt) and get/search events with [`TS_GET`](ts/ts-get).
+
+To use `where` in `TS_GET` or `TS_GET_MULTI` you must index event members with [`TS_CREATE_INDEX`](ts/ts-create-index).
 
 <br/>
 
-## Session
-
-Beginning with `SH_`, these commands create, open, end and return session information. 
-
-A session does not belong to a particular client and a client can create multiple sessions, accessing their data as required by using the appropriate session token.
-
-<br/>
-<br/>
-
-
-## KV
-
+## Key Value
 These store, update, find and retrieve session data. They start `KV_`.
 
 The commands require a session token which is returned by `SH_NEW` and `SH_OPEN`.
 
-<br/>
-<br/>
+A good place to start is [First Steps](../tutorials/first-steps/setup) which shows how to create a session and store/get data.
 
-# How to Use the APIs
-A good place to start is the [First Steps](../tutorials/first-steps/setup) which shows how to create a session and store/get data.
+### Sessions
+Beginning with `SH_`, these commands create, open, end and return session information. 
+
+- Each session has a dedicated map (rather than one large map for all keys)
+- Keys belong to a session map 
+- A session does not belong to a particular client and a client can create multiple sessions
+- Switch session by changing the session token (`tkn`)
+
