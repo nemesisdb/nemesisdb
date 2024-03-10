@@ -1,5 +1,5 @@
 # NemesisDB
-NemesisDB is a JSON database, supporting key-value and timeseries data:
+NemesisDB is an in-memory JSON database, supporting key-value and timeseries data:
 
 - All data and commands are JSON over WebSockets
 - Commands are submitted via a WebSocket
@@ -68,14 +68,14 @@ Get event data between times `10` and `12` inclusive:
 {
   "TS_GET":
   {
-    "ts":["temperatures"],
+    "ts":"temperatures",
     "rng":[10,12]
   }
 }
 ```
 
 - `rng` is "time range" with min and max inclusive
-- `rng` can be empty (`[]`) to use get whole time range
+- `rng` can be empty (`[]`) to get whole time range
 
 <br/>
 
@@ -87,7 +87,7 @@ Get events where `temperature` is greater than or equal to 23:
 {
   "TS_GET":
   {
-    "ts":["temperatures"],
+    "ts":"temperatures",
     "rng":[],
     "where":
     {
@@ -109,7 +109,7 @@ The range `[]` operator is used in `where` terms to limit the temperature value 
 {
   "TS_GET":
   {
-    "ts":["temperatures"],
+    "ts":"temperatures",
     "rng":[],
     "where":
     {
