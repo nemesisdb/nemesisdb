@@ -82,12 +82,22 @@ const config = {
           },
         ],
       },
-      footer: {
+      colorMode:
+      {
+        defaultMode: 'dark',
+        disableSwitch: false,        
+        respectPrefersColorScheme: false,
+        darkCodeTheme: darkCodeTheme,
+      },
+      footer:
+      {
         style: 'dark',
-        links: [
+        links:
+        [
           {
             title: 'Community',
-            items: [
+            items:
+            [
               {
                 label: 'LinkedIn',
                 href: 'https://www.linkedin.com/company/nemesisdb',
@@ -105,10 +115,10 @@ const config = {
         ],
         copyright: `Copyright © ${new Date().getFullYear()} NemesisDB LTD.`,
       },
-      prism: {
+      prism:
+      {
         additionalLanguages: ['bash', 'json'],
-        darkTheme: darkCodeTheme,
-        theme: lightCodeTheme,        
+        theme: darkCodeTheme      
       },
     }),
 };

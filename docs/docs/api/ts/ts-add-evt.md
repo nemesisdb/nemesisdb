@@ -9,12 +9,12 @@ Add event(s) to a time series.
 |Param|Type|Description|
 |:---|:---:|:---|
 |ts|string|Name for the series|
-|t|array  of times|An array of timestamps (64-bit signed integers), in ascending order|
-|evt|array of objects|Each object represents an event|
+|t|array  of times|An array of timestamps (64-bit signed integers), in ascending order. The size of this array must be the same as `evt`|
+|evt|array of objects|Each object represents an event. The size of this array must be the same as `t`|
 
 <br/>
 
-`TS_ADD_EVT` appends to the series, so the times (`t`) must be in order over the lifetime of the series.
+`TS_ADD_EVT` appends to the series, so the times (`t`) must be in ascending order over the lifetime of the series.
 
 Each `TS_ADD_EVT` must not submit a time that is lower than the current time in the series (i.e. it can be equal to or greater than the current time).
 
