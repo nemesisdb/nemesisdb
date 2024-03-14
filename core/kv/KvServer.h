@@ -58,6 +58,7 @@ public:
 
       m_wsClients.clear();
     }
+    
 
     {
       std::scoped_lock lck{m_socketsMux};
@@ -67,11 +68,6 @@ public:
 
       m_sockets.clear();
     }
-
-    for(auto thread : m_threads)
-      thread->join();
-
-    m_threads.clear();
 
     if (m_kvHandler)
       delete m_kvHandler;
@@ -93,14 +89,15 @@ public:
     if (std::tie(started, nIoThreads) = init(config.cfg); !started)
       return false;
 
-    if (config.load())
-    {
-      if (auto [ok, msg] = load(config); !ok)
-      {
-        PLOGF << msg;
-        return false;
-      }
-    }
+    // TODO loading/saving
+    // if (config.load())
+    // {
+    //   if (auto [ok, msg] = load(config); !ok)
+    //   {
+    //     PLOGF << msg;
+    //     return false;
+    //   }
+    // }
 
     unsigned int maxPayload = config.cfg["kv"]["maxPayload"].as<unsigned int>();
     std::string ip = config.cfg["kv"]["ip"].as_string();
@@ -109,114 +106,110 @@ public:
 
     std::size_t listenSuccess{0U};
     std::atomic_ref listenSuccessRef{listenSuccess};
-    std::latch startLatch (nIoThreads);
+    std::latch startLatch (1);
+    std::size_t core = 0;
 
-    for (std::size_t i = 0U, core = 0U ; i < nIoThreads ; ++i, ++core)
+    
+    m_thread.reset(new std::jthread([this, ip, port, &listenSuccessRef, &startLatch, maxPayload, serverStats = kv::serverStats]()
     {
-      auto * thread = new std::jthread([this, ip, port, &listenSuccessRef, &startLatch, maxPayload, serverStats = kv::serverStats]()
+      auto wsApp = uWS::App().ws<WsSession>("/*",
       {
-        auto wsApp = uWS::App().ws<WsSession>("/*",
+        .compression = uWS::DISABLED,
+        .maxPayloadLength = maxPayload,
+        .idleTimeout = 180, // TODO should be configurable?
+        .maxBackpressure = 24 * 1024 * 1024,
+        // handlers
+        .upgrade = nullptr,
+        .open = [this](KvWebSocket * ws)
         {
-          .compression = uWS::DISABLED,
-          .maxPayloadLength = maxPayload,
-          .idleTimeout = 180, // TODO should be configurable?
-          .maxBackpressure = 24 * 1024 * 1024,
-          // handlers
-          .upgrade = nullptr,
-          .open = [this](KvWebSocket * ws)
-          {
-            std::scoped_lock lck{m_wsClientsMux};
-            m_wsClients.insert(ws);
-          },          
-          .message = [this, serverStats](KvWebSocket * ws, std::string_view message, uWS::OpCode opCode)
-          {   
-            ++serverStats->queryCount;
+          std::scoped_lock lck{m_wsClientsMux};
+          m_wsClients.insert(ws);
+        },          
+        .message = [this, serverStats](KvWebSocket * ws, std::string_view message, uWS::OpCode opCode)
+        {   
+          ++serverStats->queryCount;
 
-            if (opCode != uWS::OpCode::TEXT)
-              ws->send(createErrorResponse(RequestStatus::OpCodeInvalid).to_string(), kv::WsSendOpCode);
+          if (opCode != uWS::OpCode::TEXT)
+            ws->send(createErrorResponse(RequestStatus::OpCodeInvalid).to_string(), kv::WsSendOpCode);
+          else
+          {
+            // TODO this avoids exception on parse error, but not clear how to create json object
+            //      from reader output (if even possible)
+            // jsoncons::json_string_reader reader(message);
+            // std::error_code ec;
+            // reader.read(ec);
+
+            njson request = njson::null();
+
+            try
+            {
+              // TODO look at pmr parse: https://github.com/danielaparker/jsoncons/blob/master/doc/Examples.md#parse-a-json-text-using-a-polymorphic_allocator-since-01710
+              request = njson::parse(message);
+            }
+            catch (...)
+            {
+              // handled below, would have to check request.is_null() anyway
+            }
+                          
+            
+            if (request.is_null())
+              ws->send(createErrorResponse(RequestStatus::JsonInvalid).to_string(), kv::WsSendOpCode);
+            else if (request.empty() || !request.is_object()) //i.e. top level not an object
+              ws->send(createErrorResponse(RequestStatus::CommandSyntax).to_string(), kv::WsSendOpCode);
+            else if (request.size() > 1U)
+              ws->send(createErrorResponse(RequestStatus::CommandMultiple).to_string(), kv::WsSendOpCode);
             else
             {
-              // TODO this avoids exception on parse error, but not clear how to create json object
-              //      from reader output (if even possible)
-              // jsoncons::json_string_reader reader(message);
-              // std::error_code ec;
-              // reader.read(ec);
+              const auto& commandName = request.object_range().cbegin()->key();
 
-              njson request = njson::null();
-
-              try
-              {
-                // TODO look at pmr parse: https://github.com/danielaparker/jsoncons/blob/master/doc/Examples.md#parse-a-json-text-using-a-polymorphic_allocator-since-01710
-                request = njson::parse(message);
-              }
-              catch (...)
-              {
-                // handled below, would have to check request.is_null() anyway
-              }
-              
-              if (request.is_null())
-                ws->send(createErrorResponse(RequestStatus::JsonInvalid).to_string(), kv::WsSendOpCode);
-              else if (request.empty() || !request.is_object()) //i.e. top level not an object
-                ws->send(createErrorResponse(RequestStatus::CommandSyntax).to_string(), kv::WsSendOpCode);
-              else if (request.size() > 1U)
-                ws->send(createErrorResponse(RequestStatus::CommandMultiple).to_string(), kv::WsSendOpCode);
-              else
-              {
-                const auto& commandName = request.object_range().cbegin()->key();
-
-                if (!request.at(commandName).is_object())
-                  ws->send(createErrorResponse(commandName+"_RSP", RequestStatus::CommandType).to_string(), kv::WsSendOpCode);
-                else if (const auto status = m_kvHandler->handle(ws, commandName, std::move(request)); status != RequestStatus::Ok)
-                  ws->send(createErrorResponse(commandName+"_RSP", status).to_string(), kv::WsSendOpCode);
-              }
-            }
-          },
-          .close = [this](KvWebSocket * ws, int /*code*/, std::string_view /*message*/)
-          {
-            ws->getUserData()->connected->store(false);
-
-            // when we shutdown, we have to call ws->end() to close each client otherwise uWS loop doesn't return,
-            // but when we call ws->end(), this lambda is called, so we need to avoid mutex deadlock with this flag
-            if (m_run)
-            {
-              std::scoped_lock lck{m_wsClientsMux};
-              m_wsClients.erase(ws);
+              if (!request.at(commandName).is_object())
+                ws->send(createErrorResponse(commandName+"_RSP", RequestStatus::CommandType).to_string(), kv::WsSendOpCode);
+              else if (const auto status = m_kvHandler->handle(ws, commandName, std::move(request)); status != RequestStatus::Ok)
+                ws->send(createErrorResponse(commandName+"_RSP", status).to_string(), kv::WsSendOpCode);
             }
           }
-        })
-        .listen(ip, port, [this, port, &listenSuccessRef, &startLatch](auto * listenSocket)
+        },
+        .close = [this](KvWebSocket * ws, int /*code*/, std::string_view /*message*/)
         {
-          if (listenSocket)
+          ws->getUserData()->connected->store(false);
+
+          // when we shutdown, we have to call ws->end() to close each client otherwise uWS loop doesn't return,
+          // but when we call ws->end(), this lambda is called, so we need to avoid mutex deadlock with this flag
+          if (m_run)
           {
-            {
-              std::scoped_lock lck{m_socketsMux};
-              m_sockets.push_back(listenSocket);
-            }
-
-            us_socket_t * socket = reinterpret_cast<us_socket_t *>(listenSocket); // this cast is safe
-            listenSuccessRef += us_socket_is_closed(0, socket) ? 0U : 1U;
+            std::scoped_lock lck{m_wsClientsMux};
+            m_wsClients.erase(ws);
           }
-
-          startLatch.count_down();
-        });
-
-        if (!wsApp.constructorFailed())
-          wsApp.run();
-      });
-      
-      if (thread)
-      {
-        {
-          std::scoped_lock mtx{m_threadsMux};
-          m_threads.push_back(thread);
         }
-        
-        if (!setThreadAffinity(thread->native_handle(), core))
-          PLOGW << "Failed to assign io thread to core " << core;    
-      }
-      else
-        PLOGF << "Failed to create I/O thread " << i;
+      })
+      .listen(ip, port, [this, port, &listenSuccessRef, &startLatch](auto * listenSocket)
+      {
+        if (listenSocket)
+        {
+          {
+            std::scoped_lock lck{m_socketsMux};
+            m_sockets.push_back(listenSocket);
+          }
+
+          us_socket_t * socket = reinterpret_cast<us_socket_t *>(listenSocket); // this cast is safe
+          listenSuccessRef += us_socket_is_closed(0, socket) ? 0U : 1U;
+        }
+
+        startLatch.count_down();
+      });
+
+      if (!wsApp.constructorFailed())
+        wsApp.run();
+    }));
+    
+
+    if (m_thread)
+    { 
+      if (!setThreadAffinity(m_thread->native_handle(), core))
+        PLOGW << "Failed to assign io thread to core " << core;    
     }
+    else
+      PLOGF << "Failed to create I/O thread";
 
     startLatch.wait();
 
@@ -228,22 +221,22 @@ public:
     else
     {
       #ifndef NDB_UNIT_TEST
-      m_monitor = std::move(std::jthread{[this]
-      {
-        std::chrono::seconds period {5};
-        std::chrono::steady_clock::time_point nextCheck = std::chrono::steady_clock::now() + period;
+      // m_monitor = std::move(std::jthread{[this]
+      // {
+      //   std::chrono::seconds period {5};
+      //   std::chrono::steady_clock::time_point nextCheck = std::chrono::steady_clock::now() + period;
 
-        while (m_run)
-        {
-          std::this_thread::sleep_for(std::chrono::seconds{1});
+      //   while (m_run)
+      //   {
+      //     std::this_thread::sleep_for(std::chrono::seconds{1});
 
-          if (m_run && std::chrono::steady_clock::now() >= nextCheck)
-          {
-            m_kvHandler->monitor();
-            nextCheck = std::chrono::steady_clock::now() + period;
-          }
-        }
-      }});
+      //     if (m_run && std::chrono::steady_clock::now() >= nextCheck)
+      //     {
+      //       m_kvHandler->monitor();
+      //       nextCheck = std::chrono::steady_clock::now() + period;
+      //     }
+      //   }
+      // }});
       #endif
     }
     
@@ -260,70 +253,74 @@ public:
 
     std::tuple<bool, std::size_t> init(const njson& config)
     {
+      kv::serverStats = new kv::ServerStats;
+      m_kvHandler = new kv::KvHandler {0, config};
+      return {true, 1};
+
       // TODO only 1,2,4 and 8 cores has been informally tested
-      static const std::map<std::size_t, std::size_t> CoresToIoThreads =
-      {
-        {1, 1},
-        {2, 1},
-        {4, 3},
-        {6, 4},
-        {8, 6},
-        {10, 8},
-        {12, 10},
-        {16, 12},
-        {18, 15},
-        {20, 17},
-        {24, 20},
-        {32, 28},
-        {48, 44},
-        {64, 58}
-      };
+      // static const std::map<std::size_t, std::size_t> CoresToIoThreads =
+      // {
+      //   {1, 1},
+      //   {2, 1},
+      //   {4, 3},
+      //   {6, 4},
+      //   {8, 6},
+      //   {10, 8},
+      //   {12, 10},
+      //   {16, 12},
+      //   {18, 15},
+      //   {20, 17},
+      //   {24, 20},
+      //   {32, 28},
+      //   {48, 44},
+      //   {64, 58}
+      // };
       
 
-      if (NemesisConfig::kvSaveEnabled(config))
-      {
-        // test we can write to the kv save path
-        if (std::filesystem::path path {NemesisConfig::kvSavePath(config)}; !std::filesystem::exists(path) || !std::filesystem::is_directory(path))
-        {
-          PLOGF << "kv:session::save::path is not a directory or does not exist";
-          return {false, 0};
-        }
-        else
-        {
-          const auto filename = createUuid();
-          std::filesystem::path fullPath{path};
-          fullPath /= filename;
+      // if (NemesisConfig::kvSaveEnabled(config))
+      // {
+      //   // test we can write to the kv save path
+      //   if (std::filesystem::path path {NemesisConfig::kvSavePath(config)}; !std::filesystem::exists(path) || !std::filesystem::is_directory(path))
+      //   {
+      //     PLOGF << "kv:session::save::path is not a directory or does not exist";
+      //     return {false, 0};
+      //   }
+      //   else
+      //   {
+      //     const auto filename = createUuid();
+      //     std::filesystem::path fullPath{path};
+      //     fullPath /= filename;
 
-          if (std::ofstream out{fullPath}; !out.good())
-          {
-            PLOGF << "Cannot write to kv:session::save::path";
-            return {false, 0};
-          }
-          else
-          {
-            out.close();
-            std::filesystem::remove(fullPath);
-          }
-        }
-      }
+      //     if (std::ofstream out{fullPath}; !out.good())
+      //     {
+      //       PLOGF << "Cannot write to kv:session::save::path";
+      //       return {false, 0};
+      //     }
+      //     else
+      //     {
+      //       out.close();
+      //       std::filesystem::remove(fullPath);
+      //     }
+      //   }
+      // }
 
 
-      if (const auto nCores = std::min<std::size_t>(std::thread::hardware_concurrency(), NEMESIS_MAX_CORES); nCores < 1U || nCores > 64U)
-      {
-        PLOGF << "Core count unexpected: " << nCores;
-        return {false, 0};
-      }
-      else
-      {
-        const std::size_t nIoThreads = CoresToIoThreads.contains(nCores) ? CoresToIoThreads.at(nCores) : std::prev(CoresToIoThreads.upper_bound(nCores), 1)->second;
+      // if (const auto nCores = std::min<std::size_t>(std::thread::hardware_concurrency(), NEMESIS_MAX_CORES); nCores < 1U || nCores > 64U)
+      // {
+      //   PLOGF << "Core count unexpected: " << nCores;
+      //   return {false, 0};
+      // }
+      // else
+      // {
+      //   const std::size_t nIoThreads = CoresToIoThreads.contains(nCores) ? CoresToIoThreads.at(nCores) : std::prev(CoresToIoThreads.upper_bound(nCores), 1)->second;
         
-        kv::MaxPools = std::max<std::size_t>(1U, nCores - nIoThreads);
-        kv::serverStats = new kv::ServerStats;
+      //   kv::MaxPools = std::max<std::size_t>(1U, nCores - nIoThreads);
+      //   kv::serverStats = new kv::ServerStats;
         
-        m_kvHandler = new kv::KvHandler {kv::MaxPools, nCores - kv::MaxPools, config};
+      //   m_kvHandler = new kv::KvHandler {kv::MaxPools, nCores - kv::MaxPools, config};
       
-        return {true, nIoThreads};
-      }
+      //   return {true, nIoThreads};
+      // }
 
       /* TODO decide: when we shutdown, client connections enter TIME_WAIT, preventing starting
       //              if isPortOpen() is called. 
@@ -333,10 +330,10 @@ public:
         std::cout << "ERROR: IP and port already used OR failed during checking open ports. " << ip << ":" << port << '\n';
         return false;
       }
-      */
+      */      
     }
-
-
+    
+    /*
     std::tuple<bool, std::string> load(const NemesisConfig& config)
     {
       fs::path root = config.loadPath / config.loadName;
@@ -399,7 +396,7 @@ public:
         return {success, ""};
       }
     }
-
+    */
 
     /*
     std::optional<bool> isPortOpen (const std::string& checkIp, const short checkPort)
@@ -481,7 +478,7 @@ public:
 
 
   private:
-    std::vector<std::jthread *> m_threads;
+    std::unique_ptr<std::jthread> m_thread;
     std::vector<us_listen_socket_t *> m_sockets;
     std::set<KvWebSocket *> m_wsClients;
     kv::KvHandler * m_kvHandler;

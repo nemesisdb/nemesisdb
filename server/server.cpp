@@ -45,7 +45,7 @@ int main (int argc, char ** argv)
 
   #ifdef NDB_DEBUG
     config.cfg["version"] = 1;
-    config.cfg["mode"] = "ts";
+    config.cfg["mode"] = "kv";
 
     config.cfg["kv"]["ip"] = "127.0.0.1";
     config.cfg["kv"]["port"] = 1987;

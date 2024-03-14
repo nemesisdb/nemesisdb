@@ -221,6 +221,13 @@ struct KvCommand
 };
 
 
+struct KvCommand2
+{
+  njson contents;
+  SessionToken tkn;
+};
+
+
 struct LoadResult
 {  
   RequestStatus status;

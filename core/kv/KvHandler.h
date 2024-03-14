@@ -10,6 +10,8 @@
 #include <core/NemesisCommon.h>
 #include <core/kv/KvCommon.h>
 #include <core/kv/KvPoolWorker.h>
+#include <core/kv/KvSessionExecutor.h>
+#include <core/kv/KvSessions.h>
 
 
 namespace nemesis { namespace core { namespace kv {
@@ -18,31 +20,36 @@ namespace nemesis { namespace core { namespace kv {
 class KvHandler
 {
 public:
-  KvHandler(const std::size_t nPools, const std::size_t coreOffset, const njson& config) :
-    m_createSessionPoolId(nPools == 1U ? SessionIndexers[1U] : SessionIndexers[0U]),
-    m_config(config)
+  KvHandler(const std::size_t core, const njson& config) :  m_config(config)
   {
-    for (std::size_t pool = 0, core = coreOffset ; pool < nPools ; )
-    {
-      m_pools.emplace_back(new KvPoolWorker{core, pool}); // TODO these can be unqiue_ptr
-      ++pool;
-      ++core;
-    }
+    // TODO set core affinity
   }
   
 
   ~KvHandler()
   {
-    for (auto& pool : m_pools)
-      delete pool;
+    // for (auto& pool : m_pools)
+    //   delete pool;
   }
 
 private:
   
   // CAREFUL: these have to be in the order of KvQueryType enum
-  const std::array<std::function<void(KvWebSocket *, njson&&)>, static_cast<std::size_t>(KvQueryType::MAX)> Handlers = 
+  const std::array<std::function<void(KvWebSocket *, njson&&)>, static_cast<std::size_t>(KvQueryType::MAX)> MsgHandlers = 
   {
     std::bind_front(&KvHandler::sessionNew,       std::ref(*this)),
+    nullptr,
+    nullptr,
+    nullptr,
+    nullptr,
+    nullptr,
+    nullptr,
+    nullptr,
+    nullptr,
+    nullptr,
+    std::bind_front(&KvHandler::setQ,             std::ref(*this)),
+    std::bind_front(&KvHandler::get,              std::ref(*this)),
+   /*
     std::bind_front(&KvHandler::sessionEnd,       std::ref(*this)),
     std::bind_front(&KvHandler::sessionOpen,      std::ref(*this)),
     std::bind_front(&KvHandler::sessionInfo,      std::ref(*this)),
@@ -64,6 +71,19 @@ private:
     std::bind_front(&KvHandler::update,           std::ref(*this)),
     std::bind_front(&KvHandler::keys,             std::ref(*this)),
     std::bind_front(&KvHandler::clearSet,         std::ref(*this))
+    */
+  };
+
+  
+  const std::array<SessionExecutor::Handler, 1> SessionExecutors = 
+  {
+    SessionExecutor::create(SessionExecutorType::ShNew)
+  };
+
+  const std::array<KvExecutor::Handler, 2> KvExecutors = 
+  {
+    KvExecutor::create(KvExecutorType::KvSetQ),
+    KvExecutor::create(KvExecutorType::KvGet)
   };
 
 
@@ -80,7 +100,7 @@ public:
     {
       // TODO QueryNameToType.second is tuple from previous version, keep for now but doesn't actually need to be
       const auto [queryType] = itType->second;  
-      const auto handler = Handlers[static_cast<std::size_t>(queryType)];
+      const auto handler = MsgHandlers[static_cast<std::size_t>(queryType)];
 
       try
       {
@@ -88,6 +108,7 @@ public:
       }
       catch (const std::exception& kex)
       {
+        PLOGF << kex.what() ;
         status = RequestStatus::Unknown;
       }
     }
@@ -98,11 +119,11 @@ public:
 
   void monitor ()
   {
-    for(auto& pool : m_pools)
-      pool->execute(KvCommand{.type = KvQueryType::InternalSessionMonitor});
+    // for(auto& pool : m_pools)
+    //   pool->execute(KvCommand{.type = KvQueryType::InternalSessionMonitor});
   }
 
-
+  /* 
   LoadResult load(const fs::path& dataSetsRoot)
   {
     PLOGI << "Loading from " << dataSetsRoot;
@@ -175,11 +196,11 @@ public:
 
     return loadResult;
   }
-
+ */
 
 private:
   
-  
+  /* 
   LoadResult loadRemap (const fs::path& dataSetsRoot)
   {
     LoadResult loadResult { .status = RequestStatus::LoadComplete};
@@ -236,14 +257,14 @@ private:
                               .nSessions = nSessions.load(),
                               .nKeys = nKeys.load()};
   }
+ */
 
-
-  ndb_always_inline PoolId getPoolId (const SessionToken& tkn)
-  {
-    PoolId id;
-    m_createSessionPoolId(tkn, id);
-    return id;
-  }
+  // ndb_always_inline PoolId getPoolId (const SessionToken& tkn)
+  // {
+  //   PoolId id;
+  //   m_createSessionPoolId(tkn, id);
+  //   return id;
+  // }
 
 
   bool getSessionToken(KvWebSocket * ws, const std::string_view queryRspName, njson& cmd, SessionToken& tkn)
@@ -251,7 +272,7 @@ private:
     if (cmd.contains("tkn") && cmd.at("tkn").is<SessionToken>())
     {
       tkn = cmd.at("tkn").as<SessionToken>();
-      cmd.erase("tkn"); // erase tkn to simplify validating command
+      cmd.erase("tkn"); // erase tkn to simplify validating command // TODO is this still necessary?
       return true;
     }
     else
@@ -265,141 +286,13 @@ private:
   // Send response to client: must only be called from the originating I/O thread
   ndb_always_inline void send (KvWebSocket * ws, const std::string& msg)
   {
-    // note don't need to defer() here because this is only called from the originating I/O thread
     ws->send(msg, WsSendOpCode);
   }
 
 
-  // Submit asynchronously with just token
-  ndb_always_inline void submit(KvWebSocket * ws, const SessionToken& token, const KvQueryType queryType, const std::string_view command, const std::string_view rspName, njson&& cmd = "")
+  ndb_always_inline void send (KvWebSocket * ws, const njson& msg)
   {
-    submit(ws, getPoolId(token), token, queryType, command, rspName, std::move(cmd));
-  } 
-
-
-  // Submit asynchronously with pool id
-  ndb_always_inline void submit(KvWebSocket * ws, const PoolId& poolId, const SessionToken& token, const KvQueryType queryType, const std::string_view command, const std::string_view rspName, njson&& cmd = "")
-  {
-    m_pools[poolId]->execute(KvCommand{ .contents = std::move(cmd),
-                                        .ws = ws,
-                                        .loop = uWS::Loop::get(),
-                                        .type = queryType,
-                                        .tkn = token});
-  } 
-
-  
-  // Submit to a pool synchronously, when not triggered from a WebSocket client (i.e. load on startup)
-  ndb_always_inline std::any submitSync(const PoolId pool, const KvQueryType queryType, njson&& cmd = "")
-  {
-    std::latch latch{1U};
-    std::any result;
-
-    auto onResult = [&latch, &result](auto r)
-    {
-      result = std::move(r);
-      latch.count_down();
-    };
-
-    m_pools[pool]->execute(KvCommand{ .contents = std::move(cmd),
-                                      .syncResponseHandler = onResult,
-                                      .ws = nullptr,
-                                      .loop = nullptr,
-                                      .type = queryType});
-
-    latch.wait();
-    return result;
-  }
-
-  
-  // Submit to a pool synchronously
-  ndb_always_inline std::any submitSync(KvWebSocket * ws, const SessionToken& token, const KvQueryType queryType, const std::string_view command, const std::string_view rspName, njson&& cmd = "")
-  {
-    std::latch latch{1U};
-    std::any result;
-
-    auto onResult = [&latch, &result](auto r)
-    {
-      result = std::move(r);
-      latch.count_down();
-    };
-
-
-    const auto poolId = getPoolId(token);
-    m_pools[poolId]->execute(KvCommand{ .contents = std::move(cmd),
-                                        .syncResponseHandler = onResult,
-                                        .ws = ws,
-                                        .loop = uWS::Loop::get(),
-                                        .type = queryType,
-                                        .tkn = token});
-
-    latch.wait();
-    return result;
-  }
-
-
-  // Submit to all pools synchronously
-  ndb_always_inline std::vector<std::any> submitSync(KvWebSocket * ws, const KvQueryType queryType, const std::string_view command, const std::string_view rspName, njson&& cmd = "")
-  {
-    std::latch latch{static_cast<std::ptrdiff_t>(m_pools.size())};
-    std::vector<std::any> results;
-    std::mutex resultsMux;
-
-    auto onResult = [&latch, &results, &resultsMux](auto r)
-    {
-      {
-        std::scoped_lock lck{resultsMux};
-        results.emplace_back(std::move(r));
-      }
-      
-      latch.count_down();
-    };
-
-
-    for (auto& pool : m_pools)
-    {
-      pool->execute(KvCommand{  .contents = cmd,
-                                .syncResponseHandler = onResult,
-                                .ws = ws,
-                                .loop = uWS::Loop::get(),
-                                .type = queryType});
-    }
-    
-    latch.wait();
-    return results;
-  }
-
-  
-  // Submit using an array of session tokens
-  ndb_always_inline std::vector<std::any> submitSync(KvWebSocket * ws, const njson& tknArray, const KvQueryType queryType, const std::string_view command, const std::string_view rspName, njson&& cmd = "")
-  {
-    std::latch latch{static_cast<std::ptrdiff_t>(tknArray.size())};
-    std::vector<std::any> results;
-    std::mutex resultsMux;
-
-    auto onResult = [&latch, &results, &resultsMux](auto r)
-    {
-      {
-        std::scoped_lock lck{resultsMux};
-        results.emplace_back(std::move(r));
-      }
-      
-      latch.count_down();
-    };
-
-    for(auto& tknItem : tknArray.array_range())
-    {
-      auto tkn = tknItem.as<SessionToken>();
-      m_pools[getPoolId(tkn)]->execute(KvCommand{ .contents = std::move(cmd),
-                                                  .syncResponseHandler = onResult,
-                                                  .ws = ws,
-                                                  .loop = uWS::Loop::get(),
-                                                  .type = queryType,
-                                                  .tkn = tkn});
-    }
-    
-    
-    latch.wait();
-    return results;
+    ws->send(msg.to_string(), WsSendOpCode);
   }
 
 
@@ -451,17 +344,18 @@ private:
         cmd["expiry"]["deleteSession"] = true;
       }
 
-      cmd["shared"] = cmd.get_value_or<bool>("shared", false);
-
       if (valid)
       {
+        cmd["shared"] = cmd.get_value_or<bool>("shared", false);
+
         const auto token = createSessionToken(cmd.at("name").as_string(), cmd["shared"] == true);
-        submit(ws, token, queryType, queryName, queryRspName, std::move(cmd));
+        const auto rsp = SessionExecutors[toUnderlying(SessionExecutorType::ShNew)](m_sessions, token, cmd);
+        send(ws, rsp);
       }
     }
   }
 
-  
+  /* 
   ndb_always_inline void sessionOpen(KvWebSocket * ws, njson&& json)
   {
     static const KvQueryType queryType      = KvQueryType::ShOpen;
@@ -802,10 +696,11 @@ private:
       send(ws, rsp.to_string());
     }
   }
-
+  */
 
   // DATA
 
+  /*
   ndb_always_inline void set(KvWebSocket * ws, njson&& json)
   {
     static const KvQueryType queryType    = KvQueryType::KvSet;
@@ -821,8 +716,22 @@ private:
         submit(ws, token, queryType, queryName, queryRspName, std::move(cmd.at("keys")));
     }
   }
-
+  */
   
+  njson executeKvCommand(const KvExecutorType exType, const KvQueryType qType, const SessionToken& tkn, njson& cmd)
+  {
+    if (auto sesh = m_sessions.get(tkn); sesh)
+    {
+      if (sesh->get().expires)
+        m_sessions.updateExpiry(sesh->get());
+
+      return KvExecutors[toUnderlying(exType)](sesh->get().map, tkn, cmd);
+    }
+    else
+      return createErrorResponse(QueryTypeToName.at(qType) + "_RSP", RequestStatus::SessionNotExist, tkn);
+  }
+
+
   ndb_always_inline void setQ(KvWebSocket * ws, njson&& json)
   {
     static const KvQueryType queryType    = KvQueryType::KvSetQ;
@@ -835,7 +744,10 @@ private:
     {
       SessionToken token;
       if (getSessionToken(ws, queryRspName, cmd, token))
-        submit(ws, token, queryType, queryName, queryRspName, std::move(cmd.at("keys")));
+      {
+        if (auto rsp = executeKvCommand(KvExecutorType::KvSetQ, queryType, token, cmd.at("keys")); !rsp.is_null())
+          send(ws, rsp);
+      }
     }
   }
 
@@ -852,11 +764,12 @@ private:
     {
       SessionToken token;
       if (getSessionToken(ws, queryRspName, cmd, token))
-        submit(ws, token, queryType, queryName, queryRspName, std::move(cmd.at("keys")));
+        send(ws, executeKvCommand(KvExecutorType::KvGet, queryType, token, cmd.at("keys")));
     }
   }
 
-  
+
+  /*
   ndb_always_inline void add(KvWebSocket * ws, njson&& json)
   {
     static const KvQueryType queryType      = KvQueryType::KvAdd;
@@ -1051,12 +964,11 @@ private:
         submit(ws, token, queryType, queryName, queryRspName, std::move(cmd.at("keys")));
     }
   }
-
+ */
 
 private:
-  std::vector<KvPoolWorker *> m_pools;
-  std::function<void(const SessionToken&, PoolId&)> m_createSessionPoolId;
   njson m_config;
+  Sessions m_sessions;
 };
 
 }
