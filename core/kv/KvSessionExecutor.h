@@ -30,7 +30,7 @@ class SessionExecutor
 {
 public:
 
-  static njson newSession (Sessions& sessions, const SessionToken& tkn, njson& cmd)
+  static njson newSession (Sessions& sessions, const SessionToken& tkn, const njson& cmd)
   {
     const SessionDuration duration {cmd.at("expiry").at("duration").as<SessionDuration::rep>()};
     const bool deleteOnExpire = cmd.at("expiry").at("deleteSession").as_bool();
@@ -48,6 +48,72 @@ public:
     return PoolRequestResponse::sessionEnd(status, tkn);
   }
 
+
+  static bool openSession (Sessions& sessions, const SessionToken& tkn)
+  {
+    const auto [exists, shared] = sessions.openShared(tkn);
+    return exists && shared;
+  }
+
+
+  static njson sessionInfo (Sessions& sessions, const SessionToken& tkn)
+  {
+    if (const auto session = sessions.get(tkn); session)
+    {
+      const auto& sesh = session->get();
+      const auto& expiryInfo = sesh.expireInfo;
+      const auto keyCount = sesh.map.count();
+      const auto remaining = sesh.expires ? std::chrono::duration_cast<std::chrono::seconds>(expiryInfo.time - SessionClock::now()) :
+                                            std::chrono::seconds{0};
+
+      return PoolRequestResponse::sessionInfo(RequestStatus::Ok, tkn, sesh.shared, sesh.expires,
+                                              expiryInfo.deleteOnExpire, expiryInfo.duration, remaining, keyCount);
+    }
+    else
+      return PoolRequestResponse::sessionInfo(RequestStatus::SessionNotExist, tkn);
+  }
+
+  
+  static njson sessionInfoAll (const Sessions& sessions)
+  {
+    njson rsp;
+    rsp["SH_INFO_ALL_RSP"]["st"] = toUnderlying(RequestStatus::Ok);
+    rsp["SH_INFO_ALL_RSP"]["totalSessions"] = sessions.countSessions();
+    rsp["SH_INFO_ALL_RSP"]["totalKeys"] = sessions.countKeys();
+    return rsp;
+  }
+
+
+  static njson sessionExists (const Sessions& sessions, const njson& tkns)
+  {
+    njson rsp;
+    rsp["SH_EXISTS_RSP"]["st"] = toUnderlying(RequestStatus::Ok);
+    rsp["SH_EXISTS_RSP"]["exist"] = njson::make_array();
+    rsp["SH_EXISTS_RSP"]["notExist"] = njson::make_array();
+
+    for (const auto& item : tkns.array_range())
+    {
+      if (item.is<SessionToken>())
+      {
+        const auto& tkn = item.as<SessionToken>();
+        if (sessions.contains(tkn))
+          rsp["SH_EXISTS_RSP"]["exist"].push_back(tkn);
+        else
+          rsp["SH_EXISTS_RSP"]["notExist"].push_back(tkn);
+      }      
+    }
+
+    return rsp;
+  }
+
+
+  static njson sessionEndAll (Sessions& sessions)
+  {
+    njson rsp;
+    rsp["SH_END_ALL_RSP"]["st"] = toUnderlying(RequestStatus::Ok);
+    rsp["SH_END_ALL_RSP"]["cnt"] = sessions.clear();
+    return rsp;
+  }
 };
 
 

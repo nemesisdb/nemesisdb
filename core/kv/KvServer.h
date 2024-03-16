@@ -254,28 +254,9 @@ public:
     std::tuple<bool, std::size_t> init(const njson& config)
     {
       kv::serverStats = new kv::ServerStats;
-      m_kvHandler = new kv::KvHandler {0, config};
+      m_kvHandler = new kv::KvHandler {config};
       return {true, 1};
-
-      // TODO only 1,2,4 and 8 cores has been informally tested
-      // static const std::map<std::size_t, std::size_t> CoresToIoThreads =
-      // {
-      //   {1, 1},
-      //   {2, 1},
-      //   {4, 3},
-      //   {6, 4},
-      //   {8, 6},
-      //   {10, 8},
-      //   {12, 10},
-      //   {16, 12},
-      //   {18, 15},
-      //   {20, 17},
-      //   {24, 20},
-      //   {32, 28},
-      //   {48, 44},
-      //   {64, 58}
-      // };
-      
+     
 
       // if (NemesisConfig::kvSaveEnabled(config))
       // {
@@ -303,35 +284,8 @@ public:
       //     }
       //   }
       // }
-
-
-      // if (const auto nCores = std::min<std::size_t>(std::thread::hardware_concurrency(), NEMESIS_MAX_CORES); nCores < 1U || nCores > 64U)
-      // {
-      //   PLOGF << "Core count unexpected: " << nCores;
-      //   return {false, 0};
-      // }
-      // else
-      // {
-      //   const std::size_t nIoThreads = CoresToIoThreads.contains(nCores) ? CoresToIoThreads.at(nCores) : std::prev(CoresToIoThreads.upper_bound(nCores), 1)->second;
-        
-      //   kv::MaxPools = std::max<std::size_t>(1U, nCores - nIoThreads);
-      //   kv::serverStats = new kv::ServerStats;
-        
-      //   m_kvHandler = new kv::KvHandler {kv::MaxPools, nCores - kv::MaxPools, config};
-      
-      //   return {true, nIoThreads};
-      // }
-
-      /* TODO decide: when we shutdown, client connections enter TIME_WAIT, preventing starting
-      //              if isPortOpen() is called. 
-      //              See: https://www.baeldung.com/linux/close-socket-time_wait
-      if (auto check = isPortOpen(ip, port); !check || *check)
-      {
-        std::cout << "ERROR: IP and port already used OR failed during checking open ports. " << ip << ":" << port << '\n';
-        return false;
-      }
-      */      
     }
+    
     
     /*
     std::tuple<bool, std::string> load(const NemesisConfig& config)
