@@ -89,7 +89,6 @@ public:
     njson rsp;
     rsp["SH_EXISTS_RSP"]["st"] = toUnderlying(RequestStatus::Ok);
     rsp["SH_EXISTS_RSP"]["exist"] = njson::make_array();
-    rsp["SH_EXISTS_RSP"]["notExist"] = njson::make_array();
 
     for (const auto& item : tkns.array_range())
     {
@@ -98,8 +97,6 @@ public:
         const auto& tkn = item.as<SessionToken>();
         if (sessions.contains(tkn))
           rsp["SH_EXISTS_RSP"]["exist"].push_back(tkn);
-        else
-          rsp["SH_EXISTS_RSP"]["notExist"].push_back(tkn);
       }      
     }
 
@@ -329,6 +326,7 @@ public:
   {
     njson rsp;
     rsp["KV_CLEAR_SET_RSP"]["tkn"] = tkn;
+    rsp["KV_CLEAR_SET_RSP"]["keys"] = njson::object();
 
     if (const auto[valid, size] = map.clear(); valid)
     {
