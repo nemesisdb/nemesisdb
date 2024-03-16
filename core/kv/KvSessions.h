@@ -27,18 +27,6 @@ private:
     bool deleteOnExpire;
   };
 
-
-  struct Session
-  {
-    SessionToken token;
-    CacheMap map;
-    ExpireInfo expireInfo;
-
-    bool shared{false};
-    bool expires{false};    
-  };
-
-
   struct ExpiryTracking
   {
     SessionToken token;
@@ -49,6 +37,16 @@ private:
 
 
 public:
+  struct Session
+  {
+    SessionToken token;
+    CacheMap map;
+    ExpireInfo expireInfo;
+
+    bool shared{false};
+    bool expires{false};    
+  };
+
   using SessionType = Session;
   using SessionsMap = ankerl::unordered_dense::segmented_map<SessionToken, Session>;
 
