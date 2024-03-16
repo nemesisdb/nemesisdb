@@ -235,14 +235,11 @@ private:
  */
 
   
-
-
-  bool getSessionToken(KvWebSocket * ws, const std::string_view queryRspName, const njson& cmd, SessionToken& tkn)
+  bool getSessionToken(KvWebSocket * ws, const std::string_view queryRspName, const njson& cmdRoot, SessionToken& tkn)
   {
-    // use cmd.object_range().cbegin()->value() instead being called with getSessionToken (ws, "blah", cmd.at(queryName), tkn)?
-    if (cmd.contains("tkn") && cmd.at("tkn").is<SessionToken>())
+    if (cmdRoot.contains("tkn") && cmdRoot.at("tkn").is<SessionToken>())
     {
-      tkn = cmd.at("tkn").as<SessionToken>();
+      tkn = cmdRoot.at("tkn").as<SessionToken>();
       return true;
     }
     else
@@ -270,7 +267,11 @@ private:
                 const njson& cmd, const std::map<const std::string_view, const Param>& params,
                 std::function<std::tuple<RequestStatus, const std::string_view>(const njson&)> onPostValidate = nullptr)
   {
-    const auto [stat, msg] = isCmdValid<RequestStatus, RequestStatus::Ok, RequestStatus::ParamMissing, RequestStatus::ValueTypeInvalid>(cmd, params, onPostValidate);
+    const auto& cmdRoot = cmd.object_range().cbegin()->value();
+
+    PLOGD << cmdRoot;
+    
+    const auto [stat, msg] = isCmdValid<RequestStatus, RequestStatus::Ok, RequestStatus::ParamMissing, RequestStatus::ValueTypeInvalid>(cmdRoot, params, onPostValidate);
     
     if (stat != RequestStatus::Ok)
     {
@@ -298,11 +299,10 @@ private:
       return {RequestStatus::Ok, ""};
     };
 
-
-    auto& cmd = json.at(queryName);
-
-    if (isValid(queryRspName, ws, cmd, {{Param::required("name", JsonString)}, {Param::optional("expiry", JsonObject)}, {Param::optional("shared", JsonBool)}}, validate))
+    if (isValid(queryRspName, ws, json, {{Param::required("name", JsonString)}, {Param::optional("expiry", JsonObject)}, {Param::optional("shared", JsonBool)}}, validate))
     {
+      auto& cmd = json.at(queryName);
+
       bool valid = true;
 
       if (cmd.contains("expiry"))
@@ -605,7 +605,7 @@ private:
   */
 
 
-  // DATA
+  // KV
   template<typename F>
   void handleKvExecuteResult(KvWebSocket * ws, const njson& rsp, F&& handler)
     requires(std::is_invocable_v<F, CacheMap&, SessionToken&, njson&>)
@@ -624,19 +624,19 @@ private:
 
 
   template<typename F>
-  void callKvHandler(KvWebSocket * ws, CacheMap& map, const SessionToken& token, njson& cmd, F&& handler)
+  void callKvHandler(KvWebSocket * ws, CacheMap& map, const SessionToken& token, njson& cmdRoot, F&& handler)
     requires(std::is_invocable_v<F, CacheMap&, SessionToken&, njson&>)
   {
-    const auto rsp = std::invoke(handler, map, token, cmd);
+    const auto rsp = std::invoke(handler, map, token, cmdRoot);
     handleKvExecuteResult(ws, rsp, handler);
   }
 
 
   template<typename F>
-  void callKvHandler(KvWebSocket * ws, CacheMap& map, const SessionToken& token, const njson& cmd, F&& handler)
+  void callKvHandler(KvWebSocket * ws, CacheMap& map, const SessionToken& token, const njson& cmdRoot, F&& handler)
     requires(std::is_invocable_v<F, CacheMap&, SessionToken&, njson&>)
   {
-    const auto rsp = std::invoke(handler, map, token, cmd);
+    const auto rsp = std::invoke(handler, map, token, cmdRoot);
     handleKvExecuteResult(ws, rsp, handler);
   }
 
@@ -664,9 +664,11 @@ private:
   void executeKvCommand(const std::string_view cmdRspName, KvWebSocket * ws, njson& cmd, F&& handler)
     requires(std::is_invocable_v<F, CacheMap&, SessionToken&, njson&>)
   {
+    auto& cmdRoot = cmd.object_range().begin()->value();
+
     SessionToken token;
-    if (auto session = getSession(ws, cmdRspName, cmd, token); session)
-      callKvHandler(ws, session->get().map, token, cmd, handler);
+    if (auto session = getSession(ws, cmdRspName, cmdRoot, token); session)
+      callKvHandler(ws, session->get().map, token, cmdRoot, handler);
   }
 
 
@@ -674,9 +676,11 @@ private:
   void executeKvCommand(const std::string_view cmdRspName, KvWebSocket * ws, const njson& cmd, F&& handler)
     requires(std::is_invocable_v<F, CacheMap&, SessionToken&, njson&>)
   {
+    const auto& cmdRoot = cmd.object_range().cbegin()->value();
+
     SessionToken token;
-    if (auto session = getSession(ws, cmdRspName, cmd, token); session)
-      callKvHandler(ws, session->get().map, token, cmd, handler);
+    if (auto session = getSession(ws, cmdRspName, cmdRoot, token); session)
+      callKvHandler(ws, session->get().map, token, cmdRoot, handler);
   }
 
 
@@ -690,10 +694,10 @@ private:
       return cmd.at("keys").empty() ? std::make_tuple(RequestStatus::ValueSize, "keys") : std::make_tuple(RequestStatus::Ok, "");
     };
 
-    auto& cmd = json.at(queryName);
+    // auto& cmd = json.at(queryName);
     
-    if (isValid(queryRspName, ws, cmd, {{Param::required("keys", JsonObject)}}, validate))
-      executeKvCommand(queryRspName, ws, cmd, KvExecutor::set);
+    if (isValid(queryRspName, ws, json, {{Param::required("keys", JsonObject)}}, validate))
+      executeKvCommand(queryRspName, ws, json, KvExecutor::set);
   }
 
 
@@ -707,10 +711,8 @@ private:
       return cmd.at("keys").empty() ? std::make_tuple(RequestStatus::ValueSize, "keys") : std::make_tuple(RequestStatus::Ok, "");
     };
 
-    auto& cmd = json.at(queryName);
-    
-    if (isValid(queryRspName, ws, cmd, {{Param::required("keys", JsonObject)}}, validate))
-      executeKvCommand(queryRspName, ws, cmd, KvExecutor::setQ);
+    if (isValid(queryRspName, ws, json, {{Param::required("keys", JsonObject)}}, validate))
+      executeKvCommand(queryRspName, ws, json, KvExecutor::setQ);
   }
 
   
@@ -719,10 +721,8 @@ private:
     static const std::string queryName      = QueryTypeToName.at(KvQueryType::KvGet);
     static const std::string queryRspName   = queryName +"_RSP";
 
-    auto& cmd = json.at(queryName);
-    
-    if (isValid(queryRspName, ws, cmd, {{Param::required("keys", JsonArray)}}))
-      executeKvCommand(queryRspName, ws, cmd, KvExecutor::get);
+    if (isValid(queryRspName, ws, json, {{Param::required("keys", JsonArray)}}))
+      executeKvCommand(queryRspName, ws, json, KvExecutor::get);
   }
 
   
@@ -731,10 +731,8 @@ private:
     static const std::string queryName      = QueryTypeToName.at(KvQueryType::KvAdd);
     static const std::string queryRspName   = queryName +"_RSP";
 
-    auto& cmd = json.at(queryName);
-
-    if (isValid(queryRspName, ws, cmd, {{Param::required("keys", JsonObject)}}))
-      executeKvCommand(queryRspName, ws, cmd, KvExecutor::add);
+    if (isValid(queryRspName, ws, json, {{Param::required("keys", JsonObject)}}))
+      executeKvCommand(queryRspName, ws, json, KvExecutor::add);
   }
 
 
@@ -748,10 +746,8 @@ private:
       return cmd.at("keys").empty() ? std::make_tuple(RequestStatus::ValueSize, "keys") : std::make_tuple(RequestStatus::Ok, "");
     };
 
-    auto& cmd = json.at(queryName);
-
-    if (isValid(queryRspName, ws, cmd, {{Param::required("keys", JsonObject)}}, validate))
-      executeKvCommand(queryRspName, ws, cmd, KvExecutor::addQ);
+    if (isValid(queryRspName, ws, json, {{Param::required("keys", JsonObject)}}, validate))
+      executeKvCommand(queryRspName, ws, json, KvExecutor::addQ);
   }
 
 
@@ -765,10 +761,8 @@ private:
       return cmd.at("keys").empty() ? std::make_tuple(RequestStatus::ValueSize, "keys") : std::make_tuple(RequestStatus::Ok, "");
     };
 
-    auto& cmd = json.at(queryName);
-
-    if (isValid(queryRspName, ws, cmd, {{Param::required("keys", JsonArray)}}, validate))
-      executeKvCommand(queryRspName, ws, cmd, KvExecutor::remove);
+    if (isValid(queryRspName, ws, json, {{Param::required("keys", JsonArray)}}, validate))
+      executeKvCommand(queryRspName, ws, json, KvExecutor::remove);
   }
 
   
@@ -777,7 +771,7 @@ private:
     static const std::string queryName      = QueryTypeToName.at(KvQueryType::KvClear);
     static const std::string queryRspName   = queryName +"_RSP";
     
-    executeKvCommand(queryRspName, ws, json.at(queryName), KvExecutor::clear);
+    executeKvCommand(queryRspName, ws, json, KvExecutor::clear);
   }
 
 
@@ -786,7 +780,7 @@ private:
     static const std::string queryName      = QueryTypeToName.at(KvQueryType::KvCount);
     static const std::string queryRspName   = queryName +"_RSP";
     
-    executeKvCommand(queryRspName, ws, json.at(queryName), KvExecutor::count);
+    executeKvCommand(queryRspName, ws, json, KvExecutor::count);
   }
 
 
@@ -795,9 +789,8 @@ private:
     static const std::string queryName      = QueryTypeToName.at(KvQueryType::KvContains);
     static const std::string queryRspName   = queryName +"_RSP";
     
-    const auto& cmd = json.at(queryName);
-    if (isValid(queryRspName, ws, cmd, {{Param::required("keys", JsonArray)}}))
-      executeKvCommand(queryRspName, ws, cmd, KvExecutor::contains);
+    if (isValid(queryRspName, ws, json, {{Param::required("keys", JsonArray)}}))
+      executeKvCommand(queryRspName, ws, json, KvExecutor::contains);
   }
 
 
@@ -805,8 +798,8 @@ private:
   {
     static const std::string queryName      = QueryTypeToName.at(KvQueryType::KvFind);
     static const std::string queryRspName   = queryName +"_RSP";
-    
-    
+
+
     auto validate = [](const njson& cmd) -> std::tuple<RequestStatus, const std::string_view>
     {
       if (cmd.at("rsp") != "paths" && cmd.at("rsp") != "kv" && cmd.at("rsp") != "keys")
@@ -817,15 +810,14 @@ private:
       return {RequestStatus::Ok, ""};
     };
 
-
-    auto& cmd = json.at(queryName);
-    
-    if (isValid(queryRspName, ws, cmd, {{Param::required("path", JsonString)}, {Param::required("rsp", JsonString)}, {Param::optional("keys", JsonArray)}}, validate))
+    if (isValid(queryRspName, ws, json, {{Param::required("path", JsonString)}, {Param::required("rsp", JsonString)}, {Param::optional("keys", JsonArray)}}, validate))
     {
+      auto& cmd = json.at(queryName);
+
       if (!cmd.contains("keys"))
         cmd["keys"] = njson::array(); // executor expects "keys"
 
-      executeKvCommand(queryRspName, ws, cmd, KvExecutor::find);
+      executeKvCommand(queryRspName, ws, json, KvExecutor::find);
     }
   }
 
@@ -844,10 +836,8 @@ private:
       return {RequestStatus::Ok, ""};
     };
 
-    auto& cmd = json.at(queryName);
-    
-    if (isValid(queryRspName, ws, cmd, {{Param::required("key", JsonString)}, {Param::required("path", JsonString)}}, validate))
-      executeKvCommand(queryRspName, ws, cmd, KvExecutor::update);
+    if (isValid(queryRspName, ws, json, {{Param::required("key", JsonString)}, {Param::required("path", JsonString)}}, validate))
+      executeKvCommand(queryRspName, ws, json, KvExecutor::update);
   }
 
 
@@ -856,7 +846,7 @@ private:
     static const std::string queryName      = QueryTypeToName.at(KvQueryType::KvKeys);
     static const std::string queryRspName   = queryName +"_RSP";
 
-    executeKvCommand(queryRspName, ws, json.at(queryName), KvExecutor::keys);
+    executeKvCommand(queryRspName, ws, json, KvExecutor::keys);
   }
 
 
@@ -865,9 +855,8 @@ private:
     static const std::string queryName      = QueryTypeToName.at(KvQueryType::KvClearSet);
     static const std::string queryRspName   = queryName +"_RSP";
 
-    auto& cmd = json.at(queryName);
-    if (isValid(queryRspName, ws, cmd, {{Param::required("keys", JsonObject)}}))
-      executeKvCommand(queryRspName, ws, json.at(queryName), KvExecutor::clearSet);
+    if (isValid(queryRspName, ws, json, {{Param::required("keys", JsonObject)}}))
+      executeKvCommand(queryRspName, ws, json, KvExecutor::clearSet);
   }
 
 
