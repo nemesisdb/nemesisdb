@@ -1,5 +1,5 @@
-#ifndef _FC_SHSESSIONS_
-#define _FC_SHSESSIONS_
+#ifndef NDB_CORE_SHSESSIONS_H
+#define NDB_CORE_SHSESSIONS_H
 
 #include <string>
 #include <string_view>

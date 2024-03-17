@@ -1,9 +1,6 @@
 #ifndef NDB_CORE_KVSERVER_H
 #define NDB_CORE_KVSERVER_H
 
-
-//#include <dirent.h>     // for checking /proc
-//#include <arpa/inet.h>  // for inet_pton() etc
 #include <functional>
 #include <vector>
 #include <set>
@@ -14,7 +11,6 @@
 #include <iostream>
 #include <uwebsockets/App.h>
 #include <core/kv/KvCommon.h>
-#include <core/kv/KvPoolWorker.h>
 #include <core/kv/KvHandler.h>
 #include <core/NemesisConfig.h>
 

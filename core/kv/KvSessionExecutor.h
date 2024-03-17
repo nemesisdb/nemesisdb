@@ -1,5 +1,5 @@
-#ifndef _FC_CORESESSIONEXECUTOR_
-#define _FC_CORESESSIONEXECUTOR_
+#ifndef NDB_CORE_SESSIONEXECUTOR_H
+#define NDB_CORE_SESSIONEXECUTOR_H
 
 #include <functional>
 #include <core/NemesisCommon.h>
