@@ -102,10 +102,9 @@ public:
   {
     PLOGI << "Loading from " << dataSetsRoot;
 
-    // for(auto& poolDataDir : fs::directory_iterator(dataSetsRoot))
-    //   cmd["dirs"].emplace_back(poolDataDir.path().string());
-
     send(ws, SessionExecutor::loadSessions (loadName, m_sessions, dataSetsRoot));
+
+    PLOGI << "Loading finished";
   }
  
 
@@ -114,8 +113,9 @@ public:
     PLOGI << "Loading from " << dataSetsRoot;
 
     const auto start = NemesisClock::now();
-
     const auto rsp = SessionExecutor::loadSessions (loadName, m_sessions, dataSetsRoot);
+
+    PLOGI << "Loading finished";
 
     LoadResult loadResult { .loadTime = NemesisClock::now() - start };
     loadResult.status = static_cast<RequestStatus>(rsp["SH_LOAD_RSP"]["st"].as<std::uint64_t>());
@@ -350,8 +350,8 @@ private:
       njson rsp;
       rsp[queryRspName]["name"] = name;
       
-      const auto timestampDir = std::to_string(KvSaveClock::now().time_since_epoch().count());
-      const auto root = fs::path {NemesisConfig::kvSavePath(m_config)} / name / timestampDir;
+      const auto setPath = std::to_string(KvSaveClock::now().time_since_epoch().count());
+      const auto root = fs::path {NemesisConfig::kvSavePath(m_config)} / name / setPath;
       const auto metaPath = fs::path{root} / "md";
       const auto dataPath = fs::path{root} / "data";
 
@@ -359,7 +359,7 @@ private:
 
       if (!fs::create_directories(metaPath))
         rsp[queryRspName]["st"] = toUnderlying(RequestStatus::SaveDirWriteFail);
-      else if (metaStream.open(metaPath/"md.json", std::ios_base::trunc | std::ios_base::out); !metaStream.is_open())
+      else if (metaStream.open(metaPath / "md.json", std::ios_base::trunc | std::ios_base::out); !metaStream.is_open())
         rsp[queryRspName]["st"] = toUnderlying(RequestStatus::SaveDirWriteFail);
       else
       {
@@ -370,10 +370,11 @@ private:
 
         // write metadata before we start incase we're interrupted mid-save
         auto start = KvSaveClock::now();
+        KvSaveStatus metaDataStatus = KvSaveStatus::Pending;
 
         njson metadata;
         metadata["name"] = name;
-        metadata["status"] = toUnderlying(KvSaveStatus::Pending);        
+        metadata["status"] = toUnderlying(metaDataStatus);        
         metadata["pools"] = 1U;
         metadata["start"] = std::chrono::time_point_cast<KvSaveMetaDataUnit>(start).time_since_epoch().count();
         metadata["saveType"] = haveTkns ? toUnderlying(SaveType::SelectSessions) : toUnderlying(SaveType::AllSessions);
@@ -381,7 +382,7 @@ private:
         
         metadata.dump(metaStream);
 
-        // build and send save to pools
+        // create save command and call executor
         njson saveCmd;
         saveCmd["poolDataRoot"] = dataPath.string();
         saveCmd["name"] = name;
@@ -389,7 +390,7 @@ private:
         if (haveTkns)
           saveCmd["tkns"] = std::move(cmd.at("tkns"));
 
-        KvSaveStatus metaDataStatus = KvSaveStatus::Pending;
+        
         try
         {
           rsp = SessionExecutor::saveSessions(m_sessions, saveCmd);
