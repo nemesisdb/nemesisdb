@@ -430,11 +430,21 @@ private:
       const auto& loadName = json.at(queryName).at("name").as_string();
       const auto& loadPath = fs::path{NemesisConfig::kvSavePath(m_config)};
       const auto loadRoot = loadPath / loadName;
-      const auto dataSetPath = getDefaultDataSetPath(loadRoot);    
 
-      // loadRoot may contain several saves (i.e. SH_SAVE used multiple times with the same 'name'),
-      // so use getDefaultDataSetPath() to get the most recent
-      load(loadName, ws, dataSetPath / "data");
+      if (!fs::exists(loadRoot))
+      {
+        njson rsp;
+        rsp[queryRspName]["st"] = toUnderlying(RequestStatus::LoadError);
+        rsp[queryRspName]["name"] = loadName;
+        send (ws, rsp);
+      }
+      else
+      {
+        // loadRoot may contain several saves (i.e. SH_SAVE used multiple times with the same 'name'),
+        // so use getDefaultDataSetPath() to get the most recent
+        const auto dataSetPath = getDefaultDataSetPath(loadRoot);    
+        load(loadName, ws, dataSetPath / "data");
+      }
     }
   }
 
