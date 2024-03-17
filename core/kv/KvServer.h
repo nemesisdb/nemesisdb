@@ -28,7 +28,7 @@ static inline kv::KvHandler * s_kvHandler {nullptr}; // yuck, but easy solution 
 class KvServer
 {
 public:
-  KvServer() : m_run(true)//, m_kvHandler(nullptr)
+  KvServer() : m_run(true)
   {
     kv::serverStats = nullptr;
   }
@@ -36,14 +36,7 @@ public:
 
   ~KvServer()
   {
-    try
-    {
-      stop();  
-    }
-    catch(const std::exception& e)
-    {
-      PLOGF << "Error during shutdown";
-    }
+    stop();
   }
 
 
