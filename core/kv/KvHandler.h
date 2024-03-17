@@ -57,8 +57,6 @@ private:
     std::bind_front(&KvHandler::keys,             std::ref(*this)),
     std::bind_front(&KvHandler::clearSet,         std::ref(*this))
   };
-
-  
   
 
 public:
@@ -125,6 +123,7 @@ public:
     return loadResult;
   }
 
+
 private:
   
     
@@ -137,16 +136,9 @@ private:
     }
     else
     {
-      send(ws, createErrorResponse(queryRspName, RequestStatus::SessionTokenInvalid).to_string());
+      send(ws, createErrorResponse(queryRspName, RequestStatus::SessionTokenInvalid));
       return false;
     }
-  }
-
-
-  // Send response to client: must only be called from the originating I/O thread
-  ndb_always_inline void send (KvWebSocket * ws, const std::string& msg)
-  {
-    ws->send(msg, WsSendOpCode);
   }
 
 
@@ -169,7 +161,7 @@ private:
     if (stat != RequestStatus::Ok)
     {
       PLOGD << msg;
-      send(ws, createErrorResponse(queryRspName, stat, msg).to_string());
+      send(ws, createErrorResponse(queryRspName, stat, msg));
     }
       
     return stat == RequestStatus::Ok;
@@ -278,7 +270,7 @@ private:
     auto& cmd = json.at(queryName);
 
     if (cmd.size() != 1U)
-      send(ws, createErrorResponse(queryRspName, RequestStatus::CommandSyntax).to_string());
+      send(ws, createErrorResponse(queryRspName, RequestStatus::CommandSyntax));
     else
     {
       SessionToken token;
@@ -341,7 +333,7 @@ private:
     };
     
     if (!NemesisConfig::kvSaveEnabled(m_config))
-      send(ws, createErrorResponseNoTkn(queryRspName, RequestStatus::CommandDisabled).to_string());
+      send(ws, createErrorResponseNoTkn(queryRspName, RequestStatus::CommandDisabled));
     else if (isValid(queryRspName, ws, json, {{Param::required("name", JsonString)}, {Param::optional("tkns", JsonArray)}}, validate))
     {
       auto& cmd = json.at(queryName);
@@ -366,7 +358,7 @@ private:
         const bool haveTkns = cmd.contains("tkns");
 
         rsp[queryRspName]["st"] = toUnderlying(RequestStatus::SaveStart);
-        send(ws, rsp.to_string());
+        send(ws, rsp);
 
         // write metadata before we start incase we're interrupted mid-save
         auto start = KvSaveClock::now();
@@ -374,9 +366,9 @@ private:
 
         njson metadata;
         metadata["name"] = name;
+        metadata["version"] = METADATA_VERSION;
         metadata["status"] = toUnderlying(metaDataStatus);        
-        metadata["pools"] = 1U;
-        metadata["start"] = std::chrono::time_point_cast<KvSaveMetaDataUnit>(start).time_since_epoch().count();
+        metadata["start"] = chrono::time_point_cast<KvSaveMetaDataUnit>(start).time_since_epoch().count();
         metadata["saveType"] = haveTkns ? toUnderlying(SaveType::SelectSessions) : toUnderlying(SaveType::AllSessions);
         metadata["complete"] = 0;
         
@@ -404,7 +396,7 @@ private:
 
         // update metdata
         metadata["status"] = toUnderlying(metaDataStatus);
-        metadata["complete"] = std::chrono::time_point_cast<KvSaveMetaDataUnit>(KvSaveClock::now()).time_since_epoch().count();
+        metadata["complete"] = chrono::time_point_cast<KvSaveMetaDataUnit>(KvSaveClock::now()).time_since_epoch().count();
         metaStream.seekp(0);
 
         metadata.dump(metaStream);
@@ -522,8 +514,6 @@ private:
     {
       return cmd.at("keys").empty() ? std::make_tuple(RequestStatus::ValueSize, "keys") : std::make_tuple(RequestStatus::Ok, "");
     };
-
-    // auto& cmd = json.at(queryName);
     
     if (isValid(queryRspName, ws, json, {{Param::required("keys", JsonObject)}}, validate))
       executeKvCommand(queryRspName, ws, json, KvExecutor::set);

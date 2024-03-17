@@ -51,32 +51,21 @@ public:
     if (m_monitor.joinable())
       m_monitor.join();
 
-    {
-      std::scoped_lock lck{m_wsClientsMux};
-      for (auto ws : m_wsClients)
-        ws->end(1000); // calls AsyncSocket::shutdown()
+    for (auto ws : m_wsClients)
+      ws->end(1000); // calls AsyncSocket::shutdown()
 
-      m_wsClients.clear();
-    }
-    
-
-    {
-      std::scoped_lock lck{m_socketsMux};
-
-      for(auto sock : m_sockets)
-        us_listen_socket_close(0, sock);
-
-      m_sockets.clear();
-    }
+    for(auto sock : m_sockets)
+      us_listen_socket_close(0, sock);
 
     if (m_kvHandler)
       delete m_kvHandler;
 
-    m_kvHandler = nullptr;
-
     if (kv::serverStats)
       delete kv::serverStats;
 
+    m_wsClients.clear();
+    m_sockets.clear();
+    m_kvHandler = nullptr;
     kv::serverStats = nullptr;
   }
 
@@ -186,7 +175,6 @@ public:
           .upgrade = nullptr,
           .open = [this](KvWebSocket * ws)
           {
-            std::scoped_lock lck{m_wsClientsMux};
             m_wsClients.insert(ws);
           },          
           .message = [this, stats](KvWebSocket * ws, std::string_view message, uWS::OpCode opCode)
@@ -240,20 +228,14 @@ public:
             // when we shutdown, we have to call ws->end() to close each client otherwise uWS loop doesn't return,
             // but when we call ws->end(), this lambda is called, so we need to avoid mutex deadlock with this flag
             if (m_run)
-            {
-              std::scoped_lock lck{m_wsClientsMux};
               m_wsClients.erase(ws);
-            }
           }
         })
         .listen(ip, port, [this, port, &listening, &startLatch](auto * listenSocket)
         {
           if (listenSocket)
           {
-            {
-              std::scoped_lock lck{m_socketsMux};
-              m_sockets.push_back(listenSocket);
-            }
+            m_sockets.push_back(listenSocket);
 
             us_socket_t * socket = reinterpret_cast<us_socket_t *>(listenSocket); // this cast is safe
             listening = us_socket_is_closed(0, socket) == 0U;
@@ -360,9 +342,6 @@ public:
     std::vector<us_listen_socket_t *> m_sockets;
     std::set<KvWebSocket *> m_wsClients;
     kv::KvHandler * m_kvHandler;
-    std::mutex m_socketsMux;
-    std::mutex m_wsClientsMux;
-    std::mutex m_threadsMux;
     std::atomic_bool m_run;
     std::jthread m_monitor;
 };

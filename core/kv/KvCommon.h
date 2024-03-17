@@ -16,9 +16,7 @@ using PoolId = std::size_t;
 
 
 inline ServerStats * serverStats;
-
-
-static PoolId MaxPools = 1U;
+inline const std::int16_t METADATA_VERSION = 1;
 
 
 enum class KvQueryType : std::uint8_t
@@ -236,19 +234,6 @@ struct LoadResult
   NemesisClock::duration loadTime{0};
 };
 
-
-
-static const std::array<std::function<void(const SessionToken&, PoolId&)>, 2U> SessionIndexers =
-{
-  [](const SessionToken& tkn, PoolId& id) 
-  {
-    id = tkn % MaxPools;
-  },
-  [](const SessionToken& tkn, PoolId& id)
-  {
-    id = 0U;
-  }
-};
 
 
 ndb_always_inline SessionToken createSessionToken(const SessionName& name, const bool shared)
