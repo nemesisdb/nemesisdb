@@ -23,10 +23,11 @@ The configuration has settings:
 |ip|string|IP address of the WebSocket server|
 |port|unsigned int|Port of the WebSocket server|
 |maxPayload|unsigned int|Max bytes per query. A query larger than this will be rejected.<br/>Absolute min/max are 64 bytes and 2MB.|
+|session|object|Settings for session saving (details below)|
 
 <br/>
 
-## `save`
+## `session::save`
 
 |Param|Type|Description|
 |:---|:---:|:---|
