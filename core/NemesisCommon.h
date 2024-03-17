@@ -194,7 +194,6 @@ enum class RequestStatus
   Loading = 140,
   LoadComplete,
   LoadError,
-  LoadDuplicate,
   Unknown = 1000
 };
 

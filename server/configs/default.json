@@ -10,7 +10,7 @@
     {
       "save":
       {
-        "enabled":false,
+        "enabled":true,
         "path":"./data"
       }
     }

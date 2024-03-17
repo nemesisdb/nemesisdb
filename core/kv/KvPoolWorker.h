@@ -599,7 +599,7 @@ private:
 
   void load(KvCommand& cmd, Sessions& sessions)
   {
-    LoadResult result { .status = RequestStatus::LoadComplete };
+    /* LoadResult result { .status = RequestStatus::LoadComplete };
 
     auto updateStatus = [&result](const RequestStatus st)
     {
@@ -636,7 +636,7 @@ private:
       result.status = RequestStatus::LoadError;
     }
 
-    cmd.syncResponseHandler(std::any{std::move(result)});
+    cmd.syncResponseHandler(std::any{std::move(result)}); */
   }
 
 
@@ -670,7 +670,7 @@ public:
   {
     RequestStatus status = RequestStatus::LoadComplete;
 
-    if (seshData.contains("sh"))  // can be empty object because sesh file is created even if pool contains no sessions
+    /* if (seshData.contains("sh"))  // can be empty object because sesh file is created even if pool contains no sessions
     {
       const auto token = seshData["sh"]["tkn"].as<SessionToken>();
       const auto isShared = seshData["sh"]["shared"].as_bool();
@@ -693,7 +693,7 @@ public:
       {
         status = RequestStatus::LoadDuplicate;
       }
-    }
+    } */
 
     return status;
   }

@@ -234,30 +234,6 @@ struct LoadResult
   std::size_t nSessions{0};
   std::size_t nKeys{0};
   NemesisClock::duration loadTime{0};
-
-
-  static bool statusSuccess(const LoadResult& r)
-  {
-    // Duplicate session is not an error, only the first is created
-    return r.status == RequestStatus::LoadComplete || r.status == RequestStatus::LoadDuplicate;
-  }
-
-
-  LoadResult& operator+=(const LoadResult& r)
-  {
-    // only set status if we're not already in an error condition, otherwise we'll mask
-    // a previous load which has errored (note: Duplicate is not an error)
-    if (statusSuccess(*this))
-    {
-      nKeys += r.nKeys;
-      nSessions += r.nSessions;
-      status = r.status;
-    }
-    
-    loadTime += r.loadTime; // beware when loading pools concurrently
-  
-    return *this;
-  }
 };
 
 
@@ -310,7 +286,7 @@ std::filesystem::path getDefaultDataSetPath(const std::filesystem::path& loadRoo
     return {};
   else
   {
-    for (auto& dir : fs::directory_iterator(loadRoot))
+    for (const auto& dir : fs::directory_iterator(loadRoot))
     {
       if (dir.is_directory())
         max = std::max<std::size_t>(std::stoul(dir.path().filename()), max);

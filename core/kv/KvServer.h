@@ -83,163 +83,46 @@ public:
 
   bool run (NemesisConfig& config)
   {
-    std::size_t nIoThreads = 0 ;
-    bool started = false;
-
-    if (std::tie(started, nIoThreads) = init(config.cfg); !started)
+    if (!init(config.cfg))
       return false;
 
-    // TODO loading/saving
-    // if (config.load())
+    if (config.load())
+    {      
+      if (auto [ok, msg] = load(config); !ok)
+      {
+        PLOGF << msg;
+        return false;
+      }
+    }
+
+    const unsigned int maxPayload = config.cfg["kv"]["maxPayload"].as<unsigned int>();
+    const std::string ip = config.cfg["kv"]["ip"].as_string();
+    const int port = config.cfg["kv"]["port"].as<unsigned int>();
+
+
+    if (!createWsThread(ip, port, maxPayload, serverStats))
+      return false;
+
+    
+    #ifndef NDB_UNIT_TEST
+    // m_monitor = std::move(std::jthread{[this]
     // {
-    //   if (auto [ok, msg] = load(config); !ok)
+    //   std::chrono::seconds period {5};
+    //   std::chrono::steady_clock::time_point nextCheck = std::chrono::steady_clock::now() + period;
+
+    //   while (m_run)
     //   {
-    //     PLOGF << msg;
-    //     return false;
+    //     std::this_thread::sleep_for(std::chrono::seconds{1});
+
+    //     if (m_run && std::chrono::steady_clock::now() >= nextCheck)
+    //     {
+    //       m_kvHandler->monitor();
+    //       nextCheck = std::chrono::steady_clock::now() + period;
+    //     }
     //   }
-    // }
-
-    unsigned int maxPayload = config.cfg["kv"]["maxPayload"].as<unsigned int>();
-    std::string ip = config.cfg["kv"]["ip"].as_string();
-    int port = config.cfg["kv"]["port"].as<unsigned int>();
-
-
-    std::size_t listenSuccess{0U};
-    std::atomic_ref listenSuccessRef{listenSuccess};
-    std::latch startLatch (1);
-    std::size_t core = 0;
-
-    
-    m_thread.reset(new std::jthread([this, ip, port, &listenSuccessRef, &startLatch, maxPayload, serverStats = kv::serverStats]()
-    {
-      auto wsApp = uWS::App().ws<WsSession>("/*",
-      {
-        .compression = uWS::DISABLED,
-        .maxPayloadLength = maxPayload,
-        .idleTimeout = 180, // TODO should be configurable?
-        .maxBackpressure = 24 * 1024 * 1024,
-        // handlers
-        .upgrade = nullptr,
-        .open = [this](KvWebSocket * ws)
-        {
-          std::scoped_lock lck{m_wsClientsMux};
-          m_wsClients.insert(ws);
-        },          
-        .message = [this, serverStats](KvWebSocket * ws, std::string_view message, uWS::OpCode opCode)
-        {   
-          ++serverStats->queryCount;
-
-          if (opCode != uWS::OpCode::TEXT)
-            ws->send(createErrorResponse(RequestStatus::OpCodeInvalid).to_string(), kv::WsSendOpCode);
-          else
-          {
-            // TODO this avoids exception on parse error, but not clear how to create json object
-            //      from reader output (if even possible)
-            // jsoncons::json_string_reader reader(message);
-            // std::error_code ec;
-            // reader.read(ec);
-
-            njson request = njson::null();
-
-            try
-            {
-              // TODO look at pmr parse: https://github.com/danielaparker/jsoncons/blob/master/doc/Examples.md#parse-a-json-text-using-a-polymorphic_allocator-since-01710
-              request = njson::parse(message);
-            }
-            catch (...)
-            {
-              // handled below, would have to check request.is_null() anyway
-            }
-                          
-            
-            if (request.is_null())
-              ws->send(createErrorResponse(RequestStatus::JsonInvalid).to_string(), kv::WsSendOpCode);
-            else if (request.empty() || !request.is_object()) //i.e. top level not an object
-              ws->send(createErrorResponse(RequestStatus::CommandSyntax).to_string(), kv::WsSendOpCode);
-            else if (request.size() > 1U)
-              ws->send(createErrorResponse(RequestStatus::CommandMultiple).to_string(), kv::WsSendOpCode);
-            else
-            {
-              const auto& commandName = request.object_range().cbegin()->key();
-
-              if (!request.at(commandName).is_object())
-                ws->send(createErrorResponse(commandName+"_RSP", RequestStatus::CommandType).to_string(), kv::WsSendOpCode);
-              else if (const auto status = m_kvHandler->handle(ws, commandName, std::move(request)); status != RequestStatus::Ok)
-                ws->send(createErrorResponse(commandName+"_RSP", status).to_string(), kv::WsSendOpCode);
-            }
-          }
-        },
-        .close = [this](KvWebSocket * ws, int /*code*/, std::string_view /*message*/)
-        {
-          ws->getUserData()->connected->store(false);
-
-          // when we shutdown, we have to call ws->end() to close each client otherwise uWS loop doesn't return,
-          // but when we call ws->end(), this lambda is called, so we need to avoid mutex deadlock with this flag
-          if (m_run)
-          {
-            std::scoped_lock lck{m_wsClientsMux};
-            m_wsClients.erase(ws);
-          }
-        }
-      })
-      .listen(ip, port, [this, port, &listenSuccessRef, &startLatch](auto * listenSocket)
-      {
-        if (listenSocket)
-        {
-          {
-            std::scoped_lock lck{m_socketsMux};
-            m_sockets.push_back(listenSocket);
-          }
-
-          us_socket_t * socket = reinterpret_cast<us_socket_t *>(listenSocket); // this cast is safe
-          listenSuccessRef += us_socket_is_closed(0, socket) ? 0U : 1U;
-        }
-
-        startLatch.count_down();
-      });
-
-      if (!wsApp.constructorFailed())
-        wsApp.run();
-    }));
-    
-
-    if (m_thread)
-    { 
-      if (!setThreadAffinity(m_thread->native_handle(), core))
-        PLOGW << "Failed to assign io thread to core " << core;    
-    }
-    else
-      PLOGF << "Failed to create I/O thread";
-
-    startLatch.wait();
-
-    if (listenSuccess != nIoThreads)
-    {
-      PLOGF << "Failed to listen on " << ip << ":"  << port;
-      return false;
-    }
-    else
-    {
-      #ifndef NDB_UNIT_TEST
-      // m_monitor = std::move(std::jthread{[this]
-      // {
-      //   std::chrono::seconds period {5};
-      //   std::chrono::steady_clock::time_point nextCheck = std::chrono::steady_clock::now() + period;
-
-      //   while (m_run)
-      //   {
-      //     std::this_thread::sleep_for(std::chrono::seconds{1});
-
-      //     if (m_run && std::chrono::steady_clock::now() >= nextCheck)
-      //     {
-      //       m_kvHandler->monitor();
-      //       nextCheck = std::chrono::steady_clock::now() + period;
-      //     }
-      //   }
-      // }});
-      #endif
-    }
-    
+    // }});
+    #endif
+        
 
     #ifndef NDB_UNIT_TEST
     PLOGI << "Ready";
@@ -251,46 +134,171 @@ public:
   
   private:
 
-    std::tuple<bool, std::size_t> init(const njson& config)
+    bool init(const njson& config)
     {
+      if (NemesisConfig::kvSaveEnabled(config))
+      {
+        // test we can write to the kv save path
+        if (std::filesystem::path path {NemesisConfig::kvSavePath(config)}; !std::filesystem::exists(path) || !std::filesystem::is_directory(path))
+        {
+          PLOGF << "kv:session::save::path is not a directory or does not exist";
+          return false;
+        }
+        else
+        {
+          const auto filename = createUuid();
+          std::filesystem::path fullPath{path};
+          fullPath /= filename;
+
+          if (std::ofstream testStream{fullPath}; !testStream.good())
+          {
+            PLOGF << "Cannot write to kv:session::save::path";
+            return false;
+          }
+          else
+            std::filesystem::remove(fullPath);
+        }
+      }
+
       kv::serverStats = new kv::ServerStats;
       m_kvHandler = new kv::KvHandler {config};
-      return {true, 1};
-     
 
-      // if (NemesisConfig::kvSaveEnabled(config))
-      // {
-      //   // test we can write to the kv save path
-      //   if (std::filesystem::path path {NemesisConfig::kvSavePath(config)}; !std::filesystem::exists(path) || !std::filesystem::is_directory(path))
-      //   {
-      //     PLOGF << "kv:session::save::path is not a directory or does not exist";
-      //     return {false, 0};
-      //   }
-      //   else
-      //   {
-      //     const auto filename = createUuid();
-      //     std::filesystem::path fullPath{path};
-      //     fullPath /= filename;
-
-      //     if (std::ofstream out{fullPath}; !out.good())
-      //     {
-      //       PLOGF << "Cannot write to kv:session::save::path";
-      //       return {false, 0};
-      //     }
-      //     else
-      //     {
-      //       out.close();
-      //       std::filesystem::remove(fullPath);
-      //     }
-      //   }
-      // }
+      return true;
     }
     
     
-    /*
+    bool createWsThread (const std::string& ip, const int port, const unsigned int maxPayload, kv::ServerStats * stats)
+    {
+      const std::size_t core = 0;
+
+      bool listening{false};
+      std::latch startLatch (1);
+
+      auto listen = [this, ip, port, &listening, &startLatch, maxPayload, stats]()
+      {
+        auto wsApp = uWS::App().ws<WsSession>("/*",
+        {
+          .compression = uWS::DISABLED,
+          .maxPayloadLength = maxPayload,
+          .idleTimeout = 180, // TODO should be configurable?
+          .maxBackpressure = 24 * 1024 * 1024,
+          // handlers
+          .upgrade = nullptr,
+          .open = [this](KvWebSocket * ws)
+          {
+            std::scoped_lock lck{m_wsClientsMux};
+            m_wsClients.insert(ws);
+          },          
+          .message = [this, stats](KvWebSocket * ws, std::string_view message, uWS::OpCode opCode)
+          {   
+            ++serverStats->queryCount;
+
+            if (opCode != uWS::OpCode::TEXT)
+              ws->send(createErrorResponse(RequestStatus::OpCodeInvalid).to_string(), kv::WsSendOpCode);
+            else
+            {
+              // TODO this avoids exception on parse error, but not clear how to create json object
+              //      from reader output (if even possible)
+              // jsoncons::json_string_reader reader(message);
+              // std::error_code ec;
+              // reader.read(ec);
+
+              njson request = njson::null();
+
+              try
+              {
+                // TODO look at pmr parse: https://github.com/danielaparker/jsoncons/blob/master/doc/Examples.md#parse-a-json-text-using-a-polymorphic_allocator-since-01710
+                request = njson::parse(message);
+              }
+              catch (...)
+              {
+                // handled below, would have to check request.is_null() anyway
+              }
+                            
+              
+              if (request.is_null())
+                ws->send(createErrorResponse(RequestStatus::JsonInvalid).to_string(), kv::WsSendOpCode);
+              else if (request.empty() || !request.is_object()) //i.e. top level not an object
+                ws->send(createErrorResponse(RequestStatus::CommandSyntax).to_string(), kv::WsSendOpCode);
+              else if (request.size() > 1U)
+                ws->send(createErrorResponse(RequestStatus::CommandMultiple).to_string(), kv::WsSendOpCode);
+              else
+              {
+                const auto& commandName = request.object_range().cbegin()->key();
+
+                if (!request.at(commandName).is_object())
+                  ws->send(createErrorResponse(commandName+"_RSP", RequestStatus::CommandType).to_string(), kv::WsSendOpCode);
+                else if (const auto status = m_kvHandler->handle(ws, commandName, std::move(request)); status != RequestStatus::Ok)
+                  ws->send(createErrorResponse(commandName+"_RSP", status).to_string(), kv::WsSendOpCode);
+              }
+            }
+          },
+          .close = [this](KvWebSocket * ws, int /*code*/, std::string_view /*message*/)
+          {
+            ws->getUserData()->connected->store(false);
+
+            // when we shutdown, we have to call ws->end() to close each client otherwise uWS loop doesn't return,
+            // but when we call ws->end(), this lambda is called, so we need to avoid mutex deadlock with this flag
+            if (m_run)
+            {
+              std::scoped_lock lck{m_wsClientsMux};
+              m_wsClients.erase(ws);
+            }
+          }
+        })
+        .listen(ip, port, [this, port, &listening, &startLatch](auto * listenSocket)
+        {
+          if (listenSocket)
+          {
+            {
+              std::scoped_lock lck{m_socketsMux};
+              m_sockets.push_back(listenSocket);
+            }
+
+            us_socket_t * socket = reinterpret_cast<us_socket_t *>(listenSocket); // this cast is safe
+            listening = us_socket_is_closed(0, socket) == 0U;
+          }
+
+          startLatch.count_down();
+        });
+        
+
+        if (!wsApp.constructorFailed())
+          wsApp.run();
+      };
+
+
+      bool started = false;
+      try
+      {
+        m_thread.reset(new std::jthread(listen));
+
+        startLatch.wait();
+
+        if (listening)
+        {
+          if (!setThreadAffinity(m_thread->native_handle(), core))
+            PLOGW << "Failed to assign io thread to core " << core;
+          else
+            started = true;
+        }
+        else
+          PLOGE << "Failed to start WS server";
+      }
+      catch(const std::exception& e)
+      {
+        PLOGF << "Failed to start WS thread:\n" << e.what();
+      }
+
+      return started;
+    }
+
+
     std::tuple<bool, std::string> load(const NemesisConfig& config)
     {
-      fs::path root = config.loadPath / config.loadName;
+      const fs::path root = config.loadPath / config.loadName;
+
+      PLOGI << "Loading " << root;
 
       if (!fs::exists(root))
         return {false, "Load name does not exist"};
@@ -298,138 +306,54 @@ public:
       if (!fs::is_directory(root))
         return {false, "Path to load name is not a directory"};
 
-      std::size_t max = 0;
+      
+      // loadRoot may contain several saves (i.e. SH_SAVE used multiple times with the same 'name'),
+      // so use getDefaultDataSetPath() to get the most recent
+      const auto datasetRoot = getDefaultDataSetPath(root);
 
-      for (auto& dir : fs::directory_iterator(root))
-      {
-        if (dir.is_directory())
-          max = std::max<std::size_t>(std::stoul(dir.path().filename()), max);
-      }
-
-      if (!max)
-        return {false, "No data"};
-
-      const fs::path datasets = root / std::to_string(max);
-      const fs::path data = datasets / "data";
-      const fs::path md = datasets / "md";
+      // check data dir and metadata file
+      const fs::path data = datasetRoot / "data";
+      const fs::path mdFile = datasetRoot / "md" / "md.json";
 
       if (!(fs::exists(data) && fs::is_directory(data)))
         return {false, "'data' directory does not exist or is not a directory"};
       
-      if (!(fs::exists(md) && fs::is_directory(md)))
-        return {false, "'md' directory does not exist or is not a directory"};
+      if (!fs::exists(mdFile))
+        return {false, "metadata does not exist"};
 
-      PLOGI << "Reading metadata in " << md;
-      
-      std::ifstream mdStream {md / "md.json"};
-      auto mdJson = njson::parse(mdStream);
 
-      if (!(mdJson.contains("status") && mdJson.contains("pools")) || !(mdJson["status"].is_uint64() && mdJson["pools"].is_uint64()))
+      PLOGI << "Reading metadata in " << mdFile;
+
+      std::ifstream mdStream {mdFile};
+      const auto mdJson = njson::parse(mdStream);
+
+      if (!mdJson.contains("status") || !mdJson["status"].is_uint64())
         return {false, "Metadata file invalid"};
       else if (mdJson["status"] != toUnderlying(KvSaveStatus::Complete))
-        return {false, "Dataset is not complete, cannot load. Metadata status not Complete"};
+        return {false, "Cannot load: save was incomplete"};
       else
       {
-        const auto loadResult = m_kvHandler->load(data);
-        const auto success = LoadResult::statusSuccess(loadResult);
+        const auto loadResult = m_kvHandler->internalLoad(config.loadName, data);
+        const auto success = loadResult.status == RequestStatus::LoadComplete;
 
-        std::cout << "-- Load --\n";
+        PLOGI << "-- Load --";
     
         if (success)
         {
-          std::cout << "Status: Success " << (loadResult.status == RequestStatus::LoadDuplicate ? "(Duplicates)" : "") << '\n';
-          std::cout << "Sessions: " << loadResult.nSessions << "\nKeys: " << loadResult.nKeys << '\n'; 
+          PLOGI << "Status: Success";
+          PLOGI << "Sessions: " << loadResult.nSessions ;
+          PLOGI << "Keys: " << loadResult.nKeys ;
+          PLOGI << "Duration: " << chrono::duration_cast<std::chrono::milliseconds>(loadResult.loadTime).count() << "ms";
         }
         else
-          std::cout << "Status: Fail\n";
+          PLOGI << "Status: Fail";
 
-        std::cout << "Time: " << std::chrono::duration_cast<std::chrono::milliseconds>(loadResult.loadTime).count() << '\n';
-
-        std::cout << "----------\n";
+        PLOGI << "----------";
         
         return {success, ""};
       }
     }
-    */
-
-    /*
-    std::optional<bool> isPortOpen (const std::string& checkIp, const short checkPort)
-    {
-      #ifdef NDB_UNIT_TEST_NOPORTCHECK
-      return false;
-      #else
-      
-      if (auto fd = socket(AF_INET, SOCK_STREAM, 0) ; fd >= 0)
-      {        
-        sockaddr a;
-        sockaddr_in address;
-        address.sin_family = AF_INET;
-        address.sin_port = htons(checkPort);
-
-        inet_pton(AF_INET, checkIp.c_str(), &(address.sin_addr));
     
-        const auto open = bind(fd, reinterpret_cast<const sockaddr*>(&address), sizeof(address)) < 0;
-        
-        if (open)
-        {
-          char msg[256];
-          std::cout << strerror_r(errno, msg, 256) << '\n';
-        }
-
-        close(fd);
-
-        return open;
-      }
-      return {};
-
-      #endif
-    }
-
-    int getPid(const std::string& procName)
-    {
-      int pid = -1;
-
-      // Open the /proc directory
-      DIR *dp = opendir("/proc");
-      if (dp != NULL)
-      {
-        // Enumerate all entries in directory until process found
-        struct dirent *dirp;
-        while (pid < 0 && (dirp = readdir(dp)))
-        {
-          // Skip non-numeric entries
-          int id = atoi(dirp->d_name);
-          if (id > 0)
-          {
-            // Read contents of virtual /proc/{pid}/cmdline file
-            std::string cmdPath = std::string("/proc/") + dirp->d_name + "/cmdline";
-            std::ifstream cmdFile(cmdPath.c_str());
-            std::string cmdLine;
-            if (std::getline(cmdFile, cmdLine); !cmdLine.empty())
-            {
-              // Keep first cmdline item which contains the program path
-              size_t pos = cmdLine.find('\0');
-              if (pos != std::string::npos)
-                cmdLine = cmdLine.substr(0, pos);
-              // Keep program name only, removing the path
-              pos = cmdLine.rfind('/');
-              if (pos != std::string::npos)
-                cmdLine = cmdLine.substr(pos + 1);
-
-              // Compare against requested process name
-              if (procName == cmdLine)
-                pid = id;
-            }
-          }
-        }
-      }
-
-      closedir(dp);
-
-      return pid;
-    }
-    */
-
 
   private:
     std::unique_ptr<std::jthread> m_thread;

@@ -105,6 +105,7 @@
     "barrier": "cpp",
     "*.ipp": "cpp",
     "regex": "cpp",
-    "scoped_allocator": "cpp"
+    "scoped_allocator": "cpp",
+    "*.inc": "cpp"
   }  
 }
