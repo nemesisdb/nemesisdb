@@ -22,10 +22,13 @@
 namespace nemesis { namespace core { namespace kv {
 
 
+static inline kv::KvHandler * s_kvHandler {nullptr}; // yuck, but easy solution for us_create_timer() 
+
+
 class KvServer
 {
 public:
-  KvServer() : m_run(true), m_kvHandler(nullptr)
+  KvServer() : m_run(true)//, m_kvHandler(nullptr)
   {
     kv::serverStats = nullptr;
   }
@@ -48,24 +51,33 @@ public:
   {
     m_run = false;
 
-    if (m_monitor.joinable())
-      m_monitor.join();
+    try
+    {
+      if (m_monitorTimer)
+        us_timer_close(m_monitorTimer);
 
-    for (auto ws : m_wsClients)
-      ws->end(1000); // calls AsyncSocket::shutdown()
+      for (auto ws : m_wsClients)
+        ws->end(1000); // calls wsApp.close()
 
-    for(auto sock : m_sockets)
-      us_listen_socket_close(0, sock);
+      for(auto sock : m_sockets)
+        us_listen_socket_close(0, sock);
 
-    if (m_kvHandler)
-      delete m_kvHandler;
+      if (s_kvHandler)
+        delete s_kvHandler;
 
-    if (kv::serverStats)
-      delete kv::serverStats;
+      if (kv::serverStats)
+        delete kv::serverStats;
+    }
+    catch (...)
+    {
+      // ignore, shutting down
+    }
+    
 
     m_wsClients.clear();
     m_sockets.clear();
-    m_kvHandler = nullptr;
+    m_monitorTimer = nullptr;
+    s_kvHandler = nullptr;
     kv::serverStats = nullptr;
   }
 
@@ -89,28 +101,8 @@ public:
     const int port = config.cfg["kv"]["port"].as<unsigned int>();
 
 
-    if (!createWsThread(ip, port, maxPayload, serverStats))
+    if (!startWsServer(ip, port, maxPayload, serverStats))
       return false;
-
-    
-    #ifndef NDB_UNIT_TEST
-    // m_monitor = std::move(std::jthread{[this]
-    // {
-    //   std::chrono::seconds period {5};
-    //   std::chrono::steady_clock::time_point nextCheck = std::chrono::steady_clock::now() + period;
-
-    //   while (m_run)
-    //   {
-    //     std::this_thread::sleep_for(std::chrono::seconds{1});
-
-    //     if (m_run && std::chrono::steady_clock::now() >= nextCheck)
-    //     {
-    //       m_kvHandler->monitor();
-    //       nextCheck = std::chrono::steady_clock::now() + period;
-    //     }
-    //   }
-    // }});
-    #endif
         
 
     #ifndef NDB_UNIT_TEST
@@ -150,13 +142,13 @@ public:
       }
 
       kv::serverStats = new kv::ServerStats;
-      m_kvHandler = new kv::KvHandler {config};
+      s_kvHandler = new kv::KvHandler {config};
 
       return true;
     }
     
     
-    bool createWsThread (const std::string& ip, const int port, const unsigned int maxPayload, kv::ServerStats * stats)
+    bool startWsServer (const std::string& ip, const int port, const unsigned int maxPayload, kv::ServerStats * stats)
     {
       const std::size_t core = 0;
 
@@ -216,7 +208,7 @@ public:
 
                 if (!request.at(commandName).is_object())
                   ws->send(createErrorResponse(commandName+"_RSP", RequestStatus::CommandType).to_string(), kv::WsSendOpCode);
-                else if (const auto status = m_kvHandler->handle(ws, commandName, std::move(request)); status != RequestStatus::Ok)
+                else if (const auto status = s_kvHandler->handle(ws, commandName, std::move(request)); status != RequestStatus::Ok)
                   ws->send(createErrorResponse(commandName+"_RSP", status).to_string(), kv::WsSendOpCode);
               }
             }
@@ -246,7 +238,27 @@ public:
         
 
         if (!wsApp.constructorFailed())
+        {
+          #ifndef NDB_UNIT_TEST
+
+          const auto periodMs = chrono::duration_cast<chrono::milliseconds>(chrono::seconds {5});
+          const auto evtLoop = uWS::Loop::get();
+
+          PLOGD << "Creating monitor timer for " << periodMs.count() << "ms";
+
+          m_monitorTimer = us_create_timer((struct us_loop_t *) evtLoop, 0, 0);
+
+          us_timer_set(m_monitorTimer, [](struct us_timer_t *) mutable
+          {
+            s_kvHandler->monitor();
+
+          }, periodMs.count(), periodMs.count());
+
+          #endif
+        
           wsApp.run();
+        }
+          
       };
 
 
@@ -315,7 +327,7 @@ public:
         return {false, "Cannot load: save was incomplete"};
       else
       {
-        const auto loadResult = m_kvHandler->internalLoad(config.loadName, data);
+        const auto loadResult = s_kvHandler->internalLoad(config.loadName, data);
         const auto success = loadResult.status == RequestStatus::LoadComplete;
 
         PLOGI << "-- Load --";
@@ -340,10 +352,9 @@ public:
   private:
     std::unique_ptr<std::jthread> m_thread;
     std::vector<us_listen_socket_t *> m_sockets;
-    std::set<KvWebSocket *> m_wsClients;
-    kv::KvHandler * m_kvHandler;
+    std::set<KvWebSocket *> m_wsClients;    
     std::atomic_bool m_run;
-    std::jthread m_monitor;
+    us_timer_t * m_monitorTimer{nullptr};
 };
 
 

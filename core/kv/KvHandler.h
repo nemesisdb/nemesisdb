@@ -91,8 +91,7 @@ public:
 
   void monitor ()
   {
-    // for(auto& pool : m_pools)
-    //   pool->execute(KvCommand{.type = KvQueryType::InternalSessionMonitor});
+    SessionExecutor::sessionMonitor(m_sessions);    
   }
 
   
@@ -153,10 +152,24 @@ private:
                 std::function<std::tuple<RequestStatus, const std::string_view>(const njson&)> onPostValidate = nullptr)
   {
     const auto& cmdRoot = cmd.object_range().cbegin()->value();
-
-    PLOGD << cmdRoot;
-    
     const auto [stat, msg] = isCmdValid<RequestStatus, RequestStatus::Ok, RequestStatus::ParamMissing, RequestStatus::ValueTypeInvalid>(cmdRoot, params, onPostValidate);
+    
+    if (stat != RequestStatus::Ok)
+    {
+      PLOGD << msg;
+      send(ws, createErrorResponse(queryRspName, stat, msg));
+    }
+      
+    return stat == RequestStatus::Ok;
+  }
+
+
+  bool isValid (const std::string& queryRspName, const std::string_view child, KvWebSocket * ws, 
+                const njson& cmd, const std::map<const std::string_view, const Param>& params,
+                std::function<std::tuple<RequestStatus, const std::string_view>(const njson&)> onPostValidate = nullptr)
+  {
+    const auto object = cmd.object_range().cbegin()->value()[child];
+    const auto [stat, msg] = isCmdValid<RequestStatus, RequestStatus::Ok, RequestStatus::ParamMissing, RequestStatus::ValueTypeInvalid>(object, params, onPostValidate);
     
     if (stat != RequestStatus::Ok)
     {
@@ -191,7 +204,7 @@ private:
       bool valid = true;
 
       if (cmd.contains("expiry"))
-        valid = isValid(queryRspName, ws, cmd.at("expiry"), {{Param::required("duration", JsonUInt)}, {Param::required("deleteSession", JsonBool)}});
+        valid = isValid(queryRspName, "expiry", ws, json, {{Param::required("duration", JsonUInt)}, {Param::required("deleteSession", JsonBool)}});
       else
       {
         cmd["expiry"]["duration"] = 0U; // defaults to never expire

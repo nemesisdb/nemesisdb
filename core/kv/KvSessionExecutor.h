@@ -113,6 +113,12 @@ public:
   }
 
 
+  static void sessionMonitor(Sessions& sessions)
+  {
+    sessions.handleExpired();
+  }
+
+
   static njson saveSessions (const Sessions& sessions, const njson& cmd)
   {
     const std::size_t MaxDataFileSize = 10 * 1024 * 1024;
