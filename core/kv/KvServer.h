@@ -1,9 +1,6 @@
 #ifndef NDB_CORE_KVSERVER_H
 #define NDB_CORE_KVSERVER_H
 
-
-//#include <dirent.h>     // for checking /proc
-//#include <arpa/inet.h>  // for inet_pton() etc
 #include <functional>
 #include <vector>
 #include <set>
@@ -14,7 +11,6 @@
 #include <iostream>
 #include <uwebsockets/App.h>
 #include <core/kv/KvCommon.h>
-#include <core/kv/KvPoolWorker.h>
 #include <core/kv/KvHandler.h>
 #include <core/NemesisConfig.h>
 
@@ -22,10 +18,13 @@
 namespace nemesis { namespace core { namespace kv {
 
 
+static inline kv::KvHandler * s_kvHandler {nullptr}; // yuck, but easy solution for us_create_timer() 
+
+
 class KvServer
 {
 public:
-  KvServer() : m_run(true), m_kvHandler(nullptr)
+  KvServer() : m_run(true)
   {
     kv::serverStats = nullptr;
   }
@@ -33,14 +32,7 @@ public:
 
   ~KvServer()
   {
-    try
-    {
-      stop();  
-    }
-    catch(const std::exception& e)
-    {
-      PLOGF << "Error during shutdown";
-    }
+    stop();
   }
 
 
@@ -48,53 +40,44 @@ public:
   {
     m_run = false;
 
-    if (m_monitor.joinable())
-      m_monitor.join();
-
+    try
     {
-      std::scoped_lock lck{m_wsClientsMux};
+      if (m_monitorTimer)
+        us_timer_close(m_monitorTimer);
+
       for (auto ws : m_wsClients)
-        ws->end(1000); // calls AsyncSocket::shutdown()
-
-      m_wsClients.clear();
-    }
-
-    {
-      std::scoped_lock lck{m_socketsMux};
+        ws->end(1000); // calls wsApp.close()
 
       for(auto sock : m_sockets)
         us_listen_socket_close(0, sock);
 
-      m_sockets.clear();
+      if (s_kvHandler)
+        delete s_kvHandler;
+
+      if (kv::serverStats)
+        delete kv::serverStats;
     }
+    catch (...)
+    {
+      // ignore, shutting down
+    }
+    
 
-    for(auto thread : m_threads)
-      thread->join();
-
-    m_threads.clear();
-
-    if (m_kvHandler)
-      delete m_kvHandler;
-
-    m_kvHandler = nullptr;
-
-    if (kv::serverStats)
-      delete kv::serverStats;
-
+    m_wsClients.clear();
+    m_sockets.clear();
+    m_monitorTimer = nullptr;
+    s_kvHandler = nullptr;
     kv::serverStats = nullptr;
   }
 
 
   bool run (NemesisConfig& config)
   {
-    std::size_t nIoThreads = 0 ;
-    bool started = false;
-
-    if (std::tie(started, nIoThreads) = init(config.cfg); !started)
+    if (!init(config.cfg))
       return false;
 
     if (config.load())
-    {
+    {      
       if (auto [ok, msg] = load(config); !ok)
       {
         PLOGF << msg;
@@ -102,18 +85,66 @@ public:
       }
     }
 
-    unsigned int maxPayload = config.cfg["kv"]["maxPayload"].as<unsigned int>();
-    std::string ip = config.cfg["kv"]["ip"].as_string();
-    int port = config.cfg["kv"]["port"].as<unsigned int>();
+    const unsigned int maxPayload = config.cfg["kv"]["maxPayload"].as<unsigned int>();
+    const std::string ip = config.cfg["kv"]["ip"].as_string();
+    const int port = config.cfg["kv"]["port"].as<unsigned int>();
 
 
-    std::size_t listenSuccess{0U};
-    std::atomic_ref listenSuccessRef{listenSuccess};
-    std::latch startLatch (nIoThreads);
+    if (!startWsServer(ip, port, maxPayload, serverStats))
+      return false;
+        
 
-    for (std::size_t i = 0U, core = 0U ; i < nIoThreads ; ++i, ++core)
+    #ifndef NDB_UNIT_TEST
+    PLOGI << "Ready";
+    #endif
+
+    return true;
+  }
+
+  
+  private:
+
+    bool init(const njson& config)
     {
-      auto * thread = new std::jthread([this, ip, port, &listenSuccessRef, &startLatch, maxPayload, serverStats = kv::serverStats]()
+      if (NemesisConfig::kvSaveEnabled(config))
+      {
+        // test we can write to the kv save path
+        if (std::filesystem::path path {NemesisConfig::kvSavePath(config)}; !std::filesystem::exists(path) || !std::filesystem::is_directory(path))
+        {
+          PLOGF << "kv:session::save::path is not a directory or does not exist";
+          return false;
+        }
+        else
+        {
+          const auto filename = createUuid();
+          std::filesystem::path fullPath{path};
+          fullPath /= filename;
+
+          if (std::ofstream testStream{fullPath}; !testStream.good())
+          {
+            PLOGF << "Cannot write to kv:session::save::path";
+            return false;
+          }
+          else
+            std::filesystem::remove(fullPath);
+        }
+      }
+
+      kv::serverStats = new kv::ServerStats;
+      s_kvHandler = new kv::KvHandler {config};
+
+      return true;
+    }
+    
+    
+    bool startWsServer (const std::string& ip, const int port, const unsigned int maxPayload, kv::ServerStats * stats)
+    {
+      const std::size_t core = 0;
+
+      bool listening{false};
+      std::latch startLatch (1);
+
+      auto listen = [this, ip, port, &listening, &startLatch, maxPayload, stats]()
       {
         auto wsApp = uWS::App().ws<WsSession>("/*",
         {
@@ -125,10 +156,9 @@ public:
           .upgrade = nullptr,
           .open = [this](KvWebSocket * ws)
           {
-            std::scoped_lock lck{m_wsClientsMux};
             m_wsClients.insert(ws);
           },          
-          .message = [this, serverStats](KvWebSocket * ws, std::string_view message, uWS::OpCode opCode)
+          .message = [this, stats](KvWebSocket * ws, std::string_view message, uWS::OpCode opCode)
           {   
             ++serverStats->queryCount;
 
@@ -153,6 +183,7 @@ public:
               {
                 // handled below, would have to check request.is_null() anyway
               }
+                            
               
               if (request.is_null())
                 ws->send(createErrorResponse(RequestStatus::JsonInvalid).to_string(), kv::WsSendOpCode);
@@ -166,7 +197,7 @@ public:
 
                 if (!request.at(commandName).is_object())
                   ws->send(createErrorResponse(commandName+"_RSP", RequestStatus::CommandType).to_string(), kv::WsSendOpCode);
-                else if (const auto status = m_kvHandler->handle(ws, commandName, std::move(request)); status != RequestStatus::Ok)
+                else if (const auto status = s_kvHandler->handle(ws, commandName, std::move(request)); status != RequestStatus::Ok)
                   ws->send(createErrorResponse(commandName+"_RSP", status).to_string(), kv::WsSendOpCode);
               }
             }
@@ -178,168 +209,79 @@ public:
             // when we shutdown, we have to call ws->end() to close each client otherwise uWS loop doesn't return,
             // but when we call ws->end(), this lambda is called, so we need to avoid mutex deadlock with this flag
             if (m_run)
-            {
-              std::scoped_lock lck{m_wsClientsMux};
               m_wsClients.erase(ws);
-            }
           }
         })
-        .listen(ip, port, [this, port, &listenSuccessRef, &startLatch](auto * listenSocket)
+        .listen(ip, port, [this, port, &listening, &startLatch](auto * listenSocket)
         {
           if (listenSocket)
           {
-            {
-              std::scoped_lock lck{m_socketsMux};
-              m_sockets.push_back(listenSocket);
-            }
+            m_sockets.push_back(listenSocket);
 
             us_socket_t * socket = reinterpret_cast<us_socket_t *>(listenSocket); // this cast is safe
-            listenSuccessRef += us_socket_is_closed(0, socket) ? 0U : 1U;
+            listening = us_socket_is_closed(0, socket) == 0U;
           }
 
           startLatch.count_down();
         });
+        
 
         if (!wsApp.constructorFailed())
-          wsApp.run();
-      });
-      
-      if (thread)
-      {
         {
-          std::scoped_lock mtx{m_threadsMux};
-          m_threads.push_back(thread);
-        }
-        
-        if (!setThreadAffinity(thread->native_handle(), core))
-          PLOGW << "Failed to assign io thread to core " << core;    
-      }
-      else
-        PLOGF << "Failed to create I/O thread " << i;
-    }
+          #ifndef NDB_UNIT_TEST
 
-    startLatch.wait();
+          const auto periodMs = chrono::duration_cast<chrono::milliseconds>(chrono::seconds {5});
+          const auto evtLoop = uWS::Loop::get();
 
-    if (listenSuccess != nIoThreads)
-    {
-      PLOGF << "Failed to listen on " << ip << ":"  << port;
-      return false;
-    }
-    else
-    {
-      #ifndef NDB_UNIT_TEST
-      m_monitor = std::move(std::jthread{[this]
-      {
-        std::chrono::seconds period {5};
-        std::chrono::steady_clock::time_point nextCheck = std::chrono::steady_clock::now() + period;
+          PLOGD << "Creating monitor timer for " << periodMs.count() << "ms";
 
-        while (m_run)
-        {
-          std::this_thread::sleep_for(std::chrono::seconds{1});
+          m_monitorTimer = us_create_timer((struct us_loop_t *) evtLoop, 0, 0);
 
-          if (m_run && std::chrono::steady_clock::now() >= nextCheck)
+          us_timer_set(m_monitorTimer, [](struct us_timer_t *) mutable
           {
-            m_kvHandler->monitor();
-            nextCheck = std::chrono::steady_clock::now() + period;
-          }
+            s_kvHandler->monitor();
+
+          }, periodMs.count(), periodMs.count());
+
+          #endif
+        
+          wsApp.run();
         }
-      }});
-      #endif
-    }
-    
-
-    #ifndef NDB_UNIT_TEST
-    PLOGI << "Ready";
-    #endif
-
-    return true;
-  }
-
-  
-  private:
-
-    std::tuple<bool, std::size_t> init(const njson& config)
-    {
-      // TODO only 1,2,4 and 8 cores has been informally tested
-      static const std::map<std::size_t, std::size_t> CoresToIoThreads =
-      {
-        {1, 1},
-        {2, 1},
-        {4, 3},
-        {6, 4},
-        {8, 6},
-        {10, 8},
-        {12, 10},
-        {16, 12},
-        {18, 15},
-        {20, 17},
-        {24, 20},
-        {32, 28},
-        {48, 44},
-        {64, 58}
+          
       };
-      
 
-      if (NemesisConfig::kvSaveEnabled(config))
+
+      bool started = false;
+      try
       {
-        // test we can write to the kv save path
-        if (std::filesystem::path path {NemesisConfig::kvSavePath(config)}; !std::filesystem::exists(path) || !std::filesystem::is_directory(path))
+        m_thread.reset(new std::jthread(listen));
+
+        startLatch.wait();
+
+        if (listening)
         {
-          PLOGF << "kv:session::save::path is not a directory or does not exist";
-          return {false, 0};
+          if (!setThreadAffinity(m_thread->native_handle(), core))
+            PLOGW << "Failed to assign io thread to core " << core;
+          else
+            started = true;
         }
         else
-        {
-          const auto filename = createUuid();
-          std::filesystem::path fullPath{path};
-          fullPath /= filename;
-
-          if (std::ofstream out{fullPath}; !out.good())
-          {
-            PLOGF << "Cannot write to kv:session::save::path";
-            return {false, 0};
-          }
-          else
-          {
-            out.close();
-            std::filesystem::remove(fullPath);
-          }
-        }
+          PLOGE << "Failed to start WS server";
       }
-
-
-      if (const auto nCores = std::min<std::size_t>(std::thread::hardware_concurrency(), NEMESIS_MAX_CORES); nCores < 1U || nCores > 64U)
+      catch(const std::exception& e)
       {
-        PLOGF << "Core count unexpected: " << nCores;
-        return {false, 0};
-      }
-      else
-      {
-        const std::size_t nIoThreads = CoresToIoThreads.contains(nCores) ? CoresToIoThreads.at(nCores) : std::prev(CoresToIoThreads.upper_bound(nCores), 1)->second;
-        
-        kv::MaxPools = std::max<std::size_t>(1U, nCores - nIoThreads);
-        kv::serverStats = new kv::ServerStats;
-        
-        m_kvHandler = new kv::KvHandler {kv::MaxPools, nCores - kv::MaxPools, config};
-      
-        return {true, nIoThreads};
+        PLOGF << "Failed to start WS thread:\n" << e.what();
       }
 
-      /* TODO decide: when we shutdown, client connections enter TIME_WAIT, preventing starting
-      //              if isPortOpen() is called. 
-      //              See: https://www.baeldung.com/linux/close-socket-time_wait
-      if (auto check = isPortOpen(ip, port); !check || *check)
-      {
-        std::cout << "ERROR: IP and port already used OR failed during checking open ports. " << ip << ":" << port << '\n';
-        return false;
-      }
-      */
+      return started;
     }
 
 
     std::tuple<bool, std::string> load(const NemesisConfig& config)
     {
-      fs::path root = config.loadPath / config.loadName;
+      const fs::path root = config.loadPath / config.loadName;
+
+      PLOGI << "Loading " << root;
 
       if (!fs::exists(root))
         return {false, "Load name does not exist"};
@@ -347,149 +289,61 @@ public:
       if (!fs::is_directory(root))
         return {false, "Path to load name is not a directory"};
 
-      std::size_t max = 0;
+      
+      // loadRoot may contain several saves (i.e. SH_SAVE used multiple times with the same 'name'),
+      // so use getDefaultDataSetPath() to get the most recent
+      const auto datasetRoot = getDefaultDataSetPath(root);
 
-      for (auto& dir : fs::directory_iterator(root))
-      {
-        if (dir.is_directory())
-          max = std::max<std::size_t>(std::stoul(dir.path().filename()), max);
-      }
-
-      if (!max)
-        return {false, "No data"};
-
-      const fs::path datasets = root / std::to_string(max);
-      const fs::path data = datasets / "data";
-      const fs::path md = datasets / "md";
+      // check data dir and metadata file
+      const fs::path data = datasetRoot / "data";
+      const fs::path mdFile = datasetRoot / "md" / "md.json";
 
       if (!(fs::exists(data) && fs::is_directory(data)))
         return {false, "'data' directory does not exist or is not a directory"};
       
-      if (!(fs::exists(md) && fs::is_directory(md)))
-        return {false, "'md' directory does not exist or is not a directory"};
+      if (!fs::exists(mdFile))
+        return {false, "metadata does not exist"};
 
-      PLOGI << "Reading metadata in " << md;
-      
-      std::ifstream mdStream {md / "md.json"};
-      auto mdJson = njson::parse(mdStream);
 
-      if (!(mdJson.contains("status") && mdJson.contains("pools")) || !(mdJson["status"].is_uint64() && mdJson["pools"].is_uint64()))
+      PLOGI << "Reading metadata in " << mdFile;
+
+      std::ifstream mdStream {mdFile};
+      const auto mdJson = njson::parse(mdStream);
+
+      if (!mdJson.contains("status") || !mdJson["status"].is_uint64())
         return {false, "Metadata file invalid"};
       else if (mdJson["status"] != toUnderlying(KvSaveStatus::Complete))
-        return {false, "Dataset is not complete, cannot load. Metadata status not Complete"};
+        return {false, "Cannot load: save was incomplete"};
       else
       {
-        const auto loadResult = m_kvHandler->load(data);
-        const auto success = LoadResult::statusSuccess(loadResult);
+        const auto loadResult = s_kvHandler->internalLoad(config.loadName, data);
+        const auto success = loadResult.status == RequestStatus::LoadComplete;
 
-        std::cout << "-- Load --\n";
+        PLOGI << "-- Load --";
     
         if (success)
         {
-          std::cout << "Status: Success " << (loadResult.status == RequestStatus::LoadDuplicate ? "(Duplicates)" : "") << '\n';
-          std::cout << "Sessions: " << loadResult.nSessions << "\nKeys: " << loadResult.nKeys << '\n'; 
+          PLOGI << "Status: Success";
+          PLOGI << "Sessions: " << loadResult.nSessions ;
+          PLOGI << "Keys: " << loadResult.nKeys ;
+          PLOGI << "Duration: " << chrono::duration_cast<std::chrono::milliseconds>(loadResult.loadTime).count() << "ms";
         }
         else
-          std::cout << "Status: Fail\n";
+          PLOGI << "Status: Fail";
 
-        std::cout << "Time: " << std::chrono::duration_cast<std::chrono::milliseconds>(loadResult.loadTime).count() << '\n';
-
-        std::cout << "----------\n";
+        PLOGI << "----------";
         
         return {success, ""};
       }
     }
-
-
-    /*
-    std::optional<bool> isPortOpen (const std::string& checkIp, const short checkPort)
-    {
-      #ifdef NDB_UNIT_TEST_NOPORTCHECK
-      return false;
-      #else
-      
-      if (auto fd = socket(AF_INET, SOCK_STREAM, 0) ; fd >= 0)
-      {        
-        sockaddr a;
-        sockaddr_in address;
-        address.sin_family = AF_INET;
-        address.sin_port = htons(checkPort);
-
-        inet_pton(AF_INET, checkIp.c_str(), &(address.sin_addr));
     
-        const auto open = bind(fd, reinterpret_cast<const sockaddr*>(&address), sizeof(address)) < 0;
-        
-        if (open)
-        {
-          char msg[256];
-          std::cout << strerror_r(errno, msg, 256) << '\n';
-        }
-
-        close(fd);
-
-        return open;
-      }
-      return {};
-
-      #endif
-    }
-
-    int getPid(const std::string& procName)
-    {
-      int pid = -1;
-
-      // Open the /proc directory
-      DIR *dp = opendir("/proc");
-      if (dp != NULL)
-      {
-        // Enumerate all entries in directory until process found
-        struct dirent *dirp;
-        while (pid < 0 && (dirp = readdir(dp)))
-        {
-          // Skip non-numeric entries
-          int id = atoi(dirp->d_name);
-          if (id > 0)
-          {
-            // Read contents of virtual /proc/{pid}/cmdline file
-            std::string cmdPath = std::string("/proc/") + dirp->d_name + "/cmdline";
-            std::ifstream cmdFile(cmdPath.c_str());
-            std::string cmdLine;
-            if (std::getline(cmdFile, cmdLine); !cmdLine.empty())
-            {
-              // Keep first cmdline item which contains the program path
-              size_t pos = cmdLine.find('\0');
-              if (pos != std::string::npos)
-                cmdLine = cmdLine.substr(0, pos);
-              // Keep program name only, removing the path
-              pos = cmdLine.rfind('/');
-              if (pos != std::string::npos)
-                cmdLine = cmdLine.substr(pos + 1);
-
-              // Compare against requested process name
-              if (procName == cmdLine)
-                pid = id;
-            }
-          }
-        }
-      }
-
-      closedir(dp);
-
-      return pid;
-    }
-    */
-
 
   private:
-    std::vector<std::jthread *> m_threads;
+    std::unique_ptr<std::jthread> m_thread;
     std::vector<us_listen_socket_t *> m_sockets;
-    std::set<KvWebSocket *> m_wsClients;
-    kv::KvHandler * m_kvHandler;
-    std::mutex m_socketsMux;
-    std::mutex m_wsClientsMux;
-    std::mutex m_threadsMux;
+    std::set<KvWebSocket *> m_wsClients;    
     std::atomic_bool m_run;
-    std::jthread m_monitor;
+    us_timer_t * m_monitorTimer{nullptr};
 };
 
 

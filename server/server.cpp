@@ -45,7 +45,7 @@ int main (int argc, char ** argv)
 
   #ifdef NDB_DEBUG
     config.cfg["version"] = 1;
-    config.cfg["mode"] = "ts";
+    config.cfg["mode"] = "kv";
 
     config.cfg["kv"]["ip"] = "127.0.0.1";
     config.cfg["kv"]["port"] = 1987;
@@ -59,6 +59,9 @@ int main (int argc, char ** argv)
 
     if (!fs::exists(config.cfg["kv"]["session"]["save"]["path"].as_string()))
       fs::create_directories(config.cfg["kv"]["session"]["save"]["path"].as_string());
+
+    // config.loadPath = NemesisConfig::kvSavePath(config.cfg);
+    // config.loadName = "t2";
       
   #else
     if (config = nemesis::core::readConfig(argc, argv); !config.valid)

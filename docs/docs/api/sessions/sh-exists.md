@@ -8,14 +8,11 @@ Checks if session token(s) exists.
 
 |Param|Type|Meaning|Required|
 |:---|:---|:---|:---:|
-|tkns|Array of unsigned int|Each unsigned int is a session token|Y|
+|tkns|Array of session tokens|Checks if each token exists|Y|
 
 <br/>
 
-The response contains a bool flag for each token in the `tkns` array. If `true` it is valid to use with any command requiring a token.
-
-<br/>
-
+Values in 'tkns' that are the incorrect type are ignored.
 
 ## Response
 
@@ -25,14 +22,17 @@ The response contains a bool flag for each token in the `tkns` array. If `true` 
 |Param|Type|Meaning|
 |:---|:---|:---|
 |st|unsigned int|Status|
-|tkns|Object|Each token in the request is a key with a bool value|
+|exist|array|An array of session tokens that exist|
+|notExist|array|An array of session tokens that do not exist|
+
 
 <br/>
 
 Possible status values:
 
 - Ok
-- CommandSyntax (`tkns` not present or not an array)
+- ParamMissing
+- CommandSyntax
 
 <br/>
 
@@ -56,12 +56,8 @@ Possible status values:
   "SH_EXISTS_RSP":
   {
     "st": 1,
-    "tkns":
-    {
-      "16145406615211810694": true,
-      "15472368655611898535": true,
-      "3573531683628185477": false
-    }
+    "exist": [16145406615211810694, 15472368655611898535],
+    "notExist":[3573531683628185477]
   }
 }
 ```

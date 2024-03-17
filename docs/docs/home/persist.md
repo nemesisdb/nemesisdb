@@ -6,7 +6,7 @@ displayed_sidebar: homeSidebar
 # Persist Data
 NemesisDB is an in-memory/cache database meaning all the data is always stored in RAM. This offers performance benefits but it also means if the server shutdowns all the data is lost.
 
-To help this, the data can be persisted to the filesystem and restored on startup or at runtime.
+Key value data can be persisted to the filesystem and restored on startup or at runtime.
 
 More details are available in [Persist](/tutorials/persist-data/overview).
 
@@ -59,7 +59,7 @@ This expects to find `mydata` in the `session::save::path` set in the server con
 <br/>
 
 ## Restore: Runtime
-As of version 0.3.6, data can be loaded anytime using `SH_LOAD`:
+Data can be loaded at runtime with `SH_LOAD`:
 
 ```json
 {
@@ -70,4 +70,4 @@ As of version 0.3.6, data can be loaded anytime using `SH_LOAD`:
 }
 ```
 
-This expects to find the data in the `session::save::path` and can't be overridden.
+This expects to find the data in the `session::save::path`.

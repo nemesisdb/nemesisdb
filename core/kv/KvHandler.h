@@ -9,7 +9,8 @@
 #include <ranges>
 #include <core/NemesisCommon.h>
 #include <core/kv/KvCommon.h>
-#include <core/kv/KvPoolWorker.h>
+#include <core/kv/KvSessionExecutor.h>
+#include <core/kv/KvSessions.h>
 
 
 namespace nemesis { namespace core { namespace kv {
@@ -18,29 +19,20 @@ namespace nemesis { namespace core { namespace kv {
 class KvHandler
 {
 public:
-  KvHandler(const std::size_t nPools, const std::size_t coreOffset, const njson& config) :
-    m_createSessionPoolId(nPools == 1U ? SessionIndexers[1U] : SessionIndexers[0U]),
-    m_config(config)
+  KvHandler(const njson& config) :  m_config(config)
   {
-    for (std::size_t pool = 0, core = coreOffset ; pool < nPools ; )
-    {
-      m_pools.emplace_back(new KvPoolWorker{core, pool}); // TODO these can be unqiue_ptr
-      ++pool;
-      ++core;
-    }
   }
   
 
   ~KvHandler()
   {
-    for (auto& pool : m_pools)
-      delete pool;
   }
+
 
 private:
   
   // CAREFUL: these have to be in the order of KvQueryType enum
-  const std::array<std::function<void(KvWebSocket *, njson&&)>, static_cast<std::size_t>(KvQueryType::MAX)> Handlers = 
+  const std::array<std::function<void(KvWebSocket *, njson&&)>, static_cast<std::size_t>(KvQueryType::MAX)> MsgHandlers = 
   {
     std::bind_front(&KvHandler::sessionNew,       std::ref(*this)),
     std::bind_front(&KvHandler::sessionEnd,       std::ref(*this)),
@@ -65,7 +57,7 @@ private:
     std::bind_front(&KvHandler::keys,             std::ref(*this)),
     std::bind_front(&KvHandler::clearSet,         std::ref(*this))
   };
-
+  
 
 public:
 
@@ -80,7 +72,7 @@ public:
     {
       // TODO QueryNameToType.second is tuple from previous version, keep for now but doesn't actually need to be
       const auto [queryType] = itType->second;  
-      const auto handler = Handlers[static_cast<std::size_t>(queryType)];
+      const auto handler = MsgHandlers[static_cast<std::size_t>(queryType)];
 
       try
       {
@@ -88,6 +80,7 @@ public:
       }
       catch (const std::exception& kex)
       {
+        PLOGF << kex.what() ;
         status = RequestStatus::Unknown;
       }
     }
@@ -98,80 +91,33 @@ public:
 
   void monitor ()
   {
-    for(auto& pool : m_pools)
-      pool->execute(KvCommand{.type = KvQueryType::InternalSessionMonitor});
+    SessionExecutor::sessionMonitor(m_sessions);    
   }
 
+  
+  void load(const std::string& loadName, KvWebSocket * ws, const fs::path& dataSetsRoot)
+  {
+    PLOGI << "Loading from " << dataSetsRoot;
 
-  LoadResult load(const fs::path& dataSetsRoot)
+    send(ws, SessionExecutor::loadSessions (loadName, m_sessions, dataSetsRoot));
+
+    PLOGI << "Loading finished";
+  }
+ 
+
+  LoadResult internalLoad(const std::string& loadName, const fs::path& dataSetsRoot)
   {
     PLOGI << "Loading from " << dataSetsRoot;
 
     const auto start = NemesisClock::now();
-    const auto hostPools = m_pools.size();
-    const auto sourcePools = countFiles(dataSetsRoot);
-    
-    LoadResult loadResult { .status = RequestStatus::LoadComplete };
+    const auto rsp = SessionExecutor::loadSessions (loadName, m_sessions, dataSetsRoot);
 
-    if (hostPools == 1U)
-    {
-      PLOGD << "Everything to pool 0";
+    PLOGI << "Loading finished";
 
-      njson cmd;
-      cmd["dirs"] = njson::array();
-
-      for(auto& poolDataDir : fs::directory_iterator(dataSetsRoot))
-        cmd["dirs"].emplace_back(poolDataDir.path().string());
-
-      auto result = submitSync(0, KvQueryType::InternalLoad, std::move(cmd));
-      loadResult = std::any_cast<LoadResult> (result);
-    }
-    else if (hostPools == sourcePools)
-    {
-      PLOGD << "Direct";
-
-      std::latch latch{static_cast<std::ptrdiff_t>(hostPools)};
-      std::mutex resultsMux;
-      std::vector<std::any> results;
-
-      auto onResult = [&latch, &results, &resultsMux](auto r)
-      {
-        {
-          std::scoped_lock lck{resultsMux};
-          results.emplace_back(std::move(r));
-        }
-        latch.count_down();
-      };
-      
-      for(auto& poolDataDir : fs::directory_iterator(dataSetsRoot))
-      {
-        const auto& poolPath = poolDataDir.path();
-
-        njson cmd;
-        cmd["dirs"] = njson::make_array(1, poolPath.string());
-
-        m_pools[std::stoul(poolPath.filename())]->execute(KvCommand{  .contents = std::move(cmd),
-                                                                      .syncResponseHandler = onResult,
-                                                                      .type = KvQueryType::InternalLoad});
-      }
-      
-
-      latch.wait();
-
-      // collate results
-      for(auto& result : results)
-        loadResult += std::any_cast<LoadResult> (result);
-    }    
-    else
-    {
-      // there's no shortcut to this because source and host pools can't be inferred
-      // have to recalculate each source session's pool from its token
-      PLOGD << "Re-map";      
-      loadResult = loadRemap(dataSetsRoot);
-    }
-
-
-    loadResult.loadTime = NemesisClock::now() - start;
+    LoadResult loadResult { .loadTime = NemesisClock::now() - start };
+    loadResult.status = static_cast<RequestStatus>(rsp["SH_LOAD_RSP"]["st"].as<std::uint64_t>());
+    loadResult.nSessions = rsp["SH_LOAD_RSP"]["sessions"].as<std::size_t>();
+    loadResult.nKeys = rsp["SH_LOAD_RSP"]["keys"].as<std::size_t>();
 
     return loadResult;
   }
@@ -179,227 +125,25 @@ public:
 
 private:
   
-  
-  LoadResult loadRemap (const fs::path& dataSetsRoot)
+    
+  bool getSessionToken(KvWebSocket * ws, const std::string_view queryRspName, const njson& cmdRoot, SessionToken& tkn)
   {
-    LoadResult loadResult { .status = RequestStatus::LoadComplete};
-    std::atomic_size_t nSessions{0}, nKeys{0};
-    std::atomic_bool error{false};
-
-
-    for(auto& poolDir : fs::directory_iterator(dataSetsRoot))
+    if (cmdRoot.contains("tkn") && cmdRoot.at("tkn").is<SessionToken>())
     {
-      const auto& poolPath = poolDir.path();      
-
-      PLOGD << "Loading pool data from: " << poolPath;
-
-      // open each file, get token, create pool id, send to pool
-      for(auto& file : fs::directory_iterator(poolPath))
-      {
-        std::ifstream seshStream {file.path()};
-        njson sessions = njson::parse(seshStream);
-
-        PLOGD << "File " << file.path() << " has " << sessions.size() << " session";
-
-        std::latch latch{static_cast<std::ptrdiff_t>(sessions.size())};
-
-        auto onResult = [&latch, &nSessions, &nKeys, &error](auto r)
-        {
-          LoadResult lr = std::any_cast<LoadResult> (r);
-          nSessions += lr.nSessions;
-          nKeys += lr.nKeys;
-
-          if (!error) // if not already in an error condition
-            error = !LoadResult::statusSuccess(lr);
-
-          latch.count_down();
-        };
-
-        for(auto& sesh : sessions.array_range())
-        {
-          const SessionToken& token = sesh["sh"]["tkn"].as<SessionToken>();
-
-          njson cmd;
-          cmd["sesh"] = std::move(sesh);
-          
-          const auto poolId = getPoolId(token);
-          m_pools[poolId]->execute(KvCommand{ .contents = std::move(cmd),
-                                              .syncResponseHandler = onResult,
-                                              .type = KvQueryType::InternalLoad});
-        }
-
-        latch.wait();
-      }
-    }
-
-    return LoadResult{ .status = error ? RequestStatus::LoadError : RequestStatus::LoadComplete,
-                              .nSessions = nSessions.load(),
-                              .nKeys = nKeys.load()};
-  }
-
-
-  ndb_always_inline PoolId getPoolId (const SessionToken& tkn)
-  {
-    PoolId id;
-    m_createSessionPoolId(tkn, id);
-    return id;
-  }
-
-
-  bool getSessionToken(KvWebSocket * ws, const std::string_view queryRspName, njson& cmd, SessionToken& tkn)
-  {
-    if (cmd.contains("tkn") && cmd.at("tkn").is<SessionToken>())
-    {
-      tkn = cmd.at("tkn").as<SessionToken>();
-      cmd.erase("tkn"); // erase tkn to simplify validating command
+      tkn = cmdRoot.at("tkn").as<SessionToken>();
       return true;
     }
     else
     {
-      send(ws, createErrorResponse(queryRspName, RequestStatus::SessionTokenInvalid).to_string());
+      send(ws, createErrorResponse(queryRspName, RequestStatus::SessionTokenInvalid));
       return false;
     }
   }
 
 
-  // Send response to client: must only be called from the originating I/O thread
-  ndb_always_inline void send (KvWebSocket * ws, const std::string& msg)
+  ndb_always_inline void send (KvWebSocket * ws, const njson& msg)
   {
-    // note don't need to defer() here because this is only called from the originating I/O thread
-    ws->send(msg, WsSendOpCode);
-  }
-
-
-  // Submit asynchronously with just token
-  ndb_always_inline void submit(KvWebSocket * ws, const SessionToken& token, const KvQueryType queryType, const std::string_view command, const std::string_view rspName, njson&& cmd = "")
-  {
-    submit(ws, getPoolId(token), token, queryType, command, rspName, std::move(cmd));
-  } 
-
-
-  // Submit asynchronously with pool id
-  ndb_always_inline void submit(KvWebSocket * ws, const PoolId& poolId, const SessionToken& token, const KvQueryType queryType, const std::string_view command, const std::string_view rspName, njson&& cmd = "")
-  {
-    m_pools[poolId]->execute(KvCommand{ .contents = std::move(cmd),
-                                        .ws = ws,
-                                        .loop = uWS::Loop::get(),
-                                        .type = queryType,
-                                        .tkn = token});
-  } 
-
-  
-  // Submit to a pool synchronously, when not triggered from a WebSocket client (i.e. load on startup)
-  ndb_always_inline std::any submitSync(const PoolId pool, const KvQueryType queryType, njson&& cmd = "")
-  {
-    std::latch latch{1U};
-    std::any result;
-
-    auto onResult = [&latch, &result](auto r)
-    {
-      result = std::move(r);
-      latch.count_down();
-    };
-
-    m_pools[pool]->execute(KvCommand{ .contents = std::move(cmd),
-                                      .syncResponseHandler = onResult,
-                                      .ws = nullptr,
-                                      .loop = nullptr,
-                                      .type = queryType});
-
-    latch.wait();
-    return result;
-  }
-
-  
-  // Submit to a pool synchronously
-  ndb_always_inline std::any submitSync(KvWebSocket * ws, const SessionToken& token, const KvQueryType queryType, const std::string_view command, const std::string_view rspName, njson&& cmd = "")
-  {
-    std::latch latch{1U};
-    std::any result;
-
-    auto onResult = [&latch, &result](auto r)
-    {
-      result = std::move(r);
-      latch.count_down();
-    };
-
-
-    const auto poolId = getPoolId(token);
-    m_pools[poolId]->execute(KvCommand{ .contents = std::move(cmd),
-                                        .syncResponseHandler = onResult,
-                                        .ws = ws,
-                                        .loop = uWS::Loop::get(),
-                                        .type = queryType,
-                                        .tkn = token});
-
-    latch.wait();
-    return result;
-  }
-
-
-  // Submit to all pools synchronously
-  ndb_always_inline std::vector<std::any> submitSync(KvWebSocket * ws, const KvQueryType queryType, const std::string_view command, const std::string_view rspName, njson&& cmd = "")
-  {
-    std::latch latch{static_cast<std::ptrdiff_t>(m_pools.size())};
-    std::vector<std::any> results;
-    std::mutex resultsMux;
-
-    auto onResult = [&latch, &results, &resultsMux](auto r)
-    {
-      {
-        std::scoped_lock lck{resultsMux};
-        results.emplace_back(std::move(r));
-      }
-      
-      latch.count_down();
-    };
-
-
-    for (auto& pool : m_pools)
-    {
-      pool->execute(KvCommand{  .contents = cmd,
-                                .syncResponseHandler = onResult,
-                                .ws = ws,
-                                .loop = uWS::Loop::get(),
-                                .type = queryType});
-    }
-    
-    latch.wait();
-    return results;
-  }
-
-  
-  // Submit using an array of session tokens
-  ndb_always_inline std::vector<std::any> submitSync(KvWebSocket * ws, const njson& tknArray, const KvQueryType queryType, const std::string_view command, const std::string_view rspName, njson&& cmd = "")
-  {
-    std::latch latch{static_cast<std::ptrdiff_t>(tknArray.size())};
-    std::vector<std::any> results;
-    std::mutex resultsMux;
-
-    auto onResult = [&latch, &results, &resultsMux](auto r)
-    {
-      {
-        std::scoped_lock lck{resultsMux};
-        results.emplace_back(std::move(r));
-      }
-      
-      latch.count_down();
-    };
-
-    for(auto& tknItem : tknArray.array_range())
-    {
-      auto tkn = tknItem.as<SessionToken>();
-      m_pools[getPoolId(tkn)]->execute(KvCommand{ .contents = std::move(cmd),
-                                                  .syncResponseHandler = onResult,
-                                                  .ws = ws,
-                                                  .loop = uWS::Loop::get(),
-                                                  .type = queryType,
-                                                  .tkn = tkn});
-    }
-    
-    
-    latch.wait();
-    return results;
+    ws->send(msg.to_string(), WsSendOpCode);
   }
 
 
@@ -407,12 +151,30 @@ private:
                 const njson& cmd, const std::map<const std::string_view, const Param>& params,
                 std::function<std::tuple<RequestStatus, const std::string_view>(const njson&)> onPostValidate = nullptr)
   {
-    const auto [stat, msg] = isCmdValid<RequestStatus, RequestStatus::Ok, RequestStatus::ParamMissing, RequestStatus::ValueTypeInvalid>(cmd, params, onPostValidate);
+    const auto& cmdRoot = cmd.object_range().cbegin()->value();
+    const auto [stat, msg] = isCmdValid<RequestStatus, RequestStatus::Ok, RequestStatus::ParamMissing, RequestStatus::ValueTypeInvalid>(cmdRoot, params, onPostValidate);
     
     if (stat != RequestStatus::Ok)
     {
       PLOGD << msg;
-      send(ws, createErrorResponse(queryRspName, stat, msg).to_string());
+      send(ws, createErrorResponse(queryRspName, stat, msg));
+    }
+      
+    return stat == RequestStatus::Ok;
+  }
+
+
+  bool isValid (const std::string& queryRspName, const std::string_view child, KvWebSocket * ws, 
+                const njson& cmd, const std::map<const std::string_view, const Param>& params,
+                std::function<std::tuple<RequestStatus, const std::string_view>(const njson&)> onPostValidate = nullptr)
+  {
+    const auto object = cmd.object_range().cbegin()->value()[child];
+    const auto [stat, msg] = isCmdValid<RequestStatus, RequestStatus::Ok, RequestStatus::ParamMissing, RequestStatus::ValueTypeInvalid>(object, params, onPostValidate);
+    
+    if (stat != RequestStatus::Ok)
+    {
+      PLOGD << msg;
+      send(ws, createErrorResponse(queryRspName, stat, msg));
     }
       
     return stat == RequestStatus::Ok;
@@ -420,12 +182,11 @@ private:
 
 
   // SESSION
-  
   ndb_always_inline void sessionNew(KvWebSocket * ws, njson&& json)
   {
     static const KvQueryType queryType      = KvQueryType::ShNew;
     static const std::string queryName      = QueryTypeToName.at(queryType);
-    static const std::string queryRspName   = queryName +"_RSP";
+    static const std::string queryRspName   = queryName + "_RSP";
     
     
     auto validate = [](const njson& cmd) -> std::tuple<RequestStatus, const std::string_view>
@@ -436,36 +197,46 @@ private:
       return {RequestStatus::Ok, ""};
     };
 
-
-    auto& cmd = json.at(queryName);
-
-    if (isValid(queryRspName, ws, cmd, {{Param::required("name", JsonString)}, {Param::optional("expiry", JsonObject)}, {Param::optional("shared", JsonBool)}}, validate))
+    if (isValid(queryRspName, ws, json, {{Param::required("name", JsonString)}, {Param::optional("expiry", JsonObject)}, {Param::optional("shared", JsonBool)}}, validate))
     {
+      auto& cmd = json.at(queryName);
+
       bool valid = true;
 
       if (cmd.contains("expiry"))
-        valid = isValid(queryRspName, ws, cmd.at("expiry"), {{Param::required("duration", JsonUInt)}, {Param::required("deleteSession", JsonBool)}});
+        valid = isValid(queryRspName, "expiry", ws, json, {{Param::required("duration", JsonUInt)}, {Param::required("deleteSession", JsonBool)}});
       else
       {
         cmd["expiry"]["duration"] = 0U; // defaults to never expire
         cmd["expiry"]["deleteSession"] = true;
       }
 
-      cmd["shared"] = cmd.get_value_or<bool>("shared", false);
-
       if (valid)
       {
+        cmd["shared"] = cmd.get_value_or<bool>("shared", false);
+
         const auto token = createSessionToken(cmd.at("name").as_string(), cmd["shared"] == true);
-        submit(ws, token, queryType, queryName, queryRspName, std::move(cmd));
+        send(ws, SessionExecutor::newSession(m_sessions, token, cmd));
       }
     }
   }
 
   
+  ndb_always_inline void sessionEnd(KvWebSocket * ws, njson&& json)
+  {
+    static const std::string queryName      = QueryTypeToName.at(KvQueryType::ShEnd);
+    static const std::string queryRspName   = queryName + "_RSP";
+
+    SessionToken token;
+    
+    if (getSessionToken(ws, queryRspName, json.at(queryName), token))
+      send(ws, SessionExecutor::endSession(m_sessions, token));
+  }
+
+  
   ndb_always_inline void sessionOpen(KvWebSocket * ws, njson&& json)
   {
-    static const KvQueryType queryType      = KvQueryType::ShOpen;
-    static const std::string queryName      = QueryTypeToName.at(queryType);
+    static const std::string queryName      = QueryTypeToName.at(KvQueryType::ShOpen);
     static const std::string queryRspName   = queryName +"_RSP";
 
 
@@ -478,111 +249,81 @@ private:
     };
 
 
-    auto& cmd = json.at(queryName);
+    const auto& cmd = json.at(queryName);
 
     if (isValid(queryRspName, ws, cmd, {{Param::required("name", JsonString)}}, validate))
     {
-      // ask the pool if the session token exists
-
-      // we don't need to check if the session is shareable because if it isn't, the token will be completely different,
-      // so won't be found
+      njson rsp;
+      
       const auto token = createSessionToken(cmd.at("name").as_string(), true);
       
-      const auto result = submitSync(ws, token, queryType, queryName, queryRspName);
-      
-      const auto [exists, shared] = std::any_cast<std::tuple<bool, bool>>(result) ;
-
-      // if they attempt to open a sesh that isn't shared, we can't accurately report if the 
-      // session exists because the session will have a completely different token, so it either
-      // completely works or a general failure response 
-      njson rsp;
-      if (exists && shared)
+      // generate a shared token from the name. If a session with the same name was created but isn't shared, 
+      // the tokens will be completely different
+      if (SessionExecutor::openSession(m_sessions, token))
       {
         rsp[queryRspName]["tkn"] = token;
-        rsp[queryRspName]["st"] = static_cast<int>(RequestStatus::Ok);
+        rsp[queryRspName]["st"] = toUnderlying(RequestStatus::Ok);
       }
       else
       {
         rsp[queryRspName]["tkn"] = njson::null();
-        rsp[queryRspName]["st"] = static_cast<int>(RequestStatus::SessionOpenFail);
+        rsp[queryRspName]["st"] = toUnderlying(RequestStatus::SessionOpenFail);
       }        
 
-      send(ws, rsp.to_string());
+      send(ws, rsp);
     }
   }
 
   
   ndb_always_inline void sessionInfo(KvWebSocket * ws, njson&& json)
   {
-    static const KvQueryType queryType      = KvQueryType::ShInfo;
-    static const std::string queryName      = QueryTypeToName.at(queryType);
+    static const std::string queryName      = QueryTypeToName.at(KvQueryType::ShInfo);
     static const std::string queryRspName   = queryName +"_RSP";
 
     auto& cmd = json.at(queryName);
 
     if (cmd.size() != 1U)
-      send(ws, createErrorResponse(queryRspName, RequestStatus::CommandSyntax).to_string());
+      send(ws, createErrorResponse(queryRspName, RequestStatus::CommandSyntax));
     else
     {
       SessionToken token;
     
       if (getSessionToken(ws, queryName, cmd, token))
-        submit(ws, token, queryType, queryName, queryRspName);
+        send(ws, SessionExecutor::sessionInfo(m_sessions, token));
     }
   }
 
-
+  
   ndb_always_inline void sessionInfoAll(KvWebSocket * ws, njson&& json)
   {
-    static const KvQueryType queryType      = KvQueryType::ShInfoAll;
-    static const std::string queryName      = QueryTypeToName.at(queryType);
-    static const std::string queryRspName   = queryName +"_RSP";
+    send(ws, SessionExecutor::sessionInfoAll(m_sessions));
+  }
+  
+
+  ndb_always_inline void sessionExists(KvWebSocket * ws, njson&& json)
+  {
+    static const std::string queryName      = QueryTypeToName.at(KvQueryType::ShExists);
+    static const std::string queryRspName   = queryName + "_RSP";
 
     auto& cmd = json.at(queryName);
 
-    if (!cmd.empty())
-      send(ws, createErrorResponse(queryRspName, RequestStatus::CommandSyntax).to_string());
-    else
-    {
-      auto results = submitSync(ws, queryType, queryName, queryRspName);
-      
-      std::size_t totalSesh{0}, totalKeys{0};
-      for(auto& result : results)
-      {
-        auto [sessions, keys] = std::any_cast<std::tuple<const std::size_t, const std::size_t>>(result);
-        totalSesh += sessions;
-        totalKeys += keys;
-      }
-
-      njson rsp;
-      rsp[queryRspName]["totalSessions"] = totalSesh;
-      rsp[queryRspName]["totalKeys"] = totalKeys;
-
-      send(ws, rsp.to_string());
-    }
+    if (isValid(queryRspName, ws, cmd, {{Param::required("tkns", JsonArray)}}))
+      send(ws, SessionExecutor::sessionExists(m_sessions, cmd.at("tkns")));
   }
 
 
-  ndb_always_inline void sessionEnd(KvWebSocket * ws, njson&& json)
+  ndb_always_inline void sessionEndAll(KvWebSocket * ws, njson&& json)
   {
-    static const KvQueryType queryType      = KvQueryType::ShEnd;
-    static const std::string queryName      = QueryTypeToName.at(queryType);
-    static const std::string queryRspName   = queryName +"_RSP";
-
-    SessionToken token;
-    
-    if (getSessionToken(ws, queryName, json.at(queryName), token))
-      submit(ws, token, queryType, queryName, queryRspName);
+    send(ws, SessionExecutor::sessionEndAll(m_sessions));
   }
-  
+
   
   ndb_always_inline void sessionSave(KvWebSocket * ws, njson&& json)
   {
-    static const KvQueryType queryType      = KvQueryType::ShSave;
-    static const std::string queryName      = QueryTypeToName.at(queryType);
+    static const std::string queryName      = QueryTypeToName.at(KvQueryType::ShSave);
     static const std::string queryRspName   = queryName +"_RSP";
-
     
+
     auto validate = [](const njson& cmd) -> std::tuple<RequestStatus, const std::string_view>
     {
       const bool haveTkns = cmd.contains("tkns");
@@ -604,358 +345,302 @@ private:
       return {RequestStatus::Ok, ""};
     };
     
-
-    auto& cmd = json.at(queryName);
-
     if (!NemesisConfig::kvSaveEnabled(m_config))
-      send(ws, createErrorResponseNoTkn(queryRspName, RequestStatus::CommandDisabled).to_string());
-    else if (isValid(queryRspName, ws, cmd, {{Param::required("name", JsonString)}, {Param::optional("tkns", JsonArray)}}, validate))
+      send(ws, createErrorResponseNoTkn(queryRspName, RequestStatus::CommandDisabled));
+    else if (isValid(queryRspName, ws, json, {{Param::required("name", JsonString)}, {Param::optional("tkns", JsonArray)}}, validate))
     {
+      auto& cmd = json.at(queryName);
       const auto& name = cmd.at("name").as_string();
 
       njson rsp;
       rsp[queryRspName]["name"] = name;
       
-      const auto timestampDir = std::to_string(KvSaveClock::now().time_since_epoch().count());
-      const auto root = fs::path {NemesisConfig::kvSavePath(m_config)} / name / timestampDir;
+      const auto setPath = std::to_string(KvSaveClock::now().time_since_epoch().count());
+      const auto root = fs::path {NemesisConfig::kvSavePath(m_config)} / name / setPath;
       const auto metaPath = fs::path{root} / "md";
       const auto dataPath = fs::path{root} / "data";
 
       std::ofstream metaStream;
 
       if (!fs::create_directories(metaPath))
-      {
         rsp[queryRspName]["st"] = toUnderlying(RequestStatus::SaveDirWriteFail);
-        send(ws, rsp.to_string());
-      }
-      else if (metaStream.open(metaPath/"md.json", std::ios_base::trunc | std::ios_base::out); !metaStream.is_open())
-      {
+      else if (metaStream.open(metaPath / "md.json", std::ios_base::trunc | std::ios_base::out); !metaStream.is_open())
         rsp[queryRspName]["st"] = toUnderlying(RequestStatus::SaveDirWriteFail);
-        send(ws, rsp.to_string());
-      }
       else
       {
         const bool haveTkns = cmd.contains("tkns");
 
         rsp[queryRspName]["st"] = toUnderlying(RequestStatus::SaveStart);
-        send(ws, rsp.to_string());
+        send(ws, rsp);
 
         // write metadata before we start incase we're interrupted mid-save
         auto start = KvSaveClock::now();
+        KvSaveStatus metaDataStatus = KvSaveStatus::Pending;
+
         njson metadata;
         metadata["name"] = name;
-        metadata["status"] = toUnderlying(KvSaveStatus::Pending);        
-        metadata["pools"] = m_pools.size();
-        metadata["start"] = std::chrono::time_point_cast<KvSaveMetaDataUnit>(start).time_since_epoch().count();
+        metadata["version"] = METADATA_VERSION;
+        metadata["status"] = toUnderlying(metaDataStatus);        
+        metadata["start"] = chrono::time_point_cast<KvSaveMetaDataUnit>(start).time_since_epoch().count();
         metadata["saveType"] = haveTkns ? toUnderlying(SaveType::SelectSessions) : toUnderlying(SaveType::AllSessions);
         metadata["complete"] = 0;
         
         metadata.dump(metaStream);
 
-        // build and send save to pools
+        // create save command and call executor
         njson saveCmd;
         saveCmd["poolDataRoot"] = dataPath.string();
+        saveCmd["name"] = name;
 
         if (haveTkns)
           saveCmd["tkns"] = std::move(cmd.at("tkns"));
 
         
-        const auto results = submitSync(ws, queryType, queryName, queryRspName, std::move(saveCmd));
-
-        RequestStatus st = RequestStatus::Ok;
-
-        for (const auto& result : results)
-          st = (std::any_cast<RequestStatus>(result) == RequestStatus::SaveComplete ? RequestStatus::SaveComplete : RequestStatus::SaveError);
-        
-        const auto end = KvSaveClock::now();
-        
-        // update metdata
-        metadata["status"] = toUnderlying(KvSaveStatus::Complete);
-        metadata["complete"] = std::chrono::time_point_cast<KvSaveMetaDataUnit>(end).time_since_epoch().count();
-        metaStream.seekp(0);
-        metadata.dump(metaStream);
-
-        // send command rsp
-        rsp[queryRspName]["st"] = toUnderlying(st);
-
-        // duration is unpredictable, making testing responses a PITA
-        #ifndef NDB_UNIT_TEST
-        rsp[queryRspName]["duration"] = std::chrono::duration_cast<KvSaveMetaDataUnit>(end-start).count();
-        #endif
-
-        send(ws, rsp.to_string());
-      }
-    }
-  }  
-
-
-  ndb_always_inline void sessionLoad(KvWebSocket * ws, njson&& json)
-  {
-    static const KvQueryType queryType      = KvQueryType::ShLoad;
-    static const std::string queryName      = QueryTypeToName.at(queryType);
-    static const std::string queryRspName   = queryName +"_RSP";
-
-    const auto& loadPath = fs::path{NemesisConfig::kvSavePath(m_config)};
-
-    auto validate = [this, loadPath](const njson& cmd) -> std::tuple<RequestStatus, const std::string_view>
-    {
-      for (const auto& item : cmd.at("names").array_range())
-      {
-        if (!item.is_string())
-          return {RequestStatus::ValueTypeInvalid, "names contains incorrect data type"};
-        else
+        try
         {
-          // confirm load dir exists, i.e. :  <loadPath>/<loadName>
-          if (!fs::exists(loadPath / item.as_string()))
-            return {RequestStatus::LoadError, "Load path does not exist"};
-        } 
-      }
-
-      return {RequestStatus::Ok, ""};
-    };
-
-
-    auto& cmd = json.at(queryName);
-
-    if (isValid(queryRspName, ws, cmd, {{Param::required("names", JsonArray)}}, validate))
-    {
-      njson rsp;
-        
-      for (const auto& item : cmd.at("names").array_range())
-      {
-        const auto loadName = item.as_string();
-        const auto loadRoot = loadPath / loadName;
-
-        rsp[queryRspName][loadName]["m"] = "";
-        rsp[queryRspName][loadName]["sessions"] = 0;
-        rsp[queryRspName][loadName]["keys"] = 0;
-
-        if (auto dataSetPath = getDefaultDataSetPath(loadRoot); dataSetPath.empty())
-          rsp[queryRspName][loadName]["st"] = toUnderlying(RequestStatus::LoadComplete);  // no datasets, not an error
-        else
-        {
-          const fs::path datasets = dataSetPath / "data";
-
-          if (!fs::exists(datasets))
-          {
-            rsp[queryRspName][loadName]["st"] = toUnderlying(RequestStatus::LoadError);
-            rsp[queryRspName][loadName]["m"] = "Data directory does not exist";
-          }
-          else
-          {            
-            const auto result = load(datasets);
-            rsp[queryRspName][loadName]["st"] = toUnderlying(result.status);              
-            rsp[queryRspName][loadName]["sessions"] = result.nSessions;
-            rsp[queryRspName][loadName]["keys"] = result.nKeys;
-          }
+          rsp = SessionExecutor::saveSessions(m_sessions, saveCmd);
+          metaDataStatus = KvSaveStatus::Complete;
         }
+        catch(const std::exception& e)
+        {
+          PLOGE << e.what();
+          metaDataStatus = KvSaveStatus::Error;
+        }
+
+        // update metdata
+        metadata["status"] = toUnderlying(metaDataStatus);
+        metadata["complete"] = chrono::time_point_cast<KvSaveMetaDataUnit>(KvSaveClock::now()).time_since_epoch().count();
+        metaStream.seekp(0);
+
+        metadata.dump(metaStream);
       }
-      
-      send(ws, rsp.to_string());
+
+      send(ws, rsp);
     }
-  }
+  } 
 
   
-  ndb_always_inline void sessionEndAll(KvWebSocket * ws, njson&& json)
+  ndb_always_inline void sessionLoad(KvWebSocket * ws, njson&& json)
   {
-    static const KvQueryType queryType      = KvQueryType::ShEndAll;
-    static const std::string queryName      = QueryTypeToName.at(queryType);
-    static const std::string queryRspName   = queryName + "_RSP";
+    static const std::string queryName      = QueryTypeToName.at(KvQueryType::ShLoad);
+    static const std::string queryRspName   = queryName +"_RSP";
 
-    const auto results = submitSync(ws, queryType, queryName, queryRspName);
-
-    std::size_t count {0};
-    std::for_each(results.cbegin(), results.cend(), [&count](const auto& result) { count += std::any_cast<std::size_t>(result);});
-
-    njson rsp;
-    rsp[queryRspName]["st"] = toUnderlying(RequestStatus::Ok);
-    rsp[queryRspName]["cnt"] = count;
-
-    send(ws, rsp.to_string());
-  }
-
-
-  ndb_always_inline void sessionExists(KvWebSocket * ws, njson&& json)
-  {
-    static const KvQueryType queryType      = KvQueryType::ShExists;
-    static const std::string queryName      = QueryTypeToName.at(queryType);
-    static const std::string queryRspName   = queryName + "_RSP";
-
-    // TODO fix this:
-    //  it doesn't check each item in 'tkns' is a SessionToken type
-
-    auto& cmd = json.at(queryName);
-    
-    if (isValid(queryRspName, ws, cmd, {{Param::required("tkns", JsonArray)}}))
+    if (isValid(queryRspName, ws, json, {{Param::required("name", JsonString)}}))
     {
-      const auto results = submitSync(ws, cmd.at("tkns"), queryType, queryName, queryRspName);
+      const auto& loadName = json.at(queryName).at("name").as_string();
+      const auto& loadPath = fs::path{NemesisConfig::kvSavePath(m_config)};
+      const auto loadRoot = loadPath / loadName;
 
-      njson rsp;
-      rsp[queryRspName]["st"] = toUnderlying(RequestStatus::Ok);
-
-      for (const auto& result : results)
+      if (!fs::exists(loadRoot))
       {
-        const auto [tkn, exists] = std::any_cast<std::tuple<SessionToken, bool>>(result);
-        rsp[queryRspName]["tkns"][std::to_string(tkn)] = exists;
+        njson rsp;
+        rsp[queryRspName]["st"] = toUnderlying(RequestStatus::LoadError);
+        rsp[queryRspName]["name"] = loadName;
+        send (ws, rsp);
       }
-
-      send(ws, rsp.to_string());
+      else
+      {
+        // loadRoot may contain several saves (i.e. SH_SAVE used multiple times with the same 'name'),
+        // so use getDefaultDataSetPath() to get the most recent
+        const auto dataSetPath = getDefaultDataSetPath(loadRoot);    
+        load(loadName, ws, dataSetPath / "data");
+      }
     }
   }
 
 
-  // DATA
+  // KV
+  std::optional<std::reference_wrapper<Sessions::Session>> getSession (KvWebSocket * ws, const std::string_view cmdRspName, const njson& cmd, SessionToken& token)
+  {
+    if (getSessionToken(ws, cmdRspName, cmd, token))
+    {
+      if (auto session = m_sessions.get(token); session)
+      {
+        if (session->get().expires)
+          m_sessions.updateExpiry(session->get());
+
+        return session;
+      }
+      else
+        send(ws, createErrorResponse(cmdRspName, RequestStatus::SessionNotExist, token));
+    }
+
+    return {};
+  }
+
+
+  template<typename F>
+  void handleKvExecuteResult(KvWebSocket * ws, const njson& rsp, F&& handler)
+    requires(std::is_invocable_v<F, CacheMap&, SessionToken&, njson&>)
+  {
+    using R = std::invoke_result_t<F, CacheMap&, SessionToken&, njson&>;
+
+    if constexpr (std::is_same_v<R, njson>)
+    {
+      // don't send null response, i.e. setQ and addQ only respond on error
+      if (!rsp.is_null())
+        send(ws, rsp);
+    }
+    else
+      send(ws, rsp);
+  }
+
+
+  template<typename F>
+  void callKvHandler(KvWebSocket * ws, CacheMap& map, const SessionToken& token, njson& cmdRoot, F&& handler)
+    requires(std::is_invocable_v<F, CacheMap&, SessionToken&, njson&>)
+  {
+    const auto rsp = std::invoke(handler, map, token, cmdRoot);
+    handleKvExecuteResult(ws, rsp, handler);
+  }
+
+
+  template<typename F>
+  void callKvHandler(KvWebSocket * ws, CacheMap& map, const SessionToken& token, const njson& cmdRoot, F&& handler)
+    requires(std::is_invocable_v<F, CacheMap&, SessionToken&, njson&>)
+  {
+    const auto rsp = std::invoke(handler, map, token, cmdRoot);
+    handleKvExecuteResult(ws, rsp, handler);
+  }
+
+
+  template<typename F>
+  void executeKvCommand(const std::string_view cmdRspName, KvWebSocket * ws, njson& cmd, F&& handler)
+    requires(std::is_invocable_v<F, CacheMap&, SessionToken&, njson&>)
+  {
+    auto& cmdRoot = cmd.object_range().begin()->value();
+
+    SessionToken token;
+    if (auto session = getSession(ws, cmdRspName, cmdRoot, token); session)
+      callKvHandler(ws, session->get().map, token, cmdRoot, handler);
+  }
+
+
+  template<typename F>
+  void executeKvCommand(const std::string_view cmdRspName, KvWebSocket * ws, const njson& cmd, F&& handler)
+    requires(std::is_invocable_v<F, CacheMap&, SessionToken&, njson&>)
+  {
+    const auto& cmdRoot = cmd.object_range().cbegin()->value();
+
+    SessionToken token;
+    if (auto session = getSession(ws, cmdRspName, cmdRoot, token); session)
+      callKvHandler(ws, session->get().map, token, cmdRoot, handler);
+  }
+
 
   ndb_always_inline void set(KvWebSocket * ws, njson&& json)
   {
-    static const KvQueryType queryType    = KvQueryType::KvSet;
-    static const std::string queryName    = QueryTypeToName.at(queryType);
+    static const std::string queryName    = QueryTypeToName.at(KvQueryType::KvSet);
     static const std::string queryRspName = queryName +"_RSP";
 
-    auto& cmd = json.at(queryName);
-    
-    if (isValid(queryRspName, ws, cmd, {{Param::required("keys", JsonObject)}}))
+    auto validate = [](const njson& cmd) -> std::tuple<RequestStatus, const std::string_view>
     {
-      SessionToken token;
-      if (getSessionToken(ws, queryRspName, cmd, token))
-        submit(ws, token, queryType, queryName, queryRspName, std::move(cmd.at("keys")));
-    }
+      return cmd.at("keys").empty() ? std::make_tuple(RequestStatus::ValueSize, "keys") : std::make_tuple(RequestStatus::Ok, "");
+    };
+    
+    if (isValid(queryRspName, ws, json, {{Param::required("keys", JsonObject)}}, validate))
+      executeKvCommand(queryRspName, ws, json, KvExecutor::set);
   }
 
-  
+
   ndb_always_inline void setQ(KvWebSocket * ws, njson&& json)
   {
-    static const KvQueryType queryType    = KvQueryType::KvSetQ;
-    static const std::string queryName    = QueryTypeToName.at(queryType);
+    static const std::string queryName    = QueryTypeToName.at(KvQueryType::KvSetQ);
     static const std::string queryRspName = queryName +"_RSP";
 
-    auto& cmd = json.at(queryName);
-    
-    if (isValid(queryRspName, ws, cmd, {{Param::required("keys", JsonObject)}}))
+    auto validate = [](const njson& cmd) -> std::tuple<RequestStatus, const std::string_view>
     {
-      SessionToken token;
-      if (getSessionToken(ws, queryRspName, cmd, token))
-        submit(ws, token, queryType, queryName, queryRspName, std::move(cmd.at("keys")));
-    }
+      return cmd.at("keys").empty() ? std::make_tuple(RequestStatus::ValueSize, "keys") : std::make_tuple(RequestStatus::Ok, "");
+    };
+
+    if (isValid(queryRspName, ws, json, {{Param::required("keys", JsonObject)}}, validate))
+      executeKvCommand(queryRspName, ws, json, KvExecutor::setQ);
   }
 
   
   ndb_always_inline void get(KvWebSocket * ws, njson&& json)
   {
-    static const KvQueryType queryType      = KvQueryType::KvGet;
-    static const std::string queryName      = QueryTypeToName.at(queryType);
+    static const std::string queryName      = QueryTypeToName.at(KvQueryType::KvGet);
     static const std::string queryRspName   = queryName +"_RSP";
 
-    auto& cmd = json.at(queryName);
-    
-    if (isValid(queryRspName, ws, cmd, {{Param::required("keys", JsonArray)}}))
-    {
-      SessionToken token;
-      if (getSessionToken(ws, queryRspName, cmd, token))
-        submit(ws, token, queryType, queryName, queryRspName, std::move(cmd.at("keys")));
-    }
+    if (isValid(queryRspName, ws, json, {{Param::required("keys", JsonArray)}}))
+      executeKvCommand(queryRspName, ws, json, KvExecutor::get);
   }
 
   
   ndb_always_inline void add(KvWebSocket * ws, njson&& json)
   {
-    static const KvQueryType queryType      = KvQueryType::KvAdd;
-    static const std::string queryName      = QueryTypeToName.at(queryType);
+    static const std::string queryName      = QueryTypeToName.at(KvQueryType::KvAdd);
     static const std::string queryRspName   = queryName +"_RSP";
 
-    auto& cmd = json.at(queryName);
-    SessionToken token;
-
-    if (isValid(queryRspName, ws, cmd, {{Param::required("keys", JsonObject)}}))
-    {
-      if (getSessionToken(ws, queryRspName, cmd, token))
-        submit(ws, token, queryType, queryName, queryRspName, std::move(cmd.at("keys")));
-    }
+    if (isValid(queryRspName, ws, json, {{Param::required("keys", JsonObject)}}))
+      executeKvCommand(queryRspName, ws, json, KvExecutor::add);
   }
 
 
   ndb_always_inline void addQ(KvWebSocket * ws, njson&& json)
   {
-    static const KvQueryType queryType      = KvQueryType::KvAddQ;
-    static const std::string queryName      = QueryTypeToName.at(queryType);
+    static const std::string queryName      = QueryTypeToName.at(KvQueryType::KvAddQ);
     static const std::string queryRspName   = queryName +"_RSP";
 
-    auto& cmd = json.at(queryName);
-
-    if (isValid(queryRspName, ws, cmd, {{Param::required("keys", JsonObject)}}))
+    auto validate = [](const njson& cmd) -> std::tuple<RequestStatus, const std::string_view>
     {
-      SessionToken token;
-      if (getSessionToken(ws, queryRspName, cmd, token))
-        submit(ws, token, queryType, queryName, queryRspName, std::move(cmd.at("keys")));
-    }
+      return cmd.at("keys").empty() ? std::make_tuple(RequestStatus::ValueSize, "keys") : std::make_tuple(RequestStatus::Ok, "");
+    };
+
+    if (isValid(queryRspName, ws, json, {{Param::required("keys", JsonObject)}}, validate))
+      executeKvCommand(queryRspName, ws, json, KvExecutor::addQ);
   }
 
 
   ndb_always_inline void remove(KvWebSocket * ws, njson&& json)
   {
-    static const KvQueryType queryType = KvQueryType::KvRemove;
-    static const std::string queryName     = QueryTypeToName.at(queryType);
-    static const std::string queryRspName  = queryName +"_RSP";
+    static const std::string queryName      = QueryTypeToName.at(KvQueryType::KvRemove);
+    static const std::string queryRspName   = queryName +"_RSP";
 
-    auto& cmd = json.at(queryName);
-
-    if (isValid(queryRspName, ws, cmd, {{Param::required("keys", JsonArray)}}))
+    auto validate = [](const njson& cmd) -> std::tuple<RequestStatus, const std::string_view>
     {
-      SessionToken token;
-      if (getSessionToken(ws, queryRspName, cmd, token))
-        submit(ws, token, queryType, queryName, queryRspName, std::move(cmd.at("keys")));
-    }
+      return cmd.at("keys").empty() ? std::make_tuple(RequestStatus::ValueSize, "keys") : std::make_tuple(RequestStatus::Ok, "");
+    };
+
+    if (isValid(queryRspName, ws, json, {{Param::required("keys", JsonArray)}}, validate))
+      executeKvCommand(queryRspName, ws, json, KvExecutor::remove);
   }
 
   
   ndb_always_inline void clear(KvWebSocket * ws, njson&& json)
   {
-    static const KvQueryType queryType      = KvQueryType::KvClear;
-    static const std::string queryName      = QueryTypeToName.at(queryType);
+    static const std::string queryName      = QueryTypeToName.at(KvQueryType::KvClear);
     static const std::string queryRspName   = queryName +"_RSP";
-
-    SessionToken token;
-
-    if (getSessionToken(ws, queryName, json.at(queryName), token))
-      submit(ws, token, queryType, queryName, queryRspName);
+    
+    executeKvCommand(queryRspName, ws, json, KvExecutor::clear);
   }
 
 
   ndb_always_inline void count(KvWebSocket * ws, njson&& json)
   {
-    static const KvQueryType queryType      = KvQueryType::KvCount;
-    static const std::string queryName      = QueryTypeToName.at(queryType);
+    static const std::string queryName      = QueryTypeToName.at(KvQueryType::KvCount);
     static const std::string queryRspName   = queryName +"_RSP";
-
-    SessionToken token;
-
-    if (getSessionToken(ws, queryName, json.at(queryName), token))
-      submit(ws, token, queryType, queryName, queryRspName);
+    
+    executeKvCommand(queryRspName, ws, json, KvExecutor::count);
   }
 
 
   ndb_always_inline void contains(KvWebSocket * ws, njson&& json)
   {
-    static const KvQueryType queryType      = KvQueryType::KvContains;
-    static const std::string queryName      = QueryTypeToName.at(queryType);
+    static const std::string queryName      = QueryTypeToName.at(KvQueryType::KvContains);
     static const std::string queryRspName   = queryName +"_RSP";
-
-    auto& cmd = json.at(queryName);
     
-    if (isValid(queryRspName, ws, cmd, {{Param::required("keys", JsonArray)}}))
-    {
-      SessionToken token;      
-      if (getSessionToken(ws, queryName, cmd, token))
-        submit(ws, token, queryType, queryName, queryRspName, std::move(cmd.at("keys")));
-    }
+    if (isValid(queryRspName, ws, json, {{Param::required("keys", JsonArray)}}))
+      executeKvCommand(queryRspName, ws, json, KvExecutor::contains);
   }
 
-  
+
   ndb_always_inline void find(KvWebSocket * ws, njson&& json)
   {
-    static const KvQueryType queryType      = KvQueryType::KvFind;
-    static const std::string queryName      = QueryTypeToName.at(queryType);
+    static const std::string queryName      = QueryTypeToName.at(KvQueryType::KvFind);
     static const std::string queryRspName   = queryName +"_RSP";
+
 
     auto validate = [](const njson& cmd) -> std::tuple<RequestStatus, const std::string_view>
     {
@@ -967,35 +652,22 @@ private:
       return {RequestStatus::Ok, ""};
     };
 
-
-    auto& cmd = json.at(queryName);
-    
-    if (isValid(queryRspName, ws, cmd, {{Param::required("path", JsonString)}, {Param::required("rsp", JsonString)}, {Param::optional("keys", JsonArray)}}, validate))
+    if (isValid(queryRspName, ws, json, {{Param::required("path", JsonString)}, {Param::required("rsp", JsonString)}, {Param::optional("keys", JsonArray)}}, validate))
     {
-      SessionToken token;
-      if (getSessionToken(ws, queryRspName, cmd, token))
-      {
-        if (!cmd.contains("keys"))
-          cmd["keys"] = njson::array(); // KvPool expects 'keys'
+      auto& cmd = json.at(queryName);
 
-        const auto poolId = getPoolId(token);
-        
-        m_pools[poolId]->execute(KvCommand{ .contents = std::move(cmd),
-                                            .ws = ws,
-                                            .loop = uWS::Loop::get(),
-                                            .type = queryType,
-                                            .tkn = token});
-      }
+      if (!cmd.contains("keys"))
+        cmd["keys"] = njson::array(); // executor expects "keys"
+
+      executeKvCommand(queryRspName, ws, json, KvExecutor::find);
     }
   }
-  
-  
+
+
   ndb_always_inline void update(KvWebSocket * ws, njson&& json)
   {
-    static const KvQueryType queryType      = KvQueryType::KvUpdate;
-    static const std::string queryName      = QueryTypeToName.at(queryType);
+    static const std::string queryName      = QueryTypeToName.at(KvQueryType::KvUpdate);
     static const std::string queryRspName   = queryName +"_RSP";
-
 
     auto validate = [](const njson& cmd) -> std::tuple<RequestStatus, const std::string_view>
     {
@@ -1006,57 +678,33 @@ private:
       return {RequestStatus::Ok, ""};
     };
 
-    auto& cmd = json.at(queryName);
-    
-    if (isValid(queryRspName, ws, cmd, {{Param::required("key", JsonString)}, {Param::required("path", JsonString)}}, validate))
-    {
-      SessionToken token;
-      if (getSessionToken(ws, queryRspName, cmd, token))
-        submit(ws, token, queryType, queryName, queryRspName, std::move(cmd));
-    }
+    if (isValid(queryRspName, ws, json, {{Param::required("key", JsonString)}, {Param::required("path", JsonString)}}, validate))
+      executeKvCommand(queryRspName, ws, json, KvExecutor::update);
   }
 
 
   ndb_always_inline void keys(KvWebSocket * ws, njson&& json)
   {
-    static const KvQueryType queryType      = KvQueryType::KvKeys;
-    static const std::string queryName      = QueryTypeToName.at(queryType);
+    static const std::string queryName      = QueryTypeToName.at(KvQueryType::KvKeys);
     static const std::string queryRspName   = queryName +"_RSP";
 
-    auto& cmd = json.at(queryName);
-    
-    SessionToken token;
-    if (getSessionToken(ws, queryRspName, cmd, token))
-    {
-      if (!cmd.empty()) // after tkn removed
-        send(ws, createErrorResponse(queryRspName, RequestStatus::CommandSyntax).to_string());
-      else
-        submit(ws, token, queryType, queryName, queryRspName, std::move(cmd));
-    }
+    executeKvCommand(queryRspName, ws, json, KvExecutor::keys);
   }
-  
+
 
   ndb_always_inline void clearSet(KvWebSocket * ws, njson&& json)
   {
-    static const KvQueryType queryType    = KvQueryType::KvClearSet;
-    static const std::string queryName    = QueryTypeToName.at(queryType);
-    static const std::string queryRspName = queryName +"_RSP";
+    static const std::string queryName      = QueryTypeToName.at(KvQueryType::KvClearSet);
+    static const std::string queryRspName   = queryName +"_RSP";
 
-    auto& cmd = json.at(queryName);
-    
-    if (isValid(queryRspName, ws, cmd, {{Param::required("keys", JsonObject)}}))
-    {
-      SessionToken token;
-      if (getSessionToken(ws, queryRspName, cmd, token))
-        submit(ws, token, queryType, queryName, queryRspName, std::move(cmd.at("keys")));
-    }
+    if (isValid(queryRspName, ws, json, {{Param::required("keys", JsonObject)}}))
+      executeKvCommand(queryRspName, ws, json, KvExecutor::clearSet);
   }
 
 
 private:
-  std::vector<KvPoolWorker *> m_pools;
-  std::function<void(const SessionToken&, PoolId&)> m_createSessionPoolId;
   njson m_config;
+  Sessions m_sessions;
 };
 
 }

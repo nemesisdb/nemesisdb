@@ -1,5 +1,5 @@
-#ifndef NDB_CORE_FUSIONCOMMON_H
-#define NDB_CORE_FUSIONCOMMON_H
+#ifndef NDB_CORE_NEMESISCOMMON_H
+#define NDB_CORE_NEMESISCOMMON_H
 
 #ifdef NDB_NOLOG
   #define PLOG_DISABLE_LOGGING
@@ -194,7 +194,6 @@ enum class RequestStatus
   Loading = 140,
   LoadComplete,
   LoadError,
-  LoadDuplicate,
   Unknown = 1000
 };
 

@@ -293,13 +293,13 @@ TEST_F(NemesisTest, EndAll)
   tc2.test(TestData { .request = R"({ "KV_SETQ":{ "keys":{"string":"string", "int":5} }})"_json});
 
   tc3.test(TestData { .request = R"({ "SH_INFO_ALL":{} })"_json, 
-                      .expected = { R"({ "SH_INFO_ALL_RSP":{"totalSessions":2, "totalKeys":4} } )"_json }});
+                      .expected = { R"({ "SH_INFO_ALL_RSP":{"st":1, "totalSessions":2, "totalKeys":4} } )"_json }});
 
   tc1.test(TestData { .request = R"({ "SH_END_ALL":{} } )"_json,
                       .expected = { R"({ "SH_END_ALL_RSP":{"st":1, "cnt":2} } )"_json }});
 
   tc3.test(TestData { .request = R"({ "SH_INFO_ALL":{} })"_json, 
-                      .expected = { R"({ "SH_INFO_ALL_RSP":{"totalSessions":0, "totalKeys":0} } )"_json }});
+                      .expected = { R"({ "SH_INFO_ALL_RSP":{"st":1, "totalSessions":0, "totalKeys":0} } )"_json }});
 }
 
 
@@ -312,7 +312,7 @@ TEST_F(NemesisTest, ShExists)
   ASSERT_TRUE(tc3.openNoSession());
 
   tc3.test(TestData { .request = R"({ "SH_INFO_ALL":{} })"_json, 
-                      .expected = { R"({ "SH_INFO_ALL_RSP":{"totalSessions":2, "totalKeys":0} } )"_json }});
+                      .expected = { R"({ "SH_INFO_ALL_RSP":{"st":1, "totalSessions":2, "totalKeys":0} } )"_json }});
 
   auto tc1Tkn = tc1.token["tkn"].get<SessionToken>();
   auto tc2Tkn = tc2.token["tkn"].get<SessionToken>();
@@ -323,22 +323,20 @@ TEST_F(NemesisTest, ShExists)
 
   testjson rsp;
   rsp["SH_EXISTS_RSP"]["st"] = (int)nemesis::core::RequestStatus::Ok;
-  rsp["SH_EXISTS_RSP"]["tkns"][std::to_string(tc1Tkn)] = true;
-  rsp["SH_EXISTS_RSP"]["tkns"][std::to_string(tc2Tkn)] = true;
-  rsp["SH_EXISTS_RSP"]["tkns"][std::to_string(notExistTkn)] = false;
+  rsp["SH_EXISTS_RSP"]["exist"] = {tc1Tkn, tc2Tkn};
 
   tc1.test(TestData { .request = exists, 
                       .expected = { rsp }});
 
   // end all and check again
-  tc1.test(TestData { .request = R"({ "SH_END_ALL":{} } )"_json,
-                      .expected = { R"({ "SH_END_ALL_RSP":{"st":1, "cnt":2} } )"_json }});
-
-  rsp["SH_EXISTS_RSP"]["tkns"][std::to_string(tc1Tkn)] = false;
-  rsp["SH_EXISTS_RSP"]["tkns"][std::to_string(tc2Tkn)] = false;
+  {
+    tc1.test(TestData { .request = R"({ "SH_END_ALL":{} } )"_json,
+                        .expected = { R"({ "SH_END_ALL_RSP":{"st":1, "cnt":2} } )"_json }});
+    
+    tc1.test(TestData { .request = exists, 
+                        .expected = { R"({ "SH_EXISTS_RSP": { "st":1, "exist":[] }})"_json }});
+  }
   
-  tc1.test(TestData { .request = exists, 
-                      .expected = { rsp }});
 }
 
 

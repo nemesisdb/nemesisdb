@@ -10,6 +10,7 @@
 #include <core/NemesisConfig.h>
 #include <core/NemesisCommon.h>
 #include <core/kv/KvServer.h>
+#include <string_view>
 #include <clients/utils/Client.hpp>
 #include <nlohmann/json.hpp>
 
@@ -19,6 +20,7 @@ namespace nemesis { namespace test {
 using namespace nemesis::core;
 using namespace nemesis::core::kv;
 using namespace fusion::client;
+using namespace std::string_view_literals;
 using namespace std::string_literals;
 
 namespace asio = boost::asio;
@@ -32,7 +34,7 @@ class KvTestServer  : public ::testing::Test
 protected:
 	constexpr static auto DefaultCfg = R"(
 		{
-			"version":1,
+			"version":2,
 			"mode":"kv",
 			"kv":
 			{
@@ -59,7 +61,7 @@ protected:
 
 	constexpr static auto EnableSaveCfg = R"(
 		{
-			"version":1,
+			"version":2,
 			"mode":"kv",
 			"kv":
 			{

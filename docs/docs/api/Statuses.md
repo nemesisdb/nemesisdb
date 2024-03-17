@@ -67,4 +67,3 @@ This table lists a 'friendly name' and value. The friendly name is used througho
 |:---|:---:|:---|
 |LoadComplete|141|Session(s) loaded without error|
 |LoadError|142|Error during load|
-|LoadDuplicate|143|Load success with duplicate sessions|
