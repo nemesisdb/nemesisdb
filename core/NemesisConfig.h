@@ -208,9 +208,6 @@ NemesisConfig readConfig (const int argc, char ** argv)
             config.loadName = loadName;
             config.loadPath = vm.count("loadPath") ? loadPath : NemesisConfig::kvSavePath(config.cfg);
 
-            PLOGI << "Load Path: " << config.loadPath ;
-            PLOGI << "Load Name: " << config.loadName ;
-
             if (!std::filesystem::exists(config.loadPath))
             {
               PLOGF << "Load path does not exist: " << config.loadPath ;

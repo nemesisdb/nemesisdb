@@ -34,24 +34,17 @@ TEST_F(NemesisTest, NameInvalid)
 	}
 
 	{
-		TestData td {MakeTestData(R"({ "SH_LOAD":{ "names":2} })"_json)};
+		TestData td {MakeTestData(R"({ "SH_LOAD":{ "name":2} })"_json)};
 		tc.test(td);
 		ASSERT_TRUE(td.actual[0]["SH_LOAD_RSP"]["st"] == RequestStatus::ValueTypeInvalid); 
 	}
 
 	{
-		TestData td {MakeTestData(R"({ "SH_LOAD":{ "names":[2]} })"_json)};
-		tc.test(td);
-		ASSERT_TRUE(td.actual[0]["SH_LOAD_RSP"]["st"] == RequestStatus::ValueTypeInvalid); 
-	}
-
-	{
-		TestData td {MakeTestData(R"({ "SH_LOAD":{ "names":["_idontexist"]} })"_json)};
+		TestData td {MakeTestData(R"({ "SH_LOAD":{ "name":"_idontexist"} })"_json)};
 		tc.test(td);
 		ASSERT_TRUE(td.actual[0]["SH_LOAD_RSP"]["st"] == RequestStatus::LoadError); 
 	}
 }
-
 
 
 TEST_F(NemesisTestSaveEnable, Data)
@@ -63,24 +56,39 @@ TEST_F(NemesisTestSaveEnable, Data)
   SessionToken tkn = tc.token["tkn"];
 
 	setData(tc);
+	
+	// save data
+	{
+		auto td = MakeTestData(R"({ "SH_SAVE":{"name":"Data"} })"_json, 2);
+		tc.test(td);
+		
+		ASSERT_EQ(td.actual[0]["SH_SAVE_RSP"]["name"], "Data");
+		ASSERT_EQ(td.actual[0]["SH_SAVE_RSP"]["st"], 120); // save start
 
-	tc.test({TestData { .request = R"({ "SH_SAVE":{"name":"Data"} })"_json,
-											.expected = {R"({ "SH_SAVE_RSP":{ "name":"Data", "st":120 } })"_json,
-																	 R"({ "SH_SAVE_RSP":{ "name":"Data", "st":121 } })"_json} }});
+		ASSERT_EQ(td.actual[1]["SH_SAVE_RSP"]["name"], "Data");
+		ASSERT_EQ(td.actual[1]["SH_SAVE_RSP"]["st"], 121); // save complete
+
+	}
 
   // delete session and re-load (easier than restarting server)
-  testjson end;
-  end["SH_END"]["tkn"] = tkn;
-  
-  tc.test({TestData { .request = end,
-											.expected = {R"({ "SH_END_RSP":{ "st":1 } })"_json} }});
+	{
+		testjson end;
+		end["SH_END"]["tkn"] = tkn;
+		
+		tc.test({TestData { .request = end,
+												.expected = {R"({ "SH_END_RSP":{ "st":1 } })"_json} }});
+	}
+	
+	// load and check
+	{
+		tc.test({TestData { .request = R"({ "SH_LOAD":{"name":"Data"} })"_json,
+												.expected = {R"({ "SH_LOAD_RSP":{ "name":"Data", "st":141, "sessions":1, "keys":2 } })"_json} }});
 
-  // load
-	tc.test({TestData { .request = R"({ "SH_LOAD":{"names":["Data"]} })"_json,
-											.expected = {R"({ "SH_LOAD_RSP":{ "Data":{"st":141, "sessions":1, "keys":2, "m":""} } })"_json} }});
 
-  tc.test(TestData { 	.request = R"({ "KV_GET":{ "keys":["key1", "key2"]} })"_json,
-											.expected = {R"({ "KV_GET_RSP":{ "keys":{"key1":"v1", "key2":"v2" } }})"_json}});
+		tc.test(TestData { 	.request = R"({ "KV_GET":{ "keys":["key1", "key2"]} })"_json,
+												.expected = {R"({ "KV_GET_RSP":{ "keys":{"key1":"v1", "key2":"v2" } }})"_json}});
+	}
+	
 }
 
 
@@ -96,11 +104,15 @@ TEST_F(NemesisTestSaveEnable, PrepareStartupLoad)
 	setData(tc);
 
 	const testjson save  = {{"SH_SAVE", {{"name", LoadName}}}};
-	const testjson saveRsp1  = {{"SH_SAVE_RSP", {{"name", LoadName}, {"st", RequestStatus::SaveStart}}}};
-	const testjson saveRsp2  = {{"SH_SAVE_RSP", {{"name", LoadName}, {"st", RequestStatus::SaveComplete}}}};
 
-	tc.test({TestData { .request = save,
-											.expected = {saveRsp1, saveRsp2} }});
+	auto td = MakeTestData(save , 2);
+	tc.test(td);
+
+	ASSERT_EQ(td.actual[0]["SH_SAVE_RSP"]["name"], LoadName);
+	ASSERT_EQ(td.actual[0]["SH_SAVE_RSP"]["st"], 120); // save start
+
+	ASSERT_EQ(td.actual[1]["SH_SAVE_RSP"]["name"], LoadName);
+	ASSERT_EQ(td.actual[1]["SH_SAVE_RSP"]["st"], 121); // save complete
 
 	// now we have data to load on startup in StartupLoad test
 }
@@ -114,7 +126,7 @@ TEST_F(NemesisTestLoadOnStartup, StartupLoad)
 	ASSERT_TRUE(tc.openNoSession());
 
 	tc.test(TestData { 	.request = R"({ "SH_INFO_ALL":{} })"_json,
-											.expected = {R"({ "SH_INFO_ALL_RSP":{ "totalSessions":1, "totalKeys":2 } })"_json}});
+											.expected = {R"({ "SH_INFO_ALL_RSP":{ "st":1, "totalSessions":1, "totalKeys":2 } })"_json}});
 
 	tc.token["tkn"] = startupLoadToken;
 

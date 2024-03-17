@@ -1,5 +1,5 @@
-#ifndef NDB_CORE_FUSIONCOMMON_H
-#define NDB_CORE_FUSIONCOMMON_H
+#ifndef NDB_CORE_NEMESISCOMMON_H
+#define NDB_CORE_NEMESISCOMMON_H
 
 #ifdef NDB_NOLOG
   #define PLOG_DISABLE_LOGGING
@@ -33,9 +33,9 @@ namespace fs = std::filesystem;
 namespace chrono = std::chrono;
 namespace jsonpath = jsoncons::jsonpath;
 
-static const char * NEMESIS_VERSION = "0.4";
+static const char * NEMESIS_VERSION = "0.5";
 static const std::size_t NEMESIS_CONFIG_VERSION = 2U;
-static const std::size_t NEMESIS_MAX_CORES = 4U;
+//static const std::size_t NEMESIS_MAX_CORES = 4U;
 
 static const std::size_t NEMESIS_KV_MINPAYLOAD = 64U;
 static const std::size_t NEMESIS_KV_MAXPAYLOAD = 2U * 1024U * 1024U;
@@ -194,7 +194,6 @@ enum class RequestStatus
   Loading = 140,
   LoadComplete,
   LoadError,
-  LoadDuplicate,
   Unknown = 1000
 };
 

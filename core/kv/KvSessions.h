@@ -1,5 +1,5 @@
-#ifndef _FC_SHSESSIONS_
-#define _FC_SHSESSIONS_
+#ifndef NDB_CORE_SHSESSIONS_H
+#define NDB_CORE_SHSESSIONS_H
 
 #include <string>
 #include <string_view>
@@ -27,18 +27,6 @@ private:
     bool deleteOnExpire;
   };
 
-
-  struct Session
-  {
-    SessionToken token;
-    CacheMap map;
-    ExpireInfo expireInfo;
-
-    bool shared{false};
-    bool expires{false};    
-  };
-
-
   struct ExpiryTracking
   {
     SessionToken token;
@@ -49,6 +37,16 @@ private:
 
 
 public:
+  struct Session
+  {
+    SessionToken token;
+    CacheMap map;
+    ExpireInfo expireInfo;
+
+    bool shared{false};
+    bool expires{false};    
+  };
+
   using SessionType = Session;
   using SessionsMap = ankerl::unordered_dense::segmented_map<SessionToken, Session>;
 
@@ -86,7 +84,7 @@ public:
 
   std::tuple<bool, bool> openShared (const SessionToken& token) const
   {
-    if (auto sesh = m_sessions.find(token); sesh != m_sessions.end())
+    if (const auto sesh = m_sessions.find(token); sesh != m_sessions.end())
       return {true, sesh->second.shared};
 
     return {false, false};

@@ -16,9 +16,7 @@ using PoolId = std::size_t;
 
 
 inline ServerStats * serverStats;
-
-
-static PoolId MaxPools = 1U;
+inline const std::int16_t METADATA_VERSION = 1;
 
 
 enum class KvQueryType : std::uint8_t
@@ -221,51 +219,21 @@ struct KvCommand
 };
 
 
+struct KvCommand2
+{
+  njson contents;
+  SessionToken tkn;
+};
+
+
 struct LoadResult
 {  
   RequestStatus status;
   std::size_t nSessions{0};
   std::size_t nKeys{0};
   NemesisClock::duration loadTime{0};
-
-
-  static bool statusSuccess(const LoadResult& r)
-  {
-    // Duplicate session is not an error, only the first is created
-    return r.status == RequestStatus::LoadComplete || r.status == RequestStatus::LoadDuplicate;
-  }
-
-
-  LoadResult& operator+=(const LoadResult& r)
-  {
-    // only set status if we're not already in an error condition, otherwise we'll mask
-    // a previous load which has errored (note: Duplicate is not an error)
-    if (statusSuccess(*this))
-    {
-      nKeys += r.nKeys;
-      nSessions += r.nSessions;
-      status = r.status;
-    }
-    
-    loadTime += r.loadTime; // beware when loading pools concurrently
-  
-    return *this;
-  }
 };
 
-
-
-static const std::array<std::function<void(const SessionToken&, PoolId&)>, 2U> SessionIndexers =
-{
-  [](const SessionToken& tkn, PoolId& id) 
-  {
-    id = tkn % MaxPools;
-  },
-  [](const SessionToken& tkn, PoolId& id)
-  {
-    id = 0U;
-  }
-};
 
 
 ndb_always_inline SessionToken createSessionToken(const SessionName& name, const bool shared)
@@ -303,7 +271,7 @@ std::filesystem::path getDefaultDataSetPath(const std::filesystem::path& loadRoo
     return {};
   else
   {
-    for (auto& dir : fs::directory_iterator(loadRoot))
+    for (const auto& dir : fs::directory_iterator(loadRoot))
     {
       if (dir.is_directory())
         max = std::max<std::size_t>(std::stoul(dir.path().filename()), max);

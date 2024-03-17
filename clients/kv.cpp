@@ -173,7 +173,7 @@ void createSessions(const std::string& ip, const int port, std::shared_ptr<asio:
     latch.wait();
 
     auto end = Clock::now();
-    std::cout << "New:\t" << std::chrono::duration_cast<std::chrono::milliseconds>(end-start) << '\n';
+    std::cout << "New:\t" << std::chrono::duration_cast<std::chrono::milliseconds>(end-start).count() << '\n';
   }
   else
     std::cout << "createSessions(): falied to connect\n";    
@@ -227,7 +227,7 @@ void set(const std::string& ip, const int port, std::shared_ptr<asio::io_context
       latch.wait();
 
     auto end = Clock::now();
-    std::cout << (setq ? "SetQ" : "Set") << ":\t" << duration_cast<milliseconds>(end-start) << '\n';
+    std::cout << (setq ? "SetQ" : "Set") << ":\t" << duration_cast<milliseconds>(end-start).count() << '\n';
   }
   else
     std::cout << "createSessions(): falied to connect\n";
@@ -245,16 +245,16 @@ void get(const std::string& ip, const int port, std::shared_ptr<asio::io_context
   {
     if (response.connected)
     {      
-      auto rsp = json::parse(response.msg);
-      if (rsp.contains("KV_GET_RSP"))
-      {
-        auto& keys = rsp["KV_GET_RSP"]["keys"];
-        if (keys.contains("profile") && keys.contains("interests"))
-        {
-          if (keys["profile"].size() != 3 || keys["interests"].size() != 4 || keys["interests"].size() != 5)
-            fails += 1;
-        }
-      }
+      // auto rsp = json::parse(response.msg);
+      // if (rsp.contains("KV_GET_RSP"))
+      // {
+      //   auto& keys = rsp["KV_GET_RSP"]["keys"];
+      //   if (keys.contains("profile") && keys.contains("interests"))
+      //   {
+      //     if (keys["profile"].size() != 3 || keys["interests"].size() != 4 || keys["interests"].size() != 5)
+      //       fails += 1;
+      //   }
+      // }
 
       latch.count_down();
     }
@@ -280,7 +280,7 @@ void get(const std::string& ip, const int port, std::shared_ptr<asio::io_context
     latch.wait();
 
     auto end = Clock::now();
-    std::cout << "Get:\t" << duration_cast<milliseconds>(end-start) << '\n';
+    std::cout << "Get:\t" << duration_cast<milliseconds>(end-start).count() << '\n';
   }
   else
     std::cout << "createSessions(): falied to connect\n";
@@ -330,7 +330,7 @@ void find(const std::string& ip, const int port, std::shared_ptr<asio::io_contex
 
     auto end = Clock::now();
 
-    std::cout << "Get:\t" << duration_cast<milliseconds>(end-start) << '\n';
+    std::cout << "Get:\t" << duration_cast<milliseconds>(end-start).count() << '\n';
   }
   else
     std::cout << "createSessions(): falied to connect\n";
