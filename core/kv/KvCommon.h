@@ -120,26 +120,25 @@ struct PoolRequestResponse
 { 
   using enum RequestStatus;
 
-  static int toInt (RequestStatus v)
-  {
-    return static_cast<int>(v);
-  }
-
 
   // SESSION
-  static njson sessionNew (const RequestStatus status, const SessionToken& token, const SessionName name)
+  static void sessionNew (const RequestStatus status, const SessionToken& token, const SessionName name, njson_pmr& rsp)
   {
-    njson rsp;
-    rsp["SH_NEW_RSP"]["st"] = toInt(status);
-    rsp["SH_NEW_RSP"]["name"] = name;
-    rsp["SH_NEW_RSP"]["tkn"] = token;
-    return rsp;
+    rsp.insert_or_assign("st", toUnderlying(status));
+    rsp.insert_or_assign("name", name);
+    rsp.insert_or_assign("tkn", token);
+
+    //njson rsp;
+    // rsp["SH_NEW_RSP"]["st"] = toUnderlying(status);
+    // rsp["SH_NEW_RSP"]["name"] = name;
+    // rsp["SH_NEW_RSP"]["tkn"] = token;
+    //return rsp;
   }
   
   static njson sessionEnd (const RequestStatus status, const SessionToken& token)
   {
     njson rsp;
-    rsp["SH_END_RSP"]["st"] = toInt(status);
+    rsp["SH_END_RSP"]["st"] = toUnderlying(status);
     rsp["SH_END_RSP"]["tkn"] = token;
     return rsp;
   }
@@ -147,7 +146,7 @@ struct PoolRequestResponse
   static njson sessionInfo (const RequestStatus status, const SessionToken& token)
   {
     njson rsp;
-    rsp["SH_INFO_RSP"]["st"] = toInt(status);
+    rsp["SH_INFO_RSP"]["st"] = toUnderlying(status);
     rsp["SH_INFO_RSP"]["tkn"] = token;
     rsp["SH_INFO_RSP"]["shared"] = njson::null();
     rsp["SH_INFO_RSP"]["keyCnt"] = njson::null();
@@ -173,7 +172,7 @@ struct PoolRequestResponse
   static njson sessionRemove (const SessionToken& tkn, const bool removed, const std::string&& k)
   {
     njson rsp;
-    rsp["KV_RMV_RSP"]["st"] = removed ? toInt(KeyRemoved) : toInt(KeyNotExist);
+    rsp["KV_RMV_RSP"]["st"] = removed ? toUnderlying(KeyRemoved) : toUnderlying(KeyNotExist);
     rsp["KV_RMV_RSP"]["k"] = k;
     rsp["KV_RMV_RSP"]["tkn"] = tkn;
     return rsp;
@@ -182,7 +181,7 @@ struct PoolRequestResponse
   static njson sessionClear (const SessionToken& tkn, const bool cleared, const std::size_t count)
   {
     njson rsp;
-    rsp["KV_CLEAR_RSP"]["st"] = cleared ? toInt(Ok) : toInt(Unknown);
+    rsp["KV_CLEAR_RSP"]["st"] = cleared ? toUnderlying(Ok) : toUnderlying(Unknown);
     rsp["KV_CLEAR_RSP"]["cnt"] = count;
     rsp["KV_CLEAR_RSP"]["tkn"] = tkn;
     return rsp;
@@ -191,7 +190,7 @@ struct PoolRequestResponse
   static njson sessionCount (const SessionToken& tkn, const std::size_t count)
   {
     njson rsp;
-    rsp["KV_COUNT_RSP"]["st"] = toInt(Ok);
+    rsp["KV_COUNT_RSP"]["st"] = toUnderlying(Ok);
     rsp["KV_COUNT_RSP"]["cnt"] = count;
     rsp["KV_COUNT_RSP"]["tkn"] = tkn;
     return rsp;
@@ -201,7 +200,7 @@ struct PoolRequestResponse
   {
     njson rsp;
     rsp["KV_KEYS_RSP"]["tkn"] = tkn;
-    rsp["KV_KEYS_RSP"]["st"] = toInt(Ok);
+    rsp["KV_KEYS_RSP"]["st"] = toUnderlying(Ok);
     rsp["KV_KEYS_RSP"]["keys"] = std::move(keys);
     return rsp;
   }

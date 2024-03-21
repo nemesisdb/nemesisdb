@@ -146,6 +146,11 @@ public:
 
       auto listen = [this, ip, port, &listening, &startLatch, maxPayload, stats]()
       {
+        char pmrBuffer[4096U] = {};
+        std::pmr::monotonic_buffer_resource pool{std::data(pmrBuffer), std::size(pmrBuffer)};
+        std::pmr::polymorphic_allocator<char> alloc(&pool);
+        jsoncons::json_decoder<njson_pmr> decoder(alloc); // reset() by .message below
+        
         auto wsApp = uWS::App().ws<WsSession>("/*",
         {
           .compression = uWS::DISABLED,
@@ -158,48 +163,39 @@ public:
           {
             m_wsClients.insert(ws);
           },          
-          .message = [this, stats](KvWebSocket * ws, std::string_view message, uWS::OpCode opCode)
-          {   
+          .message = [this, stats, &pmrBuffer, &decoder](KvWebSocket * ws, std::string_view message, uWS::OpCode opCode)
+          { 
             ++serverStats->queryCount;
 
             if (opCode != uWS::OpCode::TEXT)
               ws->send(createErrorResponse(RequestStatus::OpCodeInvalid).to_string(), kv::WsSendOpCode);
             else
-            {
-              // TODO this avoids exception on parse error, but not clear how to create json object
-              //      from reader output (if even possible)
-              // jsoncons::json_string_reader reader(message);
-              // std::error_code ec;
-              // reader.read(ec);
-
-              njson request = njson::null();
-
-              try
-              {
-                // TODO look at pmr parse: https://github.com/danielaparker/jsoncons/blob/master/doc/Examples.md#parse-a-json-text-using-a-polymorphic_allocator-since-01710
-                request = njson::parse(message);
-              }
-              catch (...)
-              {
-                // handled below, would have to check request.is_null() anyway
-              }
-                            
+            {                   
+              jsoncons::json_string_reader reader(message, decoder);
+              reader.read();
               
-              if (request.is_null())
+              if (!decoder.is_valid())
                 ws->send(createErrorResponse(RequestStatus::JsonInvalid).to_string(), kv::WsSendOpCode);
-              else if (request.empty() || !request.is_object()) //i.e. top level not an object
-                ws->send(createErrorResponse(RequestStatus::CommandSyntax).to_string(), kv::WsSendOpCode);
-              else if (request.size() > 1U)
-                ws->send(createErrorResponse(RequestStatus::CommandMultiple).to_string(), kv::WsSendOpCode);
               else
               {
-                const auto& commandName = request.object_range().cbegin()->key();
+                njson_pmr request = decoder.get_result();
 
-                if (!request.at(commandName).is_object())
-                  ws->send(createErrorResponse(commandName+"_RSP", RequestStatus::CommandType).to_string(), kv::WsSendOpCode);
-                else if (const auto status = s_kvHandler->handle(ws, commandName, std::move(request)); status != RequestStatus::Ok)
-                  ws->send(createErrorResponse(commandName+"_RSP", status).to_string(), kv::WsSendOpCode);
+                if (request.empty() || !request.is_object()) //i.e. top level not an object
+                  ws->send(createErrorResponse(RequestStatus::CommandSyntax).to_string(), kv::WsSendOpCode);
+                else if (request.size() > 1U)
+                  ws->send(createErrorResponse(RequestStatus::CommandMultiple).to_string(), kv::WsSendOpCode);
+                else
+                {
+                  const auto& commandName = request.object_range().cbegin()->key();
+
+                  if (!request.at(commandName).is_object())
+                    ws->send(createErrorResponse(commandName+"_RSP", RequestStatus::CommandType).to_string(), kv::WsSendOpCode);
+                  else if (const auto status = s_kvHandler->handle(ws, commandName, request); status != RequestStatus::Ok)
+                    ws->send(createErrorResponse(commandName+"_RSP", status).to_string(), kv::WsSendOpCode);
+                }
               }
+
+              decoder.reset();
             }
           },
           .close = [this](KvWebSocket * ws, int /*code*/, std::string_view /*message*/)

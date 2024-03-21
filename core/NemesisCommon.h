@@ -49,7 +49,10 @@ enum class ServerMode { None, KV, TS };
 
 // general
 const uWS::OpCode WsSendOpCode = uWS::OpCode::TEXT;
+
 using njson = jsoncons::ojson;
+using njson_pmr = jsoncons::pmr::ojson;
+
 using uuid = std::string;
 using NemesisClock = chrono::steady_clock;
 using NemesisTimePoint = NemesisClock::time_point;
@@ -66,8 +69,7 @@ const JsonType JsonArray = JsonType::array_value;
 
 // kv
 using cachedkey = std::string;
-using cachedvalue2 = njson;
-using cachedpair2 = njson;
+using cachedvalue = njson;
 using KvSaveClock = chrono::system_clock;
 using KvSaveMetaDataUnit = chrono::milliseconds;
 
@@ -103,16 +105,17 @@ public:
     return {name, Param {type, false}};
   }
 
-  bool isRequired;
   JsonType type;
+  bool isRequired;
 };
 
 
 // Checks the params (if present and correct type). If that passes and onPostValidate is set, onPostValidate() is called for custom checks.
-template <typename StatusT, StatusT Ok, StatusT ParamMissing, StatusT ParamType>
-std::tuple<StatusT, const std::string_view> isCmdValid (const njson& msg,
+template <class JSON, typename StatusT, StatusT Ok, StatusT ParamMissing, StatusT ParamType>
+std::tuple<StatusT, const std::string_view> isCmdValid (const JSON& msg,
                                                         const std::map<const std::string_view, const Param>& params,
-                                                        std::function<std::tuple<StatusT, const std::string_view>(const njson&)> onPostValidate = nullptr)
+                                                        std::function<std::tuple<StatusT, const std::string_view>(const JSON&)> onPostValidate)
+  //requires(std::is_enum_v<StatusT>)
 {
   for (const auto& [member, param] : params)
   {

@@ -10,12 +10,10 @@ link_directories("../vcpkg/installed/x64-linux/lib")
 
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/${CMAKE_BUILD_TYPE}/bin)
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=native") # -march is for uuid_v4 allowing native CPU SIMD support
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=native") 
 set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O3")
-# set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "${CMAKE_CXX_FLAGS_RELWITHDEBINFO} -O1") # for valgind
+#set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -g -O1") # for valgrind
 
-
-## TODO link statically to uSockets
 
 #set(Boost_USE_STATIC_LIBS ON)
 #set(Boost_USE_STATIC_RUNTIME ON)
@@ -27,4 +25,6 @@ set(CPACK_PROJECT_VERSION ${PROJECT_VERSION})
 add_executable(nemesisdb server.cpp)
 
 target_compile_features(nemesisdb PUBLIC cxx_std_20)
-target_link_libraries(nemesisdb PRIVATE "-Wl,-z,stack-size=2097152" -luSockets -lz -lboost_program_options)
+# target_compile_options(nemesisdb PRIVATE -Wall) # TODO reinstate when finished pmr
+target_link_libraries(nemesisdb PRIVATE "" -luSockets -lz -lboost_program_options)
+#target_link_libraries(nemesisdb PRIVATE "-Wl,-z,stack-size=2097152" -luSockets -lz -lboost_program_options)
