@@ -357,12 +357,14 @@ private:
 class KvExecutor
 {
 public:
-  
+
   static njson set (CacheMap& map, const SessionToken& tkn, const njson_pmr& cmd)
   {
-    njson rsp ;
-    rsp["KV_SET_RSP"]["st"] = toUnderlying(RequestStatus::Ok);
-    rsp["KV_SET_RSP"]["tkn"] = tkn;
+    njson rsp {jsoncons::json_object_arg, {{"KV_SET_RSP", jsoncons::json_object_arg_t{}}}};
+    auto& body = rsp.at("KV_SET_RSP");
+
+    body.try_emplace("st", toUnderlying(RequestStatus::Ok));
+    body.try_emplace("tkn", tkn);
 
     try
     {
@@ -372,9 +374,9 @@ public:
     catch(const std::exception& ex)
     {
       PLOGE << ex.what();
-      rsp["KV_SET_RSP"]["st"] = toUnderlying(RequestStatus::Unknown);
+      body.try_emplace("st", toUnderlying(RequestStatus::Unknown));
     }
-    
+
     return rsp;
   }
 
@@ -382,7 +384,7 @@ public:
   static njson setQ (CacheMap& map, const SessionToken& tkn, const njson_pmr& cmd)
   {
     njson rsp;
-    
+
     try
     {         
       for(const auto& kv : cmd["keys"].object_range())
@@ -391,33 +393,34 @@ public:
     }
     catch(const std::exception& e)
     {
-      rsp["KV_SETQ_RSP"]["st"] = toUnderlying(RequestStatus::Unknown);
+      rsp["KV_SETQ_RSP"].try_emplace("st", toUnderlying(RequestStatus::Unknown));
     }
 
     if (!rsp.empty())
-      rsp["KV_SETQ_RSP"]["tkn"] = tkn; // only required if an error occurs
+      rsp["KV_SETQ_RSP"]["tkn"] =  tkn; // only required if an error occurs
 
-    return rsp.empty() ? njson::null() : rsp;
+    return rsp;
   }
 
 
   static njson get (CacheMap& map, const SessionToken& tkn, const njson_pmr& cmd)
   {
-    njson rsp;
-    rsp["KV_GET_RSP"]["tkn"] = tkn;
+    njson rsp {jsoncons::json_object_arg, {{"KV_GET_RSP", jsoncons::json_object_arg_t{}}}};
+    auto& body = rsp.at("KV_GET_RSP");
+
+    body["tkn"] =  tkn;
+    body["keys"] = njson{jsoncons::json_object_arg};
 
     for(const auto& item : cmd["keys"].array_range())
     {
       if (item.is_string()) [[likely]]
       {
         const auto& key = item.as_string();
-        if (auto [exists, value] = map.get(key); exists)
-          rsp["KV_GET_RSP"]["keys"][key] = std::move(value);
-        else
-          rsp["KV_GET_RSP"]["keys"][key] = njson::null();
+
+        if (const auto value = map.get(key) ; value)
+          body.at("keys").try_emplace(key, (*value).get());
       }
     }
-
     return rsp;
   }
 
@@ -541,10 +544,8 @@ public:
         {
           const auto& key = item.as_string();
 
-          if (auto [exists, value] = map.get(key); exists)
-            rsp["KV_FIND_RSP"]["keys"][key] = std::move(value);
-          else
-            rsp["KV_FIND_RSP"]["keys"][key] = njson::null();
+          if (const auto value = map.get(key); value)
+            rsp["KV_FIND_RSP"]["keys"][key] = (*value).get();
         } 
       }
     }

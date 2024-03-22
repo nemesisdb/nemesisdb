@@ -62,7 +62,7 @@ private:
 public:
 
   
-  RequestStatus handle(KvWebSocket * ws, const std::string_view& command, njson_pmr& json)
+  RequestStatus handle(KvWebSocket * ws, const std::string_view& command, njson_pmr& request)
   {
     RequestStatus status = RequestStatus::Ok;
     
@@ -76,7 +76,7 @@ public:
 
       try
       {
-        handler(ws, json);
+        handler(ws, request);
       }
       catch (const std::exception& kex)
       {
@@ -125,6 +125,35 @@ public:
 
 private:
   
+  // Wraps a PMR allocator for njson_pmr, ensuring the stack buffer is in scope and
+  // the JSON object is created correctly.
+  struct PmrRsp
+  {
+    // Initialise PMR allocator and JSON
+    PmrRsp() :
+      pool(std::data(buffer), std::size(buffer)),
+      alloc(&pool)
+    {
+     
+    }
+
+
+    // F is passed an initialised njson_pmr, where the body of the response is stored. The body
+    // is emplace into a 'cmdName' parent object.
+    template<typename F>
+    const void operator()(const std::string_view cmdName, njson_pmr& response, F&& fillBody) requires(std::is_invocable_v<F, njson_pmr&>)
+    {
+      response.try_emplace(cmdName, njson_pmr{jsoncons::json_object_arg, response.get_allocator()});
+      fillBody(response.at(cmdName));
+    }
+
+
+    private:
+      char buffer[1024U]; // TODO
+      std::pmr::monotonic_buffer_resource pool;
+      std::pmr::polymorphic_allocator<char> alloc;
+  };
+
     
   bool getSessionToken(KvWebSocket * ws, const std::string_view queryRspName, const njson_pmr& cmdRoot, SessionToken& tkn)
   {
@@ -189,46 +218,7 @@ private:
     const auto& childObject = cmd.object_range().cbegin()->value()[child];
     return doIsValid(queryRspName, ws, childObject, params, onPostValidate);
   }
-
   
-  struct PmrRsp
-  {
-    // PmrRsp(std::string_view cmd, F&& bodyFunc) :
-    //   pool(std::data(buffer), std::size(buffer)),
-    //   alloc(&pool),
-    //   rsp(jsoncons::json_object_arg, alloc)
-    // {
-    //   njson_pmr body{jsoncons::json_object_arg, alloc};
-    //   bodyFunc(body);
-
-    //   rsp.try_emplace(cmd, body);
-    // }
-
-
-    PmrRsp() :
-      pool(std::data(buffer), std::size(buffer)),
-      alloc(&pool),
-      rsp(jsoncons::json_object_arg, alloc)
-    {
-     
-    }
-
-    template<typename F>
-    const njson_pmr& operator()(const std::string_view cmd, F&& bodyFunc) requires(std::is_invocable_v<F, njson_pmr&>)
-    {
-      njson_pmr body{jsoncons::json_object_arg, alloc};
-      bodyFunc(body);
-
-      rsp.try_emplace(cmd, body);
-      return rsp;
-    }
-
-    private:
-      char buffer[1024U]; // TODO
-      std::pmr::monotonic_buffer_resource pool;
-      std::pmr::polymorphic_allocator<char> alloc;
-      njson_pmr rsp;
-  };
 
 
   // SESSION
@@ -236,6 +226,7 @@ private:
   {
     static const std::string queryName      = QueryTypeToName.at(KvQueryType::ShNew);
     static const std::string queryRspName   = queryName + "_RSP";
+    PmrRsp pmr;
     
     
     auto validate = [](const njson_pmr& cmd) -> std::tuple<RequestStatus, const std::string_view>
@@ -271,19 +262,16 @@ private:
         const std::string name = cmd.at("name").as_string();
         const bool shared = cmd.get_value_or<bool>("shared", false);
 
-        // PmrRsp pmr{"SH_NEW_RSP", [this, &name, shared, duration, deleteOnExpire](njson_pmr& body)
-        // {
-        //   SessionExecutor::newSession(m_sessions, name, createSessionToken(name, shared), shared, duration, deleteOnExpire, body);  
-        // }};
+        char rspBuffer[256U] = {}; // TODO size
+        std::pmr::monotonic_buffer_resource rspPool{std::data(rspBuffer), std::size(rspBuffer)};
+        std::pmr::polymorphic_allocator<char> rspAlloc(&rspPool);
 
-        PmrRsp pmr;
+        njson_pmr response {jsoncons::json_object_arg, rspAlloc};
+        response.try_emplace(queryRspName, njson_pmr{jsoncons::json_object_arg, rspAlloc});
+        
+        SessionExecutor::newSession(m_sessions, name, createSessionToken(name, shared), shared, duration, deleteOnExpire, response.at(queryRspName));
 
-        const auto& rsp = pmr("SH_NEW_RSP", [this, &name, shared, duration, deleteOnExpire](njson_pmr& body)
-        {
-          SessionExecutor::newSession(m_sessions, name, createSessionToken(name, shared), shared, duration, deleteOnExpire, body);  
-        });
-
-        send(ws, rsp);
+        send(ws, response);
       }
     }
   }
@@ -542,7 +530,7 @@ private:
   template<typename Json>
   void handleKvExecuteResult(KvWebSocket * ws, const Json& rsp)
   {
-    if (!rsp.is_null())
+    if (!rsp.empty())
       send(ws, rsp);
   }
 
@@ -589,43 +577,64 @@ private:
   }
 
 
-  ndb_always_inline void set(KvWebSocket * ws, njson_pmr& json)
+  /*
+  template<typename F>
+  void executePmrKvCommand(const std::string_view cmdRspName, KvWebSocket * ws, const njson_pmr& request, njson_pmr& response, F&& handler)
+    requires(std::is_invocable_v<F, CacheMap&, SessionToken&, njson_pmr&, njson_pmr&>)
+  {
+    const auto& cmdBody = request.object_range().cbegin()->value();
+
+    SessionToken token;
+    if (auto session = getSession(ws, cmdRspName, cmdBody, token); session)
+    {      
+      response.try_emplace(cmdRspName, njson_pmr{jsoncons::json_object_arg, response.get_allocator()});
+      std::invoke(handler, session->get().map, token, cmdBody, response.at(cmdRspName));
+
+      if (!response.at(cmdRspName).empty())
+        send(ws, response);
+    }      
+  }
+  */
+
+
+  ndb_always_inline void set(KvWebSocket * ws, njson_pmr& request)
   {
     static const std::string queryName    = QueryTypeToName.at(KvQueryType::KvSet);
     static const std::string queryRspName = queryName +"_RSP";
+    
 
     auto validate = [](const njson_pmr& cmd) -> std::tuple<RequestStatus, const std::string_view>
     {
       return cmd.at("keys").empty() ? std::make_tuple(RequestStatus::ValueSize, "keys") : std::make_tuple(RequestStatus::Ok, "");
     };
     
-    if (isValid(queryRspName, ws, json, {{Param::required("keys", JsonObject)}}, validate))
-      executeKvCommand(queryRspName, ws, json, KvExecutor::set);
+    if (isValid(queryRspName, ws, request, {{Param::required("keys", JsonObject)}}, validate))
+      executeKvCommand(queryRspName, ws, request, KvExecutor::set);
   }
 
 
-  ndb_always_inline void setQ(KvWebSocket * ws, njson_pmr& json)
+  ndb_always_inline void setQ(KvWebSocket * ws, njson_pmr& request)
   {
     static const std::string queryName    = QueryTypeToName.at(KvQueryType::KvSetQ);
     static const std::string queryRspName = queryName +"_RSP";
-
+    
     auto validate = [](const njson_pmr& cmd) -> std::tuple<RequestStatus, const std::string_view>
     {
       return cmd.at("keys").empty() ? std::make_tuple(RequestStatus::ValueSize, "keys") : std::make_tuple(RequestStatus::Ok, "");
     };
 
-    if (isValid(queryRspName, ws, json, {{Param::required("keys", JsonObject)}}, validate))
-      executeKvCommand(queryRspName, ws, json, KvExecutor::setQ);
+    if (isValid(queryRspName, ws, request, {{Param::required("keys", JsonObject)}}, validate))
+      executeKvCommand(queryRspName, ws, request, KvExecutor::setQ);
   }
 
   
-  ndb_always_inline void get(KvWebSocket * ws, njson_pmr& json)
+  ndb_always_inline void get(KvWebSocket * ws, njson_pmr& request)
   {
     static const std::string queryName      = QueryTypeToName.at(KvQueryType::KvGet);
     static const std::string queryRspName   = queryName +"_RSP";
 
-    if (isValid(queryRspName, ws, json, {{Param::required("keys", JsonArray)}}))
-      executeKvCommand(queryRspName, ws, json, KvExecutor::get);
+    if (isValid(queryRspName, ws, request, {{Param::required("keys", JsonArray)}}))
+      executeKvCommand(queryRspName, ws, request, KvExecutor::get);
   }
 
   

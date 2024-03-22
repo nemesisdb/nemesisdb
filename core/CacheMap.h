@@ -22,13 +22,23 @@ public:
   }
 
 
-  std::tuple<bool, cachedvalue> get (const cachedkey& key) const
+  /* std::tuple<bool, cachedvalue> get (const cachedkey& key) const
   {
     if (const auto it = m_map.find(key) ; it != m_map.cend())
       return {true, it->second};
     else
       return {false, njson::null()};
+  }; */
+
+
+  std::optional<std::reference_wrapper<const cachedvalue>> get (const cachedkey& key) const
+  {
+    if (const auto it = m_map.find(key) ; it != m_map.cend())
+      return {it->second};
+    else
+      return {};
   };
+
 
 
   void add (const cachedkey& key, cachedvalue&& value)

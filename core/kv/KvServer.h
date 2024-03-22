@@ -146,10 +146,7 @@ public:
 
       auto listen = [this, ip, port, &listening, &startLatch, maxPayload, stats]()
       {
-        char pmrBuffer[4096U] = {};
-        std::pmr::monotonic_buffer_resource pool{std::data(pmrBuffer), std::size(pmrBuffer)};
-        std::pmr::polymorphic_allocator<char> alloc(&pool);
-        jsoncons::json_decoder<njson_pmr> decoder(alloc); // reset() by .message below
+        char requestBuffer[NEMESIS_KV_MAXPAYLOAD] = {};
         
         auto wsApp = uWS::App().ws<WsSession>("/*",
         {
@@ -163,7 +160,7 @@ public:
           {
             m_wsClients.insert(ws);
           },          
-          .message = [this, stats, &pmrBuffer, &decoder](KvWebSocket * ws, std::string_view message, uWS::OpCode opCode)
+          .message = [this, stats, &requestBuffer](KvWebSocket * ws, std::string_view message, uWS::OpCode opCode)
           { 
             ++serverStats->queryCount;
 
@@ -171,10 +168,13 @@ public:
               ws->send(createErrorResponse(RequestStatus::OpCodeInvalid).to_string(), kv::WsSendOpCode);
             else
             {                   
+              std::pmr::monotonic_buffer_resource rqPool{std::data(requestBuffer), std::size(requestBuffer)};
+              std::pmr::polymorphic_allocator<char> rqAlloc(&rqPool);
+
+              jsoncons::json_decoder<njson_pmr> decoder(rqAlloc);
               jsoncons::json_string_reader reader(message, decoder);
-              reader.read();
               
-              if (!decoder.is_valid())
+              if (reader.read(); !decoder.is_valid())
                 ws->send(createErrorResponse(RequestStatus::JsonInvalid).to_string(), kv::WsSendOpCode);
               else
               {
@@ -194,8 +194,6 @@ public:
                     ws->send(createErrorResponse(commandName+"_RSP", status).to_string(), kv::WsSendOpCode);
                 }
               }
-
-              decoder.reset();
             }
           },
           .close = [this](KvWebSocket * ws, int /*code*/, std::string_view /*message*/)
