@@ -167,18 +167,15 @@ public:
             if (opCode != uWS::OpCode::TEXT)
               ws->send(createErrorResponse(RequestStatus::OpCodeInvalid).to_string(), kv::WsSendOpCode);
             else
-            {                   
-              std::pmr::monotonic_buffer_resource rqPool{std::data(requestBuffer), std::size(requestBuffer)};
-              std::pmr::polymorphic_allocator<char> rqAlloc(&rqPool);
-
-              jsoncons::json_decoder<njson_pmr> decoder(rqAlloc);
+            {
+              jsoncons::json_decoder<njson> decoder;
               jsoncons::json_string_reader reader(message, decoder);
               
               if (reader.read(); !decoder.is_valid())
                 ws->send(createErrorResponse(RequestStatus::JsonInvalid).to_string(), kv::WsSendOpCode);
               else
               {
-                njson_pmr request = decoder.get_result();
+                njson request = decoder.get_result();
 
                 if (request.empty() || !request.is_object()) //i.e. top level not an object
                   ws->send(createErrorResponse(RequestStatus::CommandSyntax).to_string(), kv::WsSendOpCode);

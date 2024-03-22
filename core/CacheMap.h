@@ -16,7 +16,7 @@ class CacheMap
 
 public:
   
-  void set (cachedkey key, cachedvalue&& value)
+  void set (cachedkey key, cachedvalue value)
   {
     m_map.insert_or_assign(std::move(key), std::move(value));
   }
@@ -86,7 +86,7 @@ public:
 
   
   // TODO review this, result as json may not be required: it's always returning strings (path or keys)
-  auto find (const njson_pmr& contents, const bool findPaths, njson& result) const
+  auto find (const njson& contents, const bool findPaths, njson& result) const
   {
     const auto& path = contents.at("path").as_string();
     

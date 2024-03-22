@@ -50,8 +50,6 @@ enum class ServerMode { None, KV, TS };
 const uWS::OpCode WsSendOpCode = uWS::OpCode::TEXT;
 
 using njson = jsoncons::ojson;
-using njson_pmr = jsoncons::pmr::ojson;
-
 using uuid = std::string;
 using NemesisClock = chrono::steady_clock;
 using NemesisTimePoint = NemesisClock::time_point;

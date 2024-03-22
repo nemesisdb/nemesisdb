@@ -116,23 +116,33 @@ enum class SaveType
 };
 
 
-struct PoolRequestResponse
+struct SessionResponse
 { 
   using enum RequestStatus;
 
 
   // SESSION
-  static void sessionNew (const RequestStatus status, const SessionToken& token, const SessionName name, njson_pmr& rsp)
+  static njson sessionNew (const RequestStatus status, const SessionToken& token, const SessionName name)
   {
-    rsp.insert_or_assign("st", toUnderlying(status));
-    rsp.insert_or_assign("name", name);
-    rsp.insert_or_assign("tkn", token);
+    static njson rsp {jsoncons::json_object_arg, {{"SH_NEW_RSP", njson{jsoncons::json_object_arg}}}};
+    
+    auto& body = rsp.at("SH_NEW_RSP");
+    body["st"] = toUnderlying(status);
+    body["name"] = std::move(name);
+    body["tkn"] = token;
+    
+    return rsp;
+  }
 
-    //njson rsp;
-    // rsp["SH_NEW_RSP"]["st"] = toUnderlying(status);
-    // rsp["SH_NEW_RSP"]["name"] = name;
-    // rsp["SH_NEW_RSP"]["tkn"] = token;
-    //return rsp;
+  static njson sessionNewOk (const SessionToken& token, const SessionName name)
+  {
+    static njson rsp {jsoncons::json_object_arg, {{"SH_NEW_RSP", njson{jsoncons::json_object_arg, {{"st", (int)RequestStatus::Ok}}}}}};
+    
+    auto& body = rsp.at("SH_NEW_RSP");
+    body["name"] = std::move(name);
+    body["tkn"] = token;
+    
+    return rsp;
   }
   
   static njson sessionEnd (const RequestStatus status, const SessionToken& token)

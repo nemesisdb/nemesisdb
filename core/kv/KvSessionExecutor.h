@@ -31,19 +31,19 @@ class SessionExecutor
 {
 public:
   
-  static void newSession (Sessions& sessions, const std::string& name, const SessionToken& tkn, const bool shared, const SessionDuration duration, const bool deleteOnExpire, njson_pmr& rsp)
+  static njson newSession (Sessions& sessions, const std::string& name, const SessionToken& tkn, const bool shared, const SessionDuration duration, const bool deleteOnExpire)
   {    
     if (const auto cache = sessions.start(tkn, shared, duration, deleteOnExpire); cache)      
-      PoolRequestResponse::sessionNew(RequestStatus::Ok, tkn, name, rsp);
+      return SessionResponse::sessionNewOk(tkn, name);
     else
-      PoolRequestResponse::sessionNew(RequestStatus::SessionNewFail, tkn, name, rsp);
+      return SessionResponse::sessionNew(RequestStatus::SessionNewFail, tkn, name);
   }
 
 
   static njson endSession (Sessions& sessions, const SessionToken& tkn)
   {
     const auto status = sessions.end(tkn) ? RequestStatus::Ok : RequestStatus::SessionNotExist;
-    return PoolRequestResponse::sessionEnd(status, tkn);
+    return SessionResponse::sessionEnd(status, tkn);
   }
 
 
@@ -64,11 +64,11 @@ public:
       const auto remaining = sesh.expires ? std::chrono::duration_cast<std::chrono::seconds>(expiryInfo.time - SessionClock::now()) :
                                             std::chrono::seconds{0};
 
-      return PoolRequestResponse::sessionInfo(RequestStatus::Ok, tkn, sesh.shared, sesh.expires,
+      return SessionResponse::sessionInfo(RequestStatus::Ok, tkn, sesh.shared, sesh.expires,
                                               expiryInfo.deleteOnExpire, expiryInfo.duration, remaining, keyCount);
     }
     else
-      return PoolRequestResponse::sessionInfo(RequestStatus::SessionNotExist, tkn);
+      return SessionResponse::sessionInfo(RequestStatus::SessionNotExist, tkn);
   }
 
   
@@ -82,7 +82,7 @@ public:
   }
 
 
-  static njson sessionExists (const Sessions& sessions, const njson_pmr& tkns)
+  static njson sessionExists (const Sessions& sessions, const njson& tkns)
   {
     njson rsp;
     rsp["SH_EXISTS_RSP"]["st"] = toUnderlying(RequestStatus::Ok);
@@ -358,7 +358,7 @@ class KvExecutor
 {
 public:
 
-  static njson set (CacheMap& map, const SessionToken& tkn, const njson_pmr& cmd)
+  static njson set (CacheMap& map, const SessionToken& tkn, const njson& cmd)
   {
     njson rsp {jsoncons::json_object_arg, {{"KV_SET_RSP", jsoncons::json_object_arg_t{}}}};
     auto& body = rsp.at("KV_SET_RSP");
@@ -369,7 +369,7 @@ public:
     try
     {
       for(const auto& kv : cmd["keys"].object_range())
-        map.set(cachedkey{kv.key()}, cachedvalue::parse(kv.value().to_string()));
+        map.set(cachedkey{kv.key()}, kv.value());
     }
     catch(const std::exception& ex)
     {
@@ -381,14 +381,14 @@ public:
   }
 
 
-  static njson setQ (CacheMap& map, const SessionToken& tkn, const njson_pmr& cmd)
+  static njson setQ (CacheMap& map, const SessionToken& tkn, const njson& cmd)
   {
     njson rsp;
 
     try
     {         
       for(const auto& kv : cmd["keys"].object_range())
-        map.set(cachedkey{kv.key()}, cachedvalue::parse(kv.value().to_string()));
+        map.set(cachedkey{kv.key()}, kv.value());
       
     }
     catch(const std::exception& e)
@@ -403,7 +403,7 @@ public:
   }
 
 
-  static njson get (CacheMap& map, const SessionToken& tkn, const njson_pmr& cmd)
+  static njson get (CacheMap& map, const SessionToken& tkn, const njson& cmd)
   {
     njson rsp {jsoncons::json_object_arg, {{"KV_GET_RSP", jsoncons::json_object_arg_t{}}}};
     auto& body = rsp.at("KV_GET_RSP");
@@ -425,7 +425,7 @@ public:
   }
 
 
-  static njson add (CacheMap& map, const SessionToken& tkn, const njson_pmr& cmd)
+  static njson add (CacheMap& map, const SessionToken& tkn, const njson& cmd)
   {
     njson rsp;
     rsp["KV_ADD_RSP"]["st"] = toUnderlying(RequestStatus::Ok);
@@ -446,7 +446,7 @@ public:
   }
 
 
-  static njson addQ (CacheMap& map, const SessionToken& tkn, const njson_pmr& cmd)
+  static njson addQ (CacheMap& map, const SessionToken& tkn, const njson& cmd)
   {
     njson rsp;
 
@@ -467,7 +467,7 @@ public:
   }
 
 
-  static njson remove (CacheMap& map, const SessionToken& tkn, const njson_pmr& cmd)
+  static njson remove (CacheMap& map, const SessionToken& tkn, const njson& cmd)
   {
     njson rsp;
     rsp["KV_RMV_RSP"]["tkn"] = tkn;
@@ -486,20 +486,20 @@ public:
   }
 
 
-  static njson clear (CacheMap& map, const SessionToken& tkn, const njson_pmr& cmd)
+  static njson clear (CacheMap& map, const SessionToken& tkn, const njson& cmd)
   {
     const auto[valid, size] = map.clear();
-    return PoolRequestResponse::sessionClear(tkn, valid, size);
+    return SessionResponse::sessionClear(tkn, valid, size);
   }
 
   
-  static njson count (CacheMap& map, const SessionToken& tkn, const njson_pmr& cmd)
+  static njson count (CacheMap& map, const SessionToken& tkn, const njson& cmd)
   {
-    return PoolRequestResponse::sessionCount(tkn, map.count());
+    return SessionResponse::sessionCount(tkn, map.count());
   }
 
 
-  static njson contains (CacheMap& map, const SessionToken& tkn, const njson_pmr& cmd)
+  static njson contains (CacheMap& map, const SessionToken& tkn, const njson& cmd)
   {
     njson rsp;
     rsp["KV_CONTAINS_RSP"]["st"] = toUnderlying(RequestStatus::Ok);
@@ -518,7 +518,7 @@ public:
   }
 
   
-  static njson find (CacheMap& map, const SessionToken& tkn, const njson_pmr& cmd)
+  static njson find (CacheMap& map, const SessionToken& tkn, const njson& cmd)
   {
     const bool paths = cmd.at("rsp") == "paths";
 
@@ -554,7 +554,7 @@ public:
   }
 
 
-  static njson update (CacheMap& map, const SessionToken& tkn, const njson_pmr& cmd)
+  static njson update (CacheMap& map, const SessionToken& tkn, const njson& cmd)
   {
     const auto& key = cmd.at("key").as_string();
     const auto& path = cmd.at("path").as_string();
@@ -571,13 +571,13 @@ public:
   }
 
 
-  static njson keys (CacheMap& map, const SessionToken& tkn, const njson_pmr& cmd)
+  static njson keys (CacheMap& map, const SessionToken& tkn, const njson& cmd)
   {
-    return PoolRequestResponse::sessionKeys(tkn, map.keys());
+    return SessionResponse::sessionKeys(tkn, map.keys());
   }
 
 
-  static njson clearSet (CacheMap& map, const SessionToken& tkn, const njson_pmr& cmd)
+  static njson clearSet (CacheMap& map, const SessionToken& tkn, const njson& cmd)
   {
     njson rsp;
     rsp["KV_CLEAR_SET_RSP"]["tkn"] = tkn;
