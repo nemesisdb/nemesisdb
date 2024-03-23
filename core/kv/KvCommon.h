@@ -4,15 +4,13 @@
 #include <map>
 #include <array>
 #include <any>
+#include <ankerl/unordered_dense.h>
 #include <uuid_v4/uuid_v4.h>
 #include <uwebsockets/App.h>
 #include <core/NemesisCommon.h>
 
 
 namespace nemesis { namespace core { namespace kv {
-
-
-using PoolId = std::size_t;
 
 
 inline ServerStats * serverStats;
@@ -50,7 +48,15 @@ enum class KvQueryType : std::uint8_t
 };
 
 
-const std::map<const std::string_view, const KvQueryType> QueryNameToType = 
+enum class SaveType
+{
+  AllSessions = 0,
+  SelectSessions,
+  Max
+};
+
+
+const ankerl::unordered_dense::map<std::string_view, KvQueryType> QueryNameToType = 
 {  
   // session
   {"SH_NEW",          KvQueryType::ShNew},
@@ -79,141 +85,11 @@ const std::map<const std::string_view, const KvQueryType> QueryNameToType =
 };
 
 
-const std::map<const KvQueryType, const std::string> QueryTypeToName = 
-{
-  // session
-  {KvQueryType::ShNew,        "SH_NEW"},
-  {KvQueryType::ShEnd,        "SH_END"},
-  {KvQueryType::ShOpen,       "SH_OPEN"},
-  {KvQueryType::ShInfo,       "SH_INFO"},
-  {KvQueryType::ShInfoAll,    "SH_INFO_ALL"},
-  {KvQueryType::ShSave,       "SH_SAVE"},
-  {KvQueryType::ShLoad,       "SH_LOAD"},
-  {KvQueryType::ShEndAll,     "SH_END_ALL"},
-  {KvQueryType::ShExists,     "SH_EXISTS"},
-  // kv
-  {KvQueryType::KvSet,        "KV_SET"},
-  {KvQueryType::KvSetQ,       "KV_SETQ"},
-  {KvQueryType::KvGet,        "KV_GET"},
-  {KvQueryType::KvAdd,        "KV_ADD"},
-  {KvQueryType::KvAddQ,       "KV_ADDQ"},
-  {KvQueryType::KvRemove,     "KV_RMV"},
-  {KvQueryType::KvClear,      "KV_CLEAR"},
-  {KvQueryType::KvCount,      "KV_COUNT"},
-  {KvQueryType::KvContains,   "KV_CONTAINS"},
-  {KvQueryType::KvFind,       "KV_FIND"},
-  {KvQueryType::KvUpdate,     "KV_UPDATE"},
-  {KvQueryType::KvKeys,       "KV_KEYS"},
-  {KvQueryType::KvClearSet,   "KV_CLEAR_SET"}
-};
 
-
-enum class SaveType
-{
-  AllSessions = 0,
-  SelectSessions,
-  Max
-};
-
-
-template<bool Sessions>
 inline void setToken (njson& rsp, const SessionToken& token)
 {
-  if constexpr (Sessions)
-    rsp["tkn"] = token;
+  rsp["tkn"] = token;
 }
-
-
-template<>
-inline void setToken<false> (njson& rsp, const SessionToken& token)
-{
-  
-}
-
-
-template<bool Sessions = true>
-struct SessionResponse
-{ 
-  using enum RequestStatus;
-  
-
-  // SESSION
-  static njson sessionNew (const RequestStatus status, const SessionToken& token, const SessionName name)
-  {
-    static njson rsp {jsoncons::json_object_arg, {{"SH_NEW_RSP", njson{jsoncons::json_object_arg}}}};
-    
-    auto& body = rsp.at("SH_NEW_RSP");
-    body["st"] = toUnderlying(status);
-    body["name"] = std::move(name);
-    body["tkn"] = token;
-    
-    return rsp;
-  }
-
-  static njson sessionNewOk (const SessionToken& token, const SessionName name)
-  {
-    static njson rsp {jsoncons::json_object_arg, {{"SH_NEW_RSP", njson{jsoncons::json_object_arg, {{"st", (int)RequestStatus::Ok}}}}}};
-    
-    auto& body = rsp.at("SH_NEW_RSP");
-    body["name"] = std::move(name);
-    body["tkn"] = token;
-    
-    return rsp;
-  }
-  
-  static njson sessionEnd (const RequestStatus status, const SessionToken& token)
-  {
-    njson rsp;
-    rsp["SH_END_RSP"]["st"] = toUnderlying(status);
-    rsp["SH_END_RSP"]["tkn"] = token;
-    return rsp;
-  }
-
-  static njson sessionInfo (const RequestStatus status, const SessionToken& token)
-  {
-    njson rsp;
-    rsp["SH_INFO_RSP"]["st"] = toUnderlying(status);
-    rsp["SH_INFO_RSP"]["tkn"] = token;
-    rsp["SH_INFO_RSP"]["shared"] = njson::null();
-    rsp["SH_INFO_RSP"]["keyCnt"] = njson::null();
-    
-    return rsp;
-  }
-
-  static njson sessionInfo (const RequestStatus status, const SessionToken& token, const bool shared, const bool expires, const bool deleteOnExpire,
-                            const SessionDuration duration, const SessionDuration remaining, const std::size_t keyCount)
-  {
-    njson rsp = sessionInfo(status, token);
-    rsp["SH_INFO_RSP"]["shared"] = shared;
-    rsp["SH_INFO_RSP"]["keyCnt"] = keyCount;
-    rsp["SH_INFO_RSP"]["expires"] = expires;
-    if (expires)
-    {
-      rsp["SH_INFO_RSP"]["expiry"]["duration"] = duration.count();
-      rsp["SH_INFO_RSP"]["expiry"]["remaining"] = remaining.count();
-      rsp["SH_INFO_RSP"]["expiry"]["deleteSession"] = deleteOnExpire;
-    }
-    return rsp;
-  }
-    
-  static njson sessionRemove (const SessionToken& tkn, const bool removed, const std::string&& k)
-  {
-    njson rsp;
-    rsp["KV_RMV_RSP"]["st"] = removed ? toUnderlying(KeyRemoved) : toUnderlying(KeyNotExist);
-    rsp["KV_RMV_RSP"]["k"] = k;
-    rsp["KV_RMV_RSP"]["tkn"] = tkn;
-    return rsp;
-  }
-  
-};
-
-
-
-template<>
-struct SessionResponse<false>
-{
-  // No sessions, no responses
-};
 
 
 struct LoadResult

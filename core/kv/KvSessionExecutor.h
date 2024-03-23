@@ -32,21 +32,35 @@ enum class KvExecutorType
 template<bool HaveSessions>
 class SessionExecutor
 {
+  using enum RequestStatus;
+
 public:
   
   static njson newSession (Sessions& sessions, const std::string& name, const SessionToken& tkn, const bool shared, const SessionDuration duration, const bool deleteOnExpire)
   {    
-    if (const auto cache = sessions.start(tkn, shared, duration, deleteOnExpire); cache)      
-      return SessionResponse<HaveSessions>::sessionNewOk(tkn, name);
-    else
-      return SessionResponse<HaveSessions>::sessionNew(RequestStatus::SessionNewFail, tkn, name);
+    static njson rsp {jsoncons::json_object_arg, {{"SH_NEW_RSP", njson{jsoncons::json_object_arg}}}};
+
+    auto& body = rsp.at("SH_NEW_RSP");
+    
+    body["tkn"] = tkn;
+    body["name"] = name;    
+    body["st"] = toUnderlying(Ok);
+
+    if (const auto cache = sessions.start(tkn, shared, duration, deleteOnExpire); !cache) [[unlikely]]
+      body["st"] = toUnderlying(SessionNewFail);
+
+    return rsp;
   }
 
   
   static njson endSession (Sessions& sessions, const SessionToken& tkn)
   {
     const auto status = sessions.end(tkn) ? RequestStatus::Ok : RequestStatus::SessionNotExist;
-    return SessionResponse<HaveSessions>::sessionEnd(status, tkn);
+    
+    njson rsp;
+    rsp["SH_END_RSP"]["st"] = toUnderlying(status);
+    rsp["SH_END_RSP"]["tkn"] = tkn;
+    return rsp;
   }
 
 
@@ -59,7 +73,17 @@ public:
 
   static njson sessionInfo (Sessions& sessions, const SessionToken& tkn)
   {
-    if (const auto session = sessions.get(tkn); session)
+    njson rsp {jsoncons::json_object_arg, {{"SH_INFO_RSP", njson{jsoncons::json_object_arg}}}};
+
+    auto& body = rsp.at("SH_INFO_RSP");
+
+    body["tkn"] = tkn;
+    body["shared"] = njson::null();
+    body["keyCnt"] = njson::null();
+
+    if (const auto session = sessions.get(tkn); !session)
+      body["st"] = toUnderlying(RequestStatus::SessionNotExist);
+    else
     {
       const auto& sesh = session->get();
       const auto& expiryInfo = sesh.expireInfo;
@@ -67,11 +91,20 @@ public:
       const auto remaining = sesh.expires ? std::chrono::duration_cast<std::chrono::seconds>(expiryInfo.time - SessionClock::now()) :
                                             std::chrono::seconds{0};
 
-      return SessionResponse<HaveSessions>::sessionInfo(RequestStatus::Ok, tkn, sesh.shared, sesh.expires,
-                                              expiryInfo.deleteOnExpire, expiryInfo.duration, remaining, keyCount);
+      body["st"] = toUnderlying(RequestStatus::Ok);
+      body["shared"] = sesh.shared;
+      body["keyCnt"] = keyCount;
+      body["expires"] = sesh.expires;
+
+      if (sesh.expires)
+      {
+        body["expiry"]["duration"] = expiryInfo.duration.count();
+        body["expiry"]["remaining"] = remaining.count();
+        body["expiry"]["deleteSession"] = expiryInfo.deleteOnExpire;
+      }
     }
-    else
-      return SessionResponse<HaveSessions>::sessionInfo(RequestStatus::SessionNotExist, tkn);
+
+    return rsp;
   }
 
 
@@ -376,12 +409,11 @@ public:
     auto& body = rsp.at("KV_SET_RSP");
 
     body["st"] = toUnderlying(RequestStatus::Ok);
-    //setToken<HaveSessions>(body, tkn);
 
     try
     {
       for(const auto& kv : cmd["keys"].object_range())
-        map.set(cachedkey{kv.key()}, kv.value());
+        map.set(kv.key(), kv.value());
     }
     catch(const std::exception& ex)
     {
@@ -400,16 +432,12 @@ public:
     try
     {         
       for(const auto& kv : cmd["keys"].object_range())
-        map.set(cachedkey{kv.key()}, kv.value());
-      
+        map.set(kv.key(), kv.value());     
     }
     catch(const std::exception& e)
     {
       rsp["KV_SETQ_RSP"].try_emplace("st", toUnderlying(RequestStatus::Unknown));
     }
-
-    // if (!rsp.empty())
-    //   setToken<HaveSessions>(rsp["KV_SETQ_RSP"], tkn); // only required if an error occurs
 
     return rsp;
   }
@@ -418,9 +446,8 @@ public:
   static njson get (CacheMap& map,  const njson& cmd)
   {
     njson rsp {jsoncons::json_object_arg, {{"KV_GET_RSP", jsoncons::json_object_arg_t{}}}};
-    auto& body = rsp.at("KV_GET_RSP");
 
-    //setToken<HaveSessions>(body, tkn);
+    auto& body = rsp.at("KV_GET_RSP");
     body["keys"] = njson{jsoncons::json_object_arg};
 
     for(const auto& item : cmd["keys"].array_range())
@@ -439,10 +466,9 @@ public:
 
   static njson add (CacheMap& map,  const njson& cmd)
   {
-    njson rsp;
+    njson rsp {jsoncons::json_object_arg, {{"KV_ADD_RSP", jsoncons::json_object_arg_t{}}}};
     
     rsp["KV_ADD_RSP"]["st"] = toUnderlying(RequestStatus::Ok);
-    //setToken<HaveSessions>(rsp["KV_ADD_RSP"], tkn);
 
     try
     {
@@ -473,9 +499,6 @@ public:
       rsp["KV_ADDQ_RSP"]["st"] = toUnderlying(RequestStatus::Unknown);
     }
 
-    // if (!rsp.empty()) // if key was not added
-    //   setToken<HaveSessions>(rsp["KV_ADDQ_RSP"], tkn);
-
     return rsp.empty() ? njson::null() : rsp;
   }
 
@@ -483,7 +506,6 @@ public:
   static njson remove (CacheMap& map,  const njson& cmd)
   {
     njson rsp;
-    //setToken<HaveSessions>(rsp["KV_RMV_RSP"], tkn);
 
     for(auto& value : cmd["keys"].array_range())
     {
@@ -502,7 +524,6 @@ public:
   static njson clear (CacheMap& map,  const njson& cmd)
   {
     njson rsp;
-    //setToken<HaveSessions>(rsp.at("KV_CLEAR_RSP"), tkn);
 
     const auto[ok, count] = map.clear();
 
@@ -517,7 +538,6 @@ public:
   {
     njson rsp;
     rsp["KV_CONTAINS_RSP"]["st"] = toUnderlying(RequestStatus::Ok);
-    //rsp["KV_CONTAINS_RSP"]["tkn"] = tkn;
 
     for (auto& item : cmd["keys"].array_range())
     {
@@ -537,7 +557,6 @@ public:
     const bool paths = cmd.at("rsp") == "paths";
 
     njson rsp;
-    //rsp["KV_FIND_RSP"]["tkn"] = tkn;
 
     njson result = njson::array();
 
@@ -573,11 +592,9 @@ public:
     const auto& key = cmd.at("key").as_string();
     const auto& path = cmd.at("path").as_string();
 
-    njson rsp;
-    //setToken<HaveSessions>(rsp["KV_UPDATE_RSP"], tkn);
-
     const auto [keyExists, count] = map.update(key, path, cachedvalue::parse(cmd.at("value").to_string()));
-
+    
+    njson rsp;
     rsp["KV_UPDATE_RSP"]["st"] = keyExists ? toUnderlying(RequestStatus::Ok) : toUnderlying(RequestStatus::KeyNotExist);
     rsp["KV_UPDATE_RSP"]["cnt"] = count;
 
@@ -589,9 +606,6 @@ public:
   {
     njson rsp;
     rsp["KV_KEYS_RSP"]["st"] = toUnderlying(RequestStatus::Ok);
-
-    //setToken<HaveSessions>(rsp.at("KV_KEYS_RSP"), tkn);
-    
     rsp["KV_KEYS_RSP"]["keys"] = std::move(map.keys());
     return rsp;
   }
@@ -600,7 +614,6 @@ public:
   static njson clearSet (CacheMap& map,  const njson& cmd)
   {
     njson rsp;
-    //setToken<HaveSessions>(rsp["KV_CLEAR_SET_RSP"], tkn);
     
     rsp["KV_CLEAR_SET_RSP"]["st"] = toUnderlying(RequestStatus::Ok);
 
@@ -624,6 +637,7 @@ public:
     {
       PLOGE << e.what();
       rsp["KV_CLEAR_SET_RSP"]["st"] = toUnderlying(RequestStatus::Unknown);
+      rsp["KV_CLEAR_SET_RSP"]["cnt"] = 0U;
     }
 
     return rsp;

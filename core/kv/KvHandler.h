@@ -529,7 +529,7 @@ private:
   {
     if (!rsp.empty())
     {
-      setToken<true>(rsp.object_range().begin()->value(), tkn);
+      setToken(rsp.object_range().begin()->value(), tkn);
       send(ws, rsp);
     }      
   }
