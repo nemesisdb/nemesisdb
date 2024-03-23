@@ -32,17 +32,22 @@ struct NemesisConfig
   
   static std::string kvSavePath (const njson& cfg)
   {
-    return cfg.at("kv").at("session").at("save").at("path").as_string();
+    return cfg.at("kv").at("sessions").at("save").at("path").as_string();
   }
 
   static bool kvSaveEnabled (const njson& cfg)
   {
-    return cfg.at("kv").at("session").at("save").at("enabled").as_bool();
+    return cfg.at("kv").at("sessions").at("save").at("enabled").as_bool();
   }
   
   bool load() const
   {
     return !loadName.empty();
+  }
+
+  static bool haveSessions (const njson& cfg)
+  {
+    return cfg.at("kv").at("sessions").at("enabled") == true;
   }
 
   ServerMode serverMode () const
@@ -75,17 +80,21 @@ bool parseKv (njson& cfg)
                 isValid([&kvCfg](){ return kvCfg.at("ip").is_string() && kvCfg.at("port").is_uint64() && kvCfg.at("maxPayload").is_uint64(); }, "kv::ip must string, kv::port and kv::maxPayload must be unsigned integer") &&
                 isValid([&kvCfg](){ return kvCfg.at("maxPayload") >= nemesis::core::NEMESIS_KV_MINPAYLOAD; }, "kv::maxPayload below minimum") &&
                 isValid([&kvCfg](){ return kvCfg.at("maxPayload") <= nemesis::core::NEMESIS_KV_MAXPAYLOAD; }, "kv::maxPayload exceeds maximum") && 
-                isValid([&kvCfg](){ return kvCfg.contains("session") && kvCfg.at("session").is_object(); }, "kv requires session section as an object");
+                isValid([&kvCfg](){ return kvCfg.contains("sessions") && kvCfg.at("sessions").is_object(); }, "kv requires session section as an object");
   
   if (valid)
   {
-    const auto& seshCfg = kvCfg.at("session");
-    if (isValid([&seshCfg](){ return seshCfg.contains("save") && seshCfg.at("save").is_object(); }, "session::save::path must be a string"))
+    const auto& seshCfg = kvCfg.at("sessions");
+
+    valid = isValid([&seshCfg](){ return seshCfg.contains("save") && seshCfg.at("save").is_object(); }, "sessions::save must be an object") &&
+            isValid([&seshCfg](){ return seshCfg.contains("enabled") && seshCfg.at("enabled").is_bool(); }, "sessions::enabled must be bool");
+    
+    if (valid)
     {
       const auto& saveCfg = seshCfg.at("save");
-      valid = isValid([&saveCfg](){ return saveCfg.contains("path") && saveCfg.at("path").is_string(); }, "session::save::path must be a string") &&
-              isValid([&saveCfg](){ return saveCfg.contains("enabled") && saveCfg.at("enabled").is_bool(); }, "session::save::enabled must be a bool") && 
-              isValid([&saveCfg](){ return !saveCfg.at("enabled").as_bool() || (saveCfg.at("enabled").as_bool() && !saveCfg.at("path").as_string().empty()); }, "session::save enabled but session::save::path is empty");
+      valid = isValid([&saveCfg](){ return saveCfg.contains("path") && saveCfg.at("path").is_string(); }, "sessions::save::path must be a string") &&
+              isValid([&saveCfg](){ return saveCfg.contains("enabled") && saveCfg.at("enabled").is_bool(); }, "sessions::save::enabled must be a bool") && 
+              isValid([&saveCfg](){ return !saveCfg.at("enabled").as_bool() || (saveCfg.at("enabled").as_bool() && !saveCfg.at("path").as_string().empty()); }, "sessions::save enabled but sessions::save::path is empty");
     }
   }
   

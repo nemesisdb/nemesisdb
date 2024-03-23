@@ -6,8 +6,9 @@
     "ip":"127.0.0.1",
     "port":1987,
     "maxPayload":1024,
-    "session":
+    "sessions":
     {
+      "enabled":true,
       "save":
       {
         "enabled":false,

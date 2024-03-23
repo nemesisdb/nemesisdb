@@ -50,32 +50,32 @@ enum class KvQueryType : std::uint8_t
 };
 
 
-const std::map<const std::string_view, std::tuple<const KvQueryType>> QueryNameToType = 
+const std::map<const std::string_view, const KvQueryType> QueryNameToType = 
 {  
   // session
-  {"SH_NEW",          {KvQueryType::ShNew}},
-  {"SH_END",          {KvQueryType::ShEnd}},
-  {"SH_OPEN",         {KvQueryType::ShOpen}},
-  {"SH_INFO",         {KvQueryType::ShInfo}},
-  {"SH_INFO_ALL",     {KvQueryType::ShInfoAll}},
-  {"SH_SAVE",         {KvQueryType::ShSave}},
-  {"SH_LOAD",         {KvQueryType::ShLoad}},
-  {"SH_END_ALL",      {KvQueryType::ShEndAll}},
-  {"SH_EXISTS",       {KvQueryType::ShExists}},
+  {"SH_NEW",          KvQueryType::ShNew},
+  {"SH_END",          KvQueryType::ShEnd},
+  {"SH_OPEN",         KvQueryType::ShOpen},
+  {"SH_INFO",         KvQueryType::ShInfo},
+  {"SH_INFO_ALL",     KvQueryType::ShInfoAll},
+  {"SH_SAVE",         KvQueryType::ShSave},
+  {"SH_LOAD",         KvQueryType::ShLoad},
+  {"SH_END_ALL",      KvQueryType::ShEndAll},
+  {"SH_EXISTS",       KvQueryType::ShExists},
   // kv
-  {"KV_SET",          {KvQueryType::KvSet}},
-  {"KV_SETQ",         {KvQueryType::KvSetQ}},
-  {"KV_GET",          {KvQueryType::KvGet}},
-  {"KV_ADD",          {KvQueryType::KvAdd}},
-  {"KV_ADDQ",         {KvQueryType::KvAddQ}},
-  {"KV_RMV",          {KvQueryType::KvRemove}},
-  {"KV_CLEAR",        {KvQueryType::KvClear}},
-  {"KV_COUNT",        {KvQueryType::KvCount}},
-  {"KV_CONTAINS",     {KvQueryType::KvContains}},
-  {"KV_FIND",         {KvQueryType::KvFind}},
-  {"KV_UPDATE",       {KvQueryType::KvUpdate}},
-  {"KV_KEYS",         {KvQueryType::KvKeys}},
-  {"KV_CLEAR_SET",    {KvQueryType::KvClearSet}}
+  {"KV_SET",          KvQueryType::KvSet},
+  {"KV_SETQ",         KvQueryType::KvSetQ},
+  {"KV_GET",          KvQueryType::KvGet},
+  {"KV_ADD",          KvQueryType::KvAdd},
+  {"KV_ADDQ",         KvQueryType::KvAddQ},
+  {"KV_RMV",          KvQueryType::KvRemove},
+  {"KV_CLEAR",        KvQueryType::KvClear},
+  {"KV_COUNT",        KvQueryType::KvCount},
+  {"KV_CONTAINS",     KvQueryType::KvContains},
+  {"KV_FIND",         KvQueryType::KvFind},
+  {"KV_UPDATE",       KvQueryType::KvUpdate},
+  {"KV_KEYS",         KvQueryType::KvKeys},
+  {"KV_CLEAR_SET",    KvQueryType::KvClearSet}
 };
 
 
@@ -116,10 +116,26 @@ enum class SaveType
 };
 
 
+template<bool Sessions>
+inline void setToken (njson& rsp, const SessionToken& token)
+{
+  if constexpr (Sessions)
+    rsp["tkn"] = token;
+}
+
+
+template<>
+inline void setToken<false> (njson& rsp, const SessionToken& token)
+{
+  
+}
+
+
+template<bool Sessions = true>
 struct SessionResponse
 { 
   using enum RequestStatus;
-
+  
 
   // SESSION
   static njson sessionNew (const RequestStatus status, const SessionToken& token, const SessionName name)
@@ -164,7 +180,8 @@ struct SessionResponse
     return rsp;
   }
 
-  static njson sessionInfo (const RequestStatus status, const SessionToken& token, const bool shared, const bool expires, const bool deleteOnExpire, const SessionDuration duration, const SessionDuration remaining, const std::size_t keyCount)
+  static njson sessionInfo (const RequestStatus status, const SessionToken& token, const bool shared, const bool expires, const bool deleteOnExpire,
+                            const SessionDuration duration, const SessionDuration remaining, const std::size_t keyCount)
   {
     njson rsp = sessionInfo(status, token);
     rsp["SH_INFO_RSP"]["shared"] = shared;
@@ -187,51 +204,15 @@ struct SessionResponse
     rsp["KV_RMV_RSP"]["tkn"] = tkn;
     return rsp;
   }
-
-  static njson sessionClear (const SessionToken& tkn, const bool cleared, const std::size_t count)
-  {
-    njson rsp;
-    rsp["KV_CLEAR_RSP"]["st"] = cleared ? toUnderlying(Ok) : toUnderlying(Unknown);
-    rsp["KV_CLEAR_RSP"]["cnt"] = count;
-    rsp["KV_CLEAR_RSP"]["tkn"] = tkn;
-    return rsp;
-  }
-
-  static njson sessionCount (const SessionToken& tkn, const std::size_t count)
-  {
-    njson rsp;
-    rsp["KV_COUNT_RSP"]["st"] = toUnderlying(Ok);
-    rsp["KV_COUNT_RSP"]["cnt"] = count;
-    rsp["KV_COUNT_RSP"]["tkn"] = tkn;
-    return rsp;
-  }
-
-  static njson sessionKeys(const SessionToken& tkn, njson&& keys)
-  {
-    njson rsp;
-    rsp["KV_KEYS_RSP"]["tkn"] = tkn;
-    rsp["KV_KEYS_RSP"]["st"] = toUnderlying(Ok);
-    rsp["KV_KEYS_RSP"]["keys"] = std::move(keys);
-    return rsp;
-  }
+  
 };
 
 
-struct KvCommand
-{
-  njson contents;
-  std::function<void(std::any)> syncResponseHandler; 
-  uWS::WebSocket<false, true, WsSession> * ws;  // to access the websocket and userdata
-  uWS::Loop * loop; // TODO can this be moved to WsSession, only set once in .open handler? the uWS event loop, so we can defer() websocket calls on an event loop thread
-  KvQueryType type; 
-  SessionToken tkn;
-};
 
-
-struct KvCommand2
+template<>
+struct SessionResponse<false>
 {
-  njson contents;
-  SessionToken tkn;
+  // No sessions, no responses
 };
 
 
@@ -289,6 +270,7 @@ std::filesystem::path getDefaultDataSetPath(const std::filesystem::path& loadRoo
     return loadRoot / std::to_string(max);
   }
 }
+
 
 // TODO this isn't used, but really should be
 /*

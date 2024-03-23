@@ -18,19 +18,25 @@
 namespace nemesis { namespace core { namespace kv {
 
 
-static inline kv::KvHandler * s_kvHandler {nullptr}; // yuck, but easy solution for us_create_timer() 
-
-
-class KvServer
+template<bool HaveSessions>
+class Server
 {
+  struct Handler
+  {
+    KvHandler<HaveSessions> * handler {nullptr};
+  } ;
+
+  static inline Handler s_kvHandler;
+
+
 public:
-  KvServer() : m_run(true)
+  Server() : m_run(true)
   {
     kv::serverStats = nullptr;
   }
 
 
-  ~KvServer()
+  ~Server()
   {
     stop();
   }
@@ -51,8 +57,8 @@ public:
       for(auto sock : m_sockets)
         us_listen_socket_close(0, sock);
 
-      if (s_kvHandler)
-        delete s_kvHandler;
+      if (s_kvHandler.handler)
+        delete s_kvHandler.handler;
 
       if (kv::serverStats)
         delete kv::serverStats;
@@ -66,7 +72,7 @@ public:
     m_wsClients.clear();
     m_sockets.clear();
     m_monitorTimer = nullptr;
-    s_kvHandler = nullptr;
+    s_kvHandler.handler = nullptr;
     kv::serverStats = nullptr;
   }
 
@@ -76,14 +82,18 @@ public:
     if (!init(config.cfg))
       return false;
 
-    if (config.load())
-    {      
-      if (auto [ok, msg] = load(config); !ok)
+    if constexpr(HaveSessions) 
+    {
+      if ((config.load()))
       {
-        PLOGF << msg;
-        return false;
+        if (auto [ok, msg] = load(config); !ok)
+        {
+          PLOGF << msg;
+          return false;
+        }
       }
     }
+    
 
     const unsigned int maxPayload = config.cfg["kv"]["maxPayload"].as<unsigned int>();
     const std::string ip = config.cfg["kv"]["ip"].as_string();
@@ -103,6 +113,14 @@ public:
 
   
   private:
+
+    // used by uWS timer callback, a C function
+    static void onMonitor (struct us_timer_t *)
+    {
+      if constexpr (HaveSessions)
+        s_kvHandler.handler->monitor();
+    }
+
 
     bool init(const njson& config)
     {
@@ -131,7 +149,7 @@ public:
       }
 
       kv::serverStats = new kv::ServerStats;
-      s_kvHandler = new kv::KvHandler {config};
+      s_kvHandler.handler = new kv::KvHandler<HaveSessions> {config}; // TODO
 
       return true;
     }
@@ -187,7 +205,7 @@ public:
 
                   if (!request.at(commandName).is_object())
                     ws->send(createErrorResponse(commandName+"_RSP", RequestStatus::CommandType).to_string(), kv::WsSendOpCode);
-                  else if (const auto status = s_kvHandler->handle(ws, commandName, request); status != RequestStatus::Ok)
+                  else if (const auto status = s_kvHandler.handler->handle(ws, commandName, request); status != RequestStatus::Ok)
                     ws->send(createErrorResponse(commandName+"_RSP", status).to_string(), kv::WsSendOpCode);
                 }
               }
@@ -219,23 +237,27 @@ public:
 
         if (!wsApp.constructorFailed())
         {
-          #ifndef NDB_UNIT_TEST
-
-          const auto periodMs = chrono::duration_cast<chrono::milliseconds>(chrono::seconds {5});
-          const auto evtLoop = uWS::Loop::get();
-
-          PLOGD << "Creating monitor timer for " << periodMs.count() << "ms";
-
-          m_monitorTimer = us_create_timer((struct us_loop_t *) evtLoop, 0, 0);
-
-          us_timer_set(m_monitorTimer, [](struct us_timer_t *) mutable
+          if constexpr (HaveSessions)
           {
-            s_kvHandler->monitor();
+            #ifndef NDB_UNIT_TEST
 
-          }, periodMs.count(), periodMs.count());
+            const auto periodMs = chrono::duration_cast<chrono::milliseconds>(chrono::seconds {5});
 
-          #endif
-        
+            PLOGD << "Creating monitor timer for " << periodMs.count() << "ms";
+
+            m_monitorTimer = us_create_timer((struct us_loop_t *) uWS::Loop::get(), 0, 0);
+
+            us_timer_set(m_monitorTimer, Server<HaveSessions>::onMonitor, periodMs.count(), periodMs.count());
+
+            // us_timer_set(m_monitorTimer, [](struct us_timer_t *)
+            // {
+            //   s_kvHandler->monitor();
+
+            // }, periodMs.count(), periodMs.count());
+
+            #endif
+          }
+                  
           wsApp.run();
         }
           
@@ -269,6 +291,7 @@ public:
 
 
     std::tuple<bool, std::string> load(const NemesisConfig& config)
+      requires(HaveSessions)
     {
       const fs::path root = config.loadPath / config.loadName;
 
@@ -307,7 +330,7 @@ public:
         return {false, "Cannot load: save was incomplete"};
       else
       {
-        const auto loadResult = s_kvHandler->internalLoad(config.loadName, data);
+        const auto loadResult = s_kvHandler.handler->internalLoad(config.loadName, data);
         const auto success = loadResult.status == RequestStatus::LoadComplete;
 
         PLOGI << "-- Load --";
@@ -336,6 +359,10 @@ public:
     std::atomic_bool m_run;
     us_timer_t * m_monitorTimer{nullptr};
 };
+
+
+using KvServer = Server<false>;
+using KvSessionServer = Server<true>;
 
 
 }
