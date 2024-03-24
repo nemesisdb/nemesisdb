@@ -516,17 +516,25 @@ public:
   static njson remove (CacheMap& map,  const njson& cmd)
   {
     njson rsp;
+    rsp["KV_RMV_RSP"]["st"] = toUnderlying(RequestStatus::Ok);
 
-    for(auto& value : cmd["keys"].array_range())
+    try
     {
-      if (value.is_string())
+      for(const auto& value : cmd["keys"].array_range())
       {
-        const auto& key = value.as_string();
-        const auto removed = map.remove(key);
-        rsp["KV_RMV_RSP"][key] = toUnderlying(removed ? RequestStatus::KeyRemoved : RequestStatus::KeyNotExist);
-      }
+        if (value.is_string())
+        {
+          const auto& key = value.as_string();
+          map.remove(key);
+        }
+      }  
     }
-
+    catch(const std::exception& e)
+    {
+      rsp["KV_RMV_RSP"]["st"] = toUnderlying(RequestStatus::Unknown);
+      PLOGE << e.what();
+    }
+    
     return rsp;
   }
 
@@ -547,13 +555,16 @@ public:
   {
     njson rsp;
     rsp["KV_CONTAINS_RSP"]["st"] = toUnderlying(RequestStatus::Ok);
+    rsp["KV_CONTAINS_RSP"]["contains"] = njson::array{};
 
-    for (auto& item : cmd["keys"].array_range())
+    auto& contains = rsp.at("KV_CONTAINS_RSP").at("contains");
+
+    for (auto&& item : cmd["keys"].array_range())
     {
       if (item.is_string())
       {
-        const cachedkey& key = item.as_string();
-        rsp["KV_CONTAINS_RSP"]["keys"][key] = map.contains(key);
+        if (cachedkey key = item.as_string(); map.contains(key))
+          contains.emplace_back(std::move(key));
       }
     }
 

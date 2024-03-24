@@ -37,9 +37,9 @@ public:
   }
 
 
-  bool remove (const cachedkey& key)
+  void remove (const cachedkey& key)
   {
-    return m_map.erase(key) != 0U;
+    m_map.erase(key);
   };
 
   
