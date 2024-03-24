@@ -26,7 +26,7 @@ class Server
     KvHandler<HaveSessions> * handler {nullptr};
   } ;
 
-  static inline Handler s_kvHandler;
+  static inline Handler s_kvHandler;  // used by the callback handler for us_timer_set(), a C library
 
 
 public:
@@ -124,29 +124,33 @@ public:
 
     bool init(const njson& config)
     {
-      if (NemesisConfig::kvSaveEnabled(config))
+      if constexpr (HaveSessions)
       {
-        // test we can write to the kv save path
-        if (std::filesystem::path path {NemesisConfig::kvSavePath(config)}; !std::filesystem::exists(path) || !std::filesystem::is_directory(path))
+        if (NemesisConfig::kvSaveEnabled(config))
         {
-          PLOGF << "kv:session::save::path is not a directory or does not exist";
-          return false;
-        }
-        else
-        {
-          const auto filename = createUuid();
-          std::filesystem::path fullPath{path};
-          fullPath /= filename;
-
-          if (std::ofstream testStream{fullPath}; !testStream.good())
+          // test we can write to the kv save path
+          if (std::filesystem::path path {NemesisConfig::kvSavePath(config)}; !std::filesystem::exists(path) || !std::filesystem::is_directory(path))
           {
-            PLOGF << "Cannot write to kv:session::save::path";
+            PLOGF << "kv:session::save::path is not a directory or does not exist";
             return false;
           }
           else
-            std::filesystem::remove(fullPath);
+          {
+            const auto filename = createUuid();
+            std::filesystem::path fullPath{path};
+            fullPath /= filename;
+
+            if (std::ofstream testStream{fullPath}; !testStream.good())
+            {
+              PLOGF << "Cannot write to kv:session::save::path";
+              return false;
+            }
+            else
+              std::filesystem::remove(fullPath);
+          }
         }
       }
+      
 
       kv::serverStats = new kv::ServerStats;
       s_kvHandler.handler = new kv::KvHandler<HaveSessions> {config}; // TODO
@@ -248,12 +252,6 @@ public:
             m_monitorTimer = us_create_timer((struct us_loop_t *) uWS::Loop::get(), 0, 0);
 
             us_timer_set(m_monitorTimer, Server<HaveSessions>::onMonitor, periodMs.count(), periodMs.count());
-
-            // us_timer_set(m_monitorTimer, [](struct us_timer_t *)
-            // {
-            //   s_kvHandler->monitor();
-
-            // }, periodMs.count(), periodMs.count());
 
             #endif
           }
