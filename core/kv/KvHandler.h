@@ -119,6 +119,7 @@ public:
 
 
   void monitor ()
+    requires(HaveSessions)
   {
     SessionExecutor<HaveSessions>::sessionMonitor(getContainer());
   }
@@ -170,20 +171,6 @@ private:
       return false;
     }
   }
-
-
-  // Sessions& getContainer()
-  //   requires(HaveSessions)
-  // {
-  //   return m_container;
-  // }
-
-
-  // CacheMap& getContainer()
-  //   requires(!HaveSessions)
-  // {
-  //   return m_container;
-  // }
 
 
   std::conditional_t<HaveSessions, Sessions&, CacheMap&> getContainer()
@@ -363,10 +350,6 @@ private:
   
   ndb_always_inline void sessionSave(const std::string_view queryName, const std::string_view queryRspName, KvWebSocket * ws, njson& json)
   {
-    // static const std::string queryName      = QueryTypeToName.at(KvQueryType::ShSave);
-    // static const std::string queryRspName   = queryName +"_RSP";
-    
-
     auto validate = [](const njson& cmd) -> std::tuple<RequestStatus, const std::string_view>
     {
       const bool haveTkns = cmd.contains("tkns");
@@ -430,34 +413,33 @@ private:
         
         metadata.dump(metaStream);
 
-        // TODO TODO 
-        
+                
         // create save command and call executor
-        // njson saveCmd;
-        // saveCmd["poolDataRoot"] = dataPath.string();
-        // saveCmd["name"] = name;
+        njson saveCmd;
+        saveCmd["poolDataRoot"] = dataPath.string();
+        saveCmd["name"] = name;
 
-        // if (haveTkns)
-        //   saveCmd["tkns"] = std::move(cmd.at("tkns"));
+        if (haveTkns)
+          saveCmd["tkns"] = std::move(cmd.at("tkns"));
 
         
-        // try
-        // {
-        //   rsp = SessionExecutor<HaveSessions>::saveSessions(getContainer(), saveCmd);
-        //   metaDataStatus = KvSaveStatus::Complete;
-        // }
-        // catch(const std::exception& e)
-        // {
-        //   PLOGE << e.what();
-        //   metaDataStatus = KvSaveStatus::Error;
-        // }
+        try
+        {
+          rsp = SessionExecutor<HaveSessions>::saveSessions(getContainer(), saveCmd);
+          metaDataStatus = KvSaveStatus::Complete;
+        }
+        catch(const std::exception& e)
+        {
+          PLOGE << e.what();
+          metaDataStatus = KvSaveStatus::Error;
+        }
 
-        // // update metdata
-        // metadata["status"] = toUnderlying(metaDataStatus);
-        // metadata["complete"] = chrono::time_point_cast<KvSaveMetaDataUnit>(KvSaveClock::now()).time_since_epoch().count();
-        // metaStream.seekp(0);
+        // update metdata
+        metadata["status"] = toUnderlying(metaDataStatus);
+        metadata["complete"] = chrono::time_point_cast<KvSaveMetaDataUnit>(KvSaveClock::now()).time_since_epoch().count();
+        metaStream.seekp(0);
 
-        // metadata.dump(metaStream);
+        metadata.dump(metaStream);
       }
 
       send(ws, rsp);
