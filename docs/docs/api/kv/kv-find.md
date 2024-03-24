@@ -8,7 +8,6 @@ Searches the values and returns keys, data or paths.
 
 |Param|Type|Meaning|Required|
 |:---|:---|:---|:---:|
-|tkn|unsigned int|Session token|Y|
 |rsp|string|Must be one of: `keys`, `kv`, or `paths`|Y|
 |path|string|A JSON Path applied to each key's value|Y|
 |keys|array|An array of keys. If present, only these keys are searched|N|
@@ -69,7 +68,6 @@ These examples are based on storing this:
 {
   "KV_SET":
   {
-    "tkn":5306404175934550078,
     "keys":
     {
       "Devices":
@@ -130,7 +128,6 @@ These examples are based on storing this:
 {
   "KV_FIND":
   {
-    "tkn":5306404175934550078,
     "rsp":"keys",
     "path":"$[?(@.make == 'Samsung')]"
   }
@@ -141,8 +138,8 @@ Response:
 
 ```json
 {
-  "KV_FIND_RSP": {
-    "tkn": 5306404175934550078,
+  "KV_FIND_RSP":
+  {
     "keys": ["Devices"]
   }
 }
@@ -153,7 +150,6 @@ Response:
 {
   "KV_FIND":
   {
-    "tkn":5306404175934550078,
     "rsp":"keys",
     "path":"$[?(@.make == 'Apple' && @.model == 'iPhone 14')]"
   }
@@ -164,8 +160,8 @@ Response:
 
 ```json
 {
-  "KV_FIND_RSP": {
-    "tkn": 5306404175934550078,
+  "KV_FIND_RSP":
+  {
     "keys": ["Devices"]
   }
 }
@@ -177,7 +173,6 @@ Response:
 {
   "KV_FIND":
   {
-    "tkn":5306404175934550078,
     "rsp":"keys",
     "path":"$[?(@.make == 'Apple' && @.model == 'iPhone 11')]"
   }
@@ -188,8 +183,8 @@ Response:
 
 ```json title="Keys is empty, no iPhone 11"
 {
-  "KV_FIND_RSP": {
-    "tkn": 5306404175934550078,
+  "KV_FIND_RSP":
+  {
     "keys": []
   }
 }
@@ -204,7 +199,6 @@ Only the path is returned
 {
   "KV_FIND":
   {
-    "tkn":5306404175934550078,
     "rsp":"paths",
     "path":"$[?(@.sensors.length >= 3)]"
   }
@@ -215,8 +209,8 @@ Response:
 
 ```json title="iPhone 14"
 {
-  "KV_FIND_RSP": {
-    "tkn": 5306404175934550078,
+  "KV_FIND_RSP":
+  {
     "paths": ["$[1]"]
   }
 }
@@ -230,7 +224,6 @@ For this we'll use this data:
 {
   "KV_SET":
   {
-    "tkn":11697800750315753405,
     "keys":
     {
       "loginsValid":
@@ -257,7 +250,6 @@ Get the valid logins if any are between timestamps 1234 and 1238:
 {
   "KV_FIND":
   {
-    "tkn":11697800750315753405,
     "rsp":"kv",
     "keys":["loginsValid"],
     "path":"$[?(@.timestamp > 1234 && @.timestamp < 1238)]"
@@ -269,8 +261,8 @@ Response:
 
 ```json
 {
-  "KV_FIND_RSP": {
-    "tkn": 11697800750315753405,
+  "KV_FIND_RSP":
+  {
     "kv": {
       "loginsValid": [
         {
@@ -302,7 +294,6 @@ Get the failed logins if any are from London:
 {
   "KV_FIND":
   {
-    "tkn":11697800750315753405,
     "rsp":"kv",
     "keys":["loginsFailed"],
     "path":"$[?(@.location == 'London')]"
@@ -314,8 +305,8 @@ Response:
 
 ```json
 {
-  "KV_FIND_RSP": {
-    "tkn": 11697800750315753405,
+  "KV_FIND_RSP":
+  {
     "kv": {
       "loginsFailed": [
         {

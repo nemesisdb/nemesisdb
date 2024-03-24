@@ -6,14 +6,13 @@ sidebar_position: 10
 Stores key-values. If the key already exists, the value is overwritten.
 
 - If you don't want to overwrite an existing key, use `KV_ADD`
-- This command always returns a response. If you don't require a response you can use `KV_SETQ` which only sends a response on failure.
+- This command always returns a response. If you don't require a response, use `KV_SETQ` which only sends a response on failure
 
 
 <br/>
 
 |Param|Type|Meaning|Required|
 |:---|:---|:---|:---:|
-|tkn|unsigned int|Session token|Y|
 |keys|object|Keys and values to store|Y|
 
 
@@ -27,7 +26,6 @@ Contains the keys and their values:
 {
   "KV_SET":
   {
-    "tkn":10838139838302738599,
     "keys":
     {
       "forename":"James",
@@ -42,7 +40,6 @@ Contains the keys and their values:
 {
   "KV_SET":
   {
-    "tkn":10838139838302738599,
     "keys":
     {
       "profile":
@@ -75,8 +72,8 @@ See the [response status](./../Statuses) page for status values.
 Possible status values:
 
 - Ok
-- ParamMissing (`keys`)
-- ValueTypeInvalid (`keys` not an object)
+- ParamMissing 
+- ValueTypeInvalid
 
 <br/>
 <br/>
@@ -92,7 +89,6 @@ Set keys:
 {
   "KV_SET":
   {
-    "tkn":3442644399356403325,
     "keys":
     {
       "user_1234_name": "John Smith",
@@ -107,14 +103,11 @@ Set keys:
 }
 ```
 
-Response:
-
-```json
+```json title="Response"
 {
   "KV_SET_RSP":
   {
     "st":1,
-    "tkn": 3442644399356403325
   }
 }
 ```
