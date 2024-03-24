@@ -34,7 +34,7 @@ This is how NemesisDB treats the data when stored:
 - `address` is mapped to `{"city":"Paris","country":"France"}`
 
 
-![keyvalues](./img/kvset_kv.svg)
+<!-- ![keyvalues](./img/kvset_kv.svg) -->
 
 <br/>
 
@@ -46,7 +46,6 @@ To store the above, you can use the `KV_SET` command:
 {
   "KV_SET":
   {
-    "tkn":1234,
     "keys":
     {
       "age":50,
@@ -61,8 +60,7 @@ To store the above, you can use the `KV_SET` command:
 }
 ```
 
-- `tkn` is the session token, explained in the session [tutorial](../tutorials/sessions/what-is-a-session#session-token)
-- `keys` are the key and values to store
+- `keys` contains the keys and values to store
 
 <br/>
 
@@ -73,14 +71,12 @@ To get the above keys:
 {
   "KV_GET":
   {
-    "tkn":1234,
     "keys":["age", "cars", "address"]
   }
 }
 ```
 
-- `tkn` identifies which session data want to access
-- `keys` arrays of keys to retrieve
+- `keys` an array of keys to retrieve
 
 This returns:
 
@@ -88,7 +84,6 @@ This returns:
 {
   "KV_GET_RSP":
   {
-    "tkn":1234,
     "keys":
     {
       "age":50,
@@ -103,7 +98,3 @@ This returns:
 }
 ```
 
-<br/>
-<hr/>
-
-The session [tutorial](../tutorials/sessions/what-is-a-session#session-token) explains sessions or you could skip to [first steps](../tutorials/first-steps/setup) to start using NemesisDB.

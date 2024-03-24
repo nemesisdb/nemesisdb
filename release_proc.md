@@ -5,7 +5,8 @@ From the root directory:
 <br/>
 
 # Docs
-- APIs updated
+- APIs
+- Server config
 - Tutorials
 - Descriptions (i.e. `docs/docs/intro.md`)
 - Install link in `docs/docs/install/package.md`
