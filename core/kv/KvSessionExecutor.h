@@ -448,18 +448,28 @@ public:
     njson rsp {jsoncons::json_object_arg, {{"KV_GET_RSP", jsoncons::json_object_arg_t{}}}};
 
     auto& body = rsp.at("KV_GET_RSP");
+    body["st"] = toUnderlying(RequestStatus::Ok);
     body["keys"] = njson{jsoncons::json_object_arg};
 
-    for(const auto& item : cmd["keys"].array_range())
+    try
     {
-      if (item.is_string()) [[likely]]
+      for(const auto& item : cmd["keys"].array_range())
       {
-        const auto& key = item.as_string();
+        if (item.is_string()) [[likely]]
+        {
+          const auto& key = item.as_string();
 
-        if (const auto value = map.get(key) ; value)
-          body.at("keys").try_emplace(key, (*value).get());
+          if (const auto value = map.get(key) ; value)
+            body.at("keys").try_emplace(key, (*value).get());
+        }
       }
     }
+    catch(const std::exception& e)
+    {
+      PLOGE << e.what();
+      body["st"] = toUnderlying(RequestStatus::Unknown);
+    }
+    
     return rsp;
   }
 
@@ -523,10 +533,9 @@ public:
 
   static njson clear (CacheMap& map,  const njson& cmd)
   {
-    njson rsp;
-
     const auto[ok, count] = map.clear();
 
+    njson rsp;
     rsp["KV_CLEAR_RSP"]["st"] = ok ? toUnderlying(RequestStatus::Ok) : toUnderlying(RequestStatus::Unknown);
     rsp["KV_CLEAR_RSP"]["cnt"] = count;
     
@@ -614,7 +623,6 @@ public:
   static njson clearSet (CacheMap& map,  const njson& cmd)
   {
     njson rsp;
-    
     rsp["KV_CLEAR_SET_RSP"]["st"] = toUnderlying(RequestStatus::Ok);
 
     try
@@ -624,7 +632,7 @@ public:
         rsp["KV_CLEAR_SET_RSP"]["cnt"] = size;
 
         for(const auto& kv : cmd["keys"].object_range())
-          map.set(cachedkey{kv.key()}, cachedvalue::parse(kv.value().to_string()));
+          map.set(kv.key(), kv.value());
       }
       else
       {
@@ -647,10 +655,8 @@ public:
   static njson count (CacheMap& map,  const njson& cmd)
   {
     njson rsp;
-
     rsp["KV_COUNT_RSP"]["st"] = toUnderlying(RequestStatus::Ok);
     rsp["KV_COUNT_RSP"]["cnt"] = map.count();
-
     return rsp;
   }
 };
