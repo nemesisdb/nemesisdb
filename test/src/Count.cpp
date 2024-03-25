@@ -19,7 +19,7 @@ TEST_F(NemesisTest, Data)
 
 	ASSERT_TRUE(tc.open());
 	
-	tc.test({TestData { .request = R"({ "KV_SET":{"keys":{"asda":"a", "tesco":"b"}}})"_json,	.expected = {R"({ "KV_SET_RSP":{ "keys":{"asda":20, "tesco":20} } })"_json} }});
+	tc.test({TestData { .request = R"({ "KV_SET":{"keys":{"asda":"a", "tesco":"b"}}})"_json,	.expected = {R"({ "KV_SET_RSP":{ "st":1 } })"_json} }});
 	tc.test({TestData { .request = R"({ "KV_COUNT":{} })"_json,	.expected = {R"({ "KV_COUNT_RSP":{ "st":1, "cnt":2 } })"_json} }});
 }
 

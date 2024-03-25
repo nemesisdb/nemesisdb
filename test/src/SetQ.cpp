@@ -14,7 +14,7 @@ TEST_F(NemesisTest, SetQ)
 	ASSERT_TRUE(tc.open());
 
 	tc.test(TestData {  .request = R"({ "KV_SET":{ "keys":{"myarray":["a", "b"], "mystring":"string", "myinteger":5, "mydecimal":5.5, "myobject":{"user":"toad"}} }})"_json,
-											.expected = {R"({ "KV_SET_RSP":{ "keys":{"myarray":20, "mystring":20, "myinteger":20, "mydecimal":20, "myobject":20} }})"_json}});
+											.expected = {R"({ "KV_SET_RSP":{"st":1} })"_json}});
 
 	tc.test(TestData {.request = R"({ "KV_COUNT":{} })"_json, .expected = {R"({ "KV_COUNT_RSP":{"cnt":5, "st":1} } )"_json} });
 }

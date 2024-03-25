@@ -53,6 +53,7 @@ private:
 
   auto createHandlers ()
   {
+    // handlers, only add session handlers if sessions enabled
     ankerl::unordered_dense::map<KvQueryType, Handler> h = 
     {
       {KvQueryType::KvSet,        Handler{std::bind_front(&KvHandler<HaveSessions>::set,        std::ref(*this)), "KV_SET",   "KV_SET_RSP"}},
@@ -285,12 +286,13 @@ private:
     };
 
 
-    const auto& cmd = json.at(queryName);
+    
 
-    if (isValid(queryRspName, ws, cmd, {{Param::required("name", JsonString)}}, validate))
+    if (isValid(queryRspName, ws, json, {{Param::required("name", JsonString)}}, validate))
     {
       njson rsp;
-      
+
+      const auto& cmd = json.at(queryName);
       const auto token = createSessionToken(cmd.at("name").as_string(), true);
       
       // generate a shared token from the name. If a session with the same name was created but isn't shared, 
@@ -335,9 +337,9 @@ private:
   
   ndb_always_inline void sessionExists(const std::string_view queryName, const std::string_view queryRspName, KvWebSocket * ws, njson& json)
   {
-    auto& cmd = json.at(queryName);
+    const auto& cmd = json.at(queryName);
 
-    if (isValid(queryRspName, ws, cmd, {{Param::required("tkns", JsonArray)}}))
+    if (isValid(queryRspName, ws, json, {{Param::required("tkns", JsonArray)}}))
       send(ws, SessionExecutor<HaveSessions>::sessionExists(getContainer(), cmd.at("tkns")));
   }
 

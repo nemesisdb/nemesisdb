@@ -16,7 +16,7 @@ SessionToken startupLoadToken ;
 void setData (TestClient& tc)
 {
 	tc.test({TestData { .request = R"({ "KV_SET":{"keys":{"key1":"v1", "key2":"v2"}}})"_json,
-                      .expected = {R"({ "KV_SET_RSP":{ "keys":{"key1":20, "key2":20} } })"_json} }});
+                      .expected = {R"({ "KV_SET_RSP":{ "st":1 } })"_json} }});
 }
 
 
@@ -86,7 +86,7 @@ TEST_F(NemesisTestSaveEnable, Data)
 
 
 		tc.test(TestData { 	.request = R"({ "KV_GET":{ "keys":["key1", "key2"]} })"_json,
-												.expected = {R"({ "KV_GET_RSP":{ "keys":{"key1":"v1", "key2":"v2" } }})"_json}});
+												.expected = {R"({ "KV_GET_RSP":{ "st":1, "keys":{"key1":"v1", "key2":"v2" } }})"_json}});
 	}
 	
 }
@@ -131,7 +131,7 @@ TEST_F(NemesisTestLoadOnStartup, StartupLoad)
 	tc.token["tkn"] = startupLoadToken;
 
 	tc.test(TestData { 	.request = R"({ "KV_GET":{ "keys":["key1", "key2"]} })"_json,
-											.expected = {R"({ "KV_GET_RSP":{ "keys":{"key1":"v1", "key2":"v2" } }})"_json}});
+											.expected = {R"({ "KV_GET_RSP":{ "st":1, "keys":{"key1":"v1", "key2":"v2" } }})"_json}});
 }
 
 

@@ -31,7 +31,7 @@ public:
   };
 
 
-  void add (const cachedkey& key, cachedvalue&& value)
+  void add (const cachedkey key, cachedvalue value)
   {
     m_map.try_emplace(key, std::move(value));
   }

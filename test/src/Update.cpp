@@ -34,7 +34,7 @@ static const auto set = R"({
 													})"_json;
 
 
-static const auto setRsp = R"({ "KV_SET_RSP":{ "keys":{"loginsValid":20, "loginsFailed":20, "profile":20} } } )"_json;
+static const auto setRsp = R"({ "KV_SET_RSP":{ "st":1 } } )"_json;
 
 
 TEST_F(NemesisTest, NoData)
@@ -83,7 +83,7 @@ TEST_F(NemesisTest, UpdateObjectRoot)
   tc.test(TestData { .request = set, .expected = {setRsp} });
 	
   tc.test({TestData { .request = R"({ "KV_UPDATE":{"key":"profile","path":"$.username", "value":"Bob"} })"_json,	.expected = {R"({ "KV_UPDATE_RSP":{ "st":1, "cnt":1 } })"_json} }});
-  tc.test(TestData { 	.request = R"({ "KV_GET":{ "keys":["profile"]} })"_json, .expected = {R"({ "KV_GET_RSP":{ "keys":{"profile":{"username":"Bob", "address":{"city":"London"}} } }})"_json}});
+  tc.test(TestData { 	.request = R"({ "KV_GET":{ "keys":["profile"]} })"_json, .expected = {R"({ "KV_GET_RSP":{ "st":1, "keys":{"profile":{"username":"Bob", "address":{"city":"London"}} } }})"_json}});
 }
 
 
@@ -96,7 +96,7 @@ TEST_F(NemesisTest, UpdateObjectNested)
   tc.test(TestData { .request = set, .expected = {setRsp} });
 	
   tc.test({TestData { .request = R"({ "KV_UPDATE":{"key":"profile","path":"$.address.city", "value":"Manc"} })"_json,	.expected = {R"({ "KV_UPDATE_RSP":{ "st":1, "cnt":1 } })"_json} }});
-  tc.test(TestData { 	.request = R"({ "KV_GET":{ "keys":["profile"]} })"_json, .expected = {R"({ "KV_GET_RSP":{ "keys":{"profile":{"username":"Dave", "address":{"city":"Manc"}} } }})"_json}});
+  tc.test(TestData { 	.request = R"({ "KV_GET":{ "keys":["profile"]} })"_json, .expected = {R"({ "KV_GET_RSP":{ "st":1, "keys":{"profile":{"username":"Dave", "address":{"city":"Manc"}} } }})"_json}});
 }
 
 
@@ -109,7 +109,7 @@ TEST_F(NemesisTest, UpdateObjectWithObject)
   tc.test(TestData { .request = set, .expected = {setRsp} });
 	
   tc.test({TestData { .request = R"({ "KV_UPDATE":{"key":"profile","path":"$.address", "value":{ "city":"Paris"}} })"_json,	.expected = {R"({ "KV_UPDATE_RSP":{ "st":1, "cnt":1 } })"_json} }});
-  tc.test(TestData { 	.request = R"({ "KV_GET":{ "keys":["profile"]} })"_json, .expected = {R"({ "KV_GET_RSP":{ "keys":{"profile":{"username":"Dave", "address":{"city":"Paris"}} } }})"_json}});
+  tc.test(TestData { 	.request = R"({ "KV_GET":{ "keys":["profile"]} })"_json, .expected = {R"({ "KV_GET_RSP":{ "st":1, "keys":{"profile":{"username":"Dave", "address":{"city":"Paris"}} } }})"_json}});
 }
 
 
@@ -122,7 +122,7 @@ TEST_F(NemesisTest, UpdateArrayObjectElement)
   tc.test(TestData { .request = set, .expected = {setRsp} });
 	
   tc.test({TestData { .request = R"({ "KV_UPDATE":{"key":"loginsFailed","path":"$[?(@.location == 'London')].location", "value":"Manc"} })"_json,	.expected = {R"({ "KV_UPDATE_RSP":{ "st":1, "cnt":1 } })"_json} }});
-  tc.test(TestData { 	.request = R"({ "KV_GET":{ "keys":["loginsFailed"]} })"_json, .expected = {R"({ "KV_GET_RSP":{ "keys":{"loginsFailed":[ {"timestamp":1235, "location":"New York"},
+  tc.test(TestData { 	.request = R"({ "KV_GET":{ "keys":["loginsFailed"]} })"_json, .expected = {R"({ "KV_GET_RSP":{ "st":1, "keys":{"loginsFailed":[ {"timestamp":1235, "location":"New York"},
                                                                                                                                               {"timestamp":1235, "location":"Manc"},
                                                                                                                                               {"timestamp":1237, "location":"New York"}]} }})"_json}});
 }

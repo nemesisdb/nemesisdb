@@ -34,45 +34,19 @@ class KvTestServer  : public ::testing::Test
 protected:
 	constexpr static auto DefaultCfg = R"(
 		{
-			"version":2,
+			"version":3,
 			"mode":"kv",
 			"kv":
 			{
 				"ip":"127.0.0.1",
 				"port":1987,
 				"maxPayload":1024,
-				"session":
+				"sessions":
 				{
+					"enabled":false,
 					"save":
 					{
 						"enabled":false,
-						"path":"./data"
-					}
-				}
-			},
-			"ts":
-			{
-				"ip":"127.0.0.1",
-				"port":1987,
-				"maxPayload":1024
-			}
-		})"sv;
-
-
-	constexpr static auto EnableSaveCfg = R"(
-		{
-			"version":2,
-			"mode":"kv",
-			"kv":
-			{
-				"ip":"127.0.0.1",
-				"port":1987,
-				"maxPayload":1024,
-				"session":
-				{
-					"save":
-					{
-						"enabled":true,
 						"path":"./data"
 					}
 				}
@@ -113,20 +87,116 @@ protected:
 };
 
 
-class NemesisTest : public nemesis::test::KvTestServer
+class KvSessionTestServer  : public ::testing::Test
+{
+protected:
+	constexpr static auto DefaultCfg = R"(
+		{
+			"version":3,
+			"mode":"kv",
+			"kv":
+			{
+				"ip":"127.0.0.1",
+				"port":1987,
+				"maxPayload":1024,
+				"sessions":
+				{
+					"enabled":true,
+					"save":
+					{
+						"enabled":false,
+						"path":"./data"
+					}
+				}
+			},
+			"ts":
+			{
+				"ip":"127.0.0.1",
+				"port":1987,
+				"maxPayload":1024
+			}
+		})"sv;
+
+
+	constexpr static auto EnableSaveCfg = R"(
+		{
+			"version":3,
+			"mode":"kv",
+			"kv":
+			{
+				"ip":"127.0.0.1",
+				"port":1987,
+				"maxPayload":1024,
+				"sessions":
+				{
+					"enabled":true,
+					"save":
+					{
+						"enabled":true,
+						"path":"./data"
+					}
+				}
+			},
+			"ts":
+			{
+				"ip":"127.0.0.1",
+				"port":1987,
+				"maxPayload":1024
+			}
+		})"sv;
+
+
+public:
+  KvSessionTestServer(const std::string_view cfg) : m_config(NemesisConfig{cfg})
+  {
+
+  }
+
+	virtual ~KvSessionTestServer() = default;
+
+
+  virtual void SetUp() override
+	{
+    ASSERT_TRUE(m_server.run(m_config));
+	}
+
+
+	void TearDown() override
+	{
+		m_server.stop();
+	}
+
+
+protected:
+	NemesisConfig m_config;
+  nemesis::core::kv::KvSessionServer m_server;
+};
+
+
+class NemesisTest : public nemesis::test::KvSessionTestServer
 {
 public:
-  NemesisTest() : KvTestServer(DefaultCfg)
+  NemesisTest() : KvSessionTestServer(DefaultCfg)
   {
 
   }
 };
 
-
-class NemesisTestSaveEnablePathNotExist : public nemesis::test::KvTestServer
+/* 
+class NemesisTestNoSessions : public nemesis::test::KvTestServer
 {
 public:
-  NemesisTestSaveEnablePathNotExist() : KvTestServer(EnableSaveCfg)
+  NemesisTestNoSessions() : KvTestServer(DefaultCfg)
+  {
+
+  }
+}; */
+
+
+class NemesisTestSaveEnablePathNotExist : public nemesis::test::KvSessionTestServer
+{
+public:
+  NemesisTestSaveEnablePathNotExist() : KvSessionTestServer(EnableSaveCfg)
   {
 
   }
@@ -138,10 +208,10 @@ public:
 };
 
 
-class NemesisTestSaveEnable : public nemesis::test::KvTestServer
+class NemesisTestSaveEnable : public nemesis::test::KvSessionTestServer
 {
 public:
-  NemesisTestSaveEnable() : KvTestServer(EnableSaveCfg), LoadName("LoadOnStartupTest")
+  NemesisTestSaveEnable() : KvSessionTestServer(EnableSaveCfg), LoadName("LoadOnStartupTest")
   {
 
   }
@@ -169,11 +239,6 @@ public:
 	}
 };
 
-
-
-
-
-using Server = nemesis::test::KvTestServer;
 
 
 struct Ioc

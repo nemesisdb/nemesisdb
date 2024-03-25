@@ -123,6 +123,7 @@ public:
     njson rsp;
     rsp["SH_EXISTS_RSP"]["st"] = toUnderlying(RequestStatus::Ok);
     rsp["SH_EXISTS_RSP"]["exist"] = njson::make_array();
+    rsp["SH_EXISTS_RSP"]["exist"].reserve(std::min<std::size_t>(tkns.size(), 100U));
 
     for (const auto& item : tkns.array_range())
     {
@@ -131,8 +132,10 @@ public:
         const auto& tkn = item.as<SessionToken>();
         if (sessions.contains(tkn))
           rsp["SH_EXISTS_RSP"]["exist"].push_back(tkn);
-      }      
+      }
     }
+
+    rsp["SH_EXISTS_RSP"]["exist"].shrink_to_fit();
 
     return rsp;
   }
@@ -436,7 +439,9 @@ public:
     }
     catch(const std::exception& e)
     {
-      rsp["KV_SETQ_RSP"].try_emplace("st", toUnderlying(RequestStatus::Unknown));
+      PLOGE << e.what();
+      rsp = njson {jsoncons::json_object_arg, {{"KV_SETQ_RSP", jsoncons::json_object_arg_t{}}}};
+      rsp["KV_SETQ_RSP"]["st"] = toUnderlying(RequestStatus::Unknown);
     }
 
     return rsp;
@@ -483,7 +488,7 @@ public:
     try
     {
       for(const auto& kv : cmd["keys"].object_range())
-        map.add(cachedkey{kv.key()}, cachedvalue::parse(kv.value().to_string()));
+        map.add(kv.key(), kv.value());
     }
     catch(const std::exception& e)
     {
@@ -502,14 +507,16 @@ public:
     try
     {
       for(auto& kv : cmd["keys"].object_range())
-        map.add(cachedkey{kv.key()}, cachedvalue::parse(kv.value().to_string()));
+        map.add(kv.key(), kv.value());
     }
     catch (const std::exception& ex)
     {
+      PLOGE << ex.what();
+      rsp = njson {jsoncons::json_object_arg, {{"KV_ADDQ_RSP", jsoncons::json_object_arg_t{}}}};
       rsp["KV_ADDQ_RSP"]["st"] = toUnderlying(RequestStatus::Unknown);
     }
 
-    return rsp.empty() ? njson::null() : rsp;
+    return rsp;
   }
 
 
