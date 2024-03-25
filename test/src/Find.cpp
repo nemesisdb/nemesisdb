@@ -120,7 +120,7 @@ TEST_F(NemesisTest, KvOneResult)
 
 	ASSERT_TRUE(tc.open());
   
- 	tc.test(TestData { .request = set,	.expected = {R"({ "KV_SET_RSP":{ "keys":{"loginsValid":20, "loginsFailed":20} } })"_json} });
+ 	tc.test(TestData { .request = set,	.expected = {R"({ "KV_SET_RSP":{ "st":1 } })"_json} });
 	tc.test({TestData { .request = R"({ "KV_FIND":{ "path":"$[?(@.location == 'London')]", "rsp":"kv", "keys":["loginsValid"] } })"_json,	.expected = {R"({ "KV_FIND_RSP":{ "st":1, "keys":{"loginsValid":[{"timestamp":1234, "location":"London"}, {"timestamp":1235, "location":"London"}, {"timestamp":1236, "location":"Paris"},{"timestamp":1238, "location":"London"}]} } })"_json} }});
 }
 
@@ -131,7 +131,7 @@ TEST_F(NemesisTest, KeysOneResult)
 
 	ASSERT_TRUE(tc.open());
   
- 	tc.test(TestData { .request = set,	.expected = {R"({ "KV_SET_RSP":{ "keys":{"loginsValid":20, "loginsFailed":20} } })"_json} });
+ 	tc.test(TestData { .request = set,	.expected = {R"({ "KV_SET_RSP":{ "st":1 } })"_json} });
 	tc.test({TestData { .request = R"({ "KV_FIND":{ "path":"$[?(@.location == 'London')]", "rsp":"keys", "keys":["loginsValid"] } })"_json,	.expected = {R"({ "KV_FIND_RSP":{ "st":1, "keys":["loginsValid"] } })"_json} }});
 }
 
@@ -142,7 +142,7 @@ TEST_F(NemesisTest, PathsOneResult)
 
 	ASSERT_TRUE(tc.open());
   
- 	tc.test(TestData { .request = set,	.expected = {R"({ "KV_SET_RSP":{ "keys":{"loginsValid":20, "loginsFailed":20} } })"_json} });
+ 	tc.test(TestData { .request = set,	.expected = {R"({ "KV_SET_RSP":{ "st":1 } })"_json} });
 	tc.test({TestData { .request = R"({ "KV_FIND":{ "path":"$[?(@.location == 'London')]", "rsp":"paths", "keys":["loginsValid"] } })"_json,	.expected = {R"({ "KV_FIND_RSP":{ "st":1, "paths":["$[0]", "$[1]", "$[3]"] } })"_json} }});
 }
 
@@ -153,7 +153,7 @@ TEST_F(NemesisTest, KeysTwoResult)
 
 	ASSERT_TRUE(tc.open());
   
- 	tc.test(TestData { .request = set,	.expected = {R"({ "KV_SET_RSP":{ "keys":{"loginsValid":20, "loginsFailed":20} } })"_json} });
+ 	tc.test(TestData { .request = set,	.expected = {R"({ "KV_SET_RSP":{ "st":1 } })"_json} });
 	tc.test({TestData { .request = R"({ "KV_FIND":{ "path":"$[?(@.location == 'London')]", "rsp":"keys", "keys":["loginsValid", "loginsFailed"] } })"_json,	.expected = {R"({ "KV_FIND_RSP":{ "st":1, "keys":["loginsValid", "loginsFailed"] } })"_json} }});
 }
 

@@ -3,9 +3,9 @@ sidebar_position: 20
 ---
 
 # KV_SETQ
-Stores data. This is identical to `KV_SET` but it only sends a response on failure.
+Stores key-values. It is identical to `KV_SET` except it only sends a response on failure.
 
-The purpose of this command is reduce network traffic. It is only suitable if you don't need confirmation the command is successful (or you only need confirmation if it wasn't successful).
+The purpose is to reduce network traffic, so it is only suitable if you don't need confirmation of success (i.e. you only need confirmation if it fails).
 
 
 See [`KV_SET`](./kv-set) for structure.
@@ -22,16 +22,14 @@ See the [response status](./../Statuses) page for status values.
 
 |Param|Type|Meaning|
 |:---|:---|:---|
-|tkn|unsigned int|Session token|
-|keys|object|For each key that was set: `"<keyname>":<status>`|
-
+|st|uint|Status|
 
 Possible status values:
 
-- ParamMissing (no `keys`)
-- ValueTypeInvalid (`keys` not an object)
+- ParamMissing
+- ValueTypeInvalid
 
 
 :::info
-Because `KV_SETQ` only returns a response on error the `st` will never be `KeySet` (`20`).
+Because `KV_SETQ` only returns a response on error the `st` will never be `Ok` (`1`).
 :::

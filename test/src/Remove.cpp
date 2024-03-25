@@ -10,10 +10,10 @@ TEST_F(NemesisTest, Remove)
 	ASSERT_TRUE(tc.open());
 
 	tc.test(TestData {  .request = R"({ "KV_SET":{ "keys":{"string1":"asda", "string2":"tesco"} }})"_json,
-											.expected = {R"({ "KV_SET_RSP":{ "keys":{"string1":20, "string2":20} }})"_json}});
+											.expected = {R"({ "KV_SET_RSP":{ "st":1 }})"_json}});
 
 	tc.test({TestData { .request = R"({ "KV_RMV":{"keys":["string1"] }})"_json,
-											.expected = {R"({ "KV_RMV_RSP":{ "string1":24 } })"_json} }});
+											.expected = {R"({ "KV_RMV_RSP":{ "st":1 } })"_json} }});
 }
 
 
@@ -23,7 +23,7 @@ TEST_F(NemesisTest, KeyNotExist)
 
 	ASSERT_TRUE(tc.open());
 	
-	tc.test({TestData { .request = R"({ "KV_RMV":{"keys":["stringNotHere"] }})"_json,	.expected = {R"({ "KV_RMV_RSP":{ "stringNotHere":22 } })"_json} }});
+	tc.test({TestData { .request = R"({ "KV_RMV":{"keys":["stringNotHere"] }})"_json,	.expected = {R"({ "KV_RMV_RSP":{ "st":1 } })"_json} }});
 }
 
 

@@ -30,7 +30,7 @@ fs::path getSubDir (const fs::path& parent)
 
 void setData (TestClient& tc)
 {
-	tc.test({TestData { .request = R"({ "KV_SET":{"keys":{"key1":"v1", "key2":"v2"}}})"_json,	.expected = {R"({ "KV_SET_RSP":{ "keys":{"key1":20, "key2":20} } })"_json} }});
+	tc.test({TestData { .request = R"({ "KV_SET":{"keys":{"key1":"v1", "key2":"v2"}}})"_json,	.expected = {R"({ "KV_SET_RSP":{ "st":1 } })"_json} }});
 }
 
 
@@ -73,17 +73,14 @@ TEST_F(NemesisTestSaveEnable, NameInvalid)
 	{
 		TestData td {MakeTestData(R"({ "SH_SAVE":{} })"_json)};
 		tc.test(td);
-		ASSERT_TRUE(td.actual[0]["SH_SAVE_RSP"]["st"] == 26); 
+		ASSERT_TRUE(td.actual[0]["SH_SAVE_RSP"]["st"] == RequestStatus::ParamMissing); 
 	}
 
 	{
 		TestData td {MakeTestData(R"({ "SH_SAVE":{ "name":2} })"_json)};
 		tc.test(td);
-		ASSERT_TRUE(td.actual[0]["SH_SAVE_RSP"]["st"] == 41); 
+		ASSERT_TRUE(td.actual[0]["SH_SAVE_RSP"]["st"] == RequestStatus::ValueTypeInvalid); 
 	}
-
-	// tc.test({TestData { .request = R"({ "SH_SAVE":{} })"_json,	.expected = {R"({ "SH_SAVE_RSP":{ "st":13, "m":"" } })"_json} }});
-	// tc.test({TestData { .request = R"({ "SH_SAVE":{ "name":2} })"_json,	.expected = {R"({ "SH_SAVE_RSP":{ "st":13, "m":"" } })"_json} }});
 }
 
 
@@ -94,9 +91,11 @@ TEST_F(NemesisTestSaveEnable, NoSessions)
 
 	ASSERT_TRUE(tc.openNoSession());
 
-	tc.test({TestData { .request = R"({ "SH_SAVE":{"name":"NoSessions"} })"_json,
-											.expected = {R"({ "SH_SAVE_RSP":{ "name":"NoSessions", "st":120 } })"_json,
-																	 R"({ "SH_SAVE_RSP":{ "name":"NoSessions", "st":121 } })"_json} }});
+	TestData td {MakeTestData(R"({ "SH_SAVE":{"name":"NoSessions"} })"_json, 2)};
+	tc.test(td);
+
+	ASSERT_TRUE(td.actual[0]["SH_SAVE_RSP"]["st"] == RequestStatus::SaveStart); 
+	ASSERT_TRUE(td.actual[1]["SH_SAVE_RSP"]["st"] == RequestStatus::SaveComplete); 
 
 	ASSERT_TRUE(fs::exists(savePath / "NoSessions"));
 	ASSERT_EQ(countFiles(savePath / "NoSessions"), 1);
@@ -108,10 +107,7 @@ TEST_F(NemesisTestSaveEnable, NoSessions)
 	ASSERT_TRUE(fs::exists(dsRoot / DataDir));
 
 	ASSERT_TRUE(fs::exists(dsRoot / MetaDataDir / "md.json"));
-	ASSERT_EQ(countFiles(dsRoot / DataDir), NumPools);
-	
-	// no sesh data because no sessions
-	ASSERT_EQ(countFiles(dsRoot / DataDir / "0"), 0); // assumes 1 pool
+	ASSERT_EQ(countFiles(dsRoot / DataDir), 0); // no session data files
 }
 
 
@@ -123,17 +119,19 @@ TEST_F(NemesisTestSaveEnable, Data)
 	
 	setData(tc);
 
-	tc.test({TestData { .request = R"({ "SH_SAVE":{"name":"Data"} })"_json,
-											.expected = {R"({ "SH_SAVE_RSP":{ "name":"Data", "st":120 } })"_json,
-																	 R"({ "SH_SAVE_RSP":{ "name":"Data", "st":121 } })"_json} }});
+	TestData td {MakeTestData(R"({ "SH_SAVE":{"name":"Data"} })"_json, 2)};
+	tc.test(td);
+
+	ASSERT_TRUE(td.actual[0]["SH_SAVE_RSP"]["st"] == RequestStatus::SaveStart); 
+	ASSERT_TRUE(td.actual[1]["SH_SAVE_RSP"]["st"] == RequestStatus::SaveComplete); 
 
 	ASSERT_TRUE(fs::exists(savePath / "Data"));
 	ASSERT_EQ(countFiles(savePath / "Data"), 1);
 
 	auto dsRoot = getSubDir(savePath / "Data");
-	ASSERT_EQ(countFiles(dsRoot / DataDir / "0"), 1); // assumes 1 pool
+	ASSERT_EQ(countFiles(dsRoot / DataDir), 1); // assumes 1 pool
 	
-	auto sesh0 = readSeshFile(dsRoot / DataDir / "0" / "0");
+	auto sesh0 = readSeshFile(dsRoot / DataDir / "0");
 	
 	ASSERT_FALSE(sesh0.is_null());
 	ASSERT_TRUE(sesh0.is_array());
@@ -203,14 +201,17 @@ TEST_F(NemesisTestSaveEnable, SaveSessions)
 	setData(tc1);
 	setData(tc2);
 
-	tc1.test({TestData { 	.request = save,
-												.expected = {R"({ "SH_SAVE_RSP":{ "name":"SaveSessions", "st":120 } })"_json,
-																	 	R"({ "SH_SAVE_RSP":{ "name":"SaveSessions", "st":121 } })"_json} }});
+	TestData td {MakeTestData(R"({ "SH_SAVE":{"name":"SaveSessions"} })"_json, 2)};
+	tc1.test(td);
+
+	ASSERT_TRUE(td.actual[0]["SH_SAVE_RSP"]["st"] == RequestStatus::SaveStart); 
+	ASSERT_TRUE(td.actual[1]["SH_SAVE_RSP"]["st"] == RequestStatus::SaveComplete); 
+
 
 	auto dsRoot = getSubDir(savePath / "SaveSessions");
-	ASSERT_EQ(countFiles(dsRoot / DataDir / "0"), 1);
+	ASSERT_EQ(countFiles(dsRoot / DataDir), 1);
 	
-	auto seshData = readSeshFile(dsRoot / DataDir / "0" / "0");
+	auto seshData = readSeshFile(dsRoot / DataDir / "0");
 
 	ASSERT_FALSE(seshData.is_null());
 	ASSERT_EQ(seshData.size(), 2);	// 2 sessions

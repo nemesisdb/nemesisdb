@@ -32,7 +32,7 @@ TEST_F(NemesisTest, KeysEmpty)
 
 	ASSERT_TRUE(tc.open());
 	
-	tc.test({TestData { .request = R"({ "KV_CLEAR_SET":{"keys":{}} })"_json,	.expected = {R"({ "KV_CLEAR_SET_RSP":{ "st":1, "cnt":0, "keys":{} } })"_json} }});
+	tc.test({TestData { .request = R"({ "KV_CLEAR_SET":{"keys":{}} })"_json,	.expected = {R"({ "KV_CLEAR_SET_RSP":{ "st":1, "cnt":0 } })"_json} }});
 }
 
 
@@ -46,7 +46,7 @@ TEST_F(NemesisTest, Valid)
 	tc.test({TestData { .request = R"({ "KV_SETQ":{"keys":{"k2":"billybob"}}})"_json}});
 
 	tc.test({TestData { .request = R"({ "KV_CLEAR_SET":{"keys":{"k3":"a", "k4":"b"}} })"_json,
-											.expected = {R"({ "KV_CLEAR_SET_RSP":{ "st":1, "cnt":2, "keys":{"k3":20, "k4":20} } })"_json} }});
+											.expected = {R"({ "KV_CLEAR_SET_RSP":{ "st":1, "cnt":2 } })"_json} }});
 }
 
 

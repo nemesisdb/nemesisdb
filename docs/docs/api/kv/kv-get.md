@@ -10,7 +10,6 @@ The command requires the token and an array of keys to retrieve.
 
 |Param|Type|Meaning|Required|
 |:---|:---|:---|:---:|
-|tkn|unsigned int|Session token|Y|
 |keys|array|Array of keys to retrieve|Y|
 
 
@@ -21,10 +20,11 @@ The command requires the token and an array of keys to retrieve.
 
 |Param|Type|Meaning|
 |:---|:---|:---|
-|tkn|unsigned int|Session token|
 |keys|object|The keys and values requested|Y|
 
-If a key does not exist, its value is returned as `null`.
+<br/>
+
+If a key does not exist it is not returned.
 
 Possible status values:
 
@@ -35,55 +35,91 @@ Possible status values:
 See the [response status](./../Statuses) page for status values.
 
 
-### All Keys Exist
+## Examples
+
+### Various Types
 
 ```json
 {
-  "KV_GET":
-  {
-    "tkn":5976385796811589752,
-    "keys":["user", "blocked"]
-  }
-}
-```
-
-Response:
-
-```json
-{
-  "KV_GET_RSP": {
-    "tkn": 5976385796811589752,
-    "keys": {
-      "user": {
-        "username": "Potato",
-        "email": "spud@email.com",
-        "avatar": "path/to/img.png"
-      },
-      "blocked": false
+  "KV_SET":
+  {    
+    "keys":
+    {
+      "user_1_name":"John",
+      "user_1_dob":638236800000,
+      "user_1_access":
+      [
+        {
+          "location":"Secret Lab",
+          "lastEntry":1711275303000
+        },
+        {
+          "location":"Server Room",
+          "lastEntry":1711034103000
+        }
+      ],
+      "user_1_account":
+      {
+        "enabled":true,
+        "creditBalance":34.50
+      }
     }
   }
 }
 ```
 
-### A Key Does Not Exist
-
-```json
+```json title="Request string and array keys"
 {
   "KV_GET":
   {
-    "tkn":5976385796811589752,
-    "keys":["blocked", "IDontExist"]
+    "keys":["user_1_name", "user_1_access"]
   }
 }
 ```
 
-```json
+```json title=Response
 {
-  "KV_GET_RSP": {
-    "tkn": 5976385796811589752,
-    "keys": {
-      "blocked": false,
-      "IDontExist": null
+  "KV_GET_RSP":
+  {
+    "st": 1,
+    "keys":
+    {
+      "user_1_name": "John",
+      "user_1_access":
+      [
+        {
+          "location": "Secret Lab",
+          "lastEntry": 1711275303000
+        },
+        {
+          "location": "Server Room",
+          "lastEntry": 1711034103000
+        }
+      ]
+    }
+  }
+}
+```
+
+
+### Key Does Not Exist
+
+```json title="key user_1_dontexist does not exist"
+{
+  "KV_GET":
+  {
+    "keys":["user_1_name", "user_1_dontexist"]
+  }
+}
+```
+
+```json title="Only keys that exist are in the response"
+{
+  "KV_GET_RSP":
+  {
+    "keys":
+    {
+      "user_1_name": "John"
     }
   }
 }

@@ -1,13 +1,14 @@
 {
-  "version":2,  // config version 2 from NemesisDB v0.4
-  "mode":"kv",  // "ts" for "TimeSeries" or "kv" "KeyValue" (default)
+  "version":3,  // config version 3 from NemesisDB v0.6
+  "mode":"kv",  // "ts" for "TimeSeries" or "kv" "KeyValue"
   "kv":
   {
     "ip":"127.0.0.1",
     "port":1987,
     "maxPayload":1024,
-    "session":
+    "sessions":
     {
+      "enabled":false,
       "save":
       {
         "enabled":false,

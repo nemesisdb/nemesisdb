@@ -12,7 +12,6 @@ This differs from `KV_SET` because `KV_SET` overwrites the entire key's value.
 
 |Param|Type|Meaning|Required|
 |:---|:---|:---|:---:|
-|tkn|unsigned int|Session token|Y|
 |key|string|Key containing the value to update|Y|
 |path|string|JSON path which returns an element to update|Y|
 |value|various|This value will be assigned to the element returned by `path`|Y|
@@ -24,7 +23,6 @@ For example, if we store this:
 {
   "KV_SET":
   {
-    "tkn":3241497441754231528,
     "keys":
     {
       "profile":
@@ -45,7 +43,6 @@ We want to update the `city`. We could either overwrite the entire `profile` key
 {
   "KV_UPDATE":
   {
-    "tkn":3241497441754231528,
     "key":"profile",
     "path":"$.address.city",
     "value":"Paris"
@@ -62,7 +59,6 @@ We want to update the `city`. We could either overwrite the entire `profile` key
 
 |Param|Type|Meaning|
 |:---|:---|:---|
-|tkn|unsigned int|Session token|
 |key|object|The same key as in the request|
 |cnt|unsigned int|Number of values updated|
 
@@ -91,7 +87,6 @@ We are storing access permissions for a building. We use an `access` array to st
 {
   "KV_SET":
   {
-    "tkn":3241497441754231528,
     "keys":
     {
       "user":
@@ -125,9 +120,9 @@ We are storing access permissions for a building. We use an `access` array to st
 }
 ```
 
-This user has level 4 access, but now they are downgraded to level 2, so we need to adjust these permissions.
+This user has level 4 access, but now they are downgraded to level 2, so we need to adjust the permissions.
 
-We could use `KV_SET` to overwrite the entire `user` key but that would be wasteful for a larger object and requires us to have all the data.
+We could use `KV_SET` to overwrite the entire `user` key but that requires all of the data.
 
 So we use an update:
 
@@ -136,7 +131,6 @@ So we use an update:
 {
   "KV_UPDATE":
   {
-    "tkn":3241497441754231528,
     "key":"user",
     "path":"$.access[?(@.level > 2)].permit",
     "value":false
@@ -144,7 +138,6 @@ So we use an update:
 }
 ```
 
-- `tkn` the session token
 - `key` the key containing the value to update
 - `path` a JSON path to find the value we wish to update
 - `value` the new value

@@ -33,12 +33,11 @@ namespace fs = std::filesystem;
 namespace chrono = std::chrono;
 namespace jsonpath = jsoncons::jsonpath;
 
-static const char * NEMESIS_VERSION = "0.5";
-static const std::size_t NEMESIS_CONFIG_VERSION = 2U;
-//static const std::size_t NEMESIS_MAX_CORES = 4U;
+static const char * NEMESIS_VERSION = "0.6";
+static const std::size_t NEMESIS_CONFIG_VERSION = 3U;
 
 static const std::size_t NEMESIS_KV_MINPAYLOAD = 64U;
-static const std::size_t NEMESIS_KV_MAXPAYLOAD = 2U * 1024U * 1024U;
+static const std::size_t NEMESIS_KV_MAXPAYLOAD = 8U * 1024U;
 
 static const std::size_t NEMESIS_TS_MINPAYLOAD = 64U;
 static const std::size_t NEMESIS_TS_MAXPAYLOAD = 2U * 1024U * 1024U;
@@ -49,6 +48,7 @@ enum class ServerMode { None, KV, TS };
 
 // general
 const uWS::OpCode WsSendOpCode = uWS::OpCode::TEXT;
+
 using njson = jsoncons::ojson;
 using uuid = std::string;
 using NemesisClock = chrono::steady_clock;
@@ -66,13 +66,11 @@ const JsonType JsonArray = JsonType::array_value;
 
 // kv
 using cachedkey = std::string;
-using cachedvalue2 = njson;
-using cachedpair2 = njson;
+using cachedvalue = njson;
 using KvSaveClock = chrono::system_clock;
 using KvSaveMetaDataUnit = chrono::milliseconds;
 
 // session
-using PoolId = std::size_t;
 using SessionToken = std::uint64_t;
 using SessionName = std::string;
 using SessionClock = chrono::steady_clock;
@@ -103,16 +101,17 @@ public:
     return {name, Param {type, false}};
   }
 
-  bool isRequired;
   JsonType type;
+  bool isRequired;
 };
 
 
 // Checks the params (if present and correct type). If that passes and onPostValidate is set, onPostValidate() is called for custom checks.
-template <typename StatusT, StatusT Ok, StatusT ParamMissing, StatusT ParamType>
-std::tuple<StatusT, const std::string_view> isCmdValid (const njson& msg,
+template <class JSON, typename StatusT, StatusT Ok, StatusT ParamMissing, StatusT ParamType>
+std::tuple<StatusT, const std::string_view> isCmdValid (const JSON& msg,
                                                         const std::map<const std::string_view, const Param>& params,
-                                                        std::function<std::tuple<StatusT, const std::string_view>(const njson&)> onPostValidate = nullptr)
+                                                        std::function<std::tuple<StatusT, const std::string_view>(const JSON&)> onPostValidate)
+  //requires(std::is_enum_v<StatusT>)
 {
   for (const auto& [member, param] : params)
   {

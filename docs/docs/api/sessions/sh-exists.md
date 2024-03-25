@@ -23,7 +23,6 @@ Values in 'tkns' that are the incorrect type are ignored.
 |:---|:---|:---|
 |st|unsigned int|Status|
 |exist|array|An array of session tokens that exist|
-|notExist|array|An array of session tokens that do not exist|
 
 
 <br/>
@@ -56,8 +55,7 @@ Possible status values:
   "SH_EXISTS_RSP":
   {
     "st": 1,
-    "exist": [16145406615211810694, 15472368655611898535],
-    "notExist":[3573531683628185477]
+    "exist": [16145406615211810694, 15472368655611898535]
   }
 }
 ```

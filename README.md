@@ -132,6 +132,15 @@ More information [here](https://docs.nemesisdb.io/home/tldr-ts).
 <br/>
 
 # Key Value
+
+## Sessions Disabled
+
+- There is one map for all keys
+- No need to create sessions to store data
+- Data is not segregated so keys must be unique over the entire database
+- Lower memory usage and higher throughput
+
+## Sessions Enabled
 Rather than one large map, key-values are split into sessions:
 
 - Each session has a dedicated map
@@ -139,14 +148,14 @@ Rather than one large map, key-values are split into sessions:
 - When a session expires its data is always deleted, and optionally the session can be deleted
 
 Examples of sessions:
-- Whilst a user is logged into an app
-- When a device comes online
+- Each user that logs into an app
+- Each connected device in monitoring software
 - When an One Time Password is created
 - Whilst a user is completing a multi-page online form
 
 <br/>
 
-## Sessions
+### Sessions
 The purpose of sessions are:
 - Each session only contains data required for that session, rather than a single large map
 - When accessing (get, set, etc) data, only the data for a particular session is accessed
@@ -208,7 +217,6 @@ The structure of JSON is used to determine value types, i.e.:
 {
   "KV_SET":
   {
-    "tkn":13155501921832807800,
     "keys":
     {
       "username":"James",
@@ -229,11 +237,17 @@ Set three keys:
 
 
 ### Save and Restore
-Key-value supports saving and restoring data:
+Sessions support saving and restoring data:
 
 - Use `SH_SAVE` to write session data to file, either all sessions or particular sessions
 - Use `SH_LOAD` to load data from file at runtime
 - Use `--loadName` at the command line to load during start up
+
+
+<br/>
+
+> [!IMPORTANT]
+> Data persistance is only implemented when sessions are enabled, a future release will support both.
 
 <br/>
 <br/>

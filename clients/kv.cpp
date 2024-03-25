@@ -35,12 +35,15 @@ const std::size_t MaxSessions = 1'000'000;
 
 std::latch signalLatch{1};
 std::vector<nemesis::core::SessionToken> tokens;
-std::size_t nSessions = 1;
 std::size_t nIo = std::thread::hardware_concurrency();
 std::string serverIp = "127.0.0.1";
 int serverPort = 1987;
 bool createLog = false;
 bool setQ = true;
+std::size_t nKeys = 0;
+std::size_t nSessions = 0;
+bool haveSessions = false;
+std::vector<std::pair<std::string, json>> keys;
 
 struct Ioc
 {
@@ -109,10 +112,12 @@ bool readProgramArgs(const int argc, char ** argv)
   common.add_options()    
     ("io",        po::value<std::size_t>(&nIo),         "Number of IO threads")
     ("sessions",  po::value<std::size_t>(&nSessions),   "Number of sessions")
+    ("keys",      po::value<std::size_t>(&nKeys),       "Sessions are not created, only this number of keys")
     ("ip",        po::value<std::string>(&serverIp),    "Server IP")
     ("port",      po::value<int>(&serverPort),          "Server port")
     ("log",       "Log session tokens to session.txt")
     ("set",       "Use KV_SET instead of KV_SETQ (default: false)");
+    
 
 
   po::options_description all;
@@ -125,8 +130,15 @@ bool readProgramArgs(const int argc, char ** argv)
 
     po::notify(vm);
 
+    if (nKeys && nSessions)
+    {
+      std::cout << "Specify either sessions or keys\n";
+      return false;
+    }
+      
     createLog = vm.contains("log");
     setQ = !vm.contains("set");
+    haveSessions = nSessions > 0;
   }
   catch (const po::unknown_option& uo)
   {
@@ -138,7 +150,7 @@ bool readProgramArgs(const int argc, char ** argv)
 }
 
 
-void createSessions(const std::string& ip, const int port, std::shared_ptr<asio::io_context> ioc, const std::size_t nSessions)
+bool createSessions(const std::string& ip, const int port, std::shared_ptr<asio::io_context> ioc, const std::size_t nSessions)
 {
   std::mutex mux;
   std::latch latch{static_cast<std::ptrdiff_t>(nSessions)};
@@ -176,7 +188,19 @@ void createSessions(const std::string& ip, const int port, std::shared_ptr<asio:
     std::cout << "New:\t" << std::chrono::duration_cast<std::chrono::milliseconds>(end-start).count() << '\n';
   }
   else
-    std::cout << "createSessions(): falied to connect\n";    
+    std::cout << "createSessions(): failed to connect\n"; 
+
+  return tokens.size() == nSessions;
+}
+
+
+bool createKeys(const std::size_t nKeys)
+{
+  keys.reserve(nKeys);
+  for (std::size_t i = 0 ; i < nKeys ; ++i)
+    keys.emplace_back(createUuid().substr(0, 10), json{{"myimportantdata", "some string value that is not tooooooo short"}});
+    
+  return keys.size() == nKeys;
 }
 
 
@@ -201,61 +225,56 @@ void set(const std::string& ip, const int port, std::shared_ptr<asio::io_context
 
   if (auto ws = client.openQueryWebSocket(ip, port, "", handler); ws)
   {
-    auto commandName = setq ? "KV_SETQ" : "KV_SET";
+    const auto commandName = setq ? "KV_SETQ" : "KV_SET";
 
-    std::size_t i = 0;
     auto start = Clock::now();
 
-    for (const auto& tkn : tokens)
+    if (haveSessions)
     {
-      json command = setq ? json{{"KV_SETQ", jsonSet["KV_SET"]}} : jsonSet;
+      for (const auto& tkn : tokens)
+      {
+        json command = setq ? json{{"KV_SETQ", jsonSet["KV_SET"]}} : jsonSet;
 
-      command[commandName]["tkn"] = tkn;
-
-      if (i % 3 == 0)
-      {        
+        command[commandName]["tkn"] = tkn;
         command[commandName]["keys"]["paymentMethods"].emplace_back(json{{"type","BNPL"},{"id","3"}});
         command[commandName]["keys"]["interests"].emplace_back("Basketball");
+
+        ws->send(command.dump());
       }
+    }
+    else
+    {
+      for (const auto& key : keys)
+      {
+        json command = setq ? json{{"KV_SETQ", json::object()}} : json{{"KV_SET", json::object()}};
 
-      ws->send(command.dump());
+        command[commandName]["keys"][key.first] = key.second;
 
-      ++i;
+        ws->send(command.dump());
+      }
     }
     
     if (!setq)
       latch.wait();
 
-    auto end = Clock::now();
-    std::cout << (setq ? "SetQ" : "Set") << ":\t" << duration_cast<milliseconds>(end-start).count() << '\n';
+    std::cout << (setq ? "SetQ" : "Set") << ":\t" << duration_cast<milliseconds>(Clock::now()-start).count() << '\n';
   }
   else
-    std::cout << "createSessions(): falied to connect\n";
+    std::cout << "set(): falied to connect\n";
 }
 
 
 void get(const std::string& ip, const int port, std::shared_ptr<asio::io_context> ioc)
 {
-  std::atomic_size_t fails{0};
-  std::latch latch{static_cast<std::ptrdiff_t>(tokens.size())};
+  std::ptrdiff_t count = haveSessions ? static_cast<std::ptrdiff_t>(tokens.size()) : static_cast<std::ptrdiff_t>(keys.size());
+  std::latch latch{count};
 
   fusion::client::Client client{*ioc};
 
-  auto onRsp = [&latch, &fails](Response response)
+  auto onRsp = [&latch](Response response)
   {
     if (response.connected)
-    {      
-      // auto rsp = json::parse(response.msg);
-      // if (rsp.contains("KV_GET_RSP"))
-      // {
-      //   auto& keys = rsp["KV_GET_RSP"]["keys"];
-      //   if (keys.contains("profile") && keys.contains("interests"))
-      //   {
-      //     if (keys["profile"].size() != 3 || keys["interests"].size() != 4 || keys["interests"].size() != 5)
-      //       fails += 1;
-      //   }
-      // }
-
+    { 
       latch.count_down();
     }
   };
@@ -263,19 +282,32 @@ void get(const std::string& ip, const int port, std::shared_ptr<asio::io_context
 
   if (auto ws = client.openQueryWebSocket(ip, port, "", onRsp); ws)
   {
-    json query;
-    //query["KV_GET"]["tkn"] = json{};
-    query["KV_GET"]["keys"] = json::array();
+    const auto start = Clock::now();
 
-    auto start = Clock::now();
-
-    for(const auto& tkn : tokens)
+    if (haveSessions)
     {
-      query["KV_GET"]["tkn"] = tkn;
-      query["KV_GET"]["keys"] = json{"profile", "interests"};
+      json query;
+      query["KV_GET"]["keys"] = json::array();
 
-      ws->send(query.dump());
+      for(const auto& tkn : tokens)
+      {
+        query["KV_GET"]["tkn"] = tkn;
+        query["KV_GET"]["keys"] = json{"profile", "interests"};
+
+        ws->send(query.dump());
+      }
     }
+    else
+    {
+      for (const auto& key : keys)
+      {
+        json query ;
+        query["KV_GET"]["keys"] = json{key.first};
+
+        ws->send(query.dump());
+      }
+    }
+    
       
     latch.wait();
 
@@ -283,10 +315,11 @@ void get(const std::string& ip, const int port, std::shared_ptr<asio::io_context
     std::cout << "Get:\t" << duration_cast<milliseconds>(end-start).count() << '\n';
   }
   else
-    std::cout << "createSessions(): falied to connect\n";
+    std::cout << "get(): falied to connect\n";
 }
 
 
+/* Unused
 void find(const std::string& ip, const int port, std::shared_ptr<asio::io_context> ioc)
 {
   std::mutex mux;
@@ -334,7 +367,7 @@ void find(const std::string& ip, const int port, std::shared_ptr<asio::io_contex
   }
   else
     std::cout << "createSessions(): falied to connect\n";
-}
+} */
 
 
 int main (int argc, char ** argv)
@@ -343,7 +376,19 @@ int main (int argc, char ** argv)
   {
     Ioc ioc{std::min<std::size_t>(nIo, std::thread::hardware_concurrency())};
 
-    if (createSessions(serverIp, serverPort, ioc.ioc, std::min<std::size_t>(MaxSessions, nSessions)); !tokens.empty())
+    bool ok = true;
+    if (haveSessions)
+    {   
+      std::cout << "Creating " << nSessions << " sessions\n";   
+      ok = createSessions(serverIp, serverPort, ioc.ioc, std::min<std::size_t>(MaxSessions, nSessions));
+    }
+    else
+    {
+      std::cout << "Creating " << nKeys << " keys\n";
+      ok = createKeys(nKeys);
+    }
+
+    if (ok)
     {
       if (createLog)
       {

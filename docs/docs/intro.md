@@ -7,11 +7,32 @@ displayed_sidebar: homeSidebar
 
 NemesisDB is an in-memory JSON key-value and timeseries database.
 
-- The query interface is WebSockets using JSON
-- Key-value data can be persisted to the filesystem
-- Key-value data can be restored from file at startup or with a command at any time
+- The query interface is over a WebSocket using JSON
+- Key Value can be with or without sessions
+- Time series is basic but will be extended in future versions
+  
+Sessions Enabled:
+  - Sessions are similar to Redis' hash sets: they group related data
+  - Each sessoion has a dedicated map
+  - A session can expire, after which, the keys are deleted
+  - Sessions are created with the `SH_NEW` command, which returns a session token
+  - The session token is used in key value commands to interact with data only in that session
+  - Key-value data can be persisted to the filesystem
+  - Key-value data can be restored from file at startup or with a command at runtime
 
-NemesisDB is available as an x86 64-bit Debian package and Docker image.
+Sessions Disabled:
+  - A single map contains all key values  
+  - No need to supply a session token with each command
+  - Persisting key-value data without sessions not implemented yet
+  - Higher throughput and less memory overhead
+
+Time Series:
+  - Basic support to store, get, index and conditionally find
+
+
+<br/>
+
+NemesisDB is available as an x86 64-bit Debian package, Docker image or can be built for Linux from [source](https://github.com/nemesisdb/nemesisdb).
 
 <br/>
 

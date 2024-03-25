@@ -50,15 +50,16 @@ int main (int argc, char ** argv)
     config.cfg["kv"]["ip"] = "127.0.0.1";
     config.cfg["kv"]["port"] = 1987;
     config.cfg["kv"]["maxPayload"] = 2048;
-    config.cfg["kv"]["session"]["save"]["enabled"] = true;
-    config.cfg["kv"]["session"]["save"]["path"] = "./data";
+    config.cfg["kv"]["sessions"]["enabled"] = true;
+    config.cfg["kv"]["sessions"]["save"]["enabled"] = true;
+    config.cfg["kv"]["sessions"]["save"]["path"] = "./data";
 
     config.cfg["ts"]["ip"] = "127.0.0.1";
     config.cfg["ts"]["port"] = 1987;
     config.cfg["ts"]["maxPayload"] = 2048;
 
-    if (!fs::exists(config.cfg["kv"]["session"]["save"]["path"].as_string()))
-      fs::create_directories(config.cfg["kv"]["session"]["save"]["path"].as_string());
+    if (config.cfg["kv"]["sessions"]["enabled"] == true && !fs::exists(config.cfg["kv"]["sessions"]["save"]["path"].as_string()))
+      fs::create_directories(config.cfg["kv"]["sessions"]["save"]["path"].as_string());
 
     // config.loadPath = NemesisConfig::kvSavePath(config.cfg);
     // config.loadName = "t2";
@@ -75,17 +76,38 @@ int main (int argc, char ** argv)
   {
     PLOGI << "Mode: KV";
 
-    kv::KvServer kvServer;
+    if (NemesisConfig::haveSessions(config.cfg))
+    {
+      PLOGI << "Sessions: Enabled";
 
-    if (kvServer.run(config))
-      run.wait();
+      kv::KvSessionServer server;
+
+      if (server.run(config))
+        run.wait();
+      else
+      {
+        error = 1;
+        run.count_down();
+      }
+    
+      server.stop();
+    }      
     else
     {
-      error = 1;
-      run.count_down();
+      PLOGI << "Sessions: Disabled";
+
+      kv::KvServer server;
+
+      if (server.run(config))
+        run.wait();
+      else
+      {
+        error = 1;
+        run.count_down();
+      }
+    
+      server.stop();
     }
-  
-    kvServer.stop();
   }
   else if (config.serverMode() == ServerMode::TS)
   {

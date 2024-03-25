@@ -9,7 +9,7 @@ The configuration has settings:
 
 |Param|Type|Description|
 |:---|:---:|:---|
-|version|unsigned integer|Must be 2|
+|version|unsigned int|Must be 3|
 |mode|string|"kv" for key-value, "ts" for timeseries|
 |kv|object|Settings for key-value|
 |ts|object|Settings for timeseries|
@@ -22,10 +22,16 @@ The configuration has settings:
 |:---|:---:|:---|
 |ip|string|IP address of the WebSocket server|
 |port|unsigned int|Port of the WebSocket server|
-|maxPayload|unsigned int|Max bytes per query. A query larger than this will be rejected.<br/>Absolute min/max are 64 bytes and 2MB.|
+|maxPayload|unsigned int|Max bytes per query. A query larger than this will be rejected.<br/>Absolute min/max are 64 bytes and 8Kb.|
 |session|object|Settings for session saving (details below)|
 
 <br/>
+
+# `session`
+|Param|Type|Description|
+|:---|:---:|:---|
+|enabled|bool|`true`: Sessions enabled. Use `SH_NEW` to create a session and a token which must be used in subsequent `KV_` commands.<br/><br/>`false`: Sessions disabled, use `KV_` commands without session token.|
+|save|object|Settings for persisting session data|
 
 ## `session::save`
 
@@ -44,7 +50,7 @@ See [SH_SAVE](../api/sessions/sh-save) for more.
 |:---|:---:|:---|
 |ip|string|IP address of the WebSocket server|
 |port|unsigned int|Port of the WebSocket server|
-|maxPayload|unsigned int|Max bytes per query. A query larger than this will be rejected.<br/>Absolute min/max are 64 bytes and 2MB.|
+|maxPayload|unsigned int|Max bytes per query. A query larger than this will be rejected.<br/>Absolute min/max are 64 bytes and 8Kb.|
 
 
 <br/>
@@ -63,7 +69,7 @@ Default settings:
 
 ```json title="default.json"
 {
-  "version":2,
+  "version":3,
   "mode":"kv",
   "kv":
   {
@@ -72,6 +78,7 @@ Default settings:
     "maxPayload":1024,
     "session":
     {
+      "enabled":false,
       "save":
       {
         "enabled":false,

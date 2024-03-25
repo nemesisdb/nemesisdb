@@ -9,7 +9,7 @@ TEST_F(NemesisTest, NoResult)
 
 	ASSERT_TRUE(tc.open());
 
-	tc.test({TestData { .request = R"({ "KV_CONTAINS":{"keys":["somekey"]} })"_json,	.expected = {R"({ "KV_CONTAINS_RSP":{ "keys":{"somekey":false}, "st":1 } })"_json} }});
+	tc.test({TestData { .request = R"({ "KV_CONTAINS":{"keys":["somekey"]} })"_json,	.expected = {R"({ "KV_CONTAINS_RSP":{ "contains":[], "st":1 } })"_json} }});
 }
 
 
@@ -19,9 +19,9 @@ TEST_F(NemesisTest, OneResult)
 
 	ASSERT_TRUE(tc.open());
 	
-	tc.test({TestData { .request = R"({ "KV_CONTAINS":{"keys":["somekey"]} })"_json,	.expected = {R"({ "KV_CONTAINS_RSP":{ "keys":{"somekey":false}, "st":1 } })"_json} }});
-  tc.test({TestData { .request = R"({ "KV_SET":{"keys":{"somekey":"billybob"}}})"_json,	.expected = {R"({ "KV_SET_RSP":{ "keys":{"somekey":20} } })"_json} }});
-	tc.test({TestData { .request = R"({ "KV_CONTAINS":{"keys":["somekey"]} })"_json,	.expected = {R"({ "KV_CONTAINS_RSP":{ "keys":{"somekey":true}, "st":1 } })"_json} }});
+	tc.test({TestData { .request = R"({ "KV_CONTAINS":{"keys":["somekey"]} })"_json,	.expected = {R"({ "KV_CONTAINS_RSP":{ "contains":[], "st":1 } })"_json} }});
+  tc.test({TestData { .request = R"({ "KV_SET":{"keys":{"somekey":"billybob"}}})"_json,	.expected = {R"({ "KV_SET_RSP":{ "st":1 } })"_json} }});
+	tc.test({TestData { .request = R"({ "KV_CONTAINS":{"keys":["somekey"]} })"_json,	.expected = {R"({ "KV_CONTAINS_RSP":{ "contains":["somekey"], "st":1 } })"_json} }});
 }
 
 
@@ -31,9 +31,9 @@ TEST_F(NemesisTest, MultipleResults)
 
 	ASSERT_TRUE(tc.open());
 	
-	tc.test({TestData { .request = R"({ "KV_CONTAINS":{"keys":["somekey","anotherkey"]} })"_json,	.expected = {R"({ "KV_CONTAINS_RSP":{ "keys":{"somekey":false, "anotherkey":false}, "st":1 } })"_json }}});
-  tc.test({TestData { .request = R"({ "KV_SET":{"keys":{"somekey":"tesco", "anotherkey":"asda"}}})"_json,	.expected = {R"({ "KV_SET_RSP":{ "keys":{"somekey":20, "anotherkey":20} } })"_json} }});
-	tc.test({TestData { .request = R"({ "KV_CONTAINS":{"keys":["somekey","anotherkey"]} })"_json,	.expected = {R"({ "KV_CONTAINS_RSP":{ "keys":{"somekey":true, "anotherkey":true}, "st":1 } })"_json }}});
+	tc.test({TestData { .request = R"({ "KV_CONTAINS":{"keys":["somekey","anotherkey"]} })"_json,	.expected = {R"({ "KV_CONTAINS_RSP":{ "contains":[], "st":1 } })"_json }}});
+  tc.test({TestData { .request = R"({ "KV_SET":{"keys":{"somekey":"tesco", "anotherkey":"asda"}}})"_json,	.expected = {R"({ "KV_SET_RSP":{"st":1} })"_json} }});
+	tc.test({TestData { .request = R"({ "KV_CONTAINS":{"keys":["somekey","anotherkey"]} })"_json,	.expected = {R"({ "KV_CONTAINS_RSP":{ "contains":["somekey", "anotherkey"], "st":1 } })"_json }}});
 }
 
 

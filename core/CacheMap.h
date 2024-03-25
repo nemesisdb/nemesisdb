@@ -10,41 +10,40 @@ namespace nemesis { namespace core {
 
 class CacheMap
 {
-  using Map = ankerl::unordered_dense::segmented_map<cachedkey, cachedvalue2>;
+  using Map = ankerl::unordered_dense::segmented_map<cachedkey, cachedvalue>;
   using CacheMapIterator = Map::iterator;
   using CacheMapConstIterator = Map::const_iterator;
 
 public:
-
-  auto set (const cachedkey& key, cachedvalue2&& value) -> std::pair<CacheMapIterator, bool>
+  
+  void set (cachedkey key, cachedvalue value)
   {
-    return m_map.insert_or_assign(key, std::move(value));
+    m_map.insert_or_assign(std::move(key), std::move(value));
   }
 
 
-  auto get (const cachedkey& key) const -> std::tuple<bool, cachedvalue2>
+  std::optional<std::reference_wrapper<const cachedvalue>> get (const cachedkey& key) const
   {
     if (const auto it = m_map.find(key) ; it != m_map.cend())
-      return {true, it->second};
+      return {it->second};
     else
-      return {false, njson::null()};
+      return {};
   };
 
 
-  bool add (const cachedkey& key, cachedvalue2&& value)
+  void add (const cachedkey key, cachedvalue value)
   {
-    const auto [ignore, added] = m_map.try_emplace(key, std::move(value));
-    return added;
+    m_map.try_emplace(key, std::move(value));
   }
 
 
-  bool remove (const cachedkey& key)
+  void remove (const cachedkey& key)
   {
-    return m_map.erase(key) != 0U;
+    m_map.erase(key);
   };
 
   
-  auto clear() -> std::tuple<bool, std::size_t>
+  std::tuple<bool, std::size_t> clear()
   {
     auto size = m_map.size();
     bool valid = true;
@@ -52,6 +51,7 @@ public:
     try
     {
       m_map.clear();
+      m_map.replace(Map::value_container_type{});
     }
     catch (...)
     {
@@ -69,43 +69,6 @@ public:
   }
 
   
-  /*
-  auto append (const cachedkey& key, njson&& value)
-  {
-    RequestStatus status = RequestStatus::Ok;
-
-    if (const auto it = m_map.find(key) ; it != m_map.cend())
-    {
-      if (it->second.type() == njson::value_t::string && value.is_string())
-      {
-        if (value.is_string())
-          it->second.get_ref<njson::string_t&>().append(std::move(value));
-        else
-          status = RequestStatus::ValueTypeInvalid;
-      }
-      else if (it->second.type() == njson::value_t::array)
-      {
-        if (value.is_array())
-        {
-          for (auto&& item : value)
-            it->second.insert(it->second.end(), std::move(item));
-        }
-        else
-          it->second.insert(it->second.end(), std::move(value));        
-      }
-      else if(it->second.type() == njson::value_t::object && value.is_object())
-        it->second.update(value.begin(), value.end(), true);
-      else
-        status = RequestStatus::ValueTypeInvalid;
-    }
-    else 
-      status = RequestStatus::KeyNotExist;
-
-    return status;
-  }
-  */
-
-
   bool contains (const cachedkey& key)
   {
     return m_map.contains(key);
@@ -162,7 +125,7 @@ public:
   }
 
 
-  std::tuple<bool, std::size_t> update (const cachedkey& key, const std::string& path, njson&& value) 
+  std::tuple<bool, std::size_t> update (const cachedkey& key, const std::string& path, cachedvalue&& value) 
   {
     namespace jsonpath = jsoncons::jsonpath;
 
