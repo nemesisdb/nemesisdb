@@ -33,7 +33,7 @@ namespace fs = std::filesystem;
 namespace chrono = std::chrono;
 namespace jsonpath = jsoncons::jsonpath;
 
-static const char * NEMESIS_VERSION = "0.5";
+static const char * NEMESIS_VERSION = "0.6";
 static const std::size_t NEMESIS_CONFIG_VERSION = 3U;
 
 static const std::size_t NEMESIS_KV_MINPAYLOAD = 64U;
@@ -71,7 +71,6 @@ using KvSaveClock = chrono::system_clock;
 using KvSaveMetaDataUnit = chrono::milliseconds;
 
 // session
-using PoolId = std::size_t;
 using SessionToken = std::uint64_t;
 using SessionName = std::string;
 using SessionClock = chrono::steady_clock;
