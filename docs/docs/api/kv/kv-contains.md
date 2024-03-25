@@ -8,7 +8,6 @@ Check if a key exists.
 
 |Param|Type|Meaning|Required|
 |:---|:---|:---|:---:|
-|tkn|unsigned int|Session token|Y|
 |keys|array|Array of key names|Y|
 
 
@@ -16,7 +15,6 @@ Check if a key exists.
 {
   "KV_CONTAINS":
   {
-    "tkn":"10388228285655098522",
     "keys":["user", "access", "IDontExist"]
   }
 }
@@ -29,33 +27,37 @@ Check if a key exists.
 
 |Param|Type|Meaning|
 |:---|:---|:---|
-|tkn|unsigned int|Session token|
 |st|unsigned int|Status|
-|keys|object|Keys with boolean flag indicating `true` (exist) or `false` (not exist)|Y|
+|contains|array|Array of key names that do exist|
 
+If a key does not exist, it is not present in `contains`.
 
 Possible status values:
 
 - Ok
-- ParamMissing (no `keys`)
-- ValueTypeInvalid (`keys` not an array)
+- ParamMissing
+- ValueTypeInvalid
 
 See the [response status](./../Statuses) page for status values.
 
 
-The above command may return this:
 
-```json title="A key does not exist"
+```json title="Only user and access exist"
+{
+  "KV_CONTAINS":
+  {
+    "keys":["user", "access", "nothere"]
+  }
+}
+```
+
+
+```json title="Key nothere does not exist"
 {
   "KV_CONTAINS_RSP":
   {
     "st": 1,
-    "tkn": 10388228285655098522,
-    "keys": {
-      "user": true,
-      "access": true,
-      "IDontExist": false
-    }
+    "contains":["user", "access"]
   }
 }
 ```

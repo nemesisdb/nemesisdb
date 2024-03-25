@@ -6,11 +6,6 @@ sidebar_position: 90
 Returns how many keys are in a session.
 
 
-|Param|Type|Meaning|Required|
-|:---|:---|:---|:---:|
-|tkn|unsigned int|Session token|Y|
-
-
 ## Response
 
 `KV_COUNT_RSP`
@@ -18,7 +13,6 @@ Returns how many keys are in a session.
 
 |Param|Type|Meaning|
 |:---|:---|:---|
-|tkn|unsigned int|Session token|
 |st|unsigned int|Status|
 |cnt|unsigned int|Number of keys in the session|
 
@@ -29,23 +23,22 @@ Possible status values:
 - CommandSyntax
 
 
+Request: 
+
 ```json
 {
-  "KV_COUNT":
-  {
-    "tkn":16127334958516145570
-  }
+  "KV_COUNT":{}
 }
 ```
 
 Response:
 
-```json title="Cleared session which contained two keys"
+```json title="Map contains 3,457 keys"
 {
-  "KV_COUNT_RSP": {
+  "KV_COUNT_RSP":
+  {
     "st": 1,
-    "cnt": 3457,
-    "tkn": 16127334958516145570
+    "cnt": 3457
   }
 }
 ```

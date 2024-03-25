@@ -2,6 +2,7 @@
 #define NDB_CORE_SESSIONEXECUTOR_H
 
 #include <functional>
+#include <scoped_allocator>
 #include <core/NemesisCommon.h>
 #include <core/kv/KvCommon.h>
 #include <core/kv/KvSessions.h>
@@ -26,26 +27,40 @@ enum class KvExecutorType
 };
 
 
+
+
+template<bool HaveSessions>
 class SessionExecutor
 {
+  using enum RequestStatus;
+
 public:
+  
+  static njson newSession (Sessions& sessions, const std::string& name, const SessionToken& tkn, const bool shared, const SessionDuration duration, const bool deleteOnExpire)
+  {    
+    static njson rsp {jsoncons::json_object_arg, {{"SH_NEW_RSP", njson{jsoncons::json_object_arg}}}};
 
-  static njson newSession (Sessions& sessions, const SessionToken& tkn, const njson& cmd)
-  {
-    const SessionDuration duration {cmd.at("expiry").at("duration").as<SessionDuration::rep>()};
-    const bool deleteOnExpire = cmd.at("expiry").at("deleteSession").as_bool();
+    auto& body = rsp.at("SH_NEW_RSP");
+    
+    body["tkn"] = tkn;
+    body["name"] = name;    
+    body["st"] = toUnderlying(Ok);
 
-    if (const auto cache = sessions.start(tkn, cmd.at("shared") == true, duration, deleteOnExpire); cache)
-      return PoolRequestResponse::sessionNew(RequestStatus::Ok, tkn, cmd.at("name").as_string());
-    else
-      return PoolRequestResponse::sessionNew(RequestStatus::SessionNewFail, tkn, cmd.at("name").as_string());
+    if (const auto cache = sessions.start(tkn, shared, duration, deleteOnExpire); !cache) [[unlikely]]
+      body["st"] = toUnderlying(SessionNewFail);
+
+    return rsp;
   }
 
-
+  
   static njson endSession (Sessions& sessions, const SessionToken& tkn)
   {
     const auto status = sessions.end(tkn) ? RequestStatus::Ok : RequestStatus::SessionNotExist;
-    return PoolRequestResponse::sessionEnd(status, tkn);
+    
+    njson rsp;
+    rsp["SH_END_RSP"]["st"] = toUnderlying(status);
+    rsp["SH_END_RSP"]["tkn"] = tkn;
+    return rsp;
   }
 
 
@@ -58,7 +73,17 @@ public:
 
   static njson sessionInfo (Sessions& sessions, const SessionToken& tkn)
   {
-    if (const auto session = sessions.get(tkn); session)
+    njson rsp {jsoncons::json_object_arg, {{"SH_INFO_RSP", njson{jsoncons::json_object_arg}}}};
+
+    auto& body = rsp.at("SH_INFO_RSP");
+
+    body["tkn"] = tkn;
+    body["shared"] = njson::null();
+    body["keyCnt"] = njson::null();
+
+    if (const auto session = sessions.get(tkn); !session)
+      body["st"] = toUnderlying(RequestStatus::SessionNotExist);
+    else
     {
       const auto& sesh = session->get();
       const auto& expiryInfo = sesh.expireInfo;
@@ -66,14 +91,23 @@ public:
       const auto remaining = sesh.expires ? std::chrono::duration_cast<std::chrono::seconds>(expiryInfo.time - SessionClock::now()) :
                                             std::chrono::seconds{0};
 
-      return PoolRequestResponse::sessionInfo(RequestStatus::Ok, tkn, sesh.shared, sesh.expires,
-                                              expiryInfo.deleteOnExpire, expiryInfo.duration, remaining, keyCount);
+      body["st"] = toUnderlying(RequestStatus::Ok);
+      body["shared"] = sesh.shared;
+      body["keyCnt"] = keyCount;
+      body["expires"] = sesh.expires;
+
+      if (sesh.expires)
+      {
+        body["expiry"]["duration"] = expiryInfo.duration.count();
+        body["expiry"]["remaining"] = remaining.count();
+        body["expiry"]["deleteSession"] = expiryInfo.deleteOnExpire;
+      }
     }
-    else
-      return PoolRequestResponse::sessionInfo(RequestStatus::SessionNotExist, tkn);
+
+    return rsp;
   }
 
-  
+
   static njson sessionInfoAll (const Sessions& sessions)
   {
     njson rsp;
@@ -199,59 +233,28 @@ public:
     return rsp;
   }
 
+ 
+private:
 
-  private:
 
+  static void saveSelection (const njson& cmd, const Sessions::SessionsMap& allSessions, const fs::path& path, const std::size_t MaxDataFileSize)
+  {
+    std::string buffer;
+    buffer.reserve(MaxDataFileSize);
 
-    static void saveSelection (const njson& cmd, const Sessions::SessionsMap& allSessions, const fs::path& path, const std::size_t MaxDataFileSize)
+    std::stringstream sstream{buffer};
+    std::size_t nFiles = 0;
+
+    const auto& tkns = cmd.at("tkns");
+    bool first = true;
+
+    for(const auto& item : tkns.array_range())
     {
-      std::string buffer;
-      buffer.reserve(MaxDataFileSize);
+      const auto token = item.as<SessionToken>();
 
-      std::stringstream sstream{buffer};
-      std::size_t nFiles = 0;
-
-      const auto& tkns = cmd.at("tkns");
-      bool first = true;
-
-      for(const auto& item : tkns.array_range())
+      if (auto it = allSessions.find(token); it != allSessions.cend())
       {
-        const auto token = item.as<SessionToken>();
-
-        if (auto it = allSessions.find(token); it != allSessions.cend())
-        {
-          writeSesh(first, it->second, token, sstream);
-          first = false;
-
-          if (sstream.tellp() >= MaxDataFileSize)
-          {
-            flushSaveBuffer(path / std::to_string(nFiles), sstream);
-            ++nFiles;
-            first = true;
-          }
-        }
-      }
-
-      // leftovers (didn't reach the file size)
-      if (sstream.tellp() > 0)
-      {
-        flushSaveBuffer(path / std::to_string(nFiles), sstream);
-      }
-    }
-
-
-    static void saveAll (const Sessions::SessionsMap& allSessions, const fs::path& path, const std::size_t MaxDataFileSize)
-    {    
-      std::string buffer;
-      buffer.reserve(MaxDataFileSize);
-
-      std::stringstream sstream{buffer};
-      std::size_t nFiles = 0;
-
-      bool first = true;
-      for(const auto& [token, sesh] : allSessions)
-      {
-        writeSesh(first, sesh, token, sstream);
+        writeSesh(first, it->second, token, sstream);
         first = false;
 
         if (sstream.tellp() >= MaxDataFileSize)
@@ -261,241 +264,307 @@ public:
           first = true;
         }
       }
+    }
 
-      // leftovers (didn't reach the file size)
-      if (sstream.tellp() > 0)
+    // leftovers (didn't reach the file size)
+    if (sstream.tellp() > 0)
+    {
+      flushSaveBuffer(path / std::to_string(nFiles), sstream);
+    }
+  }
+
+
+  static void saveAll (const Sessions::SessionsMap& allSessions, const fs::path& path, const std::size_t MaxDataFileSize)
+  {    
+    std::string buffer;
+    buffer.reserve(MaxDataFileSize);
+
+    std::stringstream sstream{buffer};
+    std::size_t nFiles = 0;
+
+    bool first = true;
+    for(const auto& [token, sesh] : allSessions)
+    {
+      writeSesh(first, sesh, token, sstream);
+      first = false;
+
+      if (sstream.tellp() >= MaxDataFileSize)
       {
         flushSaveBuffer(path / std::to_string(nFiles), sstream);
+        ++nFiles;
+        first = true;
       }
     }
 
-
-    static void flushSaveBuffer (const fs::path& path, std::stringstream& sstream)
+    // leftovers (didn't reach the file size)
+    if (sstream.tellp() > 0)
     {
-      std::ofstream dataStream {path};
-      dataStream << '[' << sstream.str() << ']';  // no difference with sstream.rdbuf()
-
-      sstream.clear();
-      sstream.str(std::string{});
+      flushSaveBuffer(path / std::to_string(nFiles), sstream);
     }
+  }
 
 
-    static void writeSesh (const bool first, const Sessions::SessionType& sesh, const SessionToken token, std::stringstream& buffer)
-    {
-      njson seshData;
-      seshData["sh"]["tkn"] = token;
-      seshData["sh"]["shared"] = sesh.shared;
-      seshData["sh"]["expiry"]["duration"] = chrono::duration_cast<SessionDuration>(sesh.expireInfo.duration).count();
-      seshData["sh"]["expiry"]["deleteSession"] = sesh.expireInfo.deleteOnExpire;
-      
-      seshData["keys"] = njson::object();
+  static void flushSaveBuffer (const fs::path& path, std::stringstream& sstream)
+  {
+    std::ofstream dataStream {path};
+    dataStream << '[' << sstream.str() << ']';  // no difference with sstream.rdbuf()
 
-      for(const auto& [k, v] : sesh.map.map())
-        seshData["keys"][k] = v;
+    sstream.clear();
+    sstream.str(std::string{});
+  }
 
-      if (!first)
-        buffer << ',';
 
-      seshData.dump(buffer);
-    }
-
+  static void writeSesh (const bool first, const Sessions::SessionType& sesh, const SessionToken token, std::stringstream& buffer)
+  {
+    njson seshData;
+    seshData["sh"]["tkn"] = token;
+    seshData["sh"]["shared"] = sesh.shared;
+    seshData["sh"]["expiry"]["duration"] = chrono::duration_cast<SessionDuration>(sesh.expireInfo.duration).count();
+    seshData["sh"]["expiry"]["deleteSession"] = sesh.expireInfo.deleteOnExpire;
     
-    static RequestStatus readSeshFile (Sessions& sessions, const fs::path path, std::size_t& nSessions, std::size_t& nKeys)
+    seshData["keys"] = njson::object();
+
+    for(const auto& [k, v] : sesh.map.map())
+      seshData["keys"][k] = v;
+
+    if (!first)
+      buffer << ',';
+
+    seshData.dump(buffer);
+  }
+
+  
+  static RequestStatus readSeshFile (Sessions& sessions, const fs::path path, std::size_t& nSessions, std::size_t& nKeys)
+  {
+    RequestStatus status = RequestStatus::LoadComplete;
+
+    try
     {
-      RequestStatus status = RequestStatus::LoadComplete;
+      std::ifstream seshStream{path};
+      auto root = njson::parse(seshStream);
 
-      try
+      for (auto& item : root.array_range())
       {
-        std::ifstream seshStream{path};
-        auto root = njson::parse(seshStream);
-
-        for (auto& item : root.array_range())
-        {
-          if (auto st = loadSession(sessions, std::move(item), nSessions, nKeys); status != RequestStatus::LoadError)
-            status = st;
-        }
+        if (auto st = loadSession(sessions, std::move(item), nSessions, nKeys); status != RequestStatus::LoadError)
+          status = st;
       }
-      catch(const std::exception& e)
-      {
-        std::cerr << e.what() << '\n';
-        status = RequestStatus::LoadError;
-      }
-      return status;
-    };
-
-
-    static RequestStatus loadSession (Sessions& sessions, njson&& seshData, std::size_t& nSessions, std::size_t& nKeys)
-    {
-      RequestStatus status = RequestStatus::LoadComplete;
-
-      if (seshData.contains("sh"))  // can be empty object because sesh file is created even if pool contains no sessions
-      {
-        const auto token = seshData["sh"]["tkn"].as<SessionToken>();
-        const auto isShared = seshData["sh"]["shared"].as_bool();
-        const auto deleteOnExpire = seshData["sh"]["expiry"]["deleteSession"].as_bool();
-        const auto duration = SessionDuration{seshData["sh"]["expiry"]["duration"].as<std::size_t>()};
-
-        if (auto session = sessions.start(token, isShared, duration, deleteOnExpire); session)
-        {
-          if (seshData.contains("keys"))
-          {
-            for (auto& items : seshData.at("keys").object_range())
-            {
-              session->get().set(items.key(), std::move(items.value()));
-              ++nKeys;
-            }
-          }
-          ++nSessions;
-        }
-        // else duplicate, removed from v0.5
-      }
-
-      return status;
     }
+    catch(const std::exception& e)
+    {
+      std::cerr << e.what() << '\n';
+      status = RequestStatus::LoadError;
+    }
+    return status;
+  };
+
+
+  static RequestStatus loadSession (Sessions& sessions, njson&& seshData, std::size_t& nSessions, std::size_t& nKeys)
+  {
+    RequestStatus status = RequestStatus::LoadComplete;
+
+    if (seshData.contains("sh"))  // can be empty object because sesh file is created even if pool contains no sessions
+    {
+      const auto token = seshData["sh"]["tkn"].as<SessionToken>();
+      const auto isShared = seshData["sh"]["shared"].as_bool();
+      const auto deleteOnExpire = seshData["sh"]["expiry"]["deleteSession"].as_bool();
+      const auto duration = SessionDuration{seshData["sh"]["expiry"]["duration"].as<std::size_t>()};
+
+      if (auto session = sessions.start(token, isShared, duration, deleteOnExpire); session)
+      {
+        if (seshData.contains("keys"))
+        {
+          for (auto& items : seshData.at("keys").object_range())
+          {
+            session->get().set(items.key(), std::move(items.value()));
+            ++nKeys;
+          }
+        }
+        ++nSessions;
+      }
+      // else duplicate, removed from v0.5
+    }
+
+    return status;
+  }
 
 };
 
 
+
+template<>
+class SessionExecutor<false>
+{
+  // No sessions to execute
+};
+
+
+template<bool HaveSessions>
 class KvExecutor
 {
 public:
-  
-  static njson set (CacheMap& map, const SessionToken& tkn, njson& cmd)
-  {
-    njson rsp ;
-    rsp["KV_SET_RSP"]["tkn"] = tkn;
 
-    for(auto& kv : cmd["keys"].object_range())
+  static njson set (CacheMap& map,  const njson& cmd)
+  {
+    njson rsp {jsoncons::json_object_arg, {{"KV_SET_RSP", jsoncons::json_object_arg_t{}}}};
+    auto& body = rsp.at("KV_SET_RSP");
+
+    body["st"] = toUnderlying(RequestStatus::Ok);
+
+    try
     {
-      auto [it, inserted] = map.set(kv.key(), std::move(kv.value()));
-      rsp["KV_SET_RSP"]["keys"][kv.key()] = toUnderlying(inserted ? RequestStatus::KeySet : RequestStatus::KeyUpdated);
+      for(const auto& kv : cmd["keys"].object_range())
+        map.set(kv.key(), kv.value());
+    }
+    catch(const std::exception& ex)
+    {
+      PLOGE << ex.what();
+      body["st"] = toUnderlying(RequestStatus::Unknown);
     }
 
     return rsp;
   }
 
 
-  static njson setQ (CacheMap& map, const SessionToken& tkn, njson& cmd)
+  static njson setQ (CacheMap& map,  const njson& cmd)
   {
     njson rsp;
-      
-    for(auto& kv : cmd["keys"].object_range())
+
+    try
+    {         
+      for(const auto& kv : cmd["keys"].object_range())
+        map.set(kv.key(), kv.value());     
+    }
+    catch(const std::exception& e)
     {
-      try
-      {
-        map.set(kv.key(), std::move(kv.value()));
-      }
-      catch(const std::exception& e)
-      {
-        rsp["KV_SETQ_RSP"]["keys"][kv.key()] = toUnderlying(RequestStatus::Unknown);
-      }
+      rsp["KV_SETQ_RSP"].try_emplace("st", toUnderlying(RequestStatus::Unknown));
     }
 
-    if (!rsp.empty())
-      rsp["KV_SETQ_RSP"]["tkn"] = tkn;
+    return rsp;
+  }
+
+
+  static njson get (CacheMap& map,  const njson& cmd)
+  {
+    njson rsp {jsoncons::json_object_arg, {{"KV_GET_RSP", jsoncons::json_object_arg_t{}}}};
+
+    auto& body = rsp.at("KV_GET_RSP");
+    body["st"] = toUnderlying(RequestStatus::Ok);
+    body["keys"] = njson{jsoncons::json_object_arg};
+
+    try
+    {
+      for(const auto& item : cmd["keys"].array_range())
+      {
+        if (item.is_string()) [[likely]]
+        {
+          const auto& key = item.as_string();
+
+          if (const auto value = map.get(key) ; value)
+            body.at("keys").try_emplace(key, (*value).get());
+        }
+      }
+    }
+    catch(const std::exception& e)
+    {
+      PLOGE << e.what();
+      body["st"] = toUnderlying(RequestStatus::Unknown);
+    }
+    
+    return rsp;
+  }
+
+
+  static njson add (CacheMap& map,  const njson& cmd)
+  {
+    njson rsp {jsoncons::json_object_arg, {{"KV_ADD_RSP", jsoncons::json_object_arg_t{}}}};
+    
+    rsp["KV_ADD_RSP"]["st"] = toUnderlying(RequestStatus::Ok);
+
+    try
+    {
+      for(const auto& kv : cmd["keys"].object_range())
+        map.add(cachedkey{kv.key()}, cachedvalue::parse(kv.value().to_string()));
+    }
+    catch(const std::exception& e)
+    {
+      PLOGE << e.what();
+      rsp["KV_ADD_RSP"]["st"] = toUnderlying(RequestStatus::Unknown);
+    }
+
+    return rsp;
+  }
+
+
+  static njson addQ (CacheMap& map,  const njson& cmd)
+  {
+    njson rsp;
+
+    try
+    {
+      for(auto& kv : cmd["keys"].object_range())
+        map.add(cachedkey{kv.key()}, cachedvalue::parse(kv.value().to_string()));
+    }
+    catch (const std::exception& ex)
+    {
+      rsp["KV_ADDQ_RSP"]["st"] = toUnderlying(RequestStatus::Unknown);
+    }
 
     return rsp.empty() ? njson::null() : rsp;
   }
 
 
-  static njson get (CacheMap& map, const SessionToken& tkn, const njson& cmd)
+  static njson remove (CacheMap& map,  const njson& cmd)
   {
     njson rsp;
-    rsp["KV_GET_RSP"]["tkn"] = tkn;
+    rsp["KV_RMV_RSP"]["st"] = toUnderlying(RequestStatus::Ok);
 
-    for(auto& item : cmd["keys"].array_range())
+    try
     {
-      if (item.is_string()) [[likely]]
+      for(const auto& value : cmd["keys"].array_range())
       {
-        const auto& key = item.as_string();
-        if (auto [exists, value] = map.get(key); exists)
-          rsp["KV_GET_RSP"]["keys"][key] = std::move(value);
-        else
-          rsp["KV_GET_RSP"]["keys"][key] = njson::null();
-      }
+        if (value.is_string())
+        {
+          const auto& key = value.as_string();
+          map.remove(key);
+        }
+      }  
     }
-
+    catch(const std::exception& e)
+    {
+      rsp["KV_RMV_RSP"]["st"] = toUnderlying(RequestStatus::Unknown);
+      PLOGE << e.what();
+    }
+    
     return rsp;
   }
 
 
-  static njson add (CacheMap& map, const SessionToken& tkn, njson& cmd)
+  static njson clear (CacheMap& map,  const njson& cmd)
   {
+    const auto[ok, count] = map.clear();
+
     njson rsp;
-    rsp["KV_ADD_RSP"]["tkn"] = tkn;
-    rsp["KV_ADD_RSP"]["keys"] = njson::object();
-
-    for(auto& kv : cmd["keys"].object_range())
-    {
-      const auto inserted = map.add(kv.key(), std::move(kv.value()));
-      rsp["KV_ADD_RSP"]["keys"][kv.key()] = toUnderlying(inserted ? RequestStatus::KeySet : RequestStatus::KeyExists);
-    }
-
+    rsp["KV_CLEAR_RSP"]["st"] = ok ? toUnderlying(RequestStatus::Ok) : toUnderlying(RequestStatus::Unknown);
+    rsp["KV_CLEAR_RSP"]["cnt"] = count;
+    
     return rsp;
   }
 
 
-  static njson addQ (CacheMap& map, const SessionToken& tkn, njson& cmd)
-  {
-    njson rsp;
-
-    for(auto& kv : cmd["keys"].object_range())
-    {
-      if (const auto inserted = map.add(kv.key(), std::move(kv.value())); !inserted)
-        rsp["KV_ADDQ_RSP"]["keys"][kv.key()] = toUnderlying(RequestStatus::KeyExists);
-    }
-
-    if (!rsp.empty()) // if key was not added
-      rsp["KV_ADDQ_RSP"]["tkn"] = tkn;
-
-    return rsp.empty() ? njson::null() : rsp;
-  }
-
-
-  static njson remove (CacheMap& map, const SessionToken& tkn, const njson& cmd)
-  {
-    njson rsp;
-    rsp["KV_RMV_RSP"]["tkn"] = tkn;
-
-    for(auto& value : cmd["keys"].array_range())
-    {
-      if (value.is_string())
-      {
-        const auto& key = value.as_string();
-        const auto removed = map.remove(key);
-        rsp["KV_RMV_RSP"][key] = toUnderlying(removed ? RequestStatus::KeyRemoved : RequestStatus::KeyNotExist);
-      }
-    }
-
-    return rsp;
-  }
-
-
-  static njson clear (CacheMap& map, const SessionToken& tkn, njson& cmd)
-  {
-    const auto[valid, size] = map.clear();
-    return PoolRequestResponse::sessionClear(tkn, valid, size);
-  }
-
-  
-  static njson count (CacheMap& map, const SessionToken& tkn, const njson& cmd)
-  {
-    return PoolRequestResponse::sessionCount(tkn, map.count());
-  }
-
-
-  static njson contains (CacheMap& map, const SessionToken& tkn, const njson& cmd)
+  static njson contains (CacheMap& map,  const njson& cmd)
   {
     njson rsp;
     rsp["KV_CONTAINS_RSP"]["st"] = toUnderlying(RequestStatus::Ok);
-    rsp["KV_CONTAINS_RSP"]["tkn"] = tkn;
+    rsp["KV_CONTAINS_RSP"]["contains"] = njson::array{};
 
-    for (auto& item : cmd["keys"].array_range())
+    auto& contains = rsp.at("KV_CONTAINS_RSP").at("contains");
+
+    for (auto&& item : cmd["keys"].array_range())
     {
       if (item.is_string())
       {
-        const cachedkey& key = item.as_string();
-        rsp["KV_CONTAINS_RSP"]["keys"][key] = map.contains(key);
+        if (cachedkey key = item.as_string(); map.contains(key))
+          contains.emplace_back(std::move(key));
       }
     }
 
@@ -503,12 +572,11 @@ public:
   }
 
   
-  static njson find (CacheMap& map, const SessionToken& tkn, const njson& cmd)
+  static njson find (CacheMap& map,  const njson& cmd)
   {
     const bool paths = cmd.at("rsp") == "paths";
 
     njson rsp;
-    rsp["KV_FIND_RSP"]["tkn"] = tkn;
 
     njson result = njson::array();
 
@@ -529,10 +597,8 @@ public:
         {
           const auto& key = item.as_string();
 
-          if (auto [exists, value] = map.get(key); exists)
-            rsp["KV_FIND_RSP"]["keys"][key] = std::move(value);
-          else
-            rsp["KV_FIND_RSP"]["keys"][key] = njson::null();
+          if (const auto value = map.get(key); value)
+            rsp["KV_FIND_RSP"]["keys"][key] = (*value).get();
         } 
       }
     }
@@ -541,16 +607,14 @@ public:
   }
 
 
-  static njson update (CacheMap& map, const SessionToken& tkn, njson& cmd)
+  static njson update (CacheMap& map,  const njson& cmd)
   {
     const auto& key = cmd.at("key").as_string();
     const auto& path = cmd.at("path").as_string();
 
+    const auto [keyExists, count] = map.update(key, path, cachedvalue::parse(cmd.at("value").to_string()));
+    
     njson rsp;
-    rsp["KV_UPDATE_RSP"]["tkn"] = tkn;
-
-    const auto [keyExists, count] = map.update(key, path, std::move(cmd.at("value")));
-
     rsp["KV_UPDATE_RSP"]["st"] = keyExists ? toUnderlying(RequestStatus::Ok) : toUnderlying(RequestStatus::KeyNotExist);
     rsp["KV_UPDATE_RSP"]["cnt"] = count;
 
@@ -558,36 +622,52 @@ public:
   }
 
 
-  static njson keys (CacheMap& map, const SessionToken& tkn, njson& cmd)
+  static njson keys (CacheMap& map,  const njson& cmd)
   {
-    return PoolRequestResponse::sessionKeys(tkn, map.keys());
+    njson rsp;
+    rsp["KV_KEYS_RSP"]["st"] = toUnderlying(RequestStatus::Ok);
+    rsp["KV_KEYS_RSP"]["keys"] = std::move(map.keys());
+    return rsp;
   }
 
 
-  static njson clearSet (CacheMap& map, const SessionToken& tkn, njson& cmd)
+  static njson clearSet (CacheMap& map,  const njson& cmd)
   {
     njson rsp;
-    rsp["KV_CLEAR_SET_RSP"]["tkn"] = tkn;
-    rsp["KV_CLEAR_SET_RSP"]["keys"] = njson::object();
+    rsp["KV_CLEAR_SET_RSP"]["st"] = toUnderlying(RequestStatus::Ok);
 
-    if (const auto[valid, size] = map.clear(); valid)
+    try
     {
-      rsp["KV_CLEAR_SET_RSP"]["st"] = toUnderlying(RequestStatus::Ok);
-      rsp["KV_CLEAR_SET_RSP"]["cnt"] = size;
-
-      for(auto& kv : cmd["keys"].object_range())
+      if (const auto[valid, size] = map.clear(); valid)
       {
-        auto [it, inserted] = map.set(kv.key(), std::move(kv.value()));
-        rsp["KV_CLEAR_SET_RSP"]["keys"][kv.key()] = toUnderlying(RequestStatus::KeySet);  // just cleared, so nothing to update
+        rsp["KV_CLEAR_SET_RSP"]["cnt"] = size;
+
+        for(const auto& kv : cmd["keys"].object_range())
+          map.set(kv.key(), kv.value());
+      }
+      else
+      {
+        PLOGE << "KV_CLEAR_SET failed to clear";
+        rsp["KV_CLEAR_SET_RSP"]["st"] = toUnderlying(RequestStatus::Unknown);
+        rsp["KV_CLEAR_SET_RSP"]["cnt"] = 0U;
       }
     }
-    else
+    catch(const std::exception& e)
     {
+      PLOGE << e.what();
       rsp["KV_CLEAR_SET_RSP"]["st"] = toUnderlying(RequestStatus::Unknown);
       rsp["KV_CLEAR_SET_RSP"]["cnt"] = 0U;
-      rsp["KV_CLEAR_SET_RSP"]["keys"] = njson::object();
     }
 
+    return rsp;
+  }
+
+
+  static njson count (CacheMap& map,  const njson& cmd)
+  {
+    njson rsp;
+    rsp["KV_COUNT_RSP"]["st"] = toUnderlying(RequestStatus::Ok);
+    rsp["KV_COUNT_RSP"]["cnt"] = map.count();
     return rsp;
   }
 };

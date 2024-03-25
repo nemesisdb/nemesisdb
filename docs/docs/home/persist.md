@@ -3,14 +3,18 @@ sidebar_position: 25
 displayed_sidebar: homeSidebar
 ---
 
-# Persist Data
+# Persist Session Data
 NemesisDB is an in-memory/cache database meaning all the data is always stored in RAM. This offers performance benefits but it also means if the server shutdowns all the data is lost.
 
-Key value data can be persisted to the filesystem and restored on startup or at runtime.
+:::info
+Persisting key-value data is only available with sessions enabled. A future release will support both.
+:::
+
+
+Session data can be persisted to the filesystem and restored on startup or at runtime.
 
 More details are available in [Persist](/tutorials/persist-data/overview).
 
-<br/>
 
 ## Save
 Data is saved to the filesystem using `SH_SAVE`:
@@ -50,7 +54,9 @@ To restore data at startup use the `--loadName` switch:
 ./nemesisdb --config=default.json --loadName=mydata
 ```
 
-This expects to find `mydata` in the `session::save::path` set in the server config. This can be overridden with `--loadPath`:
+This expects to find `mydata` in the `session::save::path` set in the server config.
+
+This can be overridden with `--loadPath`:
 
 ```bash
 ./nemesisdb --config=default.json --loadName=mydata --loadPath=/some/other/path

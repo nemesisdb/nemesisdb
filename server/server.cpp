@@ -73,19 +73,38 @@ int main (int argc, char ** argv)
 
   if (config.serverMode() == ServerMode::KV)
   {
-    PLOGI << "Mode: KV";
+    if (NemesisConfig::haveSessions(config.cfg))
+    {
+      PLOGI << "Mode: KV Sessions";
 
-    kv::KvServer kvServer;
+      kv::KvSessionServer server;
 
-    if (kvServer.run(config))
-      run.wait();
+      if (server.run(config))
+        run.wait();
+      else
+      {
+        error = 1;
+        run.count_down();
+      }
+    
+      server.stop();
+    }      
     else
     {
-      error = 1;
-      run.count_down();
+      PLOGI << "Mode: KV";
+
+      kv::KvServer server;
+
+      if (server.run(config))
+        run.wait();
+      else
+      {
+        error = 1;
+        run.count_down();
+      }
+    
+      server.stop();
     }
-  
-    kvServer.stop();
   }
   else if (config.serverMode() == ServerMode::TS)
   {

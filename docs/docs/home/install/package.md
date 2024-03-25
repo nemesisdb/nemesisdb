@@ -13,7 +13,7 @@ Download the latest version [here](https://releases.nemesisdb.io/package/nemesis
 
 
 ## Install
-Open a terminal, change to your download location and install with `dpkg`.
+Open a terminal, change to the download location and install with `dpkg`.
 
 The install location is: `/usr/local/bin/nemesisdb/<version>`.
 
@@ -35,4 +35,4 @@ cd /usr/local/bin/nemesisdb/0.4
 ./nemesisdb --config=default.json
 ```
 
-This starts the server in key-value mode with the WebSocket API listening on `127.0.0.1:1987`.
+This starts the server in key-value mode with sessions disabled and the WebSocket API listening on `127.0.0.1:1987`.

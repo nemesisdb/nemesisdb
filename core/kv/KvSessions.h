@@ -29,19 +29,19 @@ private:
 
   struct ExpiryTracking
   {
-    SessionToken token;
     SessionExpireTime time{};
-    bool deleteOnExpire{true};
     SessionDuration duration{};
+    SessionToken token;
+    bool deleteOnExpire{true};
   };
 
 
 public:
   struct Session
   {
-    SessionToken token;
     CacheMap map;
     ExpireInfo expireInfo;
+    SessionToken token;    
 
     bool shared{false};
     bool expires{false};    
@@ -59,16 +59,16 @@ public:
       return {};  // TODO check this, if shared:true and a session with this name already exists
     else
     {
-      if (duration == SessionDuration::zero())  // if never expires
-        m_sessions[token] = Session{.token = token, .shared = shared, .expires = false};
+      if (duration == SessionDuration::zero())  // never expires
+        m_sessions.emplace(token, Session{.token = token, .shared = shared, .expires = false});
       else
       {
-        auto expireTime = SessionClock::now() + duration;
+        const auto expireTime = SessionClock::now() + duration;
 
         ExpireInfo expire {.time = expireTime, .duration = duration, .deleteOnExpire = deleteOnExpire};
-        m_sessions[token] = Session{.token = token, .expireInfo = std::move(expire), .shared = shared, .expires = true};
 
-        m_expiry.emplace(std::make_pair(expireTime, ExpiryTracking{.token = token, .time = expireTime, .deleteOnExpire = deleteOnExpire, .duration = duration}));
+        m_sessions.emplace(token, Session{.expireInfo = expire, .token = token, .shared = shared, .expires = true});
+        m_expiry.emplace(expireTime, ExpiryTracking{.time = expireTime, .duration = duration, .token = token, .deleteOnExpire = deleteOnExpire});
       }
 
       return m_sessions.at(token).map;
@@ -122,8 +122,11 @@ public:
   
   std::size_t clear ()
   {
+    // TODO m_sessions.clear() or m_sessions = SessionsMap{}  don't actually deallocate the bucket memory
+    //      the advantage is the memory is available for subsequence set commands, but also means memory is not released and
+    //      this may be preferred. Investigate.
     const auto count = m_sessions.size();
-    m_sessions.clear();
+    m_sessions.clear(); 
     m_expiry.clear();
     return count;
   }

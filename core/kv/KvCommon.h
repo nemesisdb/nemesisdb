@@ -4,15 +4,13 @@
 #include <map>
 #include <array>
 #include <any>
+#include <ankerl/unordered_dense.h>
 #include <uuid_v4/uuid_v4.h>
 #include <uwebsockets/App.h>
 #include <core/NemesisCommon.h>
 
 
 namespace nemesis { namespace core { namespace kv {
-
-
-using PoolId = std::size_t;
 
 
 inline ServerStats * serverStats;
@@ -50,64 +48,6 @@ enum class KvQueryType : std::uint8_t
 };
 
 
-const std::map<const std::string_view, std::tuple<const KvQueryType>> QueryNameToType = 
-{  
-  // session
-  {"SH_NEW",          {KvQueryType::ShNew}},
-  {"SH_END",          {KvQueryType::ShEnd}},
-  {"SH_OPEN",         {KvQueryType::ShOpen}},
-  {"SH_INFO",         {KvQueryType::ShInfo}},
-  {"SH_INFO_ALL",     {KvQueryType::ShInfoAll}},
-  {"SH_SAVE",         {KvQueryType::ShSave}},
-  {"SH_LOAD",         {KvQueryType::ShLoad}},
-  {"SH_END_ALL",      {KvQueryType::ShEndAll}},
-  {"SH_EXISTS",       {KvQueryType::ShExists}},
-  // kv
-  {"KV_SET",          {KvQueryType::KvSet}},
-  {"KV_SETQ",         {KvQueryType::KvSetQ}},
-  {"KV_GET",          {KvQueryType::KvGet}},
-  {"KV_ADD",          {KvQueryType::KvAdd}},
-  {"KV_ADDQ",         {KvQueryType::KvAddQ}},
-  {"KV_RMV",          {KvQueryType::KvRemove}},
-  {"KV_CLEAR",        {KvQueryType::KvClear}},
-  {"KV_COUNT",        {KvQueryType::KvCount}},
-  {"KV_CONTAINS",     {KvQueryType::KvContains}},
-  {"KV_FIND",         {KvQueryType::KvFind}},
-  {"KV_UPDATE",       {KvQueryType::KvUpdate}},
-  {"KV_KEYS",         {KvQueryType::KvKeys}},
-  {"KV_CLEAR_SET",    {KvQueryType::KvClearSet}}
-};
-
-
-const std::map<const KvQueryType, const std::string> QueryTypeToName = 
-{
-  // session
-  {KvQueryType::ShNew,        "SH_NEW"},
-  {KvQueryType::ShEnd,        "SH_END"},
-  {KvQueryType::ShOpen,       "SH_OPEN"},
-  {KvQueryType::ShInfo,       "SH_INFO"},
-  {KvQueryType::ShInfoAll,    "SH_INFO_ALL"},
-  {KvQueryType::ShSave,       "SH_SAVE"},
-  {KvQueryType::ShLoad,       "SH_LOAD"},
-  {KvQueryType::ShEndAll,     "SH_END_ALL"},
-  {KvQueryType::ShExists,     "SH_EXISTS"},
-  // kv
-  {KvQueryType::KvSet,        "KV_SET"},
-  {KvQueryType::KvSetQ,       "KV_SETQ"},
-  {KvQueryType::KvGet,        "KV_GET"},
-  {KvQueryType::KvAdd,        "KV_ADD"},
-  {KvQueryType::KvAddQ,       "KV_ADDQ"},
-  {KvQueryType::KvRemove,     "KV_RMV"},
-  {KvQueryType::KvClear,      "KV_CLEAR"},
-  {KvQueryType::KvCount,      "KV_COUNT"},
-  {KvQueryType::KvContains,   "KV_CONTAINS"},
-  {KvQueryType::KvFind,       "KV_FIND"},
-  {KvQueryType::KvUpdate,     "KV_UPDATE"},
-  {KvQueryType::KvKeys,       "KV_KEYS"},
-  {KvQueryType::KvClearSet,   "KV_CLEAR_SET"}
-};
-
-
 enum class SaveType
 {
   AllSessions = 0,
@@ -116,114 +56,40 @@ enum class SaveType
 };
 
 
-struct PoolRequestResponse
-{ 
-  using enum RequestStatus;
-
-  static int toInt (RequestStatus v)
-  {
-    return static_cast<int>(v);
-  }
-
-
-  // SESSION
-  static njson sessionNew (const RequestStatus status, const SessionToken& token, const SessionName name)
-  {
-    njson rsp;
-    rsp["SH_NEW_RSP"]["st"] = toInt(status);
-    rsp["SH_NEW_RSP"]["name"] = name;
-    rsp["SH_NEW_RSP"]["tkn"] = token;
-    return rsp;
-  }
-  
-  static njson sessionEnd (const RequestStatus status, const SessionToken& token)
-  {
-    njson rsp;
-    rsp["SH_END_RSP"]["st"] = toInt(status);
-    rsp["SH_END_RSP"]["tkn"] = token;
-    return rsp;
-  }
-
-  static njson sessionInfo (const RequestStatus status, const SessionToken& token)
-  {
-    njson rsp;
-    rsp["SH_INFO_RSP"]["st"] = toInt(status);
-    rsp["SH_INFO_RSP"]["tkn"] = token;
-    rsp["SH_INFO_RSP"]["shared"] = njson::null();
-    rsp["SH_INFO_RSP"]["keyCnt"] = njson::null();
-    
-    return rsp;
-  }
-
-  static njson sessionInfo (const RequestStatus status, const SessionToken& token, const bool shared, const bool expires, const bool deleteOnExpire, const SessionDuration duration, const SessionDuration remaining, const std::size_t keyCount)
-  {
-    njson rsp = sessionInfo(status, token);
-    rsp["SH_INFO_RSP"]["shared"] = shared;
-    rsp["SH_INFO_RSP"]["keyCnt"] = keyCount;
-    rsp["SH_INFO_RSP"]["expires"] = expires;
-    if (expires)
-    {
-      rsp["SH_INFO_RSP"]["expiry"]["duration"] = duration.count();
-      rsp["SH_INFO_RSP"]["expiry"]["remaining"] = remaining.count();
-      rsp["SH_INFO_RSP"]["expiry"]["deleteSession"] = deleteOnExpire;
-    }
-    return rsp;
-  }
-    
-  static njson sessionRemove (const SessionToken& tkn, const bool removed, const std::string&& k)
-  {
-    njson rsp;
-    rsp["KV_RMV_RSP"]["st"] = removed ? toInt(KeyRemoved) : toInt(KeyNotExist);
-    rsp["KV_RMV_RSP"]["k"] = k;
-    rsp["KV_RMV_RSP"]["tkn"] = tkn;
-    return rsp;
-  }
-
-  static njson sessionClear (const SessionToken& tkn, const bool cleared, const std::size_t count)
-  {
-    njson rsp;
-    rsp["KV_CLEAR_RSP"]["st"] = cleared ? toInt(Ok) : toInt(Unknown);
-    rsp["KV_CLEAR_RSP"]["cnt"] = count;
-    rsp["KV_CLEAR_RSP"]["tkn"] = tkn;
-    return rsp;
-  }
-
-  static njson sessionCount (const SessionToken& tkn, const std::size_t count)
-  {
-    njson rsp;
-    rsp["KV_COUNT_RSP"]["st"] = toInt(Ok);
-    rsp["KV_COUNT_RSP"]["cnt"] = count;
-    rsp["KV_COUNT_RSP"]["tkn"] = tkn;
-    return rsp;
-  }
-
-  static njson sessionKeys(const SessionToken& tkn, njson&& keys)
-  {
-    njson rsp;
-    rsp["KV_KEYS_RSP"]["tkn"] = tkn;
-    rsp["KV_KEYS_RSP"]["st"] = toInt(Ok);
-    rsp["KV_KEYS_RSP"]["keys"] = std::move(keys);
-    return rsp;
-  }
+const ankerl::unordered_dense::map<std::string_view, KvQueryType> QueryNameToType = 
+{  
+  // session
+  {"SH_NEW",          KvQueryType::ShNew},
+  {"SH_END",          KvQueryType::ShEnd},
+  {"SH_OPEN",         KvQueryType::ShOpen},
+  {"SH_INFO",         KvQueryType::ShInfo},
+  {"SH_INFO_ALL",     KvQueryType::ShInfoAll},
+  {"SH_SAVE",         KvQueryType::ShSave},
+  {"SH_LOAD",         KvQueryType::ShLoad},
+  {"SH_END_ALL",      KvQueryType::ShEndAll},
+  {"SH_EXISTS",       KvQueryType::ShExists},
+  // kv
+  {"KV_SET",          KvQueryType::KvSet},
+  {"KV_SETQ",         KvQueryType::KvSetQ},
+  {"KV_GET",          KvQueryType::KvGet},
+  {"KV_ADD",          KvQueryType::KvAdd},
+  {"KV_ADDQ",         KvQueryType::KvAddQ},
+  {"KV_RMV",          KvQueryType::KvRemove},
+  {"KV_CLEAR",        KvQueryType::KvClear},
+  {"KV_COUNT",        KvQueryType::KvCount},
+  {"KV_CONTAINS",     KvQueryType::KvContains},
+  {"KV_FIND",         KvQueryType::KvFind},
+  {"KV_UPDATE",       KvQueryType::KvUpdate},
+  {"KV_KEYS",         KvQueryType::KvKeys},
+  {"KV_CLEAR_SET",    KvQueryType::KvClearSet}
 };
 
 
-struct KvCommand
+
+inline void setToken (njson& rsp, const SessionToken& token)
 {
-  njson contents;
-  std::function<void(std::any)> syncResponseHandler; 
-  uWS::WebSocket<false, true, WsSession> * ws;  // to access the websocket and userdata
-  uWS::Loop * loop; // TODO can this be moved to WsSession, only set once in .open handler? the uWS event loop, so we can defer() websocket calls on an event loop thread
-  KvQueryType type; 
-  SessionToken tkn;
-};
-
-
-struct KvCommand2
-{
-  njson contents;
-  SessionToken tkn;
-};
+  rsp["tkn"] = token;
+}
 
 
 struct LoadResult
@@ -280,6 +146,7 @@ std::filesystem::path getDefaultDataSetPath(const std::filesystem::path& loadRoo
     return loadRoot / std::to_string(max);
   }
 }
+
 
 // TODO this isn't used, but really should be
 /*

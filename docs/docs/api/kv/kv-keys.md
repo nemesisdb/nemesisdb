@@ -3,15 +3,7 @@ sidebar_position: 100
 ---
 
 # KV_KEYS
-Returns all the key names in the session. 
-
-This only returns the key names, not the values.
-
-
-|Param|Type|Meaning|Required|
-|:---|:---|:---|:---:|
-|tkn|unsigned int|Session token|Y|
-
+Returns all the key names (values not included).
 
 <br/>
 
@@ -22,7 +14,6 @@ This only returns the key names, not the values.
 
 |Param|Type|Meaning|
 |:---|:---|:---|
-|tkn|unsigned int|Session token|
 |st|unsigned int|Status|
 |keys|string array|An array of key names|
 
@@ -41,10 +32,7 @@ Possible status values:
 
 ```json
 {
-  "KV_KEYS":
-  {
-    "tkn":13549976642705620562
-  }
+  "KV_KEYS":{}
 }
 ```
 
@@ -54,7 +42,6 @@ Response:
 {
   "KV_KEYS_RSP":
   {
-    "tkn": 13549976642705620562,
     "st": 1,
     "keys": []
   }
@@ -66,10 +53,7 @@ Response:
 
 ```json
 {
-  "KV_KEYS":
-  {
-    "tkn":13549976642705620562
-  }
+  "KV_KEYS":{}
 }
 ```
 
@@ -79,9 +63,8 @@ Response:
 {
   "KV_KEYS_RSP":
   {
-    "tkn": 13549976642705620562,
     "st": 1,
-    "keys": ["profile","stats"]
+    "keys": ["user_1_name","user_1_dob", "user_2_name", "user_2_dob"]
   }
 }
 ```

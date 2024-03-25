@@ -1,5 +1,5 @@
 {
-  "version":2,
+  "version":3,
   "mode":"kv",
   "kv":
   {
@@ -8,6 +8,7 @@
     "maxPayload":1024,
     "session":
     {
+      "enabled":false,
       "save":
       {
         "enabled":false,
