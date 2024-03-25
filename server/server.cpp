@@ -74,9 +74,11 @@ int main (int argc, char ** argv)
 
   if (config.serverMode() == ServerMode::KV)
   {
+    PLOGI << "Mode: KV";
+
     if (NemesisConfig::haveSessions(config.cfg))
     {
-      PLOGI << "Mode: KV Sessions";
+      PLOGI << "Sessions: Enabled";
 
       kv::KvSessionServer server;
 
@@ -92,7 +94,7 @@ int main (int argc, char ** argv)
     }      
     else
     {
-      PLOGI << "Mode: KV";
+      PLOGI << "Sessions: Disabled";
 
       kv::KvServer server;
 
