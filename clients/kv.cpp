@@ -188,7 +188,7 @@ bool createSessions(const std::string& ip, const int port, std::shared_ptr<asio:
     std::cout << "New:\t" << std::chrono::duration_cast<std::chrono::milliseconds>(end-start).count() << '\n';
   }
   else
-    std::cout << "createSessions(): falied to connect\n"; 
+    std::cout << "createSessions(): failed to connect\n"; 
 
   return tokens.size() == nSessions;
 }
@@ -260,7 +260,7 @@ void set(const std::string& ip, const int port, std::shared_ptr<asio::io_context
     std::cout << (setq ? "SetQ" : "Set") << ":\t" << duration_cast<milliseconds>(Clock::now()-start).count() << '\n';
   }
   else
-    std::cout << "createSessions(): falied to connect\n";
+    std::cout << "set(): falied to connect\n";
 }
 
 
@@ -315,7 +315,7 @@ void get(const std::string& ip, const int port, std::shared_ptr<asio::io_context
     std::cout << "Get:\t" << duration_cast<milliseconds>(end-start).count() << '\n';
   }
   else
-    std::cout << "createSessions(): falied to connect\n";
+    std::cout << "get(): falied to connect\n";
 }
 
 
