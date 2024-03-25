@@ -7,14 +7,33 @@ displayed_sidebar: homeSidebar
 
 NemesisDB is a JSON in-memory database:
 
-- Data is stored in memory and is not saved to disk unless commanded
-- Data is stored in sessions
-- A session groups related data (similar to hashes in Redis)
+- Key-value can be with or without sessions enabled
+- With sessions enabled, the data can be saved to disk, then loaded at startup or anytime with a command
+
+
+:::info
+Persisting key-value data to disk is only supported when sessions are enabled. A future release will support 
+persisting when sessions are disabled.
+:::
+
+
+## Sessions Disabled
+
+- A single map stores all key-values
+- No session token requires
+- Keys are not segregated:
+  - i.e. if you're caching user data, all user data is stored in a single map, but with sessions you can create a separate sessions per user
+  - Keys have to be unique across the entire database, but with sessions keys are only unique within a session (because each session has a dedicated map)
+- Lower memory usage and higher throughput
+  - There is no session map to maintain (i.e. session token -> session data)
+  - Disabling sessions avoids a session map lookup
+
+<br/>
+
+## Sessions Enabled
+
 - You can create as many sessions as required (within memory limitations)
-
-
-## Sessions
-
+- A session groups related data (similar to hash sets in Redis)
 - A session is just a data container. They are called sessions because data is intended to be stored for a period of time before being deleted
 - A session ends when either:
   1. It is commanded
@@ -23,20 +42,15 @@ NemesisDB is a JSON in-memory database:
 - When a session expires, its data is always deleted but you can choose if you also want to delete the session
 
 
-### Examples
-Examples of a session are:
-- Music streaming app: each user has a session for storing their playlist
-- One Time Password: create a session for each OTP, which automically expires
-
 
 ### Advantages
 
-- Sessions offer control of server memory
-- When searching data, only the session's data is searched, rather than the whole database
+- Sessions offer easier control of data. In the example above when caching user data: when you want to delete data for a particular user, you just delete the user's session
+- When searching data, only the session's map is searched
 - Operations on a session does not affect another session's data
 - Grouping data in sessions means keys only need to be unique within each session
 
 
 :::note
-Your database can have just one session that never expires but then you lose the benefits of grouping data and control of server memory.
+You can have just one session that never expires, in which case you should consider disabling sessions.
 :::
