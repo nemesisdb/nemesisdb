@@ -40,24 +40,29 @@ private:
 
     }
 
-    void operator()(KvWebSocket * ws, njson& request) const
+    Handler(const Handler&) = default;
+    Handler(Handler&&) = default;
+    Handler& operator= (Handler&&) = default;
+
+    void operator()(KvWebSocket * ws, njson& request)
     {
       handler(qryName, qryRspName, ws, request);
     }
 
     Handle handler;
-    const std::string_view qryName;
-    const std::string_view qryRspName;
+    std::string_view qryName;
+    std::string_view qryRspName;
   };
 
   using HandlerPmrMap = ankerl::unordered_dense::pmr::map<KvQueryType, Handler>;
   using HandlerMap = ankerl::unordered_dense::map<KvQueryType, Handler>;
+ 
 
-  
-  auto createHandlers ()
+  template<class Alloc>
+  auto createHandlers (Alloc& alloc)
   {
-    // handlers, only add session handlers if sessions enabled
-    HandlerMap h (
+    // initialise with 1 buckets and pmr allocator
+    HandlerPmrMap h (
     {
       {KvQueryType::KvSet,        Handler{std::bind_front(&KvHandler<HaveSessions>::set,        std::ref(*this)), "KV_SET",   "KV_SET_RSP"}},
       {KvQueryType::KvSetQ,       Handler{std::bind_front(&KvHandler<HaveSessions>::setQ,       std::ref(*this)), "KV_SETQ",  "KV_SETQ_RSP"}},
@@ -74,8 +79,9 @@ private:
       {KvQueryType::KvClearSet,   Handler{std::bind_front(&KvHandler<HaveSessions>::clearSet,   std::ref(*this)), "KV_CLEAR_SET", "KV_CLEAR_SET_RSP"}},
       {KvQueryType::KvSave,       Handler{std::bind_front(&KvHandler<HaveSessions>::kvSave,     std::ref(*this)), "KV_SAVE",      "KV_SAVE_RSP"}},
       {KvQueryType::KvLoad,       Handler{std::bind_front(&KvHandler<HaveSessions>::kvLoad,     std::ref(*this)), "KV_LOAD",      "KV_LOAD_RSP"}}
-    });
+    }, 1, alloc);
 
+    // only add session handlers if sessions enabled
     if constexpr (HaveSessions)
     {
       h.try_emplace(KvQueryType::ShNew,     Handler{std::bind_front(&KvHandler<HaveSessions>::sessionNew,      std::ref(*this)), "SH_NEW",       "SH_NEW_RSP"});
@@ -95,7 +101,6 @@ private:
 
 public:
   
-  /*
   template<typename T, std::size_t Size>
   struct PmrResource
   {
@@ -114,12 +119,12 @@ public:
       std::pmr::monotonic_buffer_resource mbr;
       std::pmr::polymorphic_allocator<T> alloc;
   };
-  */
-
+  
 
   RequestStatus handle(KvWebSocket * ws, const std::string_view& command, njson& request)
   {      
-    static const HandlerMap MsgHandlers = createHandlers();
+    static PmrResource<typename HandlerPmrMap::value_type, 1024U> pmrResource;
+    static HandlerPmrMap MsgHandlers{createHandlers(pmrResource.getAlloc())}; // allocator is copied to MsgHandlers
     
     RequestStatus status = RequestStatus::Ok;
     
@@ -131,7 +136,7 @@ public:
     {
       try
       {
-        const auto& handler = handlerIt->second;
+        auto& handler = handlerIt->second;
         handler(ws, request);
       }
       catch (const std::exception& kex)
