@@ -50,7 +50,7 @@ int main (int argc, char ** argv)
     config.cfg["kv"]["ip"] = "127.0.0.1";
     config.cfg["kv"]["port"] = 1987;
     config.cfg["kv"]["maxPayload"] = 2048;
-    config.cfg["kv"]["sessions"]["enabled"] = true;
+    config.cfg["kv"]["sessions"]["enabled"] = false;
     config.cfg["kv"]["sessions"]["save"]["enabled"] = true;
     config.cfg["kv"]["sessions"]["save"]["path"] = "./data";
 

@@ -182,15 +182,6 @@ public:
   }
 };
 
-/* 
-class NemesisTestNoSessions : public nemesis::test::KvTestServer
-{
-public:
-  NemesisTestNoSessions() : KvTestServer(DefaultCfg)
-  {
-
-  }
-}; */
 
 
 class NemesisTestSaveEnablePathNotExist : public nemesis::test::KvSessionTestServer
@@ -201,9 +192,9 @@ public:
 
   }
 
-	void SetUp() override
+	virtual void SetUp() override
 	{
-		ASSERT_FALSE(m_server.run(m_config));
+    ASSERT_FALSE(m_server.run(m_config));
 	}
 };
 
@@ -323,7 +314,10 @@ struct TestClient
 				responses.emplace_back (testjson::parse(response.msg));
 			}
 			
-			latch->count_down();
+			if (latch)
+				latch->count_down();
+			else
+				std::cout << "Unexpected response: " << response.msg << '\n';
 		}
 	};
 
@@ -410,7 +404,7 @@ struct TestClient
 
 			auto& rsp = responses[0];
 
-			if (rsp.contains("SH_NEW_RSP") && rsp["SH_NEW_RSP"]["st"] == 1)
+			if (rsp.contains("SH_NEW_RSP") && rsp["SH_NEW_RSP"]["st"] == (int)RequestStatus::Ok)
 			{
 				token["tkn"] = rsp["SH_NEW_RSP"]["tkn"];
 				return true;

@@ -196,9 +196,9 @@ public:
       sesh = std::make_shared<WsSession>(m_ioc, std::move(ws), std::move(onResponse));
       sesh->start();
     }
-    catch (...)
+    catch (const std::exception& ex)
     {
-
+      PLOGF << ex.what();
     }
     
     return sesh;

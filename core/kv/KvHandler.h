@@ -28,7 +28,7 @@ public:
 
 private:
 
-  using Handle = std::function<void(std::string_view, std::string_view, KvWebSocket *, njson&)>;
+  using Handle = std::function<void(const std::string_view, const std::string_view, KvWebSocket *, njson&)>;
 
   struct Handler
   {
@@ -50,11 +50,14 @@ private:
     const std::string_view qryRspName;
   };
 
+  using HandlerPmrMap = ankerl::unordered_dense::pmr::map<KvQueryType, Handler>;
+  using HandlerMap = ankerl::unordered_dense::map<KvQueryType, Handler>;
 
+  
   auto createHandlers ()
   {
     // handlers, only add session handlers if sessions enabled
-    ankerl::unordered_dense::map<KvQueryType, Handler> h = 
+    HandlerMap h (
     {
       {KvQueryType::KvSet,        Handler{std::bind_front(&KvHandler<HaveSessions>::set,        std::ref(*this)), "KV_SET",   "KV_SET_RSP"}},
       {KvQueryType::KvSetQ,       Handler{std::bind_front(&KvHandler<HaveSessions>::setQ,       std::ref(*this)), "KV_SETQ",  "KV_SETQ_RSP"}},
@@ -68,8 +71,10 @@ private:
       {KvQueryType::KvFind,       Handler{std::bind_front(&KvHandler<HaveSessions>::find,       std::ref(*this)), "KV_FIND",      "KV_FIND_RSP"}},
       {KvQueryType::KvUpdate,     Handler{std::bind_front(&KvHandler<HaveSessions>::update,     std::ref(*this)), "KV_UPDATE",    "KV_UPDATE_RSP"}},
       {KvQueryType::KvKeys,       Handler{std::bind_front(&KvHandler<HaveSessions>::keys,       std::ref(*this)), "KV_KEYS",      "KV_KEYS_RSP"}},
-      {KvQueryType::KvClearSet,   Handler{std::bind_front(&KvHandler<HaveSessions>::clearSet,   std::ref(*this)), "KV_CLEAR_SET", "KV_CLEAR_SET_RSP"}}
-    };
+      {KvQueryType::KvClearSet,   Handler{std::bind_front(&KvHandler<HaveSessions>::clearSet,   std::ref(*this)), "KV_CLEAR_SET", "KV_CLEAR_SET_RSP"}},
+      {KvQueryType::KvSave,       Handler{std::bind_front(&KvHandler<HaveSessions>::kvSave,     std::ref(*this)), "KV_SAVE",      "KV_SAVE_RSP"}},
+      {KvQueryType::KvLoad,       Handler{std::bind_front(&KvHandler<HaveSessions>::kvLoad,     std::ref(*this)), "KV_LOAD",      "KV_LOAD_RSP"}}
+    });
 
     if constexpr (HaveSessions)
     {
@@ -86,15 +91,36 @@ private:
 
     return h;
   }
-  
-
-  const ankerl::unordered_dense::map<KvQueryType, Handler> MsgHandlers = createHandlers();  // TODO pmr::map
 
 
 public:
   
-  RequestStatus handle(KvWebSocket * ws, const std::string_view& command, njson& request)
+  /*
+  template<typename T, std::size_t Size>
+  struct PmrResource
   {
+    PmrResource() : mbr(std::data(buffer), std::size(buffer)), alloc(&mbr)
+    {
+
+    }
+
+    std::pmr::polymorphic_allocator<T>& getAlloc ()
+    {
+      return alloc;
+    }
+
+    private:
+      std::array<std::byte, Size> buffer;
+      std::pmr::monotonic_buffer_resource mbr;
+      std::pmr::polymorphic_allocator<T> alloc;
+  };
+  */
+
+
+  RequestStatus handle(KvWebSocket * ws, const std::string_view& command, njson& request)
+  {      
+    static const HandlerMap MsgHandlers = createHandlers();
+    
     RequestStatus status = RequestStatus::Ok;
     
     if (const auto itType = QueryNameToType.find(command) ; itType == QueryNameToType.cend())
@@ -126,33 +152,44 @@ public:
   }
 
   
-  void load(const std::string& loadName, KvWebSocket * ws, const fs::path& dataSetsRoot)
-    requires(HaveSessions)
+
+  void load(const std::string& loadName, const fs::path& dataSetsRoot, KvWebSocket * ws)
   {
-    PLOGI << "Loading from " << dataSetsRoot;
-
-    send(ws, SessionExecutor<HaveSessions>::loadSessions (loadName, getContainer(), dataSetsRoot));
-
-    PLOGI << "Loading finished";
+    send (ws, doLoad(loadName, dataSetsRoot));
   }
- 
+  
 
   LoadResult internalLoad(const std::string& loadName, const fs::path& dataSetsRoot)
-    requires(HaveSessions)
   {
-    PLOGI << "Loading from " << dataSetsRoot;
-
     const auto start = NemesisClock::now();
-    const njson rsp = SessionExecutor<HaveSessions>::loadSessions (loadName, getContainer(), dataSetsRoot);   
+    
+    // hijack the response and report to caller rather than sending response over WebSocket
+    const njson rsp = doLoad(loadName, dataSetsRoot);
 
-    LoadResult loadResult { .loadTime = NemesisClock::now() - start };
+    LoadResult loadResult;
+    loadResult.duration = NemesisClock::now() - start;
     loadResult.status = static_cast<RequestStatus>(rsp["SH_LOAD_RSP"]["st"].as<std::uint64_t>());
-    loadResult.nSessions = rsp["SH_LOAD_RSP"]["sessions"].as<std::size_t>();
+    loadResult.nSessions = rsp["SH_LOAD_RSP"]["sessions"].as<std::size_t>(); // this is 0 when loading RawKv (no sessions)
     loadResult.nKeys = rsp["SH_LOAD_RSP"]["keys"].as<std::size_t>();
 
-    PLOGI << "Loading finished";
-
     return loadResult;
+  }
+
+
+  njson doLoad (const std::string& loadName, const fs::path& dataSetsRoot)
+  {
+    PLOGI << "Loading from " << dataSetsRoot;
+    
+    njson rsp;
+
+    if constexpr (HaveSessions)
+      rsp = SessionExecutor<true>::loadSessions (loadName, getContainer(), dataSetsRoot);   
+    else
+      rsp = KvExecutor<false>::loadKv (loadName, getContainer(), dataSetsRoot);   
+
+    PLOGI << "Loading complete";
+
+    return rsp;
   }
 
 
@@ -284,8 +321,6 @@ private:
 
       return {RequestStatus::Ok, ""};
     };
-
-
     
 
     if (isValid(queryRspName, ws, json, {{Param::required("name", JsonString)}}, validate))
@@ -377,74 +412,7 @@ private:
       send(ws, createErrorResponseNoTkn(queryRspName, RequestStatus::CommandDisabled));
     else if (isValid(queryRspName, ws, json, {{Param::required("name", JsonString)}, {Param::optional("tkns", JsonArray)}}, validate))
     {
-      auto& cmd = json.at(queryName);
-      const auto& name = cmd.at("name").as_string();
-
-      njson rsp;
-      rsp[queryRspName]["name"] = name;
-      
-      const auto setPath = std::to_string(KvSaveClock::now().time_since_epoch().count());
-      const auto root = fs::path {NemesisConfig::kvSavePath(m_config)} / name / setPath;
-      const auto metaPath = fs::path{root} / "md";
-      const auto dataPath = fs::path{root} / "data";
-
-      std::ofstream metaStream;
-
-      if (!fs::create_directories(metaPath))
-        rsp[queryRspName]["st"] = toUnderlying(RequestStatus::SaveDirWriteFail);
-      else if (metaStream.open(metaPath / "md.json", std::ios_base::trunc | std::ios_base::out); !metaStream.is_open())
-        rsp[queryRspName]["st"] = toUnderlying(RequestStatus::SaveDirWriteFail);
-      else
-      {
-        const bool haveTkns = cmd.contains("tkns");
-
-        rsp[queryRspName]["st"] = toUnderlying(RequestStatus::SaveStart);
-        send(ws, rsp);
-
-        // write metadata before we start incase we're interrupted mid-save
-        auto start = KvSaveClock::now();
-        KvSaveStatus metaDataStatus = KvSaveStatus::Pending;
-
-        njson metadata;
-        metadata["name"] = name;
-        metadata["version"] = METADATA_VERSION;
-        metadata["status"] = toUnderlying(metaDataStatus);        
-        metadata["start"] = chrono::time_point_cast<KvSaveMetaDataUnit>(start).time_since_epoch().count();
-        metadata["saveType"] = haveTkns ? toUnderlying(SaveType::SelectSessions) : toUnderlying(SaveType::AllSessions);
-        metadata["complete"] = 0;
-        
-        metadata.dump(metaStream);
-
-                
-        // create save command and call executor
-        njson saveCmd;
-        saveCmd["poolDataRoot"] = dataPath.string();
-        saveCmd["name"] = name;
-
-        if (haveTkns)
-          saveCmd["tkns"] = std::move(cmd.at("tkns"));
-
-        
-        try
-        {
-          rsp = SessionExecutor<HaveSessions>::saveSessions(getContainer(), saveCmd);
-          metaDataStatus = KvSaveStatus::Complete;
-        }
-        catch(const std::exception& e)
-        {
-          PLOGE << e.what();
-          metaDataStatus = KvSaveStatus::Error;
-        }
-
-        // update metdata
-        metadata["status"] = toUnderlying(metaDataStatus);
-        metadata["complete"] = chrono::time_point_cast<KvSaveMetaDataUnit>(KvSaveClock::now()).time_since_epoch().count();
-        metaStream.seekp(0);
-
-        metadata.dump(metaStream);
-      }
-
-      send(ws, rsp);
+      doSave(queryName, queryRspName, ws, json.at(queryName));
     }
   } 
 
@@ -454,11 +422,11 @@ private:
     if (isValid(queryRspName, ws, json, {{Param::required("name", JsonString)}}))
     {
       const auto& loadName = json.at(queryName).at("name").as_string();
-      const auto& loadPath = fs::path{NemesisConfig::kvSavePath(m_config)};
-      const auto loadRoot = loadPath / loadName;
 
-      if (!fs::exists(loadRoot))
+      if (const auto [valid, msg] = validatePreLoad(loadName, fs::path{NemesisConfig::kvSavePath(m_config)}, true); !valid)
       {
+        PLOGE << msg;
+
         njson rsp;
         rsp[queryRspName]["st"] = toUnderlying(RequestStatus::LoadError);
         rsp[queryRspName]["name"] = loadName;
@@ -466,10 +434,9 @@ private:
       }
       else
       {
-        // loadRoot may contain several saves (i.e. SH_SAVE used multiple times with the same 'name'),
-        // so use getDefaultDataSetPath() to get the most recent
-        const auto dataSetPath = getDefaultDataSetPath(loadRoot);    
-        load(loadName, ws, dataSetPath / "data");
+        // ignore pathsValid here because validatePreLoad() fails if not paths not valid
+        const auto [root, md, data, pathsValid] = getLoadPaths(fs::path{NemesisConfig::kvSavePath(m_config)} / loadName);
+        load(loadName, data, ws);
       }
     }
   }
@@ -564,7 +531,6 @@ private:
     if (isValid(queryRspName, ws, request, {{Param::required("keys", JsonObject)}}, validate))
       executeKvCommand(queryRspName, ws, request, KvExecutor<HaveSessions>::set);
   }
-
 
   
   ndb_always_inline void setQ(const std::string_view queryName, const std::string_view queryRspName, KvWebSocket * ws, njson& request)
@@ -689,6 +655,131 @@ private:
   }
   
 
+  void kvSave(const std::string_view queryName, const std::string_view queryRspName, KvWebSocket * ws, njson& json)
+  {
+    if (!NemesisConfig::kvSaveEnabled(m_config))
+      send(ws, createErrorResponseNoTkn(queryRspName, RequestStatus::CommandDisabled));
+    else
+    {
+      auto validate = [](const njson& cmd) -> std::tuple<RequestStatus, const std::string_view>
+      {
+        if (cmd.at("name").empty())
+          return {RequestStatus::ValueSize, "name empty"};
+        else
+          return {RequestStatus::Ok, ""};
+      };
+      
+      if (isValid(queryRspName, ws, json, {{Param::required("name", JsonString)}}, validate))
+      {
+        doSave(queryName, queryRspName, ws, json.at(queryName));
+      }
+    }
+  }
+
+
+  ndb_always_inline void kvLoad(const std::string_view queryName, const std::string_view queryRspName, KvWebSocket * ws, njson& json)
+  {
+    if (isValid(queryRspName, ws, json, {{Param::required("name", JsonString)}}))
+    {
+      const auto& loadName = json.at(queryName).at("name").as_string();
+
+      if (const auto [valid, msg] = validatePreLoad(loadName, fs::path{NemesisConfig::kvSavePath(m_config)}, false); !valid)
+      {
+        PLOGE << msg;
+
+        njson rsp;
+        rsp[queryRspName]["st"] = toUnderlying(RequestStatus::LoadError);
+        rsp[queryRspName]["name"] = loadName;
+        send (ws, rsp);
+      }
+      else
+      {
+        const auto [root, md, data, pathsValid] = getLoadPaths(fs::path{NemesisConfig::kvSavePath(m_config)} / loadName);
+        load(loadName, data, ws);
+      }
+    }
+  }
+
+  
+  void doSave (const std::string_view queryName, const std::string_view queryRspName, KvWebSocket * ws, njson& cmd)
+  {
+    const auto& name = cmd.at("name").as_string();
+
+    njson rsp;
+    rsp[queryRspName]["name"] = name;
+    
+    const auto setPath = std::to_string(KvSaveClock::now().time_since_epoch().count());
+    const auto root = fs::path {NemesisConfig::kvSavePath(m_config)} / name / setPath;
+    const auto metaPath = fs::path{root} / "md";
+    const auto dataPath = fs::path{root} / "data";
+
+    std::ofstream metaStream;
+
+    if (!fs::create_directories(metaPath))
+      rsp[queryRspName]["st"] = toUnderlying(RequestStatus::SaveDirWriteFail);
+    else if (metaStream.open(metaPath / "md.json", std::ios_base::trunc | std::ios_base::out); !metaStream.is_open())
+      rsp[queryRspName]["st"] = toUnderlying(RequestStatus::SaveDirWriteFail);
+    else
+    {
+      rsp[queryRspName]["st"] = toUnderlying(RequestStatus::SaveStart);
+      send(ws, rsp);
+      
+      const auto start = KvSaveClock::now();
+      KvSaveStatus metaDataStatus = KvSaveStatus::Pending;
+
+      // write metadata now incase we're interrupted mid-save
+      njson metadata;
+      metadata["name"] = name;
+      metadata["version"] = METADATA_VERSION;
+      metadata["status"] = toUnderlying(metaDataStatus);        
+      metadata["start"] = chrono::time_point_cast<KvSaveMetaDataUnit>(start).time_since_epoch().count();
+      metadata["complete"] = 0; // time completed
+
+      if constexpr(HaveSessions)
+        metadata["saveDataType"] = toUnderlying(SaveDataType::SessionKv);
+      else
+        metadata["saveDataType"] = toUnderlying(SaveDataType::RawKv);
+      
+      metadata.dump(metaStream);
+
+              
+      // create save command and call executor
+      njson saveCmd;
+      saveCmd["poolDataRoot"] = dataPath.string();
+      saveCmd["name"] = name;
+      
+      try
+      {
+        if constexpr (HaveSessions)
+        {
+          if (cmd.contains("tkns"))
+            saveCmd["tkns"] = std::move(cmd.at("tkns"));
+
+          rsp = SessionExecutor<true>::saveSessions(getContainer(), saveCmd);
+        }
+        else
+          rsp = KvExecutor<false>::saveKv(getContainer(), dataPath, name);
+
+
+        metaDataStatus = KvSaveStatus::Complete;
+      }
+      catch(const std::exception& e)
+      {
+        PLOGE << e.what();
+        metaDataStatus = KvSaveStatus::Error;
+      }
+      
+      // update metdata
+      metadata["status"] = toUnderlying(metaDataStatus);
+      metadata["complete"] = chrono::time_point_cast<KvSaveMetaDataUnit>(KvSaveClock::now()).time_since_epoch().count();
+      metaStream.seekp(0);
+
+      metadata.dump(metaStream);
+    }
+
+    send(ws, rsp);
+  }
+  
 
 private:
   njson m_config;

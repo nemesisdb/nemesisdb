@@ -4,7 +4,6 @@
 
 // This tests assumes the save path is "./data".
 // It deletes save path on startup and creates it in SavePathNotExist
-// It assumes one worker pool (correct way is to get number of pools from md/md.json)
 // useful/TestCommon.h defines NDB_UNIT_TEST which changes normal behaviour:
 //	- no monitor
 //  - no "duration" in SH_SAVE_RSP
@@ -51,7 +50,6 @@ TEST_F(NemesisTest, SaveDisabled)
 
 	tc.test({TestData { .request = R"({ "SH_SAVE":{} })"_json,	.expected = {R"({ "SH_SAVE_RSP":{ "st":14, "m":"" } })"_json} }});
 }
-
 
 
 TEST_F(NemesisTestSaveEnablePathNotExist, SavePathNotExist)
@@ -153,7 +151,7 @@ TEST_F(NemesisTestSaveEnable, Data)
 }
 
 
-// Select Sessions
+// This test requires the 'data' directory exists, which is created by the 'Data' test
 TEST_F(NemesisTestSaveEnable, TokensInvalid)
 {
 	TestClient tc;
@@ -183,6 +181,7 @@ TEST_F(NemesisTestSaveEnable, TokensInvalid)
 }
 
 
+// Save selected Sessions
 TEST_F(NemesisTestSaveEnable, SaveSessions)
 {
 	// testing framework not well suited to this: each TestClient creates one session

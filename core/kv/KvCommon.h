@@ -14,7 +14,7 @@ namespace nemesis { namespace core { namespace kv {
 
 
 inline ServerStats * serverStats;
-inline const std::int16_t METADATA_VERSION = 1;
+inline const std::int16_t METADATA_VERSION = 2;
 
 
 enum class KvQueryType : std::uint8_t
@@ -41,18 +41,20 @@ enum class KvQueryType : std::uint8_t
   KvUpdate,
   KvKeys,
   KvClearSet,
+  KvSave,
+  KvLoad,
   MAX,
   InternalSessionMonitor,
   InternalLoad,
   Unknown,
 };
 
-
-enum class SaveType
+// This should be SaveType but that used originally for AllSessions or SelectSessions 
+// which isn't necessary
+enum class SaveDataType
 {
-  AllSessions = 0,
-  SelectSessions,
-  Max
+  RawKv,
+  SessionKv
 };
 
 
@@ -81,9 +83,19 @@ const ankerl::unordered_dense::map<std::string_view, KvQueryType> QueryNameToTyp
   {"KV_FIND",         KvQueryType::KvFind},
   {"KV_UPDATE",       KvQueryType::KvUpdate},
   {"KV_KEYS",         KvQueryType::KvKeys},
-  {"KV_CLEAR_SET",    KvQueryType::KvClearSet}
+  {"KV_CLEAR_SET",    KvQueryType::KvClearSet},
+  {"KV_SAVE",         KvQueryType::KvSave},
+  {"KV_LOAD",         KvQueryType::KvLoad}
 };
 
+
+struct DataLoadPaths
+{
+  fs::path root;
+  fs::path md;
+  fs::path data;
+  bool valid{false};
+};
 
 
 inline void setToken (njson& rsp, const SessionToken& token)
@@ -97,8 +109,9 @@ struct LoadResult
   RequestStatus status;
   std::size_t nSessions{0};
   std::size_t nKeys{0};
-  NemesisClock::duration loadTime{0};
+  NemesisClock::duration duration{0};
 };
+
 
 
 
@@ -119,7 +132,7 @@ ndb_always_inline SessionToken createSessionToken(const SessionName& name, const
 }
 
 
-ndb_always_inline uuid createUuid ()
+uuid createUuid ()
 {
   static UUIDv4::UUIDGenerator<std::mt19937_64> uuidGenerator; 
   
@@ -129,21 +142,59 @@ ndb_always_inline uuid createUuid ()
 }
 
 
-std::filesystem::path getDefaultDataSetPath(const std::filesystem::path& loadRoot)
+DataLoadPaths getLoadPaths(const std::filesystem::path& loadRoot)
 {
   std::size_t max = 0;
 
   if (countFiles(loadRoot) == 0)
-    return {};
+    return {.valid = false};
   else
   {
+    // loadRoot may contain several saves (i.e. SH_SAVE/KV_SAVE used multiple times with the same 'name'),
+    // so use getDefaultDataSetPath() to get the most recent (until letting user select)
     for (const auto& dir : fs::directory_iterator(loadRoot))
     {
       if (dir.is_directory())
         max = std::max<std::size_t>(std::stoul(dir.path().filename()), max);
     }
 
-    return loadRoot / std::to_string(max);
+    fs::path root {loadRoot / std::to_string(max)};
+    return DataLoadPaths {.root = root, .md = root / "md" / "md.json", .data = root / "data", .valid = true};
+  }
+}
+
+
+std::tuple<bool, const std::string_view> validatePreLoad (const std::string& loadName, const fs::path& loadPath, const bool sessionsEnabled)
+{
+  if (!fs::exists(loadPath / loadName))
+    return {false, "Load name does not exist"};
+  else if (const auto [root, md, data, valid] = getLoadPaths(loadPath / loadName); !valid)
+    return {false, "Failed to get load paths"};
+  else
+  {
+    if (!fs::exists(root))
+      return {false, "Load root does not exist"};
+    else if (!fs::exists(md))
+      return {false, "Metadata does not exist"};
+    else
+    {
+      PLOGI << "Reading metadata in " << md;
+
+      std::ifstream mdStream {md};
+      const auto mdJson = njson::parse(mdStream);
+
+      if (!mdJson.contains("status") || !mdJson.at("status").is_uint64() || !mdJson.contains("saveDataType"))
+        return {false, "Metadata file invalid"};
+      else if (mdJson["status"] != toUnderlying(KvSaveStatus::Complete))
+        return {false, "Cannot load: save was incomplete"};
+      else if ((sessionsEnabled && static_cast<SaveDataType>(mdJson.at("saveDataType").as<unsigned int>()) != SaveDataType::SessionKv) || 
+              (!sessionsEnabled && static_cast<SaveDataType>(mdJson.at("saveDataType").as<unsigned int>()) != SaveDataType::RawKv))
+        return {false, "Cannot load: KV data not compatible with server sessions setting"};
+      else if (!(fs::exists(data) && fs::is_directory(data)))
+        return {false, "Data directory does not exist or is not a directory"}; 
+      else
+        return {true, ""};
+    }
   }
 }
 

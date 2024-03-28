@@ -16,6 +16,11 @@ class CacheMap
 
 public:
   
+  CacheMap () : m_map(10'000) // TODO
+  {
+
+  }
+
   void set (cachedkey key, cachedvalue value)
   {
     m_map.insert_or_assign(std::move(key), std::move(value));
@@ -24,16 +29,18 @@ public:
 
   std::optional<std::reference_wrapper<const cachedvalue>> get (const cachedkey& key) const
   {
+    std::optional<std::reference_wrapper<const cachedvalue>> ret{};
+
     if (const auto it = m_map.find(key) ; it != m_map.cend())
-      return {it->second};
-    else
-      return {};
+      ret = it->second;
+
+    return ret;
   };
 
 
-  void add (const cachedkey key, cachedvalue value)
+  void add (cachedkey key, cachedvalue value)
   {
-    m_map.try_emplace(key, std::move(value));
+    m_map.try_emplace(std::move(key), std::move(value));
   }
 
 
@@ -50,7 +57,6 @@ public:
 
     try
     {
-      m_map.clear();
       m_map.replace(Map::value_container_type{});
     }
     catch (...)

@@ -198,7 +198,7 @@ bool createKeys(const std::size_t nKeys)
 {
   keys.reserve(nKeys);
   for (std::size_t i = 0 ; i < nKeys ; ++i)
-    keys.emplace_back(createUuid().substr(0, 10), json{{"myimportantdata", "some string value that is not tooooooo short"}});
+    keys.emplace_back(createUuid().substr(0, 12), json{{"myimportantdata", "some string value that is not tooooooo short"}});
     
   return keys.size() == nKeys;
 }

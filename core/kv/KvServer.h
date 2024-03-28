@@ -63,9 +63,10 @@ public:
       if (kv::serverStats)
         delete kv::serverStats;
     }
-    catch (...)
+    catch (const std::exception& ex)
     {
       // ignore, shutting down
+      //PLOGE << ex.what();
     }
     
 
@@ -82,18 +83,14 @@ public:
     if (!init(config.cfg))
       return false;
 
-    if constexpr(HaveSessions) 
+    if ((config.load()))
     {
-      if ((config.load()))
+      if (auto [ok, msg] = load(config); !ok)
       {
-        if (auto [ok, msg] = load(config); !ok)
-        {
-          PLOGF << msg;
-          return false;
-        }
+        PLOGF << msg;
+        return false;
       }
     }
-    
 
     const unsigned int maxPayload = config.cfg["kv"]["maxPayload"].as<unsigned int>();
     const std::string ip = config.cfg["kv"]["ip"].as_string();
@@ -118,7 +115,10 @@ public:
     static void onMonitor (struct us_timer_t *)
     {
       if constexpr (HaveSessions)
-        s_kvHandler.handler->monitor();
+      {
+        if (s_kvHandler.handler)
+          s_kvHandler.handler->monitor();
+      }
     }
 
 
@@ -288,46 +288,15 @@ public:
     }
 
 
-    std::tuple<bool, std::string> load(const NemesisConfig& config)
-      requires(HaveSessions)
+    std::tuple<bool, const std::string_view> load(const NemesisConfig& config)
     {
-      const fs::path root = config.loadPath / config.loadName;
-
-      PLOGI << "Loading " << root;
-
-      if (!fs::exists(root))
-        return {false, "Load name does not exist"};
-      
-      if (!fs::is_directory(root))
-        return {false, "Path to load name is not a directory"};
-
-      
-      // loadRoot may contain several saves (i.e. SH_SAVE used multiple times with the same 'name'),
-      // so use getDefaultDataSetPath() to get the most recent
-      const auto datasetRoot = getDefaultDataSetPath(root);
-
-      // check data dir and metadata file
-      const fs::path data = datasetRoot / "data";
-      const fs::path mdFile = datasetRoot / "md" / "md.json";
-
-      if (!(fs::exists(data) && fs::is_directory(data)))
-        return {false, "'data' directory does not exist or is not a directory"};
-      
-      if (!fs::exists(mdFile))
-        return {false, "metadata does not exist"};
-
-
-      PLOGI << "Reading metadata in " << mdFile;
-
-      std::ifstream mdStream {mdFile};
-      const auto mdJson = njson::parse(mdStream);
-
-      if (!mdJson.contains("status") || !mdJson["status"].is_uint64())
-        return {false, "Metadata file invalid"};
-      else if (mdJson["status"] != toUnderlying(KvSaveStatus::Complete))
-        return {false, "Cannot load: save was incomplete"};
+      if (const auto [valid, msg] = validatePreLoad(config.loadName, config.loadPath, HaveSessions); !valid)
+      {
+        return {false, msg};
+      }
       else
       {
+        const auto [root, md, data, pathsValid] = getLoadPaths(config.loadPath / config.loadName);
         const auto loadResult = s_kvHandler.handler->internalLoad(config.loadName, data);
         const auto success = loadResult.status == RequestStatus::LoadComplete;
 
@@ -336,9 +305,10 @@ public:
         if (success)
         {
           PLOGI << "Status: Success";
-          PLOGI << "Sessions: " << loadResult.nSessions ;
+          if constexpr (HaveSessions)
+            PLOGI << "Sessions: " << loadResult.nSessions ;
           PLOGI << "Keys: " << loadResult.nKeys ;
-          PLOGI << "Duration: " << chrono::duration_cast<std::chrono::milliseconds>(loadResult.loadTime).count() << "ms";
+          PLOGI << "Duration: " << chrono::duration_cast<std::chrono::milliseconds>(loadResult.duration).count() << "ms";
         }
         else
           PLOGI << "Status: Fail";
@@ -346,7 +316,7 @@ public:
         PLOGI << "----------";
         
         return {success, ""};
-      }
+      }     
     }
     
 
