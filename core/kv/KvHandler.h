@@ -54,14 +54,14 @@ private:
     std::string_view qryRspName;
   };
 
+
   using HandlerPmrMap = ankerl::unordered_dense::pmr::map<KvQueryType, Handler>;
-  using HandlerMap = ankerl::unordered_dense::map<KvQueryType, Handler>;
- 
+
 
   template<class Alloc>
   auto createHandlers (Alloc& alloc)
   {
-    // initialise with 1 buckets and pmr allocator
+    // initialise with 1 bucket and pmr allocator
     HandlerPmrMap h (
     {
       {KvQueryType::KvSet,        Handler{std::bind_front(&KvHandler<HaveSessions>::set,        std::ref(*this)), "KV_SET",   "KV_SET_RSP"}},
@@ -95,7 +95,7 @@ private:
     }
     else
     {
-      // when sessions enabled, SH_SAVE/SH_LOAD are required
+      // KV_SAVE and KV_LOAD are only enabled when sessions are disabled, when sessions are enabled SH_SAVE/SH_LOAD are used
       h.emplace(KvQueryType::KvSave,  Handler{std::bind_front(&KvHandler<HaveSessions>::kvSave, std::ref(*this)), "KV_SAVE",  "KV_SAVE_RSP"});
       h.emplace(KvQueryType::KvLoad,  Handler{std::bind_front(&KvHandler<HaveSessions>::kvLoad, std::ref(*this)), "KV_LOAD",  "KV_LOAD_RSP"});
     }
