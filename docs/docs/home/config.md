@@ -59,7 +59,7 @@ Default settings:
 
 |Param|Type|Description|Required|
 |:---|:---:|:---|:---:|
-|version|unsigned int|Must be 3|Y|
+|version|unsigned int|Must be 4|Y|
 |mode|string|"kv" for key value<br/>"kv_sessions" for key value with sessions<br/>"ts" for timeseries|Y|
 |core|unsigned int|The core to assign this instance.<br/> If not present or above maximum available, defaults to `0` (the first core)|N|
 |kv|object|Settings for key value.<br/>Required if mode is `"kv"`.|N|
