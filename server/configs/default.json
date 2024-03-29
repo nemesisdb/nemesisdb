@@ -1,6 +1,7 @@
 {
-  "version":3,  // config version 3 from NemesisDB v0.6
-  "mode":"kv",  // "ts" for "TimeSeries" or "kv" "KeyValue"
+  "version":3,  // must be version 3 from NemesisDB v0.6
+  "mode":"kv",  // "ts" for TimeSeries or "kv" for KeyValue
+  "core":0,     // the *logical* core the server instance is assigned to. If not present or value is greater than max cores, defaults to 0
   "kv":
   {
     "ip":"127.0.0.1",

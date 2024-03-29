@@ -49,10 +49,15 @@ struct NemesisConfig
   {
     return cfg.at("kv").at("sessions").at("enabled") == true;
   }
-
+  
   ServerMode serverMode () const
   {
     return cfg["mode"] == "kv" ? ServerMode::KV : ServerMode::TS;
+  }
+
+  static std::size_t preferredCore(const njson& cfg) 
+  {
+    return cfg["core"].as<std::size_t>();
   }
 
   njson cfg;
@@ -130,7 +135,8 @@ NemesisConfig parse(std::filesystem::path path)
             isValid([&cfg](){ return cfg.contains("mode") && cfg.at("mode").is_string(); }, "Require mode") &&
             isValid([&cfg](){ return cfg.at("mode") == "kv" || cfg.at("mode") == "ts"; }, "Mode must be \"kv\" or \"ts\"") &&
             isValid([&cfg](){ return cfg.at("version") == nemesis::core::NEMESIS_CONFIG_VERSION; }, "Config version not compatible") && // TODO
-            isValid([&cfg](){ return cfg.contains("kv") && cfg.at("kv").is_object(); }, "Require kv section as an object");
+            isValid([&cfg](){ return cfg.contains("kv") && cfg.at("kv").is_object(); }, "Require kv section as an object") && 
+            isValid([&cfg](){ return !cfg.contains("core") || (cfg.contains("core") && cfg.at("core").is<std::size_t>()); }, "'core' must be an unsigned integer");
 
     if (valid)
     {

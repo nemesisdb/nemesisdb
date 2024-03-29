@@ -95,9 +95,15 @@ public:
     const unsigned int maxPayload = config.cfg["kv"]["maxPayload"].as<unsigned int>();
     const std::string ip = config.cfg["kv"]["ip"].as_string();
     const int port = config.cfg["kv"]["port"].as<unsigned int>();
+    const std::size_t preferredCore = NemesisConfig::preferredCore(config.cfg); 
+    std::size_t core = 0;
+    
+    if (preferredCore > std::thread::hardware_concurrency())
+      PLOGE << "'core' value in config is above maximum available: " << std::thread::hardware_concurrency();
+    else
+      core = preferredCore;
 
-
-    if (!startWsServer(ip, port, maxPayload, serverStats))
+    if (!startWsServer(ip, port, maxPayload, serverStats, core))
       return false;
         
 
@@ -159,10 +165,8 @@ public:
     }
     
     
-    bool startWsServer (const std::string& ip, const int port, const unsigned int maxPayload, kv::ServerStats * stats)
+    bool startWsServer (const std::string& ip, const int port, const unsigned int maxPayload, kv::ServerStats * stats, const std::size_t core)
     {
-      const std::size_t core = 0;
-
       bool listening{false};
       std::latch startLatch (1);
 
@@ -271,10 +275,13 @@ public:
 
         if (listening)
         {
-          if (!setThreadAffinity(m_thread->native_handle(), core))
-            PLOGW << "Failed to assign io thread to core " << core;
-          else
+          if (setThreadAffinity(m_thread->native_handle(), core))
+          {
+            PLOGI << "Server assigned to core " << core;
             started = true;
+          }
+          else
+            PLOGE << "Failed to assign server to core " << core;
         }
         else
           PLOGE << "Failed to start WS server";
