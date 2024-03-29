@@ -56,6 +56,7 @@ private:
 
 
   using HandlerPmrMap = ankerl::unordered_dense::pmr::map<KvQueryType, Handler>;
+  using QueryTypePmrMap = ankerl::unordered_dense::pmr::map<std::string_view, KvQueryType>;
 
 
   template<class Alloc>
@@ -104,6 +105,50 @@ private:
   }
 
 
+  template<class Alloc>
+  auto createQueryTypeNameMap (Alloc& alloc)
+  {
+    QueryTypePmrMap map ( 
+    {  
+      // kv commands required irrespective of sessions
+      {"KV_SET",          KvQueryType::KvSet},
+      {"KV_SETQ",         KvQueryType::KvSetQ},
+      {"KV_GET",          KvQueryType::KvGet},
+      {"KV_ADD",          KvQueryType::KvAdd},
+      {"KV_ADDQ",         KvQueryType::KvAddQ},
+      {"KV_RMV",          KvQueryType::KvRemove},
+      {"KV_CLEAR",        KvQueryType::KvClear},
+      {"KV_COUNT",        KvQueryType::KvCount},
+      {"KV_CONTAINS",     KvQueryType::KvContains},
+      {"KV_FIND",         KvQueryType::KvFind},
+      {"KV_UPDATE",       KvQueryType::KvUpdate},
+      {"KV_KEYS",         KvQueryType::KvKeys},
+      {"KV_CLEAR_SET",    KvQueryType::KvClearSet}
+    }, 1, alloc); 
+
+
+    if constexpr (HaveSessions)
+    {
+      map.try_emplace("SH_NEW",      KvQueryType::ShNew);
+      map.try_emplace("SH_END",      KvQueryType::ShEnd);
+      map.try_emplace("SH_OPEN",     KvQueryType::ShOpen);
+      map.try_emplace("SH_INFO",     KvQueryType::ShInfo);
+      map.try_emplace("SH_INFO_ALL", KvQueryType::ShInfoAll);
+      map.try_emplace("SH_SAVE",     KvQueryType::ShSave);
+      map.try_emplace("SH_LOAD",     KvQueryType::ShLoad);
+      map.try_emplace("SH_END_ALL",  KvQueryType::ShEndAll);
+      map.try_emplace("SH_EXISTS",   KvQueryType::ShExists);
+    }
+    else
+    {
+      map.try_emplace("KV_SAVE",     KvQueryType::KvSave);
+      map.try_emplace("KV_LOAD",     KvQueryType::KvLoad);
+    }
+
+    return map;
+  }
+
+
 public:
   
   template<typename T, std::size_t Size>
@@ -128,9 +173,13 @@ public:
 
   RequestStatus handle(KvWebSocket * ws, const std::string_view& command, njson& request)
   {      
-    static PmrResource<typename HandlerPmrMap::value_type, 1024U> pmrResource;
-    static HandlerPmrMap MsgHandlers{createHandlers(pmrResource.getAlloc())}; // allocator is copied to MsgHandlers
+    static PmrResource<typename HandlerPmrMap::value_type, 1024U> handlerPmrResource; // TODO buffer size
+    static PmrResource<typename HandlerPmrMap::value_type, 1024U> queryTypeNamePmrResource; // TODO buffer size
+    // allocators are copied to maps
+    static HandlerPmrMap MsgHandlers{createHandlers(handlerPmrResource.getAlloc())}; 
+    static QueryTypePmrMap QueryNameToType{createQueryTypeNameMap(queryTypeNamePmrResource.getAlloc())};
     
+
     RequestStatus status = RequestStatus::Ok;
     
     if (const auto itType = QueryNameToType.find(command) ; itType == QueryNameToType.cend())

@@ -58,38 +58,6 @@ enum class SaveDataType
 };
 
 
-// TODO this can be moved to the KvHandler with pmr, unless it's used elsewhere
-const ankerl::unordered_dense::map<std::string_view, KvQueryType> QueryNameToType = 
-{  
-  // session
-  {"SH_NEW",          KvQueryType::ShNew},
-  {"SH_END",          KvQueryType::ShEnd},
-  {"SH_OPEN",         KvQueryType::ShOpen},
-  {"SH_INFO",         KvQueryType::ShInfo},
-  {"SH_INFO_ALL",     KvQueryType::ShInfoAll},
-  {"SH_SAVE",         KvQueryType::ShSave},
-  {"SH_LOAD",         KvQueryType::ShLoad},
-  {"SH_END_ALL",      KvQueryType::ShEndAll},
-  {"SH_EXISTS",       KvQueryType::ShExists},
-  // kv
-  {"KV_SET",          KvQueryType::KvSet},
-  {"KV_SETQ",         KvQueryType::KvSetQ},
-  {"KV_GET",          KvQueryType::KvGet},
-  {"KV_ADD",          KvQueryType::KvAdd},
-  {"KV_ADDQ",         KvQueryType::KvAddQ},
-  {"KV_RMV",          KvQueryType::KvRemove},
-  {"KV_CLEAR",        KvQueryType::KvClear},
-  {"KV_COUNT",        KvQueryType::KvCount},
-  {"KV_CONTAINS",     KvQueryType::KvContains},
-  {"KV_FIND",         KvQueryType::KvFind},
-  {"KV_UPDATE",       KvQueryType::KvUpdate},
-  {"KV_KEYS",         KvQueryType::KvKeys},
-  {"KV_CLEAR_SET",    KvQueryType::KvClearSet},
-  {"KV_SAVE",         KvQueryType::KvSave},
-  {"KV_LOAD",         KvQueryType::KvLoad}
-};
-
-
 struct DataLoadPaths
 {
   fs::path root;
