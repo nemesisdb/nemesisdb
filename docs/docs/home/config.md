@@ -5,14 +5,26 @@ displayed_sidebar: homeSidebar
 
 # Configure
 
-The configuration has settings:
+|Param|Type|Description|Required|
+|:---|:---:|:---|:---:|
+|version|unsigned int|Must be 3|Y|
+|mode|string|"kv" for key value<br/> "ts" for timeseries|Y|
+|core|unsigned int|The core to assign this instance.<br/> If not present or above maximum available, defaults to `0` (the first core)|N|
+|kv|object|Settings for key value. Required if mode is `"kv"`.|N|
+|ts|object|Settings for timeseries. Required if mode is `"ts"`.|N|
 
-|Param|Type|Description|
-|:---|:---:|:---|
-|version|unsigned int|Must be 3|
-|mode|string|"kv" for key-value, "ts" for timeseries|
-|kv|object|Settings for key-value|
-|ts|object|Settings for timeseries|
+<br/>
+
+# `core`
+This is the **logical** core, which may differ from physical cores when hyperthreading is present.<br/>
+
+Use `lscpu | grep "CPU(s):"` to find this value.
+
+Core assignment is useful when running multiple instances on the same physical server. If so then ensure the instances are on different ports.
+
+:::note
+If running in a Docker container, the core(s) available depends on those available for the container.
+:::
 
 <br/>
 

@@ -3,6 +3,7 @@ NemesisDB is an in-memory JSON database, supporting key-value and timeseries dat
 
 - All data and commands are JSON over WebSockets
 - Commands are submitted via a WebSocket
+- Key value data can be saved to file and loaded at startup or runtime
 
 <br/>
 
@@ -182,7 +183,9 @@ You can also build from source on Linux, instructions below.
 
 # Design
 
-As of version 0.5, the engine is single threaded to reduce and simplify code. The thread is assigned to core 0, a future release will this configurable to manage multiple instances on multicore CPUs.
+As of version 0.5, the engine is single threaded to reduce and simplify code. The multihreaded version is collecting GitHub dust on the [0.4.1](https://github.com/nemesisdb/nemesisdb/tree/0.4.1) branch.
+
+The instance is assigned to core 0 by default but can be configured in the server [config](https://docs.nemesisdb.io/home/config).
 
 <br/>
 
@@ -284,19 +287,12 @@ Externals are either GitHub submodules or managed by [vcpkg](https://vcpkg.io/en
 Server:
 - uWebsockets : WebSocket server
 - jsoncons : json
+- ankerl::unordered_dense for map and segmented map
 - plog : logging
-- Boost Program Options : argv options
-- ankerl : unordered_dense::segmented map
 - uuid_v4 : create UUIDs with SIMD
+- Boost Program Options : argv options
 
 Tests:
 - nlohmann json
-- Boost Beast
+- Boost Beast (WebSocket client)
 - Google test
-
-<br/>
-
-# License
-See LICENSE file.
-
-
