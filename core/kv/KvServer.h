@@ -127,30 +127,26 @@ public:
 
     bool init(const njson& config)
     {
-      if constexpr (HaveSessions)
+      if (NemesisConfig::saveEnabled(config))
       {
-        if (NemesisConfig::kvSaveEnabled(config))
+        // test we can write to the kv save path
+        if (std::filesystem::path path {NemesisConfig::savePath(config)}; !std::filesystem::exists(path) || !std::filesystem::is_directory(path))
         {
-          // test we can write to the kv save path
-          if (std::filesystem::path path {NemesisConfig::kvSavePath(config)}; !std::filesystem::exists(path) || !std::filesystem::is_directory(path))
+          PLOGF << "save path is not a directory or does not exist";
+          return false;
+        }
+        else
+        {
+          const auto filename = createUuid();
+          const fs::path fullPath{path / filename};
+
+          if (std::ofstream testStream{fullPath}; !testStream.good())
           {
-            PLOGF << "kv:session::save::path is not a directory or does not exist";
+            PLOGF << "Failed test write to save path: " << path;
             return false;
           }
           else
-          {
-            const auto filename = createUuid();
-            std::filesystem::path fullPath{path};
-            fullPath /= filename;
-
-            if (std::ofstream testStream{fullPath}; !testStream.good())
-            {
-              PLOGF << "Cannot write to kv:session::save::path";
-              return false;
-            }
-            else
-              std::filesystem::remove(fullPath);
-          }
+            std::filesystem::remove(fullPath);
         }
       }
       
@@ -274,7 +270,7 @@ public:
         {
           if (setThreadAffinity(m_thread->native_handle(), core))
           {
-            PLOGI << "Server assigned to core " << core;
+            PLOGI << "Core: " << core;
             started = true;
           }
           else

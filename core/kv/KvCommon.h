@@ -188,9 +188,10 @@ std::tuple<bool, const std::string_view> validatePreLoad (const std::string& loa
         return {false, "Metadata file invalid"};
       else if (mdJson["status"] != toUnderlying(KvSaveStatus::Complete))
         return {false, "Cannot load: save was incomplete"};
-      else if ((sessionsEnabled && static_cast<SaveDataType>(mdJson.at("saveDataType").as<unsigned int>()) != SaveDataType::SessionKv) || 
-              (!sessionsEnabled && static_cast<SaveDataType>(mdJson.at("saveDataType").as<unsigned int>()) != SaveDataType::RawKv))
-        return {false, "Cannot load: KV data not compatible with server sessions setting"};
+      else if (sessionsEnabled && static_cast<SaveDataType>(mdJson.at("saveDataType").as<unsigned int>()) != SaveDataType::SessionKv)
+        return {false, "Cannot load: server is KV Sessions mode but data is not"};
+      else if (!sessionsEnabled && static_cast<SaveDataType>(mdJson.at("saveDataType").as<unsigned int>()) != SaveDataType::RawKv)
+        return {false, "Cannot load: server is KV mode but data is not"};
       else if (!(fs::exists(data) && fs::is_directory(data)))
         return {false, "Data directory does not exist or is not a directory"}; 
       else

@@ -179,7 +179,7 @@ private:
       {
         if (setThreadAffinity(m_thread->native_handle(), core))
         {
-          PLOGI << "Server assigned to core " << core;
+          PLOGI << "Core: " << core;
           started = true;
         }
         else

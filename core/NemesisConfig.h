@@ -37,27 +37,48 @@ struct NemesisConfig
     cfg = njson::parse(config);
   }
 
-  
-  static std::string kvSavePath (const njson& cfg)
-  {
-    return cfg.at("kv").at("sessions").at("save").at("path").as_string();
-  }
-
-  static bool kvSaveEnabled (const njson& cfg)
-  {
-    return cfg.at("kv").at("sessions").at("save").at("enabled").as_bool();
-  }
-  
+  // loadName set by readConfig() during cmd line args parsing, not really
+  // config. This is quite lazy 
   bool load() const
   {
     return !loadName.empty();
   }
-
-  static bool haveSessions (const njson& cfg)
-  {
-    return cfg.at("kv").at("sessions").at("enabled") == true;
-  }
   
+  static std::string savePath (const njson& cfg)
+  {
+    if (serverMode(cfg) == ServerMode::KV)
+      return cfg.at("kv").at("save").at("path").as_string();
+    else if (serverMode(cfg) == ServerMode::KvSessions)
+      return cfg.at("kv_sessions").at("save").at("path").as_string();
+    else
+      throw std::runtime_error("NemesisConfig::savePath() called in correct mode");
+  }
+
+  static std::string kvSessionsSavePath (const njson& cfg)
+  {
+    return cfg.at("kv_sessions").at("save").at("path").as_string();
+  }
+
+  static bool kvSaveEnabled (const njson& cfg)
+  {
+    return cfg.at("kv").at("save").at("enabled").as_bool();
+  }
+
+  static bool kvSessionsSaveEnabled (const njson& cfg)
+  {
+    return cfg.at("kv_sessions").at("save").at("enabled").as_bool();
+  }
+
+  static bool saveEnabled (const njson& cfg)
+  {
+    if (serverMode(cfg) == ServerMode::KV)
+      return kvSaveEnabled(cfg);
+    else if (serverMode(cfg) == ServerMode::KvSessions)
+      return kvSessionsSaveEnabled(cfg);
+    else
+      return false;
+  }
+
   static std::size_t preferredCore(const njson& cfg) 
   {
     return cfg["core"].as<std::size_t>();
@@ -70,7 +91,14 @@ struct NemesisConfig
 
   static ServerMode serverMode (const njson& cfg)
   {
-    return cfg.at("mode").as_string_view() == "kv" ? ServerMode::KV : ServerMode::TS;
+    if (cfg.at("mode").as_string_view() == "kv")
+      return ServerMode::KV;
+    else if (cfg.at("mode").as_string_view() == "kv_sessions")
+      return ServerMode::KvSessions;
+    else if (cfg.at("mode").as_string_view() == "ts")
+      return ServerMode::TS;
+    else
+      throw std::runtime_error("Server mode invalid");
   }
 
   static InterfaceSettings wsSettings (const njson& cfg)
@@ -110,21 +138,19 @@ bool parseKv (njson& cfg)
 {
   const auto& kvCfg = cfg.at("kv");
 
-  bool valid =  isValid([&kvCfg]{ return kvCfg.is_object(); }, "kv must be an object") &&
-                isValid([&kvCfg]{ return kvCfg.contains("sessions") && kvCfg.at("sessions").is_object(); }, "kv requires session settings") &&
-                isValid([&kvCfg]{ return kvCfg.contains("save") && kvCfg.at("save").is_object(); }, "kv::save must be an object") &&
-                validateSave(kvCfg.at("save"));
-  
-  if (valid)
-  {
-    const auto& seshCfg = kvCfg.at("sessions");
+  return isValid([&kvCfg]{ return kvCfg.is_object(); }, "kv must be an object") &&
+         isValid([&kvCfg]{ return kvCfg.contains("save") && kvCfg.at("save").is_object(); }, "kv::save must be an object") &&
+         validateSave(kvCfg.at("save"));
+}
 
-    valid = isValid([&seshCfg]{ return seshCfg.contains("enabled") && seshCfg.at("enabled").is_bool(); }, "sessions::enabled must be bool") &&
-            isValid([&seshCfg]{ return seshCfg.contains("save") && seshCfg.at("save").is_object(); }, "sessions::save must be an object") &&
-            validateSave(seshCfg.at("save"));
-  }
-  
-  return valid;
+
+bool parseKvSessions (njson& cfg)
+{
+  const auto& kvSeshCfg = cfg.at("kv_sessions");
+
+  return  isValid([&kvSeshCfg]{ return kvSeshCfg.is_object(); }, "kv_sessions must be an object") &&
+          isValid([&kvSeshCfg]{ return kvSeshCfg.contains("save") && kvSeshCfg.at("save").is_object(); }, "kv_sessions::save must be an object") &&
+          validateSave(kvSeshCfg.at("save"));
 }
 
 
@@ -147,7 +173,7 @@ NemesisConfig parse(std::filesystem::path path)
 
     bool valid =  isValid([&cfg]{ return cfg.contains("version") && cfg.at("version").is_uint64(); },     "Require version as an unsigned int") &&
                   isValid([&cfg]{ return cfg.contains("mode") && cfg.at("mode").is_string(); },           "Mode must be \"kv\" or \"ts\"") &&
-                  isValid([&cfg]{ return cfg.at("mode") == "kv" || cfg.at("mode") == "ts"; },             "Mode must be \"kv\" or \"ts\"") &&
+                  isValid([&cfg]{ return cfg.at("mode") == "kv" | cfg.at("mode") == "kv_sessions" || cfg.at("mode") == "ts"; }, "Mode must be \"kv\", \"kv_sessions\" or \"ts\"") &&
                   isValid([&cfg]{ return cfg.at("version") == nemesis::core::NEMESIS_CONFIG_VERSION; },   "Config version not compatible") &&
                   isValid([&cfg]{ return !cfg.contains("core") || (cfg.contains("core") && cfg.at("core").is<std::size_t>()); },  "'core' must be an unsigned integer") &&
                   isValid([&cfg]{ return cfg.contains("ip") && cfg.contains("port") && cfg.contains("maxPayload"); },             "Require ip, port, maxPayload and save") &&
@@ -159,6 +185,8 @@ NemesisConfig parse(std::filesystem::path path)
     {
       if (cfg.at("mode") == "kv")
         valid = parseKv(cfg);
+      else if (cfg.at("mode") == "kv_sessions")
+        valid = parseKvSessions(cfg);
       else if (cfg.at("mode") == "ts")
         valid = parseTs(cfg);
       
@@ -238,7 +266,7 @@ NemesisConfig readConfig (const int argc, char ** argv)
           if (vm.count("loadPath") || vm.count("loadName"))
           {            
             config.loadName = loadName;
-            config.loadPath = vm.count("loadPath") ? loadPath : NemesisConfig::kvSavePath(config.cfg);
+            config.loadPath = vm.count("loadPath") ? loadPath : NemesisConfig::savePath(config.cfg);
 
             if (!std::filesystem::exists(config.loadPath))
             {

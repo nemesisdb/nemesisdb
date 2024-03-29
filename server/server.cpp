@@ -55,18 +55,18 @@ int main (int argc, char ** argv)
     config.cfg["kv"]["save"]["enabled"] = false;
     config.cfg["kv"]["save"]["path"] = "./data";
 
-    config.cfg["kv"]["sessions"]["enabled"] = true;
-    config.cfg["kv"]["sessions"]["save"]["enabled"] = false;
-    config.cfg["kv"]["sessions"]["save"]["path"] = "./data";
+    config.cfg["kv_sessions"]["save"]["enabled"] = false;
+    config.cfg["kv_sessions"]["save"]["path"] = "./data";
 
     config.cfg["ts"]["ip"] = "127.0.0.1";
     config.cfg["ts"]["port"] = 1987;
-    config.cfg["ts"]["maxPayload"] = 2048;
 
-    if (config.cfg["kv"]["sessions"]["enabled"] == true && !fs::exists(config.cfg["kv"]["sessions"]["save"]["path"].as_string()))
-      fs::create_directories(config.cfg["kv"]["sessions"]["save"]["path"].as_string());
+    if (NemesisConfig::serverMode(config.cfg) == ServerMode::KvSessions && !fs::exists(config.cfg["kv_sessions"]["save"]["path"].as_string()))
+      fs::create_directories(config.cfg["kv_sessions"]["save"]["path"].as_string());
+    else if (NemesisConfig::serverMode(config.cfg) == ServerMode::Kv && !fs::exists(config.cfg["kv"]["save"]["path"].as_string()))
+      fs::create_directories(config.cfg["kv"]["save"]["path"].as_string());
 
-    // config.loadPath = NemesisConfig::kvSavePath(config.cfg);
+    // config.loadPath = NemesisConfig::savePath(config.cfg);
     // config.loadName = "t2";
       
   #else
@@ -90,31 +90,31 @@ int main (int argc, char ** argv)
     server.stop();
   };
   
-  if (const ServerMode mode = NemesisConfig::serverMode(config.cfg);  mode == ServerMode::KV)
-  {
-    PLOGI << "Mode: KV";
 
-    if (NemesisConfig::haveSessions(config.cfg))
-    {
-      PLOGI << "Sessions: Enabled";
-      runServer (kv::KvSessionServer{});
-    }      
-    else
-    {
-      PLOGI << "Sessions: Disabled";
+  PLOGI_IF (NemesisConfig::saveEnabled(config.cfg))  << "Save: Enabled (" << NemesisConfig::savePath(config.cfg) << ')';
+  PLOGI_IF (!NemesisConfig::saveEnabled(config.cfg)) << "Save: Disabled";
+
+  switch (NemesisConfig::serverMode(config.cfg))
+  {
+    case ServerMode::KV:
+      PLOGI << "Mode: KV";
       runServer (kv::KvServer{});
-    }
+    break;
+
+    case ServerMode::KvSessions:
+      PLOGI << "Mode: KV Sessions";
+      runServer (kv::KvSessionServer{});
+    break;
+
+    case ServerMode::TS:
+      PLOGI << "Mode: TS";
+      runServer (ts::TsServer{});
+    break;
+
+    default:
+      // caught by readConfig()
+    break;
   }
-  else if (mode == ServerMode::TS)
-  {
-    PLOGI << "Mode: TS";
-    runServer (ts::TsServer{});
-  }
-  else
-  {
-    // caught by readConfig()
-  }
-  
   
   return error;
 }

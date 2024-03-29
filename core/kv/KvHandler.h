@@ -76,12 +76,11 @@ private:
       {KvQueryType::KvFind,       Handler{std::bind_front(&KvHandler<HaveSessions>::find,       std::ref(*this)), "KV_FIND",      "KV_FIND_RSP"}},
       {KvQueryType::KvUpdate,     Handler{std::bind_front(&KvHandler<HaveSessions>::update,     std::ref(*this)), "KV_UPDATE",    "KV_UPDATE_RSP"}},
       {KvQueryType::KvKeys,       Handler{std::bind_front(&KvHandler<HaveSessions>::keys,       std::ref(*this)), "KV_KEYS",      "KV_KEYS_RSP"}},
-      {KvQueryType::KvClearSet,   Handler{std::bind_front(&KvHandler<HaveSessions>::clearSet,   std::ref(*this)), "KV_CLEAR_SET", "KV_CLEAR_SET_RSP"}},
-      {KvQueryType::KvSave,       Handler{std::bind_front(&KvHandler<HaveSessions>::kvSave,     std::ref(*this)), "KV_SAVE",      "KV_SAVE_RSP"}},
-      {KvQueryType::KvLoad,       Handler{std::bind_front(&KvHandler<HaveSessions>::kvLoad,     std::ref(*this)), "KV_LOAD",      "KV_LOAD_RSP"}}
+      {KvQueryType::KvClearSet,   Handler{std::bind_front(&KvHandler<HaveSessions>::clearSet,   std::ref(*this)), "KV_CLEAR_SET", "KV_CLEAR_SET_RSP"}}
+      
     }, 1, alloc);
 
-    // only add session handlers if sessions enabled
+    
     if constexpr (HaveSessions)
     {
       h.try_emplace(KvQueryType::ShNew,     Handler{std::bind_front(&KvHandler<HaveSessions>::sessionNew,      std::ref(*this)), "SH_NEW",       "SH_NEW_RSP"});
@@ -93,6 +92,12 @@ private:
       h.try_emplace(KvQueryType::ShLoad,    Handler{std::bind_front(&KvHandler<HaveSessions>::sessionLoad,     std::ref(*this)), "SH_LOAD",      "SH_LOAD_RSP"});
       h.try_emplace(KvQueryType::ShSave,    Handler{std::bind_front(&KvHandler<HaveSessions>::sessionSave,     std::ref(*this)), "SH_SAVE",      "SH_SAVE_RSP"});
       h.try_emplace(KvQueryType::ShOpen,    Handler{std::bind_front(&KvHandler<HaveSessions>::sessionOpen,     std::ref(*this)), "SH_OPEN",      "SH_OPEN_RSP"});
+    }
+    else
+    {
+      // when sessions enabled, SH_SAVE/SH_LOAD are required
+      h.emplace(KvQueryType::KvSave,  Handler{std::bind_front(&KvHandler<HaveSessions>::kvSave, std::ref(*this)), "KV_SAVE",  "KV_SAVE_RSP"});
+      h.emplace(KvQueryType::KvLoad,  Handler{std::bind_front(&KvHandler<HaveSessions>::kvLoad, std::ref(*this)), "KV_LOAD",  "KV_LOAD_RSP"});
     }
 
     return h;
@@ -413,7 +418,7 @@ private:
       return {RequestStatus::Ok, ""};
     };
     
-    if (!NemesisConfig::kvSaveEnabled(m_config))
+    if (!NemesisConfig::saveEnabled(m_config))
       send(ws, createErrorResponseNoTkn(queryRspName, RequestStatus::CommandDisabled));
     else if (isValid(queryRspName, ws, json, {{Param::required("name", JsonString)}, {Param::optional("tkns", JsonArray)}}, validate))
     {
@@ -428,7 +433,7 @@ private:
     {
       const auto& loadName = json.at(queryName).at("name").as_string();
 
-      if (const auto [valid, msg] = validatePreLoad(loadName, fs::path{NemesisConfig::kvSavePath(m_config)}, true); !valid)
+      if (const auto [valid, msg] = validatePreLoad(loadName, fs::path{NemesisConfig::savePath(m_config)}, true); !valid)
       {
         PLOGE << msg;
 
@@ -440,7 +445,7 @@ private:
       else
       {
         // ignore pathsValid here because validatePreLoad() fails if not paths not valid
-        const auto [root, md, data, pathsValid] = getLoadPaths(fs::path{NemesisConfig::kvSavePath(m_config)} / loadName);
+        const auto [root, md, data, pathsValid] = getLoadPaths(fs::path{NemesisConfig::savePath(m_config)} / loadName);
         load(loadName, data, ws);
       }
     }
@@ -662,7 +667,7 @@ private:
 
   void kvSave(const std::string_view queryName, const std::string_view queryRspName, KvWebSocket * ws, njson& json)
   {
-    if (!NemesisConfig::kvSaveEnabled(m_config))
+    if (!NemesisConfig::saveEnabled(m_config))
       send(ws, createErrorResponseNoTkn(queryRspName, RequestStatus::CommandDisabled));
     else
     {
@@ -688,7 +693,7 @@ private:
     {
       const auto& loadName = json.at(queryName).at("name").as_string();
 
-      if (const auto [valid, msg] = validatePreLoad(loadName, fs::path{NemesisConfig::kvSavePath(m_config)}, false); !valid)
+      if (const auto [valid, msg] = validatePreLoad(loadName, fs::path{NemesisConfig::savePath(m_config)}, false); !valid)
       {
         PLOGE << msg;
 
@@ -699,7 +704,7 @@ private:
       }
       else
       {
-        const auto [root, md, data, pathsValid] = getLoadPaths(fs::path{NemesisConfig::kvSavePath(m_config)} / loadName);
+        const auto [root, md, data, pathsValid] = getLoadPaths(fs::path{NemesisConfig::savePath(m_config)} / loadName);
         load(loadName, data, ws);
       }
     }
@@ -714,7 +719,7 @@ private:
     rsp[queryRspName]["name"] = name;
     
     const auto setPath = std::to_string(KvSaveClock::now().time_since_epoch().count());
-    const auto root = fs::path {NemesisConfig::kvSavePath(m_config)} / name / setPath;
+    const auto root = fs::path {NemesisConfig::savePath(m_config)} / name / setPath;
     const auto metaPath = fs::path{root} / "md";
     const auto dataPath = fs::path{root} / "data";
 

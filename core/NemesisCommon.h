@@ -47,6 +47,7 @@ enum class ServerMode
 {
   None,
   KV,
+  KvSessions,
   TS
 };
 
