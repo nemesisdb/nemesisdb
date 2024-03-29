@@ -13,7 +13,7 @@
 namespace nemesis { namespace core { namespace kv {
 
 
-inline ServerStats * serverStats;
+//inline ServerStats * serverStats;
 inline const std::int16_t METADATA_VERSION = 2;
 
 
@@ -58,6 +58,7 @@ enum class SaveDataType
 };
 
 
+// TODO this can be moved to the KvHandler with pmr, unless it's used elsewhere
 const ankerl::unordered_dense::map<std::string_view, KvQueryType> QueryNameToType = 
 {  
   // session

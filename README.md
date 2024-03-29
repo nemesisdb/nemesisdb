@@ -137,6 +137,7 @@ More information [here](https://docs.nemesisdb.io/home/tldr-ts).
 ## Sessions Disabled
 
 - There is one map for all keys
+- Keys do not expire, they must be deleted by command
 - No need to create sessions to store data
 - Data is not segregated so keys must be unique over the entire database
 - Lower memory usage and higher throughput
@@ -256,6 +257,10 @@ Sessions support saving and restoring data:
 <br/>
 
 # Build - Linux Only
+
+> [!IMPORTANT]
+> C++20 required.
+
 1. Clone via SSH with submodules: `git clone --recursive git@github.com:nemesisdb/nemesisdb.git`
 2. Prepare and grab vcpkg libs: `cd nemesisdb && ./prepare_vcpkg.sh`
 3. With VS Code (assuming you have C/C++ and CMake extensions):
@@ -274,8 +279,7 @@ Start listening on `127.0.0.1:1987` in KV mode (default in `default.json`)
 `./nemesisdb --config=../../configs/default.json`
 
 
-
-Use `ctrl+c` to exit
+`ctrl+c` to exit
 
 
 <br/>

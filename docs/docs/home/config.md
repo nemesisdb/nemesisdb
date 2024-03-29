@@ -5,13 +5,66 @@ displayed_sidebar: homeSidebar
 
 # Configure
 
+
+## Default Config
+
+There is a default configuration included in the install package and Docker image. 
+
+Default settings:
+
+- Assigned to core `0`
+- Mode: key value
+  - Sessions disabled
+  - Save disabled
+- Listen on `127.0.0.1:1987`
+
+<br/>
+
+```json title="default.json"
+{
+  "version":4,
+  "mode":"kv",
+  "core":0,
+  "ip":"127.0.0.1",
+  "port":1987,
+  "maxPayload":1024,
+  "kv":
+  {
+    "save":
+    {
+      "enabled":false,
+      "path":"./data"
+    },
+    "sessions":
+    {
+      "enabled":false,
+      "save":
+      {
+        "enabled":false,
+        "path":"./data"
+      }
+    }
+  },
+  "ts":
+  {
+    
+  }
+}
+```
+
+<br/>
+
+---
+
+<br/>
+
 |Param|Type|Description|Required|
 |:---|:---:|:---|:---:|
 |version|unsigned int|Must be 3|Y|
 |mode|string|"kv" for key value<br/> "ts" for timeseries|Y|
 |core|unsigned int|The core to assign this instance.<br/> If not present or above maximum available, defaults to `0` (the first core)|N|
 |kv|object|Settings for key value. Required if mode is `"kv"`.|N|
-|ts|object|Settings for timeseries. Required if mode is `"ts"`.|N|
+|ts|object|Empty but required if mode is `"ts"`.|N|
 
 <br/>
 
@@ -35,6 +88,7 @@ If running in a Docker container, the core(s) available depends on those availab
 |ip|string|IP address of the WebSocket server|
 |port|unsigned int|Port of the WebSocket server|
 |maxPayload|unsigned int|Max bytes per query. A query larger than this will be rejected.<br/>Absolute min/max are 64 bytes and 8Kb.|
+|save|object|Settings for persisting kv data. Only used when sessions are disabled.|
 |session|object|Settings for session saving (details below)|
 
 <br/>
@@ -67,43 +121,4 @@ See [SH_SAVE](../api/sessions/sh-save) for more.
 
 <br/>
 
-## Default Config
 
-There is a default configuration included in the install package and Docker image. 
-
-Default settings:
-
-- KV mode
-- Listen on `127.0.0.1:1987`
-- `SH_SAVE` disabled (`kv:save::session::path` does not need to exist)
-
-<br/>
-
-```json title="default.json"
-{
-  "version":3,
-  "mode":"kv",
-  "kv":
-  {
-    "ip":"127.0.0.1",
-    "port":1987,
-    "maxPayload":1024,
-    "session":
-    {
-      "enabled":false,
-      "save":
-      {
-        "enabled":false,
-        "path":"./data"
-      }
-    }
-  },
-  "ts":
-  {
-    "ip":"127.0.0.1",
-    "port":1987,
-    "maxPayload":1024
-  }
-}
-
-```

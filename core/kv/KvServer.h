@@ -32,7 +32,7 @@ class Server
 public:
   Server() : m_run(true)
   {
-    kv::serverStats = nullptr;
+    //kv::serverStats = nullptr;
   }
 
 
@@ -59,14 +59,10 @@ public:
 
       if (s_kvHandler.handler)
         delete s_kvHandler.handler;
-
-      if (kv::serverStats)
-        delete kv::serverStats;
     }
     catch (const std::exception& ex)
     {
-      // ignore, shutting down
-      //PLOGE << ex.what();
+      //ignore, shutting down
     }
     
 
@@ -74,7 +70,7 @@ public:
     m_sockets.clear();
     m_monitorTimer = nullptr;
     s_kvHandler.handler = nullptr;
-    kv::serverStats = nullptr;
+    //kv::serverStats = nullptr;
   }
 
 
@@ -92,18 +88,19 @@ public:
       }
     }
 
-    const unsigned int maxPayload = config.cfg["kv"]["maxPayload"].as<unsigned int>();
-    const std::string ip = config.cfg["kv"]["ip"].as_string();
-    const int port = config.cfg["kv"]["port"].as<unsigned int>();
+    const auto [ip, port, maxPayload] = NemesisConfig::wsSettings(config.cfg);
     const std::size_t preferredCore = NemesisConfig::preferredCore(config.cfg); 
     std::size_t core = 0;
     
-    if (preferredCore > std::thread::hardware_concurrency())
-      PLOGE << "'core' value in config is above maximum available: " << std::thread::hardware_concurrency();
+    if (const auto maxCores = std::thread::hardware_concurrency(); maxCores == 0)
+      PLOGE << "Could not acquire available cores";
+    else if (preferredCore > maxCores)
+      PLOGE << "'core' value in config is above maximum available: " << maxCores;
     else
       core = preferredCore;
 
-    if (!startWsServer(ip, port, maxPayload, serverStats, core))
+
+    if (!startWsServer(ip, port, maxPayload, core))
       return false;
         
 
@@ -158,19 +155,19 @@ public:
       }
       
 
-      kv::serverStats = new kv::ServerStats;
+      //kv::serverStats = new kv::ServerStats;
       s_kvHandler.handler = new kv::KvHandler<HaveSessions> {config}; // TODO
 
       return true;
     }
     
     
-    bool startWsServer (const std::string& ip, const int port, const unsigned int maxPayload, kv::ServerStats * stats, const std::size_t core)
+    bool startWsServer (const std::string& ip, const int port, const unsigned int maxPayload, /*kv::ServerStats * stats,*/ const std::size_t core)
     {
       bool listening{false};
       std::latch startLatch (1);
 
-      auto listen = [this, ip, port, &listening, &startLatch, maxPayload, stats]()
+      auto listen = [this, ip, port, &listening, &startLatch, maxPayload/*, stats*/]()
       {
         char requestBuffer[NEMESIS_KV_MAXPAYLOAD] = {};
         
@@ -186,9 +183,9 @@ public:
           {
             m_wsClients.insert(ws);
           },          
-          .message = [this, stats, &requestBuffer](KvWebSocket * ws, std::string_view message, uWS::OpCode opCode)
+          .message = [this, /*stats,*/ &requestBuffer](KvWebSocket * ws, std::string_view message, uWS::OpCode opCode)
           { 
-            ++serverStats->queryCount;
+            //++serverStats->queryCount; actually do this
 
             if (opCode != uWS::OpCode::TEXT)
               ws->send(createErrorResponse(RequestStatus::OpCodeInvalid).to_string(), kv::WsSendOpCode);

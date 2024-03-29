@@ -1,12 +1,17 @@
 {
-  "version":3,  // must be version 3 from NemesisDB v0.6
+  "version":4,  // must be version 4 from NemesisDB v0.6.1
   "mode":"kv",  // "ts" for TimeSeries or "kv" for KeyValue
   "core":0,     // the *logical* core the server instance is assigned to. If not present or value is greater than max cores, defaults to 0
+  "ip":"127.0.0.1",
+  "port":1987,
+  "maxPayload":1024,
   "kv":
   {
-    "ip":"127.0.0.1",
-    "port":1987,
-    "maxPayload":1024,
+    "save":
+    {
+      "enabled":false,
+      "path":"./data"
+    },
     "sessions":
     {
       "enabled":false,
@@ -19,10 +24,6 @@
   },
   "ts":
   {
-    "ip":"127.0.0.1",
-    "port":1987,
-    "maxPayload":1024
+    
   }
 }
-
-

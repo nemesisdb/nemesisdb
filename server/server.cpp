@@ -46,12 +46,17 @@ int main (int argc, char ** argv)
   #ifdef NDB_DEBUG
     config.cfg["version"] = 1;
     config.cfg["mode"] = "kv";
+    config.cfg["core"] = 0;
 
-    config.cfg["kv"]["ip"] = "127.0.0.1";
-    config.cfg["kv"]["port"] = 1987;
-    config.cfg["kv"]["maxPayload"] = 2048;
-    config.cfg["kv"]["sessions"]["enabled"] = false;
-    config.cfg["kv"]["sessions"]["save"]["enabled"] = true;
+    config.cfg["ip"] = "127.0.0.1";
+    config.cfg["port"] = 1987;
+    config.cfg["maxPayload"] = 2048;
+
+    config.cfg["kv"]["save"]["enabled"] = false;
+    config.cfg["kv"]["save"]["path"] = "./data";
+
+    config.cfg["kv"]["sessions"]["enabled"] = true;
+    config.cfg["kv"]["sessions"]["save"]["enabled"] = false;
     config.cfg["kv"]["sessions"]["save"]["path"] = "./data";
 
     config.cfg["ts"]["ip"] = "127.0.0.1";
@@ -72,56 +77,38 @@ int main (int argc, char ** argv)
   
   int error = 0;
 
-  if (config.serverMode() == ServerMode::KV)
+  auto runServer = [&config, &error]<typename Server> (Server&& server)
   {
-    PLOGI << "Mode: KV";
-
-    if (NemesisConfig::haveSessions(config.cfg))
-    {
-      PLOGI << "Sessions: Enabled";
-
-      kv::KvSessionServer server;
-
-      if (server.run(config))
-        run.wait();
-      else
-      {
-        error = 1;
-        run.count_down();
-      }
-    
-      server.stop();
-    }      
-    else
-    {
-      PLOGI << "Sessions: Disabled";
-
-      kv::KvServer server;
-
-      if (server.run(config))
-        run.wait();
-      else
-      {
-        error = 1;
-        run.count_down();
-      }
-    
-      server.stop();
-    }
-  }
-  else if (config.serverMode() == ServerMode::TS)
-  {
-    PLOGI << "Mode: TS";
-
-    ts::TsServer tsServer;
-    
-    if (tsServer.run(config))
+    if (server.run(config))
       run.wait();
     else
     {
       error = 1;
       run.count_down();
     }
+  
+    server.stop();
+  };
+  
+  if (const ServerMode mode = NemesisConfig::serverMode(config.cfg);  mode == ServerMode::KV)
+  {
+    PLOGI << "Mode: KV";
+
+    if (NemesisConfig::haveSessions(config.cfg))
+    {
+      PLOGI << "Sessions: Enabled";
+      runServer (kv::KvSessionServer{});
+    }      
+    else
+    {
+      PLOGI << "Sessions: Disabled";
+      runServer (kv::KvServer{});
+    }
+  }
+  else if (mode == ServerMode::TS)
+  {
+    PLOGI << "Mode: TS";
+    runServer (ts::TsServer{});
   }
   else
   {
