@@ -79,7 +79,7 @@ public:
     if (!init(config.cfg))
       return false;
 
-    if ((config.load()))
+    if (config.load())
     {
       if (auto [ok, msg] = load(config); !ok)
       {
