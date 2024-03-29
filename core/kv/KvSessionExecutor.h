@@ -451,11 +451,15 @@ public:
 
   static njson get (CacheMap& map,  const njson& cmd)
   {
-    njson rsp {jsoncons::json_object_arg, {{"KV_GET_RSP", jsoncons::json_object_arg_t{}}}};
-
+    static njson Prepared {jsoncons::json_object_arg, {{"KV_GET_RSP", {jsoncons::json_object_arg,
+                                                                      {
+                                                                        {"st", toUnderlying(RequestStatus::Ok)},
+                                                                        {"keys", njson{}} // initialise as an empty object
+                                                                      }}}}};
+    
+    njson rsp = Prepared;
     auto& body = rsp.at("KV_GET_RSP");
-    body["st"] = toUnderlying(RequestStatus::Ok);
-    body["keys"] = njson{jsoncons::json_object_arg};
+    auto& keys = body.at("keys");
 
     try
     {
@@ -466,7 +470,7 @@ public:
           const auto& key = item.as_string();
 
           if (const auto value = map.get(key) ; value)
-            body.at("keys").try_emplace(key, (*value).get());
+            keys.try_emplace(key, (*value).get());
         }
       }
     }
