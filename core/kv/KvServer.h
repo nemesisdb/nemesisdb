@@ -152,7 +152,7 @@ public:
       
 
       //kv::serverStats = new kv::ServerStats;
-      s_kvHandler.handler = new kv::KvHandler<HaveSessions> {config}; // TODO
+      s_kvHandler.handler = new kv::KvHandler<HaveSessions> {config};
 
       return true;
     }

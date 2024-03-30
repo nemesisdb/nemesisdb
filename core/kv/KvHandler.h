@@ -175,7 +175,6 @@ public:
   {      
     static PmrResource<typename HandlerPmrMap::value_type, 1024U> handlerPmrResource; // TODO buffer size
     static PmrResource<typename HandlerPmrMap::value_type, 1024U> queryTypeNamePmrResource; // TODO buffer size
-    // allocators are copied to maps
     static HandlerPmrMap MsgHandlers{createHandlers(handlerPmrResource.getAlloc())}; 
     static QueryTypePmrMap QueryNameToType{createQueryTypeNameMap(queryTypeNamePmrResource.getAlloc())};
     
