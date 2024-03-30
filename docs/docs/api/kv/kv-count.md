@@ -3,7 +3,10 @@ sidebar_position: 90
 ---
 
 # KV_COUNT
-Returns how many keys are in a session.
+Returns the number of keys present:
+
+- With sessions enabled, count is the number of keys in the session
+- With sessions disabled, count is the total number of keys
 
 
 ## Response
@@ -33,7 +36,7 @@ Request:
 
 Response:
 
-```json title="Map contains 3,457 keys"
+```json title="Database contains 3,457 keys"
 {
   "KV_COUNT_RSP":
   {

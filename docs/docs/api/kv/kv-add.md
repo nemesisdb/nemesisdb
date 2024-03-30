@@ -7,6 +7,7 @@ Stores key-values if the key does not already exist.
 
 This command is the same as `KV_SET` but it will not overwrite an existing key.
 
+If `keys` contains a key that already exists it is not considered an error. The key's existing value is not changed.
 
 ## Response
 
@@ -17,12 +18,12 @@ See the [response status](./../Statuses) page for status values.
 
 |Param|Type|Meaning|
 |:---|:---|:---|
-|keys|object|For each key that was set: `"<keyname>":<status>`|
+|st|unsigned int|Status|
+
+<br/>
 
 
 Possible status values:
 
-- KeySet
-- KeyExists
-- ParamMissing (no `keys`)
-- ValueTypeInvalid (`keys` not an object)
+- ParamMissing
+- ValueTypeInvalid

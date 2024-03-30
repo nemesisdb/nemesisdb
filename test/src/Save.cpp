@@ -14,8 +14,6 @@ namespace fs = std::filesystem;
 
 static const fs::path DataDir = "data";
 static const fs::path MetaDataDir = "md";
-static std::size_t NumPools = 1U;
-
 
 fs::path workingDir, savePath;
 

@@ -15,6 +15,11 @@ Stores key-values. If the key already exists, the value is overwritten.
 |:---|:---|:---|:---:|
 |keys|object|Keys and values to store|Y|
 
+<br/>
+
+:::info
+The `tkn` must be set when the server mode is "kv_sessions".
+:::
 
 <br/>
 

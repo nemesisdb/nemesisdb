@@ -17,17 +17,19 @@ Sessions Enabled:
   - A session can expire, after which, the keys are deleted
   - Sessions are created with the `SH_NEW` command, which returns a session token
   - The session token is used in key value commands to interact with data only in that session
-  - Key-value data can be persisted to the filesystem
-  - Key-value data can be restored from file at startup or with a command at runtime
+  - Session data can be persisted to the filesystem
+  - Session data can be restored from file at startup or with a command at runtime
 
 Sessions Disabled:
   - A single map contains all key values  
   - No need to supply a session token with each command
-  - Persisting key-value data without sessions not implemented yet
-  - Higher throughput and less memory overhead
+  - Data can be persisted to the filesystem
+  - Data can be restored from file at startup or with a command at runtime
+  - Lower memory usage and latency
 
 Time Series:
   - Basic support to store, get, index and conditionally find
+  - No data persistence
 
 
 <br/>

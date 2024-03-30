@@ -40,7 +40,7 @@ This table lists a 'friendly name' and value. The friendly name is used througho
 |KeySet|20|Key value is set.|
 |KeyUpdated|21|Key already existed and has been updated|
 |KeyNotExist|22|Key does not exist|
-|KeyExist|23|Key exists (i.e. with `KV_CONTAINS`)|
+|KeyExist|23|Key exists|
 |KeyRemoved|24|Key deleted/removed|
 |KeyTypeInvalid|27|Key wrong type. Must always be a string|
 
@@ -65,5 +65,5 @@ This table lists a 'friendly name' and value. The friendly name is used througho
 ## Load
 |Name|Value|Meaning
 |:---|:---:|:---|
-|LoadComplete|141|Session(s) loaded without error|
+|LoadComplete|141|Data loaded without error|
 |LoadError|142|Error during load|

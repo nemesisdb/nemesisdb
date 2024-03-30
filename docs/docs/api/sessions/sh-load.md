@@ -3,6 +3,11 @@ sidebar_position: 30
 ---
 
 # SH_LOAD
+
+:::info
+This command is only available when the server mode is `"kv_sessions"`. If the server mode is `"kv"`, use [`KV_LOAD`](../kv/kv-load).
+:::
+
 Loads data from the filesystem at runtime as an alternative to loading data at startup.
 
 - The data is read from the `session::save::path` set in the config file
