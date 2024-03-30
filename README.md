@@ -254,19 +254,22 @@ Set three keys:
 - `age` of type integer
 - `address` of type object
 
+<br/>
 
 ### Save and Restore
-Sessions support saving and restoring data:
+Session and key value data be saved to file and restored:
 
-- Use `SH_SAVE` to write session data to file, either all sessions or particular sessions
-- Use `SH_LOAD` to load data from file at runtime
+Sessions enabled:
+- `SH_SAVE` save all sessions or particular sessions
+- `SH_LOAD` to load data from file at runtime
+- Use `--loadName` at the command line to load during start up
+
+Sessions disabled:
+- `KV_SAVE` to save all key values (saving select keys not supported yet)
+- `KV_LOAD` to load data from file at runtime
 - Use `--loadName` at the command line to load during start up
 
 
-<br/>
-
-> [!IMPORTANT]
-> Data persistance is only implemented when sessions are enabled, a future release will support both.
 
 <br/>
 <br/>
