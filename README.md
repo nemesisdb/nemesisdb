@@ -3,15 +3,18 @@ NemesisDB is an in-memory JSON database, supporting key-value and timeseries dat
 
 - All data and commands are JSON over WebSockets
 - Commands are submitted via a WebSocket
-- Data can be saved to file and loaded at startup or runtime (persisting time series data not yet supported)
+- Data can be saved to file and loaded at startup or runtime with a command
+  - Persisting time series data not yet supported
 
 <br/>
 
 Contents:
   - [Key Value](#key-value)
   - [Time Series](#time-series)
+  - [Design](#design)
+  - [Install](#install)
+  - [Build for Linux](#build---linux-only)
   
-
 
 <br/>
 
