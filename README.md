@@ -145,22 +145,25 @@ More information [here](https://docs.nemesisdb.io/home/tldr-ts).
 
 # Key Value
 
+Key value can have sessions disabled or enabled. Sessions segregate keys by grouping them in dedicated maps, similar to hash sets in Redis.
+
 ## Sessions Disabled
 
 - There is one map for all keys
-- Keys do not expire, they must be deleted by command
+- Keys cannot expire, they must be deleted by command
 - No need to create sessions to store data
 - Data is not segregated so keys must be unique over the entire database
-- Lower memory usage and higher throughput
+- Lower memory usage and latency
 
 ## Sessions Enabled
 Rather than one large map, key-values are split into sessions:
 
 - Each session has a dedicated map
-- A session can live forever or expire after a given time
+- A session can live forever or expire after a defined duration
 - When a session expires its data is always deleted, and optionally the session can be deleted
 
 Examples of sessions:
+
 - Each user that logs into an app
 - Each connected device in monitoring software
 - When an One Time Password is created
@@ -170,11 +173,12 @@ Examples of sessions:
 
 ### Sessions
 The purpose of sessions are:
+
 - Each session only contains data required for that session, rather than a single large map
 - When accessing (get, set, etc) data, only the data for a particular session is accessed
 - Controlling key expiry is simplified because it is sessions that expire, not individual keys
 
-You can create as many sessions as required (within memory limitations). When a session is created, a session token is returned (an integer), so to switch between sessions only requires using the appropriate token.
+You can create as many sessions as required (within memory limitations). When a session is created, a session token is returned (a 64-bit unsigned integer), so switching between sessions only requires using the appropriate token.
 
 More info [here](https://docs.nemesisdb.io/tutorials/sessions/what-is-a-session).
 
@@ -187,7 +191,7 @@ NemesisDB is available as a Debian package and Docker image:
 - Package:  [Releases](https://github.com/nemesisdb/nemesisdb/releases) 
 - Docker: [Docker Hub](https://hub.docker.com/r/nemesisdb/nemesisdb/tags)
 
-You can also build from source on Linux, instructions below.
+You can compile for Linux, instructions below.
 
 
 <br/>
