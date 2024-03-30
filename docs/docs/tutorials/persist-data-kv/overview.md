@@ -5,8 +5,8 @@ displayed_sidebar: tutorialSidebar
 
 # Overview
 
-- All sessions or a specific sessions can be saved
-- Data can be restored at startup with a command line argument or at runtime with the `SH_LOAD` command
+- All key value data is persisted (you can't select which keys to save)
+- Data can be restored at startup with a command line argument at runtime with the `KV_LOAD` command
 - Data is written as raw JSON, a future release will support a more space efficient format
 
 <br/>
@@ -29,7 +29,7 @@ The structure is:
 |:---|:---|
 |name|The name used in the save command|
 |timestamp|Timestamp when the data was saved|
-|data|Contains the session data|
+|data|Contains the data|
 |md|Contains metadata|
 
 <br/>
@@ -61,31 +61,19 @@ If we send another save command with the same name:
 :::info
 The current version does not allow you to load a specific timestamp, it always selects the most recent. <br/>
 
-If you need to restore specific data, use a different name for each use of `SH_SAVE`.
+If you need to restore specific data, use a different name for each use of `KV_SAVE`.
 :::
 
 <br/>
 
 ## Saving
-The `SH_SAVE` command is used to save data:
+The `KV_SAVE` command is used to save data:
 
 ```json
 {
-  "SH_SAVE":
+  "KV_SAVE":
   {
     "name":"defaults"
-  }
-}
-```
-
-Supply tokens (`tkns`) to save particular sessions:
-
-```json title="Save two sessions"
-{
-  "SH_SAVE":
-  {
-    "name":"defaults",
-    "tkns":[123456, 654321]
   }
 }
 ```
@@ -93,24 +81,12 @@ Supply tokens (`tkns`) to save particular sessions:
 <br/>
 
 ## Loading
-Data can be loaded at startup with command line args or at runtime with `SH_LOAD`:
+Data can be loaded at startup with command line args or at runtime with `KV_LOAD`:
 
 - Startup
-  - `--loadName` can be used with `--loadPath` to read data from a path that's different from that in the server config
+  - `--loadName` loads from a name previously used in `KV_SAVE`
+  - It can be used with `--loadPath` to read data from a path that's different from that in the server config
 
 - Runtime
-  - `SH_LOAD` offers the flexibility to load data at any time
-  - `SH_LOAD` will only read data from the path in the server config
-
-
-<br/>
-
-## Usage
-The intention is to offer flexibility:
-
-- Save all or specific sessions
-- Load data on startup to work from a known base
-- Load data ad-hoc
-
-The server can be populated with data, cleared, and then loaded with data for a different purpose without restarting.
-
+  - `KV_LOAD` to load at any time
+  - `KV_LOAD` will only read data from the path in the server config

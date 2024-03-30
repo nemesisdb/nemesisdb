@@ -8,13 +8,7 @@ displayed_sidebar: homeSidebar
 NemesisDB is a JSON in-memory database:
 
 - Key-value can be with or without sessions enabled
-- With sessions enabled, the data can be saved to disk, then loaded at startup or anytime with a command
-
-
-:::info
-Persisting key-value data to disk is only supported when sessions are enabled. A future release will support 
-persisting when sessions are disabled.
-:::
+- Session and key value data can be saved to disk, then loaded at startup or at runtime with a command
 
 
 ## Sessions Disabled
@@ -23,10 +17,8 @@ persisting when sessions are disabled.
 - No session token requires
 - Keys are not segregated:
   - i.e. if you're caching user data, all user data is stored in a single map, but with sessions you can create a separate sessions per user
-  - Keys have to be unique across the entire database, but with sessions keys are only unique within a session (because each session has a dedicated map)
-- Lower memory usage and higher throughput
-  - There is no session map to maintain (i.e. session token -> session data)
-  - Disabling sessions avoids a session map lookup
+  - Keys have to be unique across the entire database. With sessions, keys are only unique within a session because each session has a dedicated map
+- Lower memory usage and latency
 
 <br/>
 
