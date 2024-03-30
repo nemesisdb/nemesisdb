@@ -8,7 +8,7 @@ Check if a key exists.
 
 |Param|Type|Meaning|Required|
 |:---|:---|:---|:---:|
-|keys|array|Array of key names|Y|
+|keys|array|Key to check|Y|
 
 
 ```json

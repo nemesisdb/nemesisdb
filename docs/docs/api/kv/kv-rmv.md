@@ -8,7 +8,7 @@ Removes one or multiple keys. If you want to remove all keys, use `KV_CLEAR`.
 
 |Param|Type|Meaning|Required|
 |:---|:---|:---|:---:|
-|keys|array|Array of keys to remove|Y|
+|keys|array|Keys to remove|Y|
 
 <br/>
 
