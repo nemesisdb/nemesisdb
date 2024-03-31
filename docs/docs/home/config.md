@@ -102,7 +102,7 @@ If running in a Docker container, the core(s) available depends on those availab
 |enabled|bool|`true`:<br/>- `KV_SAVE` available (when `mode` is `kv`)<br/>- `SH_SAVE` available (when `mode` is `kv_sessions`)<br/>- `path` must exist<br/><br/>`false`:<br/>-`SH_SAVE` and `KV_SAVE` not available<br/>- `path` is not checked.|
 |path|string|Path to the directory where data is stored. Must be a directory.<br/>If `enabled` is true, this path must exist.|
 
-See [SH_SAVE](../api/sessions/sh-save) or [KV_SAVE](../api/kv/sh-save) for more.
+See [SH_SAVE](../api/sessions/sh-save) or [KV_SAVE](../api/kv/kv-save) for more.
 
 <br/>
 
