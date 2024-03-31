@@ -738,8 +738,8 @@ public:
     }
     
 
-    rsp["SH_SAVE_RSP"]["st"] = toUnderlying(status);
-    rsp["SH_SAVE_RSP"]["duration"] = chrono::duration_cast<chrono::milliseconds>(NemesisClock::now() - start).count();
+    rsp["KV_SAVE_RSP"]["st"] = toUnderlying(status);
+    rsp["KV_SAVE_RSP"]["duration"] = chrono::duration_cast<chrono::milliseconds>(NemesisClock::now() - start).count();
 
     return rsp;
   }
