@@ -36,17 +36,13 @@ COPY core ./core/
 
 
 
-# configure
+# configure (note: #NBD_BUILD_DOCKER not used in code, but may be useful for future)
 WORKDIR /build/server
 RUN cmake -B ./ -S . -DCMAKE_TOOLCHAIN_FILE:STRING=/build/vcpkg/scripts/buildsystems/vcpkg.cmake -DCMAKE_EXPORT_COMPILE_COMMANDS:BOOL=TRUE \
                     -DCMAKE_BUILD_TYPE:STRING=Release -DCMAKE_C_COMPILER:FILEPATH=/usr/bin/gcc -DCMAKE_CXX_COMPILER:FILEPATH=/usr/bin/g++ \
-                    -DCMAKE_CXX_FLAGS:="-DNEMESIS_BUILD_DOCKER" \
+                    -DCMAKE_CXX_FLAGS:="-DNBD_BUILD_DOCKER" \
                     -S/build/server -B/build/cmakebuild -G "Unix Makefiles"
 
-# NOTE: removed -DBOOST_FIBERS_NO_ATOMICS from cmake_cxx_flags because it causes a compilation error.
-#       this docs say to "compile the library" with this definition, but I would expect the application requires it as well.
-#       the cause of the compile error is obvious, too obvious to have not been noticed and fixed.
-#       see:  https://github.com/boostorg/fiber/issues/301
 
 # build
 WORKDIR /build/cmakebuild
