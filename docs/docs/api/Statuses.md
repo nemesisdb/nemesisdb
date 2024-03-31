@@ -12,7 +12,7 @@ This table lists a 'friendly name' and value. The friendly name is used througho
 ## General
 |Name|Value|Meaning
 |:---|:---:|:---|
-|Ok|1|Command successful, everything good|
+|Ok|1|Command successful|
 |PayLoadInvalid|2|WebSocket pay invalid, must be text|
 |JsonInvalid|3|JSON failed parsing|
 |PathInvalid|4|Path invalid|
@@ -37,7 +37,6 @@ This table lists a 'friendly name' and value. The friendly name is used througho
 ## Keys
 |Name|Value|Meaning
 |:---|:---:|:---|
-|KeySet|20|Key value is set.|
 |KeyNotExist|22|Key does not exist|
 
 

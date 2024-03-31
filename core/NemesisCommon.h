@@ -64,7 +64,6 @@ enum class RequestStatus
   CommandType,
   CommandSyntax,
   CommandDisabled,
-  KeySet = 20,
   KeyNotExist = 22,
   ParamMissing = 26,
   ValueMissing = 40,
