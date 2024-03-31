@@ -33,7 +33,7 @@ namespace fs = std::filesystem;
 namespace chrono = std::chrono;
 namespace jsonpath = jsoncons::jsonpath;
 
-static const char * NEMESIS_VERSION = "0.6";
+static const char * NEMESIS_VERSION = "0.6.1";
 static const std::size_t NEMESIS_CONFIG_VERSION = 4U;
 
 static const std::size_t NEMESIS_KV_MINPAYLOAD = 64U;
@@ -65,13 +65,8 @@ enum class RequestStatus
   CommandSyntax,
   CommandDisabled,
   KeySet = 20,
-  KeyUpdated,
-  KeyNotExist,
-  KeyExists,
-  KeyRemoved,
-  Reserved2,
-  ParamMissing,
-  KeyTypeInvalid,
+  KeyNotExist = 22,
+  ParamMissing = 26,
   ValueMissing = 40,
   ValueTypeInvalid,
   ValueSize,
