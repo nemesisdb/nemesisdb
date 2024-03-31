@@ -22,7 +22,7 @@ This table lists a 'friendly name' and value. The friendly name is used througho
 |CommandType|12|Command is known but it is the incorrect type (most commands are objects)|
 |CommandSyntax|13|Command is known but contains invalid syntax. `m` will contain the offending parameter if known.|
 |CommandDisabled|14|Command has been disabled (only applies to `SH_SAVE`)|
-|ParamMissing|26|A param is not in the command|
+|ParamMissing|26|A required parameter missing|
 
 
 ## Session
@@ -38,11 +38,7 @@ This table lists a 'friendly name' and value. The friendly name is used througho
 |Name|Value|Meaning
 |:---|:---:|:---|
 |KeySet|20|Key value is set.|
-|KeyUpdated|21|Key already existed and has been updated|
 |KeyNotExist|22|Key does not exist|
-|KeyExist|23|Key exists|
-|KeyRemoved|24|Key deleted/removed|
-|KeyTypeInvalid|27|Key wrong type. Must always be a string|
 
 
 ## Values
