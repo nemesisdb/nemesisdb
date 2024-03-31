@@ -16,6 +16,11 @@ Removes all keys from the session. If you want to remove keys individually, use 
 |st|unsigned int|Status|
 |cnt|unsigned int|Number of keys cleared|
 
+<br/>
+
+:::info
+The `tkn` must be set when the server mode is "kv_sessions".
+:::
 
 Possible status values:
 

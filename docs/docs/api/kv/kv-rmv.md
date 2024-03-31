@@ -8,8 +8,15 @@ Removes one or multiple keys. If you want to remove all keys, use `KV_CLEAR`.
 
 |Param|Type|Meaning|Required|
 |:---|:---|:---|:---:|
-|keys|array|Array of keys to remove|Y|
+|keys|array|Keys to remove|Y|
 
+<br/>
+
+:::info
+The `tkn` must be set when the server mode is "kv_sessions".
+:::
+
+<br/>
 
 ## Response
 
@@ -23,7 +30,7 @@ Removes one or multiple keys. If you want to remove all keys, use `KV_CLEAR`.
 
 <br/>
 
-It is not an error if `keys` contains a key that does not exist.
+If `keys` contains a key that does not exist it is ignored.
 
 
 Possible status:

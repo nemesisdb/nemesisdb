@@ -14,6 +14,12 @@ Searches the values and returns keys, data or paths.
 
 <br/>
 
+:::info
+The `tkn` must be set when the server mode is "kv_sessions".
+:::
+
+<br/>
+
 The response depends on `rsp` ([examples](#examples) below):
 
 

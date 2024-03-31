@@ -8,7 +8,7 @@ Check if a key exists.
 
 |Param|Type|Meaning|Required|
 |:---|:---|:---|:---:|
-|keys|array|Array of key names|Y|
+|keys|array|Key to check|Y|
 
 
 ```json
@@ -31,6 +31,12 @@ Check if a key exists.
 |contains|array|Array of key names that do exist|
 
 If a key does not exist, it is not present in `contains`.
+
+<br/>
+
+:::info
+The `tkn` must be set when the server mode is "kv_sessions".
+:::
 
 Possible status values:
 

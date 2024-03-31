@@ -82,6 +82,7 @@ To switch session, just change the token (`tkn`).
 
 ### Sessions Disabled
 
-- There is a single key-value map which all users share
+- A single map stores all keys
 - No session token required in each `KV_` command
+- Lower memory usage and latency
 

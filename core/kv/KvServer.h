@@ -32,7 +32,7 @@ class Server
 public:
   Server() : m_run(true)
   {
-    kv::serverStats = nullptr;
+    //kv::serverStats = nullptr;
   }
 
 
@@ -59,13 +59,10 @@ public:
 
       if (s_kvHandler.handler)
         delete s_kvHandler.handler;
-
-      if (kv::serverStats)
-        delete kv::serverStats;
     }
-    catch (...)
+    catch (const std::exception& ex)
     {
-      // ignore, shutting down
+      //ignore, shutting down
     }
     
 
@@ -73,7 +70,7 @@ public:
     m_sockets.clear();
     m_monitorTimer = nullptr;
     s_kvHandler.handler = nullptr;
-    kv::serverStats = nullptr;
+    //kv::serverStats = nullptr;
   }
 
 
@@ -82,25 +79,28 @@ public:
     if (!init(config.cfg))
       return false;
 
-    if constexpr(HaveSessions) 
+    if (config.load())
     {
-      if ((config.load()))
+      if (auto [ok, msg] = load(config); !ok)
       {
-        if (auto [ok, msg] = load(config); !ok)
-        {
-          PLOGF << msg;
-          return false;
-        }
+        PLOGF << msg;
+        return false;
       }
     }
+
+    const auto [ip, port, maxPayload] = NemesisConfig::wsSettings(config.cfg);
+    const std::size_t preferredCore = NemesisConfig::preferredCore(config.cfg); 
+    std::size_t core = 0;
     
+    if (const auto maxCores = std::thread::hardware_concurrency(); maxCores == 0)
+      PLOGE << "Could not acquire available cores";
+    else if (preferredCore > maxCores)
+      PLOGE << "'core' value in config is above maximum available: " << maxCores;
+    else
+      core = preferredCore;
 
-    const unsigned int maxPayload = config.cfg["kv"]["maxPayload"].as<unsigned int>();
-    const std::string ip = config.cfg["kv"]["ip"].as_string();
-    const int port = config.cfg["kv"]["port"].as<unsigned int>();
 
-
-    if (!startWsServer(ip, port, maxPayload, serverStats))
+    if (!startWsServer(ip, port, maxPayload, core))
       return false;
         
 
@@ -118,55 +118,52 @@ public:
     static void onMonitor (struct us_timer_t *)
     {
       if constexpr (HaveSessions)
-        s_kvHandler.handler->monitor();
+      {
+        if (s_kvHandler.handler)
+          s_kvHandler.handler->monitor();
+      }
     }
 
 
     bool init(const njson& config)
     {
-      if constexpr (HaveSessions)
+      if (NemesisConfig::saveEnabled(config))
       {
-        if (NemesisConfig::kvSaveEnabled(config))
+        // test we can write to the kv save path
+        if (std::filesystem::path path {NemesisConfig::savePath(config)}; !std::filesystem::exists(path) || !std::filesystem::is_directory(path))
         {
-          // test we can write to the kv save path
-          if (std::filesystem::path path {NemesisConfig::kvSavePath(config)}; !std::filesystem::exists(path) || !std::filesystem::is_directory(path))
+          PLOGF << "save path is not a directory or does not exist";
+          return false;
+        }
+        else
+        {
+          const auto filename = createUuid();
+          const fs::path fullPath{path / filename};
+
+          if (std::ofstream testStream{fullPath}; !testStream.good())
           {
-            PLOGF << "kv:session::save::path is not a directory or does not exist";
+            PLOGF << "Failed test write to save path: " << path;
             return false;
           }
           else
-          {
-            const auto filename = createUuid();
-            std::filesystem::path fullPath{path};
-            fullPath /= filename;
-
-            if (std::ofstream testStream{fullPath}; !testStream.good())
-            {
-              PLOGF << "Cannot write to kv:session::save::path";
-              return false;
-            }
-            else
-              std::filesystem::remove(fullPath);
-          }
+            std::filesystem::remove(fullPath);
         }
       }
       
 
-      kv::serverStats = new kv::ServerStats;
-      s_kvHandler.handler = new kv::KvHandler<HaveSessions> {config}; // TODO
+      //kv::serverStats = new kv::ServerStats;
+      s_kvHandler.handler = new kv::KvHandler<HaveSessions> {config};
 
       return true;
     }
     
     
-    bool startWsServer (const std::string& ip, const int port, const unsigned int maxPayload, kv::ServerStats * stats)
+    bool startWsServer (const std::string& ip, const int port, const unsigned int maxPayload, /*kv::ServerStats * stats,*/ const std::size_t core)
     {
-      const std::size_t core = 0;
-
       bool listening{false};
       std::latch startLatch (1);
 
-      auto listen = [this, ip, port, &listening, &startLatch, maxPayload, stats]()
+      auto listen = [this, ip, port, &listening, &startLatch, maxPayload/*, stats*/]()
       {
         char requestBuffer[NEMESIS_KV_MAXPAYLOAD] = {};
         
@@ -182,9 +179,9 @@ public:
           {
             m_wsClients.insert(ws);
           },          
-          .message = [this, stats, &requestBuffer](KvWebSocket * ws, std::string_view message, uWS::OpCode opCode)
+          .message = [this, /*stats,*/ &requestBuffer](KvWebSocket * ws, std::string_view message, uWS::OpCode opCode)
           { 
-            ++serverStats->queryCount;
+            //++serverStats->queryCount; actually do this
 
             if (opCode != uWS::OpCode::TEXT)
               ws->send(createErrorResponse(RequestStatus::OpCodeInvalid).to_string(), kv::WsSendOpCode);
@@ -271,10 +268,13 @@ public:
 
         if (listening)
         {
-          if (!setThreadAffinity(m_thread->native_handle(), core))
-            PLOGW << "Failed to assign io thread to core " << core;
-          else
+          if (setThreadAffinity(m_thread->native_handle(), core))
+          {
+            PLOGI << "Core: " << core;
             started = true;
+          }
+          else
+            PLOGE << "Failed to assign server to core " << core;
         }
         else
           PLOGE << "Failed to start WS server";
@@ -288,46 +288,15 @@ public:
     }
 
 
-    std::tuple<bool, std::string> load(const NemesisConfig& config)
-      requires(HaveSessions)
+    std::tuple<bool, const std::string_view> load(const NemesisConfig& config)
     {
-      const fs::path root = config.loadPath / config.loadName;
-
-      PLOGI << "Loading " << root;
-
-      if (!fs::exists(root))
-        return {false, "Load name does not exist"};
-      
-      if (!fs::is_directory(root))
-        return {false, "Path to load name is not a directory"};
-
-      
-      // loadRoot may contain several saves (i.e. SH_SAVE used multiple times with the same 'name'),
-      // so use getDefaultDataSetPath() to get the most recent
-      const auto datasetRoot = getDefaultDataSetPath(root);
-
-      // check data dir and metadata file
-      const fs::path data = datasetRoot / "data";
-      const fs::path mdFile = datasetRoot / "md" / "md.json";
-
-      if (!(fs::exists(data) && fs::is_directory(data)))
-        return {false, "'data' directory does not exist or is not a directory"};
-      
-      if (!fs::exists(mdFile))
-        return {false, "metadata does not exist"};
-
-
-      PLOGI << "Reading metadata in " << mdFile;
-
-      std::ifstream mdStream {mdFile};
-      const auto mdJson = njson::parse(mdStream);
-
-      if (!mdJson.contains("status") || !mdJson["status"].is_uint64())
-        return {false, "Metadata file invalid"};
-      else if (mdJson["status"] != toUnderlying(KvSaveStatus::Complete))
-        return {false, "Cannot load: save was incomplete"};
+      if (const auto [valid, msg] = validatePreLoad(config.loadName, config.loadPath, HaveSessions); !valid)
+      {
+        return {false, msg};
+      }
       else
       {
+        const auto [root, md, data, pathsValid] = getLoadPaths(config.loadPath / config.loadName);
         const auto loadResult = s_kvHandler.handler->internalLoad(config.loadName, data);
         const auto success = loadResult.status == RequestStatus::LoadComplete;
 
@@ -336,9 +305,10 @@ public:
         if (success)
         {
           PLOGI << "Status: Success";
-          PLOGI << "Sessions: " << loadResult.nSessions ;
+          if constexpr (HaveSessions)
+            PLOGI << "Sessions: " << loadResult.nSessions ;
           PLOGI << "Keys: " << loadResult.nKeys ;
-          PLOGI << "Duration: " << chrono::duration_cast<std::chrono::milliseconds>(loadResult.loadTime).count() << "ms";
+          PLOGI << "Duration: " << chrono::duration_cast<std::chrono::milliseconds>(loadResult.duration).count() << "ms";
         }
         else
           PLOGI << "Status: Fail";
@@ -346,7 +316,7 @@ public:
         PLOGI << "----------";
         
         return {success, ""};
-      }
+      }     
     }
     
 

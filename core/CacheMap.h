@@ -8,6 +8,7 @@
 namespace nemesis { namespace core {
 
 
+//template<bool HaveSessions>
 class CacheMap
 {
   using Map = ankerl::unordered_dense::segmented_map<cachedkey, cachedvalue>;
@@ -16,6 +17,29 @@ class CacheMap
 
 public:
   
+  CacheMap& operator=(CacheMap&&) = default; // required by Map::erase()
+  CacheMap(CacheMap&&) = default;
+
+  CacheMap& operator=(const CacheMap&) = delete;   
+  CacheMap(CacheMap&) = delete;
+
+
+  CacheMap (): m_map() // TODO look into affects of reserving buckets. when HaveSessions true, this is per Session
+  {
+  }
+
+  // CacheMap () : m_map(10'000) 
+  //   requires(!HaveSessions)
+  // {
+  // }
+
+  
+  // // With sessions, this is allocated *per session*
+  // CacheMap () : m_map(100) 
+  //   requires(HaveSessions)
+  // {
+  // }
+
   void set (cachedkey key, cachedvalue value)
   {
     m_map.insert_or_assign(std::move(key), std::move(value));
@@ -24,16 +48,18 @@ public:
 
   std::optional<std::reference_wrapper<const cachedvalue>> get (const cachedkey& key) const
   {
+    std::optional<std::reference_wrapper<const cachedvalue>> ret{};
+
     if (const auto it = m_map.find(key) ; it != m_map.cend())
-      return {it->second};
-    else
-      return {};
+      ret = it->second;
+
+    return ret;
   };
 
 
-  void add (const cachedkey key, cachedvalue value)
+  void add (cachedkey key, cachedvalue value)
   {
-    m_map.try_emplace(key, std::move(value));
+    m_map.try_emplace(std::move(key), std::move(value));
   }
 
 
@@ -50,7 +76,6 @@ public:
 
     try
     {
-      m_map.clear();
       m_map.replace(Map::value_container_type{});
     }
     catch (...)

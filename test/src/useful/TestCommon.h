@@ -33,31 +33,35 @@ class KvTestServer  : public ::testing::Test
 {
 protected:
 	constexpr static auto DefaultCfg = R"(
+	{
+		"version":4,
+		"mode":"kv",
+		"core":0,
+		"ip":"127.0.0.1",
+		"port":1987,
+		"maxPayload":1024,
+		"kv":
 		{
-			"version":3,
-			"mode":"kv",
-			"kv":
+			"save":
 			{
-				"ip":"127.0.0.1",
-				"port":1987,
-				"maxPayload":1024,
-				"sessions":
-				{
-					"enabled":false,
-					"save":
-					{
-						"enabled":false,
-						"path":"./data"
-					}
-				}
-			},
-			"ts":
-			{
-				"ip":"127.0.0.1",
-				"port":1987,
-				"maxPayload":1024
+				"enabled":false,
+				"path":"./data"
 			}
-		})"sv;
+		},
+		"kv_sessions":
+		{
+			"save":
+			{
+				"enabled":false,
+				"path":"./data"
+			}
+		}
+		,
+		"ts":
+		{
+			
+		}
+	})"sv;
 
 
 public:
@@ -91,59 +95,65 @@ class KvSessionTestServer  : public ::testing::Test
 {
 protected:
 	constexpr static auto DefaultCfg = R"(
+	{
+		"version":4,
+		"mode":"kv_sessions",
+		"core":0,
+		"ip":"127.0.0.1",
+		"port":1987,
+		"maxPayload":1024,
+		"kv":
 		{
-			"version":3,
-			"mode":"kv",
-			"kv":
+			"save":
 			{
-				"ip":"127.0.0.1",
-				"port":1987,
-				"maxPayload":1024,
-				"sessions":
-				{
-					"enabled":true,
-					"save":
-					{
-						"enabled":false,
-						"path":"./data"
-					}
-				}
-			},
-			"ts":
-			{
-				"ip":"127.0.0.1",
-				"port":1987,
-				"maxPayload":1024
+				"enabled":false,
+				"path":"./data"
 			}
-		})"sv;
+		},
+		"kv_sessions":
+		{
+			"save":
+			{
+				"enabled":false,
+				"path":"./data"
+			}
+		},
+		"ts":
+		{
+			
+		}
+	})"sv;
 
 
 	constexpr static auto EnableSaveCfg = R"(
+	{
+		"version":4,
+		"mode":"kv_sessions",
+		"core":0,
+		"ip":"127.0.0.1",
+		"port":1987,
+		"maxPayload":1024,
+		"kv":
 		{
-			"version":3,
-			"mode":"kv",
-			"kv":
+			"save":
 			{
-				"ip":"127.0.0.1",
-				"port":1987,
-				"maxPayload":1024,
-				"sessions":
-				{
-					"enabled":true,
-					"save":
-					{
-						"enabled":true,
-						"path":"./data"
-					}
-				}
-			},
-			"ts":
-			{
-				"ip":"127.0.0.1",
-				"port":1987,
-				"maxPayload":1024
+				"enabled":false,
+				"path":"./data"
 			}
-		})"sv;
+		},
+		"kv_sessions":
+		{
+			"save":
+			{
+				"enabled":true,
+				"path":"./data"
+			}
+		},
+		"ts":
+		{
+			
+		}
+	})"sv;
 
 
 public:
@@ -173,6 +183,7 @@ protected:
 };
 
 
+// This called generic "NemesisTest" to avoid having to change TEST_F() arguments for all tests
 class NemesisTest : public nemesis::test::KvSessionTestServer
 {
 public:
@@ -181,16 +192,6 @@ public:
 
   }
 };
-
-/* 
-class NemesisTestNoSessions : public nemesis::test::KvTestServer
-{
-public:
-  NemesisTestNoSessions() : KvTestServer(DefaultCfg)
-  {
-
-  }
-}; */
 
 
 class NemesisTestSaveEnablePathNotExist : public nemesis::test::KvSessionTestServer
@@ -201,9 +202,9 @@ public:
 
   }
 
-	void SetUp() override
+	virtual void SetUp() override
 	{
-		ASSERT_FALSE(m_server.run(m_config));
+    ASSERT_FALSE(m_server.run(m_config));
 	}
 };
 
@@ -323,7 +324,10 @@ struct TestClient
 				responses.emplace_back (testjson::parse(response.msg));
 			}
 			
-			latch->count_down();
+			if (latch)
+				latch->count_down();
+			else
+				std::cout << "Unexpected response: " << response.msg << '\n';
 		}
 	};
 
@@ -410,7 +414,7 @@ struct TestClient
 
 			auto& rsp = responses[0];
 
-			if (rsp.contains("SH_NEW_RSP") && rsp["SH_NEW_RSP"]["st"] == 1)
+			if (rsp.contains("SH_NEW_RSP") && rsp["SH_NEW_RSP"]["st"] == (int)RequestStatus::Ok)
 			{
 				token["tkn"] = rsp["SH_NEW_RSP"]["tkn"];
 				return true;

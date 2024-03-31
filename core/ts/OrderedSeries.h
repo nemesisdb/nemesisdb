@@ -19,7 +19,7 @@ inline static const njson EmptyResult (json_object_arg, {{"t", json_array_arg_t{
 /// Represents a time series where submitted data is always gauranteed to be ordered by the sender.
 /// Or in other words: OrderedSeries does not sort the data before it is stored. 
 /// Uses parallel vectors to hold time and value data:
-///   An event occurring at m_times[i] has metrics in m_events[i].
+///   An event occurring at m_times[i] has event object at m_events[i].
 class OrderedSeries : public BaseSeries
 {
   using TimeVector = std::vector<SeriesTime>;
@@ -296,7 +296,7 @@ private:
 
   // operator functions:
   //  each returns an iterator to the start and end to Index entries which matched the criteria
-  //  these are returned to caller, then sorted by the time index, before retrieving values and returning the response.
+  //  these are added to the results and intersected by IndexSearchResults
 
   std::tuple<Index::IndexMapConstIt, Index::IndexMapConstIt> eq (const std::map<njson, IndexNode>& indexMap, const njson& value, njson& rsp) const
   {

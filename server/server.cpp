@@ -46,22 +46,27 @@ int main (int argc, char ** argv)
   #ifdef NDB_DEBUG
     config.cfg["version"] = 1;
     config.cfg["mode"] = "kv";
+    config.cfg["core"] = 0;
 
-    config.cfg["kv"]["ip"] = "127.0.0.1";
-    config.cfg["kv"]["port"] = 1987;
-    config.cfg["kv"]["maxPayload"] = 2048;
-    config.cfg["kv"]["sessions"]["enabled"] = true;
-    config.cfg["kv"]["sessions"]["save"]["enabled"] = true;
-    config.cfg["kv"]["sessions"]["save"]["path"] = "./data";
+    config.cfg["ip"] = "127.0.0.1";
+    config.cfg["port"] = 1987;
+    config.cfg["maxPayload"] = 2048;
+
+    config.cfg["kv"]["save"]["enabled"] = false;
+    config.cfg["kv"]["save"]["path"] = "./data";
+
+    config.cfg["kv_sessions"]["save"]["enabled"] = false;
+    config.cfg["kv_sessions"]["save"]["path"] = "./data";
 
     config.cfg["ts"]["ip"] = "127.0.0.1";
     config.cfg["ts"]["port"] = 1987;
-    config.cfg["ts"]["maxPayload"] = 2048;
 
-    if (config.cfg["kv"]["sessions"]["enabled"] == true && !fs::exists(config.cfg["kv"]["sessions"]["save"]["path"].as_string()))
-      fs::create_directories(config.cfg["kv"]["sessions"]["save"]["path"].as_string());
+    if (NemesisConfig::serverMode(config.cfg) == ServerMode::KvSessions && !fs::exists(config.cfg["kv_sessions"]["save"]["path"].as_string()))
+      fs::create_directories(config.cfg["kv_sessions"]["save"]["path"].as_string());
+    else if (NemesisConfig::serverMode(config.cfg) == ServerMode::Kv && !fs::exists(config.cfg["kv"]["save"]["path"].as_string()))
+      fs::create_directories(config.cfg["kv"]["save"]["path"].as_string());
 
-    // config.loadPath = NemesisConfig::kvSavePath(config.cfg);
+    // config.loadPath = NemesisConfig::savePath(config.cfg);
     // config.loadName = "t2";
       
   #else
@@ -72,62 +77,44 @@ int main (int argc, char ** argv)
   
   int error = 0;
 
-  if (config.serverMode() == ServerMode::KV)
+  auto runServer = [&config, &error]<typename Server> (Server&& server)
   {
-    PLOGI << "Mode: KV";
-
-    if (NemesisConfig::haveSessions(config.cfg))
-    {
-      PLOGI << "Sessions: Enabled";
-
-      kv::KvSessionServer server;
-
-      if (server.run(config))
-        run.wait();
-      else
-      {
-        error = 1;
-        run.count_down();
-      }
-    
-      server.stop();
-    }      
-    else
-    {
-      PLOGI << "Sessions: Disabled";
-
-      kv::KvServer server;
-
-      if (server.run(config))
-        run.wait();
-      else
-      {
-        error = 1;
-        run.count_down();
-      }
-    
-      server.stop();
-    }
-  }
-  else if (config.serverMode() == ServerMode::TS)
-  {
-    PLOGI << "Mode: TS";
-
-    ts::TsServer tsServer;
-    
-    if (tsServer.run(config))
+    if (server.run(config))
       run.wait();
     else
     {
       error = 1;
       run.count_down();
     }
-  }
-  else
-  {
-    // caught by readConfig()
-  }
   
+    server.stop();
+  };
+  
+
+  PLOGI_IF (NemesisConfig::saveEnabled(config.cfg))  << "Save: Enabled (" << NemesisConfig::savePath(config.cfg) << ')';
+  PLOGI_IF (!NemesisConfig::saveEnabled(config.cfg)) << "Save: Disabled";
+
+  switch (NemesisConfig::serverMode(config.cfg))
+  {
+    case ServerMode::KV:
+      PLOGI << "Mode: KV";
+      runServer (kv::KvServer{});
+    break;
+
+    case ServerMode::KvSessions:
+      PLOGI << "Mode: KV Sessions";
+      runServer (kv::KvSessionServer{});
+    break;
+
+    case ServerMode::TS:
+      PLOGI << "Mode: TS";
+      runServer (ts::TsServer{});
+    break;
+
+    default:
+      // caught by readConfig()
+    break;
+  }
   
   return error;
 }

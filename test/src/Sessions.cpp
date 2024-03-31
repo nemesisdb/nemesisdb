@@ -226,7 +226,7 @@ TEST_F(NemesisTest, New_TwoSesh)
   ASSERT_EQ(sesh1Info.actual[0]["SH_INFO_RSP"]["keyCnt"], 2);
 
 
-  tc1.test(sesh2Info);
+  tc2.test(sesh2Info);
   ASSERT_EQ(sesh2Info.actual[0]["SH_INFO_RSP"]["tkn"], tc2.token["tkn"]);
   ASSERT_EQ(sesh2Info.actual[0]["SH_INFO_RSP"]["keyCnt"], 0);
 

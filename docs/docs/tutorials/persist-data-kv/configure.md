@@ -13,8 +13,8 @@ The settings for save and load are in the server [config](../../home/config), wh
 
 - When `enabled` is false:
   - `path` does not need to exist
-  - `SH_SAVE` is disabled
-  - `SH_LOAD` is still available
+  - `KV_SAVE` is disabled
+  - `KV_LOAD` is still available
 - When `enabled` is true:
   - `path` must exist and be a directory
   - The server will fail startup if `path` is not valid

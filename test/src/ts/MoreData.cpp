@@ -187,7 +187,7 @@ TEST_F(TsSeriesTest, Test10k_Index)
 
 
 // As Test10K_Index, but create the index *after* data is added, to force build index
-TEST_F(TsSeriesTest, Test10k_NoIndex)
+TEST_F(TsSeriesTest, Test10k_CreateIndex)
 {
   Series s;
   createMoreData({"../test_data/moredata_10k.json"}, s, false);
@@ -195,16 +195,10 @@ TEST_F(TsSeriesTest, Test10k_NoIndex)
 
   // data added by createMoreData(), now create index
   {
-    #ifdef NDEBUG
     BasicMeasureDuration<TsRequestStatus> md{[CreateIndexRspCmd = CreateIndexRspCmd, &s](){ return s.createIndex("os1", "temp", CreateIndexRspCmd).status;}, "Create Index"};
     ASSERT_EQ(md.result, TsRequestStatus::Ok);
-    #else
-    ASSERT_EQ(s.createIndex("os1", "temp", CreateIndexRspCmd).status, TsRequestStatus::Ok);
-    #endif
   }
   
-  
-
   // == (in full range)
   {
     auto q = njson::parse(R"(

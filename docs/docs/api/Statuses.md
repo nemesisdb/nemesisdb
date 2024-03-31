@@ -12,7 +12,7 @@ This table lists a 'friendly name' and value. The friendly name is used througho
 ## General
 |Name|Value|Meaning
 |:---|:---:|:---|
-|Ok|1|Command successful, everything good|
+|Ok|1|Command successful|
 |PayLoadInvalid|2|WebSocket pay invalid, must be text|
 |JsonInvalid|3|JSON failed parsing|
 |PathInvalid|4|Path invalid|
@@ -22,7 +22,7 @@ This table lists a 'friendly name' and value. The friendly name is used througho
 |CommandType|12|Command is known but it is the incorrect type (most commands are objects)|
 |CommandSyntax|13|Command is known but contains invalid syntax. `m` will contain the offending parameter if known.|
 |CommandDisabled|14|Command has been disabled (only applies to `SH_SAVE`)|
-|ParamMissing|26|A param is not in the command|
+|ParamMissing|26|A required parameter missing|
 
 
 ## Session
@@ -37,12 +37,7 @@ This table lists a 'friendly name' and value. The friendly name is used througho
 ## Keys
 |Name|Value|Meaning
 |:---|:---:|:---|
-|KeySet|20|Key value is set.|
-|KeyUpdated|21|Key already existed and has been updated|
 |KeyNotExist|22|Key does not exist|
-|KeyExist|23|Key exists (i.e. with `KV_CONTAINS`)|
-|KeyRemoved|24|Key deleted/removed|
-|KeyTypeInvalid|27|Key wrong type. Must always be a string|
 
 
 ## Values
@@ -65,5 +60,5 @@ This table lists a 'friendly name' and value. The friendly name is used througho
 ## Load
 |Name|Value|Meaning
 |:---|:---:|:---|
-|LoadComplete|141|Session(s) loaded without error|
+|LoadComplete|141|Data loaded without error|
 |LoadError|142|Error during load|

@@ -5,8 +5,6 @@ sidebar_position: 50
 # KV_GET
 Get one or multiple keys.
 
-The command requires the token and an array of keys to retrieve. 
-
 
 |Param|Type|Meaning|Required|
 |:---|:---|:---|:---:|
@@ -24,15 +22,14 @@ The command requires the token and an array of keys to retrieve.
 
 <br/>
 
-If a key does not exist it is not returned.
+If a key does not exist it is ignored and not present in the response.
 
 Possible status values:
 
-- KeyNotExists
-- ParamMissing (no `keys`)
-- ValueTypeInvalid (`keys` not an array)
+- ParamMissing
+- ValueTypeInvalid
 
-See the [response status](./../Statuses) page for status values.
+See the [response status](./../Statuses) for status values.
 
 
 ## Examples

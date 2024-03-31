@@ -16,6 +16,11 @@ This differs from `KV_SET` because `KV_SET` overwrites the entire key's value.
 |path|string|JSON path which returns an element to update|Y|
 |value|various|This value will be assigned to the element returned by `path`|Y|
 
+<br/>
+
+:::info
+The `tkn` must be set when the server mode is "kv_sessions".
+:::
 
 For example, if we store this:
 
