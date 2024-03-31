@@ -32,12 +32,6 @@ cd package
 ./docker_build.sh <version>
 ```
 
-After build:
--  `docker push nemesisdb/nemesisdb:<version>`
--  `docker tag nemesisdb/nemesisdb:<version> nemesisdb/nemesisdb:latest`
--  `docker push nemesisdb/nemesisdb:latest`
-
-
 ## Docs
 
 Build:
