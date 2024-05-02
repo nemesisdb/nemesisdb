@@ -17,7 +17,7 @@ This command does not check for duplicate items.
 |:---|:---|:---|:---:|
 |key|string|Key containing the value to update|Y|
 |items|array|Items to append|Y|
-|arrayName|string|If the key's value is an array, the `arrayName` must be omitted.<br/>If the key's value is an object, `arrayName` is the array's name.|N|
+|name|string|If the key's value is an array, the `name` must be omitted.<br/>If the key's value is an object, `name` is the array's name.|N|
 
 <br/>
 
@@ -40,7 +40,7 @@ Possible status values:
 
 - Ok
 - KeyNotExist
-- Unknown (`key` or `arrayName` not an array)
+- Unknown (`key` or `name` not an array)
 
 See the [response status](./../Statuses) page for status values.
 
@@ -108,10 +108,10 @@ We can append `"Saracens"` to `teams`:
   "KV_ARR_APPEND":
   {    
     "key":"profile",    
-    "arrayName":"teams",
+    "name":"teams",
     "items":["Saracens"]
   }
 }
 ```
 
-We must set `arrayName` because the key (`profile`) is an object containing the `teams` array.
+We must set `name` because the key (`profile`) is an object containing the `teams` array.
