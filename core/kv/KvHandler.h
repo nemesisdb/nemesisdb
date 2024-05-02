@@ -21,7 +21,18 @@ template<bool HaveSessions>
 class KvHandler
 {
 public:
-  KvHandler(const njson& config) :  m_config(config)
+  KvHandler(const njson& config) requires (HaveSessions) :
+    m_config(config),
+    m_container() // Sessions sets the initial bucket count
+    
+  {
+  }
+
+
+  KvHandler(const njson& config) requires (!HaveSessions) :
+    m_config(config),
+    m_container(50'000) // Adds ~2Mb to initial memory use
+    
   {
   }
   
@@ -77,7 +88,8 @@ private:
       {KvQueryType::KvFind,       Handler{std::bind_front(&KvHandler<HaveSessions>::find,       std::ref(*this)), "KV_FIND",      "KV_FIND_RSP"}},
       {KvQueryType::KvUpdate,     Handler{std::bind_front(&KvHandler<HaveSessions>::update,     std::ref(*this)), "KV_UPDATE",    "KV_UPDATE_RSP"}},
       {KvQueryType::KvKeys,       Handler{std::bind_front(&KvHandler<HaveSessions>::keys,       std::ref(*this)), "KV_KEYS",      "KV_KEYS_RSP"}},
-      {KvQueryType::KvClearSet,   Handler{std::bind_front(&KvHandler<HaveSessions>::clearSet,   std::ref(*this)), "KV_CLEAR_SET", "KV_CLEAR_SET_RSP"}}
+      {KvQueryType::KvClearSet,   Handler{std::bind_front(&KvHandler<HaveSessions>::clearSet,   std::ref(*this)), "KV_CLEAR_SET", "KV_CLEAR_SET_RSP"}},
+      {KvQueryType::KvArrayAppend, Handler{std::bind_front(&KvHandler<HaveSessions>::arrayAppend, std::ref(*this)), "KV_ARR_APPEND", "KV_ARR_APPEND_RSP"}}
       
     }, 1, alloc);
 
@@ -123,7 +135,8 @@ private:
       {"KV_FIND",         KvQueryType::KvFind},
       {"KV_UPDATE",       KvQueryType::KvUpdate},
       {"KV_KEYS",         KvQueryType::KvKeys},
-      {"KV_CLEAR_SET",    KvQueryType::KvClearSet}
+      {"KV_CLEAR_SET",    KvQueryType::KvClearSet},
+      {"KV_ARR_APPEND",   KvQueryType::KvArrayAppend}
     }, 1, alloc); 
 
 
@@ -712,6 +725,13 @@ private:
       executeKvCommand(queryRspName, ws, json, KvExecutor<HaveSessions>::clearSet);
   }
   
+
+  ndb_always_inline void arrayAppend(const std::string_view queryName, const std::string_view queryRspName, KvWebSocket * ws, njson& json)
+  {
+    if (isValid(queryRspName, ws, json, {{Param::required("key", JsonString)}, {Param::required("items", JsonArray)}, {Param::optional("name", JsonString)}}))
+      executeKvCommand(queryRspName, ws, json, KvExecutor<HaveSessions>::arrayAppend);
+  }
+
 
   void kvSave(const std::string_view queryName, const std::string_view queryRspName, KvWebSocket * ws, njson& json)
   {

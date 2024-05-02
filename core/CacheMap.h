@@ -23,22 +23,11 @@ public:
   CacheMap& operator=(const CacheMap&) = delete;   
   CacheMap(CacheMap&) = delete;
 
-
-  CacheMap (): m_map() // TODO look into affects of reserving buckets. when HaveSessions true, this is per Session
+  
+  CacheMap (const std::size_t buckets = 0) : m_map(buckets) 
   {
   }
 
-  // CacheMap () : m_map(10'000) 
-  //   requires(!HaveSessions)
-  // {
-  // }
-
-  
-  // // With sessions, this is allocated *per session*
-  // CacheMap () : m_map(100) 
-  //   requires(HaveSessions)
-  // {
-  // }
 
   void set (cachedkey key, cachedvalue value)
   {
@@ -98,6 +87,38 @@ public:
   {
     return m_map.contains(key);
   };
+
+
+  // Adds items to arrayName (must be an array). Caller must check key exists.
+  bool arrayAppend (const cachedkey& key, const njson& items) 
+  {
+    bool appended = true;
+
+    if (auto& value = m_map.at(key); value.is_array())
+      value.insert(value.array_range().cend(), items.array_range().cbegin(), items.array_range().cend());
+    else
+      appended = false;
+
+    return appended;
+  }
+
+
+  // Adds items to arrayName (must be an array) within key's value. Caller must check key exists.
+  bool arrayAppend (const cachedkey& key, const std::string_view arrayName, const njson& items) 
+  {
+    bool appended = true;
+
+    auto& value = m_map.at(key);
+    if (value.contains(arrayName))
+    {
+      if (auto& array = value.at(arrayName); array.is_array())
+        array.insert(array.array_range().cend(), items.array_range().cbegin(), items.array_range().cend());
+    }
+    else
+      appended = false;
+
+    return appended;
+  }
 
   
   // TODO review this, result as json may not be required: it's always returning strings (path or keys)

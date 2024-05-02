@@ -190,26 +190,33 @@ public:
               jsoncons::json_decoder<njson> decoder;
               jsoncons::json_string_reader reader(message, decoder);
               
-              if (reader.read(); !decoder.is_valid())
-                ws->send(createErrorResponse(RequestStatus::JsonInvalid).to_string(), kv::WsSendOpCode);
-              else
+              try
               {
-                njson request = decoder.get_result();
-
-                if (request.empty() || !request.is_object()) //i.e. top level not an object
-                  ws->send(createErrorResponse(RequestStatus::CommandSyntax).to_string(), kv::WsSendOpCode);
-                else if (request.size() > 1U)
-                  ws->send(createErrorResponse(RequestStatus::CommandMultiple).to_string(), kv::WsSendOpCode);
+                if (reader.read(); !decoder.is_valid())
+                  ws->send(createErrorResponse(RequestStatus::JsonInvalid).to_string(), kv::WsSendOpCode);
                 else
                 {
-                  const auto& commandName = request.object_range().cbegin()->key();
+                  njson request = decoder.get_result();
 
-                  if (!request.at(commandName).is_object())
-                    ws->send(createErrorResponse(commandName+"_RSP", RequestStatus::CommandType).to_string(), kv::WsSendOpCode);
-                  else if (const auto status = s_kvHandler.handler->handle(ws, commandName, request); status != RequestStatus::Ok)
-                    ws->send(createErrorResponse(commandName+"_RSP", status).to_string(), kv::WsSendOpCode);
+                  if (request.empty() || !request.is_object()) //i.e. top level not an object
+                    ws->send(createErrorResponse(RequestStatus::CommandSyntax).to_string(), kv::WsSendOpCode);
+                  else if (request.size() > 1U)
+                    ws->send(createErrorResponse(RequestStatus::CommandMultiple).to_string(), kv::WsSendOpCode);
+                  else
+                  {
+                    const auto& commandName = request.object_range().cbegin()->key();
+
+                    if (!request.at(commandName).is_object())
+                      ws->send(createErrorResponse(commandName+"_RSP", RequestStatus::CommandType).to_string(), kv::WsSendOpCode);
+                    else if (const auto status = s_kvHandler.handler->handle(ws, commandName, request); status != RequestStatus::Ok)
+                      ws->send(createErrorResponse(commandName+"_RSP", status).to_string(), kv::WsSendOpCode);
+                  }
                 }
               }
+              catch (const jsoncons::ser_error& jsonEx)
+              {
+                ws->send(createErrorResponse(RequestStatus::JsonInvalid).to_string(), kv::WsSendOpCode);
+              }              
             }
           },
           .close = [this](KvWebSocket * ws, int /*code*/, std::string_view /*message*/)
