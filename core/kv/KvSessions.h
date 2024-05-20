@@ -188,23 +188,25 @@ public:
         }
         else if (m_sessions.contains(it->second.token)) // should always be true because end() removes the entry, but sanity check
         {
-          // session expired but not deleted, so clear data and reset expiry
+          // session expired but not deleted, extract node, update expireTime and insert
           auto& expireInfo = it->second;
-          auto& session = m_sessions.at(expireInfo.token);
 
           const SessionExpireTime expireTime = SessionClock::now() + expireInfo.duration;
 
-          auto node = m_expiry.extract(it);
-
-          node.key() = expireTime;
-          node.mapped().time = expireTime;
-
-          m_expiry.insert(std::move(node));
-
+          auto& session = m_sessions.at(expireInfo.token);
           session.map.clear();
           session.expireInfo.time = expireTime;
+          
+          const auto next = std::next(it);
 
-          ++it;
+          auto extracted = m_expiry.extract(it);
+
+          extracted.key() = expireTime;
+          extracted.mapped().time = expireTime;
+
+          m_expiry.insert(std::move(extracted));
+
+          it = next;
         }
       }
     }

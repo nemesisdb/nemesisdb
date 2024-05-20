@@ -9,7 +9,7 @@ This is most suitable if you are running on Linux or prefer to avoid Docker.
 
 ## Download
 
-Download the latest version [here](https://releases.nemesisdb.io/package/nemesisdb_0.6.1_amd64.deb).
+Download the latest version [here](https://releases.nemesisdb.io/package/nemesisdb_0.6.2_amd64.deb).
 
 
 ## Install

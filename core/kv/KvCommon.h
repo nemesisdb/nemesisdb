@@ -43,6 +43,7 @@ enum class KvQueryType : std::uint8_t
   KvClearSet,
   KvSave,
   KvLoad,
+  KvArrayAppend,
   MAX,
   InternalSessionMonitor,
   InternalLoad,

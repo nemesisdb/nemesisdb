@@ -684,6 +684,29 @@ public:
   }
 
 
+  static njson arrayAppend (CacheMap& map,  const njson& cmd)
+  {
+    const auto& key = cmd.at("key").as_string();
+    const auto& items = cmd.at("items");
+    
+    RequestStatus st = RequestStatus::Ok;
+
+    if (map.contains(key))
+    {
+      if (cmd.contains("name"))
+        st = map.arrayAppend(key, cmd.at("name").as_string_view(), items) ? RequestStatus::Ok : RequestStatus::Unknown;
+      else
+        st = map.arrayAppend(key, items) ? RequestStatus::Ok : RequestStatus::Unknown;
+    }
+    else
+      st = RequestStatus::KeyNotExist;
+
+    njson rsp;
+    rsp["KV_ARR_APPEND_RSP"]["st"] = toUnderlying(st);
+    return rsp;
+  }
+
+
   static njson saveKv (const CacheMap& map, const fs::path& path, const std::string_view name)
   {
     static const std::size_t MaxDataFileSize = 10U * 1024U * 1024U;
