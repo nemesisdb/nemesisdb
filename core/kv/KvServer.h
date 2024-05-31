@@ -21,13 +21,6 @@ namespace nemesis { namespace core { namespace kv {
 template<bool HaveSessions>
 class Server
 {
-  struct Handler
-  {
-    KvHandler<HaveSessions> * handler {nullptr};
-  } ;
-
-  static inline Handler s_kvHandler;  // used by the callback handler for us_timer_set(), a C library
-
 
 public:
   Server() : m_run(true)
@@ -57,8 +50,8 @@ public:
       for(auto sock : m_sockets)
         us_listen_socket_close(0, sock);
 
-      if (s_kvHandler.handler)
-        delete s_kvHandler.handler;
+      if (m_kvHandler)
+        delete m_kvHandler;
     }
     catch (const std::exception& ex)
     {
@@ -69,8 +62,7 @@ public:
     m_wsClients.clear();
     m_sockets.clear();
     m_monitorTimer = nullptr;
-    s_kvHandler.handler = nullptr;
-    //kv::serverStats = nullptr;
+    m_kvHandler = nullptr;
   }
 
 
@@ -114,17 +106,6 @@ public:
   
   private:
 
-    // used by uWS timer callback, a C function
-    static void onMonitor (struct us_timer_t *)
-    {
-      if constexpr (HaveSessions)
-      {
-        if (s_kvHandler.handler)
-          s_kvHandler.handler->monitor();
-      }
-    }
-
-
     bool init(const njson& config)
     {
       if (NemesisConfig::saveEnabled(config))
@@ -150,9 +131,7 @@ public:
         }
       }
       
-
-      //kv::serverStats = new kv::ServerStats;
-      s_kvHandler.handler = new kv::KvHandler<HaveSessions> {config};
+      m_kvHandler = new kv::KvHandler<HaveSessions> {config};
 
       return true;
     }
@@ -198,7 +177,7 @@ public:
                 {
                   njson request = decoder.get_result();
 
-                  if (request.empty() || !request.is_object()) //i.e. top level not an object
+                  if (request.empty() || !request.is_object()) // top level must always be an object
                     ws->send(createErrorResponse(RequestStatus::CommandSyntax).to_string(), kv::WsSendOpCode);
                   else if (request.size() > 1U)
                     ws->send(createErrorResponse(RequestStatus::CommandMultiple).to_string(), kv::WsSendOpCode);
@@ -208,7 +187,7 @@ public:
 
                     if (!request.at(commandName).is_object())
                       ws->send(createErrorResponse(commandName+"_RSP", RequestStatus::CommandType).to_string(), kv::WsSendOpCode);
-                    else if (const auto status = s_kvHandler.handler->handle(ws, commandName, request); status != RequestStatus::Ok)
+                    else if (const auto status = m_kvHandler->handle(ws, commandName, request); status != RequestStatus::Ok)
                       ws->send(createErrorResponse(commandName+"_RSP", status).to_string(), kv::WsSendOpCode);
                   }
                 }
@@ -245,6 +224,8 @@ public:
 
         if (!wsApp.constructorFailed())
         {
+          bool timerOk = true;
+
           if constexpr (HaveSessions)
           {
             #ifndef NDB_UNIT_TEST
@@ -253,16 +234,22 @@ public:
 
             PLOGD << "Creating monitor timer for " << periodMs.count() << "ms";
 
-            m_monitorTimer = us_create_timer((struct us_loop_t *) uWS::Loop::get(), 0, 0);
+            if (m_monitorTimer = us_create_timer((struct us_loop_t *) uWS::Loop::get(), 0, sizeof(TimerData)); m_monitorTimer)
+            {
+              auto timerData = reinterpret_cast<TimerData *>(us_timer_ext(m_monitorTimer));
+              timerData->kvHandler = m_kvHandler;
 
-            us_timer_set(m_monitorTimer, Server<HaveSessions>::onMonitor, periodMs.count(), periodMs.count());
+              us_timer_set(m_monitorTimer, Server<true>::onMonitor, periodMs.count(), periodMs.count());
+            }
+            else
+              timerOk = false;
 
             #endif
           }
-                  
-          wsApp.run();
+
+          if (timerOk)
+            wsApp.run();
         }
-          
       };
 
 
@@ -295,6 +282,17 @@ public:
     }
 
 
+    // used by uWS timer callback, a C function
+    static void onMonitor (struct us_timer_t * timer)       
+    {
+      if constexpr (HaveSessions)
+      {
+        if (auto timerData = reinterpret_cast<TimerData *>(us_timer_ext(timer)); timerData)
+          timerData->kvHandler->monitor();
+      }
+    }
+
+
     std::tuple<bool, const std::string_view> load(const NemesisConfig& config)
     {
       if (const auto [valid, msg] = validatePreLoad(config.loadName, config.loadPath, HaveSessions); !valid)
@@ -304,7 +302,7 @@ public:
       else
       {
         const auto [root, md, data, pathsValid] = getLoadPaths(config.loadPath / config.loadName);
-        const auto loadResult = s_kvHandler.handler->internalLoad(config.loadName, data);
+        const auto loadResult = m_kvHandler->internalLoad(config.loadName, data);
         const auto success = loadResult.status == RequestStatus::LoadComplete;
 
         PLOGI << "-- Load --";
@@ -328,11 +326,17 @@ public:
     
 
   private:
+    struct TimerData
+    {
+      KvHandler<true> * kvHandler{}; // timer only available when sessions enabled
+    };
+
     std::unique_ptr<std::jthread> m_thread;
     std::vector<us_listen_socket_t *> m_sockets;
     std::set<KvWebSocket *> m_wsClients;    
     std::atomic_bool m_run;
-    us_timer_t * m_monitorTimer{nullptr};
+    us_timer_t * m_monitorTimer{};
+    KvHandler<HaveSessions> * m_kvHandler{};
 };
 
 

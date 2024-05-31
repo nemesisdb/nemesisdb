@@ -283,7 +283,7 @@ Sessions disabled:
 2. Prepare and grab vcpkg libs: `cd nemesisdb && ./prepare_vcpkg.sh`
 3. With VS Code (assuming you have C/C++ and CMake extensions):
     - `code .`
-    - Select kit (only tested with GCC 12.3.0)
+    - Select kit (tested with GCC 12.3 and GCC 13.1)
     - Select Release variant
     - Select target as nemesisdb
     - Build

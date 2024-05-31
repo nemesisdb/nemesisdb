@@ -45,7 +45,7 @@ int main (int argc, char ** argv)
 
   #ifdef NDB_DEBUG
     config.cfg["version"] = 1;
-    config.cfg["mode"] = "kv";
+    config.cfg["mode"] = "kv_sessions";
     config.cfg["core"] = 0;
 
     config.cfg["ip"] = "127.0.0.1";
@@ -63,7 +63,7 @@ int main (int argc, char ** argv)
 
     if (NemesisConfig::serverMode(config.cfg) == ServerMode::KvSessions && !fs::exists(config.cfg["kv_sessions"]["save"]["path"].as_string()))
       fs::create_directories(config.cfg["kv_sessions"]["save"]["path"].as_string());
-    else if (NemesisConfig::serverMode(config.cfg) == ServerMode::Kv && !fs::exists(config.cfg["kv"]["save"]["path"].as_string()))
+    else if (NemesisConfig::serverMode(config.cfg) == ServerMode::KV && !fs::exists(config.cfg["kv"]["save"]["path"].as_string()))
       fs::create_directories(config.cfg["kv"]["save"]["path"].as_string());
 
     // config.loadPath = NemesisConfig::savePath(config.cfg);
