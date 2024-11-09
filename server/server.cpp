@@ -44,7 +44,7 @@ int main (int argc, char ** argv)
   NemesisConfig config;
 
   #ifdef NDB_DEBUG
-    config.cfg["version"] = 1;
+    config.cfg["version"] = 4;
     config.cfg["mode"] = "kv_sessions";
     config.cfg["core"] = 0;
 

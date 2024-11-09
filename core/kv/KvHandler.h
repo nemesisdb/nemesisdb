@@ -219,7 +219,7 @@ public:
   void monitor ()
     requires(HaveSessions)
   {
-    SessionExecutor<HaveSessions>::sessionMonitor(getContainer());
+    SessionExecutor<true>::sessionMonitor(getContainer());
   }
 
   
