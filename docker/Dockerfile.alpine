@@ -2,7 +2,7 @@ FROM alpine:3.18.4 AS prepare
 
 
 # dependencies and vcpkg
-RUN apk --no-cache add libgcc libstdc++ g++ linux-headers openssh git build-base bash cmake ninja zip unzip curl 
+RUN apk --no-cache add libgcc libstdc++ g++ linux-headers openssh pkgconfig git build-base bash cmake ninja zip unzip curl 
 
 # force vcpkg to use ninja, cmake, curl we just installed (cmake fails otherwise)
 ENV VCPKG_FORCE_SYSTEM_BINARIES=1
