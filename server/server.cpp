@@ -49,11 +49,8 @@ int main (int argc, char ** argv)
     config.cfg["port"] = 1987;
     config.cfg["maxPayload"] = 2048;
 
-    config.cfg["kv"]["save"]["enabled"] = false;
-    config.cfg["kv"]["save"]["path"] = "./data";
-
-    config.cfg["sessions"]["save"]["enabled"] = false;
-    config.cfg["sessions"]["save"]["path"] = "./data";
+    config.cfg["persist"]["enabled"] = false;
+    config.cfg["persist"]["path"] = "./data";
 
     if (NemesisConfig::serverMode(config.cfg) == ServerMode::KvSessions && !fs::exists(config.cfg["sessions"]["save"]["path"].as_string()))
       fs::create_directories(config.cfg["sessions"]["save"]["path"].as_string());
@@ -71,15 +68,18 @@ int main (int argc, char ** argv)
 
   int error = 0;
 
-  const bool save = NemesisConfig::saveEnabled(config.cfg);
+  const bool persist = NemesisConfig::persistEnabled(config.cfg);
   const std::string address = NemesisConfig::wsSettings(config.cfg).ip + ":" + std::to_string(NemesisConfig::wsSettings(config.cfg).port);
 
-  auto runServer = [&config, &error, save, address]<typename Server> (Server&& server, const bool sessions)
+  auto runServer = [&config, &error, persist, address]<typename Server> (Server&& server)
   {
-    PLOGI_IF (save)  << "Save: Enabled (" << NemesisConfig::savePath(config.cfg) << ')';
-    PLOGI_IF (save) << "Save: Disabled";
-    PLOGI << "Sessions Enabled: " << (sessions ? "yes" : "no");
-    PLOGI << "Address: " << address;
+    if (persist)
+      PLOGI << "Save: Enabled (" << NemesisConfig::savePath(config.cfg) << ')';
+    else
+      PLOGI << "Save: Disabled";
+    
+    PLOGI << "Sessions Enabled: " << (server.hasSessions() ? "yes" : "no");
+    PLOGI << "Interface: " << address;
     
     if (server.run(config))
       run.wait();
@@ -91,21 +91,12 @@ int main (int argc, char ** argv)
   
     server.stop();
   };
-  
-  switch (NemesisConfig::serverMode(config.cfg))
-  {
-    case ServerMode::KV:
-      runServer (kv::KvServer{}, false);
-    break;
 
-    case ServerMode::KvSessions:
-      runServer (kv::KvSessionServer{}, true);
-    break;
 
-    default:
-      // caught by readConfig()
-    break;
-  }
-  
+  if (NemesisConfig::serverMode(config.cfg) == ServerMode::KV)
+    runServer (kv::KvServer{});
+  else
+    runServer (kv::KvSessionServer{});
+
   return error;
 }

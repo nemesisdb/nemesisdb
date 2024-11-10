@@ -508,12 +508,10 @@ private:
       return {RequestStatus::Ok, ""};
     };
     
-    if (!NemesisConfig::saveEnabled(m_config))
+    if (!NemesisConfig::persistEnabled(m_config))
       send(ws, createErrorResponseNoTkn(queryRspName, RequestStatus::CommandDisabled));
     else if (isValid(queryRspName, ws, json, {{Param::required("name", JsonString)}, {Param::optional("tkns", JsonArray)}}, validate))
-    {
       doSave(queryName, queryRspName, ws, json.at(queryName));
-    }
   } 
 
   
@@ -764,7 +762,7 @@ private:
 
   void kvSave(const std::string_view queryName, const std::string_view queryRspName, KvWebSocket * ws, njson& json)
   {
-    if (!NemesisConfig::saveEnabled(m_config))
+    if (!NemesisConfig::persistEnabled(m_config))
       send(ws, createErrorResponseNoTkn(queryRspName, RequestStatus::CommandDisabled));
     else
     {

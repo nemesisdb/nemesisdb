@@ -35,6 +35,15 @@ public:
   }
 
 
+  constexpr bool hasSessions () const
+  {
+    if constexpr (HaveSessions) 
+      return true;
+    else
+      return false;
+  }
+
+
   void stop()
   {
     m_run = false;
@@ -108,7 +117,7 @@ public:
 
     bool init(const njson& config)
     {
-      if (NemesisConfig::saveEnabled(config))
+      if (NemesisConfig::persistEnabled(config))
       {
         // test we can write to the kv save path
         if (std::filesystem::path path {NemesisConfig::savePath(config)}; !std::filesystem::exists(path) || !std::filesystem::is_directory(path))
