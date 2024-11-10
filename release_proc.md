@@ -46,11 +46,6 @@ npm run build
 
 <br/>
 
-## Website
-- Update download button link
-
-<br/>
-
 # Final Checks
 - Docs
   - Updated docs is [live](https://docs.nemesisdb.io/)
