@@ -8,16 +8,13 @@
 #include <core/NemesisCommon.h>
 #include <core/kv/KvCommon.h>
 #include <core/kv/KvServer.h>
-#include <core/ts/TsServer.h>
 #include <core/LogFormatter.h>
 #include <jsoncons/json_traits_macros.hpp>
-
 
 
 using namespace nemesis::core;
 
 namespace kv = nemesis::core::kv;
-namespace ts = nemesis::core::ts;
 
 static std::latch run{1U};
 static plog::ColorConsoleAppender<NdbFormatter> consoleAppender;
@@ -44,8 +41,8 @@ int main (int argc, char ** argv)
   NemesisConfig config;
 
   #ifdef NDB_DEBUG
-    config.cfg["version"] = 4;
-    config.cfg["mode"] = "kv_sessions";
+    config.cfg["version"] = 5;
+    config.cfg["sessionsEnabled"] = false;
     config.cfg["core"] = 0;
 
     config.cfg["ip"] = "127.0.0.1";
@@ -55,14 +52,11 @@ int main (int argc, char ** argv)
     config.cfg["kv"]["save"]["enabled"] = false;
     config.cfg["kv"]["save"]["path"] = "./data";
 
-    config.cfg["kv_sessions"]["save"]["enabled"] = false;
-    config.cfg["kv_sessions"]["save"]["path"] = "./data";
+    config.cfg["sessions"]["save"]["enabled"] = false;
+    config.cfg["sessions"]["save"]["path"] = "./data";
 
-    config.cfg["ts"]["ip"] = "127.0.0.1";
-    config.cfg["ts"]["port"] = 1987;
-
-    if (NemesisConfig::serverMode(config.cfg) == ServerMode::KvSessions && !fs::exists(config.cfg["kv_sessions"]["save"]["path"].as_string()))
-      fs::create_directories(config.cfg["kv_sessions"]["save"]["path"].as_string());
+    if (NemesisConfig::serverMode(config.cfg) == ServerMode::KvSessions && !fs::exists(config.cfg["sessions"]["save"]["path"].as_string()))
+      fs::create_directories(config.cfg["sessions"]["save"]["path"].as_string());
     else if (NemesisConfig::serverMode(config.cfg) == ServerMode::KV && !fs::exists(config.cfg["kv"]["save"]["path"].as_string()))
       fs::create_directories(config.cfg["kv"]["save"]["path"].as_string());
 
@@ -74,11 +68,19 @@ int main (int argc, char ** argv)
       return 1;
   #endif
 
-  
+
   int error = 0;
 
-  auto runServer = [&config, &error]<typename Server> (Server&& server)
+  const bool save = NemesisConfig::saveEnabled(config.cfg);
+  const std::string address = NemesisConfig::wsSettings(config.cfg).ip + ":" + std::to_string(NemesisConfig::wsSettings(config.cfg).port);
+
+  auto runServer = [&config, &error, save, address]<typename Server> (Server&& server, const bool sessions)
   {
+    PLOGI_IF (save)  << "Save: Enabled (" << NemesisConfig::savePath(config.cfg) << ')';
+    PLOGI_IF (save) << "Save: Disabled";
+    PLOGI << "Sessions Enabled: " << (sessions ? "yes" : "no");
+    PLOGI << "Address: " << address;
+    
     if (server.run(config))
       run.wait();
     else
@@ -90,25 +92,14 @@ int main (int argc, char ** argv)
     server.stop();
   };
   
-
-  PLOGI_IF (NemesisConfig::saveEnabled(config.cfg))  << "Save: Enabled (" << NemesisConfig::savePath(config.cfg) << ')';
-  PLOGI_IF (!NemesisConfig::saveEnabled(config.cfg)) << "Save: Disabled";
-
   switch (NemesisConfig::serverMode(config.cfg))
   {
     case ServerMode::KV:
-      PLOGI << "Mode: KV";
-      runServer (kv::KvServer{});
+      runServer (kv::KvServer{}, false);
     break;
 
     case ServerMode::KvSessions:
-      PLOGI << "Mode: KV Sessions";
-      runServer (kv::KvSessionServer{});
-    break;
-
-    case ServerMode::TS:
-      PLOGI << "Mode: TS";
-      runServer (ts::TsServer{});
+      runServer (kv::KvSessionServer{}, true);
     break;
 
     default:
