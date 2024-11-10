@@ -16,7 +16,36 @@
 
 namespace nemesis { namespace core { namespace kv {
 
+/*
+KvHandler receives a command:
+  - checks if the command exists and is enabled
+  - calls a handler function
 
+The class handles commands for when sessions are enabled or disabled. To avoid
+code such as this for each command:
+  
+  if(sessionsEnabled)
+  {
+    auto session = getSession();
+    runCommand(session, xyz);
+  }
+  else
+    runCommand(xyz);
+
+The template argument HaveSessions is used:
+  - if true, m_container is a Sessions object (which contains sessions with a map per session)
+  - if false, m_container is a CacheMap object (a single map for all keys)
+  - All KV_ commands use executeKvCommand(), which has overloads for sessions being enabled/disabled
+
+HaveSessions is true:
+  - executeKvCommand() gets the session's map and passes the map to callKvHandler()
+  - handleKvExecuteResult() sets the session token in the response before sending
+
+HaveSessions is false:
+  - Session related functions are disabled or never called
+  - executeKvCommand() calls callKvHandler() with the same map (since all keys are stored in a single map)
+  - handleKvExecuteResult() just sends the response
+*/
 template<bool HaveSessions>
 class KvHandler
 {
