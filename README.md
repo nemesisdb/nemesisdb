@@ -224,11 +224,11 @@ Sessions disabled:
 <br/>
 
 ## Run
-Start listening on `127.0.0.1:1987` with sessions disabled (default in `default.json`):
+Start listening on `127.0.0.1:1987` with sessions disabled (default in `default.jsonc`):
 
-`./nemesisdb --config=default.json`
+`./nemesisdb --config=default.jsonc`
 
-Use `ctrl+c` to exit
+Use `ctrl+c` to exit.
 
 
 <br/>
