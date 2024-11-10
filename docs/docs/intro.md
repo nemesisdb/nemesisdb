@@ -5,32 +5,26 @@ displayed_sidebar: homeSidebar
 
 # NemesisDB
 
-NemesisDB is an in-memory JSON key-value and timeseries database.
+NemesisDB is an in-memory JSON key-value database.
 
-- The query interface is over a WebSocket using JSON
+- The query interface JSON over a WebSocket
 - Key Value can be with or without sessions
-- Session and key value data can be persisted to the filesystem, then loaded on startup or at runtime with a command
-- Time series is basic but will be extended in future versions (no data persistence yet)
+- Session and key value data can be persisted to the filesystem, then loaded on startup or at runtime
   
-## Key Value
+The database supports sessions which store keys in a dedicated map per session.
 
-### Sessions Enabled
-  - Sessions are similar to Redis' hash sets: they group related data
-  - Each session has a dedicated map
-  - A session can expire, after which, the keys are deleted
-  - Sessions are created with the `SH_NEW` command, which returns a session token
-  - The session token is used in key value commands to interact with data only in that session
-  - Session data can be persisted to the filesystem
-  - Session data can be restored from file at startup or with a command at runtime
+## Sessions Disabled
+- A single map contains all keys
+- All keys must have a unique name to avoid overwriting an existing key  
+- Lower memory usage and latency
+- No key expiry support
 
-### Sessions Disabled
-  - A single map contains all key values  
-  - Don't need to supply a session token with each command
-  - Lower memory usage and latency
+## Sessions Enabled
+- Each session has a dedicated map
+- A session can expire, after which, the keys are deleted
+- A session is identified by a session token (an unsigned int)
+- The session token is used in commands to interact with data in that session
 
-## Time Series
-  - Basic support to store, get, index and conditionally find
-  - No data persistence
 
 <br/>
 
@@ -53,7 +47,6 @@ The install includes a default config to start the server on `127.0.0.1:1987`. T
 ## Next Steps
 
 - [Key Value TLDR](./home/tldr-kv)
-- [Time Series TLDR](./home/tldr-ts)
 - [First Steps: KV without sessions](./tutorials/first-steps-kv/setup)
 - [First Steps: KV with sessions](./tutorials/first-steps/setup)
 

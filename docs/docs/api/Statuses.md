@@ -3,7 +3,7 @@ sidebar_position: 2
 displayed_sidebar: apiSidebar
 ---
 
-# Key Value Response Status
+# Status Values
 Many commands return a status (`st`) value which is an unsigned integer.
 
 This table lists a 'friendly name' and value. The friendly name is used throughout the docs rather than the number value for readability and in case of changes.

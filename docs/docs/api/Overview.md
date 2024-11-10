@@ -5,66 +5,23 @@ displayed_sidebar: apiSidebar
 
 # Overview
 
-There are seperate APIs for time series, key-values and sessions they all share:
+There are seperate APIs for key-values and sessions, but they all share:
 
 - Command names must be upper case
 - Commands are a JSON object
-- Commands which return a response contain a status (`st`) which is an unsigned integer
+- Commands that return a response contain a status (`st`) which is an unsigned integer
 - Parameters are in lower case unless stated otherwise
 
-There is a TLDR for [time series](../home/tldr-ts) and [key value](../home/tldr-kv).
-<br/>
-
-## Time Series
-These are to create and delete time series, add events and search for events.
-
-Use [`TS_CREATE`](ts/ts-create-series) after which you add events with [`TS_ADD_EVT`](ts/ts-add-evt) and get/search events with [`TS_GET`](ts/ts-get).
-
-To use `where` in `TS_GET` or `TS_GET_MULTI` you must index event members with [`TS_CREATE_INDEX`](ts/ts-create-index).
-
-<br/>
-
-## Key Value
-These store, update, find and retrieve session data. They start `KV_`.
-
-Key-value can be with or without sessions.
+There is a key value [TLDR](../home/tldr-kv).
 
 
-### Sessions Enabled
-
-- Each session has a dedicated key-value map
-- Key names must only be unique within a session (because each session has a dedicated map)
-- Each use of a `KV_` command must include a session token (to identify which session this command is for)
-- A session token is created by calling `SH_NEW` which returns a token
-
-A good place to start is [First Steps](../tutorials/first-steps/setup) which shows how to create a session and store/get data.
-
-```json title='Create Session'
-{
-  "SH_NEW":
-  {
-    "name":"my session"
-  }
-}
-```
-
-```json title='Create session response'
-{
-  "SH_NEW_RSP":
-  {
-    "name":"my session",
-    "tkn":12345678910
-  }
-}
-```
-
-After this, you can store data in that session:
+## Sessions Disabled
+The commands all begin with `KV_`, for example `KV_SET` and `KV_GET`.
 
 ```json title='Store keys: username, job and age'
 {
   "KV_SET":
   {
-    "tkn":12345678910,
     "keys":
     {
       "username":"Bob",
@@ -75,14 +32,133 @@ After this, you can store data in that session:
 }
 ```
 
-- This stores three keys in that session, `username`, `job` and `age` which are of type string, string and integer respectively
+And retrieved with:
 
-To switch session, just change the token (`tkn`).
+```json
+{
+  "KV_GET":
+  {
+    "keys":["username","job","age"]
+  }
+}
+```
 
+Commonly used commands:
 
-### Sessions Disabled
+|Command|Purpose|
+|---|---|
+|KV_SETQ|Same as `KV_SET` but a response is only sent on an error|
+|KV_ADD|Stores keys, but unlike `KV_SET`, does not overwrite if a already exists|
+|KV_ADDQ|As `KV_ADD` but a response is only sent on an error|
+|KV_CONTAINS|Checks if keys exist|
+|KV_RMV|Remove/delete keys|
 
-- A single map stores all keys
-- No session token required in each `KV_` command
-- Lower memory usage and latency
+<br/>
 
+## Sessions Enabled
+This is similar to when sessions are disabled, except:
+
+- A session must be created with `SH_NEW`
+- The token returned by `SH_NEW` must be used in subsequent `KV_` commands
+
+A good place to start is [First Steps](../tutorials/first-steps/setup) which shows how to create a session and store/get data.
+
+```json title='Create Session'
+{
+  "SH_NEW":
+  {
+    "name":"user"
+  }
+}
+```
+
+```json title='Create session response'
+{
+  "SH_NEW_RSP":
+  {
+    "name":"user1",
+    "tkn":12345678910
+  }
+}
+```
+
+After this, you can store data in that session:
+
+```json
+{
+  "KV_SET":
+  {
+    "tkn":12345678910,
+    "keys":
+    {
+      "username":"user1",
+      "job":"Builder",
+      "age":26
+    }
+  }
+}
+```
+
+You can send another `SH_NEW` to create a new session, then submit a `KV_SET` with the new session token:
+
+```json title='Create Session'
+{
+  "SH_NEW":
+  {
+    "name":"user"
+  }
+}
+```
+
+```json title='Create session response'
+{
+  "SH_NEW_RSP":
+  {
+    "name":"user",
+    "tkn":6119461887874704569
+  }
+}
+```
+
+Store keys in this new session:
+
+```json
+{
+  "KV_SET":
+  {
+    "tkn":6119461887874704569,
+    "keys":
+    {
+      "username":"user2",
+      "job":"Plumber",
+      "age":61
+    }
+  }
+}
+```
+
+In subsequent `KV_` commands, use the appropriate `tkn` to access each session's data.
+
+This returns "user1":
+
+```json
+{
+  "KV_GET":
+  {
+    "tkn":12345678910,
+    "keys":["username"]
+  }
+}
+```
+<br/>
+
+This returns "user2":
+```json
+{
+  "KV_GET":
+  {
+    "tkn":6119461887874704569,
+    "keys":["username"]
+  }
+}
+```
