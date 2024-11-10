@@ -1,169 +1,162 @@
 # NemesisDB
-NemesisDB is an in-memory JSON database, supporting key-value and timeseries data:
+NemesisDB is an in-memory keyvalue JSON database:
 
 - All data and commands are JSON over WebSockets
-- Commands are submitted via a WebSocket
-- Data can be saved to file and loaded at startup or runtime with a command
-  - Persisting time series data not yet supported
+- The query interface is a WebSocket
+- Keys can be saved to file
+- Keys can be loaded at startup or runtime
 
 
 API and further information in the [docs](https://docs.nemesisdb.io/).
 
-<br/>
-
 Contents:
-  - [Key Value](#key-value)
-  - [Time Series](#time-series)
   - [Design](#design)
   - [Install](#install)
   - [Build for Linux](#build---linux-only)
   
 
 <br/>
-
-# Time Series
-Data is stored by creating an array of times and an array of events.
-
-With temperature readings to store:
-
-|Time|Temperature|
-|:---:|:---:|
-|10|20|
-|11|21|
-|12|25|
-|13|22|
-|14|23|
-
-
-Create a time series:
-
-```json
-{
-  "TS_CREATE":
-  {
-    "name":"temperatures",
-    "type":"Ordered"
-  }
-}
-```
-
-- `name`: name of the series
-- `type`: only "Ordered" available at the moment
-
 <br/>
 
-Add five events:
+
+
+# Overview
+
+To store a key the `KV_SET` command is used:
 
 ```json
 {
-  "TS_ADD_EVT":
+  "KV_SET":
   {
-    "ts":"temperatures",
-    "t":[10,11,12,13,14],
-    "evt":
-    [
-      {"temperature":20},
-      {"temperature":21},
-      {"temperature":25},
-      {"temperature":22},
-      {"temperature":23}
-    ]
+    "keys": {"username":"desire"}
   }
 }
 ```
 
-- `ts` : the name of time series
-- `t` : time values
-- `evt` : event objects
-
-
-Get event data between times `10` and `12` inclusive:
+Or we can store multiple keys:
 
 ```json
 {
-  "TS_GET":
+  "KV_SET":
   {
-    "ts":"temperatures",
-    "rng":[10,12]
-  }
-}
-```
-
-- `rng` is "time range" with min and max inclusive
-- `rng` can be empty (`[]`) to get whole time range
-
-<br/>
-
-If an event member is indexed, it can be used in a `where` clause.
-
-Get events where `temperature` is greater than or equal to 23:
-
-```json
-{
-  "TS_GET":
-  {
-    "ts":"temperatures",
-    "rng":[],
-    "where":
+    "keys":
     {
-      "temperature":
+      "forename":"James",
+      "age":35,
+      "address":
       {
-        ">=":23
+        "city":"Paris"
       }
     }
   }
 }
 ```
 
-- Returning data for times `12` and `14`
+This sets three keys with value types:
 
+|Key|Value Type|
+|---|---|
+|forename|string|
+|age|integer|
+|address|object|
 
-The range `[]` operator is used in `where` terms to limit the temperature value to between `21` and `22` inclusive: 
+<br/>
+
+Use `KV_GET` to get keys:
 
 ```json
 {
-  "TS_GET":
+  "KV_GET":
   {
-    "ts":"temperatures",
-    "rng":[],
-    "where":
+    "keys":["username"]
+  }
+}
+```
+
+This responds with:
+
+```json
+{
+  "KV_GET_RSP":
+  {
+    "st": 1,
+    "keys":
     {
-      "temperature":
+      "username": "desire"
+    }
+  }
+}
+```
+<br/>
+
+|||
+|---|---|
+|KV_GET_RSP|The command name. A response to a command is always the command name with `_RSP` appended|
+|st|Status code (`1` is success)|
+|keys|The keys and values retrieved. If a key does not exist, it is omitted from the response.|
+
+
+You can request multiple keys with `KV_GET`:
+
+```json
+{
+  "KV_GET":
+  {
+    "keys":["forename", "age", "address"]
+  }
+}
+```
+
+With response:
+
+```json
+{
+  "KV_GET_RSP": {
+    "st": 1,
+    "keys":
+    {
+      "forename": "James",
+      "age": 35,
+      "address":
       {
-        "[]":[21,22]
+        "city": "Paris"
       }
     }
   }
 }
 ```
 
-- Returning data for times `11` and `13`
-
-<br/>
-
-More information [here](https://docs.nemesisdb.io/home/tldr-ts).
-
 <br/>
 <br/>
 
-# Key Value
+# Sessions
+Sessions can be disabled or enabled. Each session has a dedicated map for its keys and the session can exist forever or expire:
 
-Key value can have sessions disabled or enabled. Sessions segregate keys by grouping them in dedicated maps, similar to hash sets in Redis.
+- Each session only contains data stored in that session
+- When accessing (get, set, etc) data, only the data for a particular session is accessed
+- With sessions disabled, keys cannot expire, they must be deleted manually
+- With sessions enabled, a session can expire, deleting all keys in the session
+
+You can create as many sessions as required (within memory limitations). When a session is created, a session token is returned (a 64-bit unsigned integer), so switching between sessions only requires using the appropriate token.
+
+More info [here](https://docs.nemesisdb.io/tutorials/sessions/what-is-a-session).
 
 ## Sessions Disabled
 
 - There is one map for all keys
 - Keys cannot expire, they must be deleted by command
-- No need to create sessions to store data
 - Data is not segregated so keys must be unique over the entire database
+- Do not need to create sessions to store keys
 - Lower memory usage and latency
 
 ## Sessions Enabled
-Rather than one large map, key-values are split into sessions:
+Rather than one large map, keys are stored per session:
 
 - Each session has a dedicated map
 - A session can live forever or expire after a defined duration
-- When a session expires its data is always deleted, and optionally the session can be deleted
+- When a session expires:
+  - The keys are deleted
+  - Optionally the session can be deleted
 
 Examples of sessions:
 
@@ -171,19 +164,6 @@ Examples of sessions:
 - Each connected device in monitoring software
 - When an One Time Password is created
 - Whilst a user is completing a multi-page online form
-
-<br/>
-
-### Sessions
-The purpose of sessions are:
-
-- Each session only contains data required for that session, rather than a single large map
-- When accessing (get, set, etc) data, only the data for a particular session is accessed
-- Controlling key expiry is simplified because it is sessions that expire, not individual keys
-
-You can create as many sessions as required (within memory limitations). When a session is created, a session token is returned (a 64-bit unsigned integer), so switching between sessions only requires using the appropriate token.
-
-More info [here](https://docs.nemesisdb.io/tutorials/sessions/what-is-a-session).
 
 <br/>
 <br/>
@@ -202,60 +182,10 @@ You can compile for Linux, instructions below.
 
 # Design
 
-As of version 0.5, the engine is single threaded to reduce and simplify code. The multihreaded version is collecting GitHub dust on the [0.4.1](https://github.com/nemesisdb/nemesisdb/tree/0.4.1) branch.
+As of version 0.5, the engine is single threaded to improve performance. The multihreaded version is collecting GitHub dust on the [0.4.1](https://github.com/nemesisdb/nemesisdb/tree/0.4.1) branch.
 
 The instance is assigned to core 0 by default but can be configured in the server [config](https://docs.nemesisdb.io/home/config).
 
-<br/>
-
-## Time Series
-This uses parallel vectors to store data:
-
-- Two vectors, `m_times` and `m_events`, store the times and events
-- An event at `m_events[i]` occured at `m_times[i]`
-
-If we have these values:
-
-|Time|Temperature|
-|:---:|:---:|
-|10|5|
-|15|4|
-|20|2|
-|25|6|
-
-This can be visualised as:
-
-
-![TimeSeries Design](https://20aac7f3a5b7ba27bcb45d6ccf5d4c71.cdn.bubble.io/f1710001659309x923605728983864200/tldr-ts-parallel.svg?_gl=1*1biw9dg*_gcl_au*MTc4NTg0NDIyMy4xNzA3NDIwNzA2*_ga*MTcwMTY5ODQzNC4xNjk3NTQyODkw*_ga_BFPVR2DEE2*MTcxMDAwMTYxOC4yNi4xLjE3MTAwMDE2MzkuMzkuMC4w)
-
-
-<br/>
-
-## Key Value
-
-The structure of JSON is used to determine value types, i.e.:
-
-```json
-{
-  "KV_SET":
-  {
-    "keys":
-    {
-      "username":"James",
-      "age":35,
-      "address":
-      {
-        "city":"Paris"
-      }
-    }
-  }
-}
-```
-
-Set three keys:
-- `username` of type string
-- `age` of type integer
-- `address` of type object
 
 <br/>
 
@@ -268,10 +198,9 @@ Sessions enabled:
 - Use `--loadName` at the command line to load during start up
 
 Sessions disabled:
-- `KV_SAVE` to save all key values (saving select keys not supported yet)
-- `KV_LOAD` to load data from file at runtime
+- `KV_SAVE` to save all key
+- `KV_LOAD` to load keys from file at runtime
 - Use `--loadName` at the command line to load during start up
-
 
 
 <br/>
@@ -295,12 +224,11 @@ Sessions disabled:
 <br/>
 
 ## Run
-Start listening on `127.0.0.1:1987` in KV mode (default in `default.json`)
+Start listening on `127.0.0.1:1987` with sessions disabled (default in `default.jsonc`):
 
-`./nemesisdb --config=../../configs/default.json`
+`./nemesisdb --config=default.jsonc`
 
-
-`ctrl+c` to exit
+Use `ctrl+c` to exit.
 
 
 <br/>
