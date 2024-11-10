@@ -6,6 +6,9 @@ NemesisDB is an in-memory JSON database, supporting key-value and timeseries dat
 - Data can be saved to file and loaded at startup or runtime with a command
   - Persisting time series data not yet supported
 
+
+API and further information in the [docs](https://docs.nemesisdb.io/).
+
 <br/>
 
 Contents:
