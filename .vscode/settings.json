@@ -17,9 +17,10 @@
   //   }
   // },
   //"debug.terminal.clearBeforeReusing": true,
-  "editor.fontSize": 12,
+  "editor.fontSize": 14,
   "editor.tabSize": 2,
   "files.associations": {
+    "*.proto": "proto3",
     "any": "cpp",
     "array": "cpp",
     "atomic": "cpp",
@@ -106,6 +107,7 @@
     "*.ipp": "cpp",
     "regex": "cpp",
     "scoped_allocator": "cpp",
-    "*.inc": "cpp"
+    "*.inc": "cpp",
+    "format": "cpp"
   }  
 }

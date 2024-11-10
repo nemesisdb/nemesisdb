@@ -12,41 +12,27 @@ There is a default configuration included in the install package and Docker imag
 
 Default settings:
 
+- Listen on `127.0.0.1:1987`
 - Assigned to core `0`
 - Mode: key value (`kv`)
   - Sessions disabled
   - Save disabled
-- Listen on `127.0.0.1:1987`
+
 
 <br/>
 
 ```json title="default.json"
 {
-  "version":4,
-  "mode":"kv",
-  "core":0,
+  "version":5,
+  "sessionsEnabled":false,
   "ip":"127.0.0.1",
   "port":1987,
-  "maxPayload":1024,  
-  "kv":
+  "core":0,
+  "maxPayload":1024,
+  "persist":
   {
-    "save":
-    {
-      "enabled":false,
-      "path":"./data"
-    }
-  },
-  "kv_sessions":
-  {
-    "save":
-    {
-      "enabled":false,
-      "path":"./data"
-    }
-  },
-  "ts":
-  {
-    
+    "enabled":false,
+    "path":"./data"
   }
 }
 ```
@@ -59,12 +45,11 @@ Default settings:
 
 |Param|Type|Description|Required|
 |:---|:---:|:---|:---:|
-|version|unsigned int|Must be 4|Y|
-|mode|string|"kv" for key value<br/>"kv_sessions" for key value with sessions<br/>"ts" for timeseries|Y|
-|core|unsigned int|The core to assign this instance.<br/> If not present or above maximum available, defaults to `0` (the first core)|N|
-|kv|object|Settings for key value.<br/>Required if mode is `"kv"`.|N|
-|kv_sessions|object|Settings for key value with sessions.<br/>Required if mode is `"kv_sessions"`.|N|
-|ts|object|Empty but required if mode is `"ts"`.|N|
+|version|unsigned int|Must be 5|Y|
+|sessionsEnabled|bool|`true`:<br/>- `SH_` commands available.<br/>- `KV_SAVE` and `KV_LOAD` not used.<br/>`false`:<br/>- `SH_` commands unavailable. `KV_SAVE` and `KV_LOAD` available|Y|
+|core|unsigned int|The core to assign this instance.<br/> If not present or above maximum available, defaults to `0`|N|
+|maxPayload|unsigned int|The max size, in bytes, of the WebSocket payload|Y|
+|persist|object|Settings for key value with sessions.|Y|
 
 
 <br/>
@@ -77,39 +62,23 @@ Use `lscpu | grep "CPU(s):"` to find the logical core count.
 Core assignment is useful when running multiple instances on the same physical server. If so then ensure the instances are on different ports.
 
 :::note
+If running multiple instances, remember to change the `port`.
+:::
+
+:::note
 If running in a Docker container, the core(s) available depends on those available for the container.
 :::
 
 <br/>
 
-# `kv`
+## `persist`
 
 |Param|Type|Description|
 |:---|:---:|:---|
-|save|object|Settings for persisting kv data. Only used when sessions are disabled.|
-
-<br/>
-
-# `session`
-|Param|Type|Description|
-|:---|:---:|:---|
-|save|object|Settings for persisting session data|
-
-## `save`
-
-|Param|Type|Description|
-|:---|:---:|:---|
-|enabled|bool|`true`:<br/>- `KV_SAVE` available (when `mode` is `kv`)<br/>- `SH_SAVE` available (when `mode` is `kv_sessions`)<br/>- `path` must exist<br/><br/>`false`:<br/>-`SH_SAVE` and `KV_SAVE` not available<br/>- `path` is not checked.|
+|enabled|bool|`true`:<br/>- `KV_SAVE` available (when `sessionsEnabled` is `false`)<br/>- `SH_SAVE` available (when `sessionsEnabled` is `true`)<br/>- `path` must exist<br/><br/>`false`:<br/>-`SH_SAVE` and `KV_SAVE` not available<br/>- `path` is not checked.|
 |path|string|Path to the directory where data is stored. Must be a directory.<br/>If `enabled` is true, this path must exist.|
 
 See [SH_SAVE](../api/sessions/sh-save) or [KV_SAVE](../api/kv/kv-save) for more.
 
-<br/>
-
-# `ts`
-No settings but must be present and an empty object if `mode` is `"ts"`.
-
-
-<br/>
 
 

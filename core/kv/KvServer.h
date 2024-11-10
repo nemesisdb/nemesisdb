@@ -25,13 +25,22 @@ class Server
 public:
   Server() : m_run(true)
   {
-    //kv::serverStats = nullptr;
+    
   }
 
 
   ~Server()
   {
     stop();
+  }
+
+
+  constexpr bool hasSessions () const
+  {
+    if constexpr (HaveSessions) 
+      return true;
+    else
+      return false;
   }
 
 
@@ -108,7 +117,7 @@ public:
 
     bool init(const njson& config)
     {
-      if (NemesisConfig::saveEnabled(config))
+      if (NemesisConfig::persistEnabled(config))
       {
         // test we can write to the kv save path
         if (std::filesystem::path path {NemesisConfig::savePath(config)}; !std::filesystem::exists(path) || !std::filesystem::is_directory(path))
@@ -137,15 +146,13 @@ public:
     }
     
     
-    bool startWsServer (const std::string& ip, const int port, const unsigned int maxPayload, /*kv::ServerStats * stats,*/ const std::size_t core)
+    bool startWsServer (const std::string& ip, const int port, const unsigned int maxPayload, const std::size_t core)
     {
       bool listening{false};
       std::latch startLatch (1);
 
-      auto listen = [this, ip, port, &listening, &startLatch, maxPayload/*, stats*/]()
+      auto listen = [this, ip, port, &listening, &startLatch, maxPayload]()
       {
-        char requestBuffer[NEMESIS_KV_MAXPAYLOAD] = {};
-        
         auto wsApp = uWS::App().ws<WsSession>("/*",
         {
           .compression = uWS::DISABLED,
@@ -158,10 +165,8 @@ public:
           {
             m_wsClients.insert(ws);
           },          
-          .message = [this, /*stats,*/ &requestBuffer](KvWebSocket * ws, std::string_view message, uWS::OpCode opCode)
+          .message = [this](KvWebSocket * ws, std::string_view message, uWS::OpCode opCode)
           { 
-            //++serverStats->queryCount; actually do this
-
             if (opCode != uWS::OpCode::TEXT)
               ws->send(createErrorResponse(RequestStatus::OpCodeInvalid).to_string(), kv::WsSendOpCode);
             else
@@ -224,36 +229,43 @@ public:
 
         if (!wsApp.constructorFailed())
         {
-          bool timerOk = true;
+          bool timerSet = true;
 
           if constexpr (HaveSessions)
           {
             #ifndef NDB_UNIT_TEST
 
-            const auto periodMs = chrono::duration_cast<chrono::milliseconds>(chrono::seconds {5});
+            const auto periodMs = chrono::milliseconds{5'000};
 
             PLOGD << "Creating monitor timer for " << periodMs.count() << "ms";
 
             if (m_monitorTimer = us_create_timer((struct us_loop_t *) uWS::Loop::get(), 0, sizeof(TimerData)); m_monitorTimer)
             {
-              auto timerData = reinterpret_cast<TimerData *>(us_timer_ext(m_monitorTimer));
+              auto * timerData = reinterpret_cast<TimerData *> (us_timer_ext(m_monitorTimer));
               timerData->kvHandler = m_kvHandler;
 
-              us_timer_set(m_monitorTimer, Server<true>::onMonitor, periodMs.count(), periodMs.count());
+              us_timer_set(m_monitorTimer, [](struct us_timer_t * timer)
+              {
+                if (auto * timerData = reinterpret_cast<TimerData *> (us_timer_ext(timer)); timerData)
+                  timerData->kvHandler->monitor();
+              },
+              periodMs.count(),
+              periodMs.count());
             }
             else
-              timerOk = false;
+              timerSet = false;
 
             #endif
           }
 
-          if (timerOk)
+          if (timerSet)
             wsApp.run();
         }
       };
 
 
       bool started = false;
+
       try
       {
         m_thread.reset(new std::jthread(listen));
@@ -279,17 +291,6 @@ public:
       }
 
       return started;
-    }
-
-
-    // used by uWS timer callback, a C function
-    static void onMonitor (struct us_timer_t * timer)       
-    {
-      if constexpr (HaveSessions)
-      {
-        if (auto timerData = reinterpret_cast<TimerData *>(us_timer_ext(timer)); timerData)
-          timerData->kvHandler->monitor();
-      }
     }
 
 
@@ -328,7 +329,7 @@ public:
   private:
     struct TimerData
     {
-      KvHandler<true> * kvHandler{}; // timer only available when sessions enabled
+      KvHandler<HaveSessions> * kvHandler{};
     };
 
     std::unique_ptr<std::jthread> m_thread;

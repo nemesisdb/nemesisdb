@@ -1,7 +1,7 @@
 FROM alpine:3.18.4 AS prepare
 
 
-# dependencies and vcpkg (pkgconfig for nlohmann-json)
+# dependencies and vcpkg
 RUN apk --no-cache add libgcc libstdc++ g++ linux-headers openssh pkgconfig git build-base bash cmake ninja zip unzip curl 
 
 # force vcpkg to use ninja, cmake, curl we just installed (cmake fails otherwise)
@@ -55,10 +55,10 @@ FROM alpine:3.18.4 as publish
 RUN apk --no-cache add libgcc libstdc++ 
 WORKDIR /usr/local/bin/nemesisdb
 COPY --from=build /build/server/Release/bin/nemesisdb ./
-COPY --from=build /build/server/configs/docker_default.json default.json
+COPY --from=build /build/server/configs/docker_default.jsonc default.jsonc
 
 
 EXPOSE 1987
 
 ENTRYPOINT ["/usr/local/bin/nemesisdb/nemesisdb"]
-CMD ["--config=default.json"]
+CMD ["--config=default.jsonc"]

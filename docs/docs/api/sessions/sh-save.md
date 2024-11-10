@@ -5,14 +5,14 @@ sidebar_position: 25
 # SH_SAVE
 
 :::info
-This command is only available when the server mode is `"kv_sessions"`. If the server mode is `"kv"`, use [`KV_SAVE`](../kv/kv-save).
+This command is only available when sessions are enabled. When sessions are disabled use [`KV_SAVE`](../kv/kv-save).
 :::
 
-Saves the data to the filesystem so it can be loaded on startup, restoring the database.
+Saves the data to the filesystem so it can be loaded on startup or at runtime with [`SH_LOAD`](./sh-load).
 
+- The server config must have `persist::enabled` set `true`.
+- Data is written to `persist::path` set in the config file
 
-- The data is written to the `session::save::path` set in the config file
-- `session::save::enabled` must be `true` for this command to be available
 
 Restored sessions retain their shared and expiry settings. If a session has expiry settings, the expiry time is set to `now + duration`.
 
@@ -26,16 +26,7 @@ Restored sessions retain their shared and expiry settings. If a session has expi
 <br/>
 
 
-If the config file has:
-
-```json
-"save":
-{
-  "enabled":true,
-  "path":"/nemesisdb/data"
-}
-```
-And this is sent:
+If the config file has the persist path set to "/nemesisdb/data" and this is sent:
 
 ```json
 {
@@ -118,7 +109,7 @@ Initial response:
   }
 }
 ```
-Soon afterwards:
+Followed by a confirmation:
 
 ```json title="Save complete"
 {
@@ -134,10 +125,10 @@ After this, the data can be found in:
 
 `<savepath>/dump/<timestamp>`
 
-where `<savepath>` is the `session::save::path` in the server config.
+where `<savepath>` is the path in the server config.
 
 
-### Save Select Sessions
+### Save Particular Sessions
 
 ```json title="Initiate saving of three sessions"
 {

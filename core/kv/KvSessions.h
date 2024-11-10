@@ -108,6 +108,8 @@ public:
             ended = true;
           }
         }
+
+        m_sessions.erase(sesh);
       }
       else
       {        
@@ -166,48 +168,48 @@ public:
 
   std::optional<std::reference_wrapper<Session>> get (const SessionToken& token)
   {
-    if (auto it = m_sessions.find(token) ; it == m_sessions.end())
+    if (const auto it = m_sessions.find(token) ; it == m_sessions.end())
       return {};
     else
       return {it->second};
   }
 
 
-  void handleExpired (const SessionExpireTime time = SessionClock::now())
+  void handleExpired ()
   {    
-    const auto itExpired = m_expiry.lower_bound(time);
+    using Iterator = std::multimap<SessionExpireTime, ExpiryTracking>::iterator;
 
-    if (itExpired != m_expiry.end() || (itExpired == m_expiry.end() && !m_expiry.empty()))
+    if (m_expiry.empty())
+      return;
+
+    const auto now = SessionClock::now();    
+    const auto itLimit = m_expiry.lower_bound(now);
+        
+    std::vector<Iterator> expired;
+    for (Iterator it = m_expiry.begin(); it != itLimit ; ++it)
+      expired.emplace_back(it);
+
+    PLOGD << "expired: " << expired.size();
+
+    for (const auto& itExpired : expired)
     {
-      for (auto it = m_expiry.cbegin() ; it != itExpired; )
+      if (itExpired->second.deleteOnExpire)
       {
-        if (it->second.deleteOnExpire)
-        {
-          m_sessions.erase(it->second.token);
-          it = m_expiry.erase(it);
-        }
-        else if (m_sessions.contains(it->second.token)) // should always be true because end() removes the entry, but sanity check
-        {
-          // session expired but not deleted, extract node, update expireTime and insert
-          auto& expireInfo = it->second;
-
-          const SessionExpireTime expireTime = SessionClock::now() + expireInfo.duration;
-
-          auto& session = m_sessions.at(expireInfo.token);
-          session.map.clear();
-          session.expireInfo.time = expireTime;
-          
-          const auto next = std::next(it);
-
-          auto extracted = m_expiry.extract(it);
-
-          extracted.key() = expireTime;
-          extracted.mapped().time = expireTime;
-
-          m_expiry.insert(std::move(extracted));
-
-          it = next;
-        }
+        m_sessions.erase(itExpired->second.token);
+        m_expiry.erase(itExpired);
+      }
+      else
+      {
+        auto expiredNode = m_expiry.extract(itExpired);      
+        const SessionExpireTime expireTime = now + expiredNode.mapped().duration;
+        
+        expiredNode.key() = expireTime;
+        
+        auto& session = m_sessions.at(expiredNode.mapped().token);
+        session.map.clear();
+        session.expireInfo.time = expireTime;
+        
+        m_expiry.insert(std::move(expiredNode));
       }
     }
   }

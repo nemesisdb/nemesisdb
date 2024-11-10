@@ -5,16 +5,14 @@ sidebar_position: 110
 # KV_SAVE
 
 :::info
-This command is only available when the server mode is `"kv"`. If the server mode is `"kv_sessions"`, use [`SH_SAVE`](../sessions/sh-save).
+This command is only available when sessions are disabled. When sessions are enabled use [`SH_SAVE`](../sessions/sh-save).
 :::
 
 Saves the data to the filesystem so it can be loaded on startup or at runtime with [`KV_LOAD`](./kv-load).
 
-- `kv::save::enabled` must be `true` for this command to be available
-- The data is written to the `kv::save::path` set in the config file
+- The server config must have `persist::enabled` set `true`.
+- Data is written to `persist::path` set in the config file
 
-
-Restored sessions retain their shared and expiry settings. If a session has expiry settings, the expiry time is set to `now + duration`.
 
 <br/>
 
@@ -24,9 +22,9 @@ Restored sessions retain their shared and expiry settings. If a session has expi
 
 <br/>
 
-The data is written to: `<kv::save::path>/<name>/<timestamp>`.
+The data is written to: `<persist::path>/<name>/<timestamp>`.
 
-If the config has `"kv::save::path"` set to `"/nemesisdb/data"` and the command is:
+If the config has `"persist::path"` set to `"/nemesisdb/data"` and the command is:
 
 ```json
 {

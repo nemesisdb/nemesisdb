@@ -1,0 +1,13 @@
+{
+  "version":5,                // must be version 5 from server v0.6.4
+  "core":0,                   // CPU core the server instance is assigned to. If not present or value is greater than max cores, defaults to 0
+  "sessionsEnabled":false,    // if true, see further settings in "sessions" section. See https://docs.nemesisdb.io/api/Overview
+  "ip":"127.0.0.1",           // must be IPv4
+  "port":1987,
+  "maxPayload":1024,          // max n bytes the query interface can accept
+  "persist":
+  {
+    "enabled":false,          // if true, the "path" must exist
+    "path":"./data"
+  }
+}
