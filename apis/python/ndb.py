@@ -8,9 +8,8 @@
 import json
 import asyncio as asio
 import logging
-import signal
 from websockets.asyncio.client import connect
-#from websockets import ConnectionClosed
+from websockets import ConnectionClosed
 
 # logger = logging.getLogger('websockets')
 # logger.setLevel(logging.DEBUG)
@@ -31,26 +30,41 @@ class Api:
 
   async def start(self, uri: str):    
     self.uri = uri
-    self.connected = asio.Semaphore(0)
+    self.userClosed = False    
     self.rspEvt = asio.Event()
+    self.rcv_task = None
+    self.connectedSem = asio.Semaphore(0)
+        
     self.listen_task = asio.create_task(self.open())
-    await self.connected.acquire()
+    await self.connectedSem.acquire()
+
     return self.listen_task
   
 
-  async def open(self):    
-    async with connect(self.uri) as websocket:
-      self.ws = websocket
-      loop = asio.get_running_loop()
-      loop.add_signal_handler(signal.SIGTERM, loop.create_task, self.close()) # these cause an 'unwaited' warning
-      loop.add_signal_handler(signal.SIGINT, loop.create_task, self.close())
-      self.connected.release()
+  async def open(self):
+    try:
+      async with connect(self.uri, open_timeout=5) as websocket:
+        try:
+          self.ws = websocket
+          self.connectedSem.release()
 
-      while True:        
-        self.message = await asio.create_task(websocket.recv())
-        self.rspEvt.set()
-
-
+          while True:    
+            self.message = await asio.create_task(websocket.recv())
+            self.rspEvt.set()
+        except ConnectionClosed:
+          pass
+        finally:        
+          if self.userClosed == False:
+            tasks = asio.all_tasks() - {asio.current_task()}
+            for task in tasks:
+              task.cancel()
+          
+            await asio.gather(*tasks)         
+    except OSError:
+      if self.connectedSem.locked():
+        self.connectedSem.release()
+      
+      
   async def query(self, s: dict, expectRsp: bool) -> dict:
     await asio.gather(asio.create_task(self._query(json.dumps(s), expectRsp)))   
     return json.loads(self.message) if expectRsp else None
@@ -65,7 +79,7 @@ class Api:
 
 
   async def close(self):
-    print("Closing")
+    self.userClosed = True
     await self.ws.close()
 
 
@@ -90,7 +104,16 @@ _CMD_KEYS = 'KV_KEYS'
 _RSP_KEYS = 'KV_KEYS_RSP'
 
 
+"""
+  Represents a client, use to query the database.
+  This classes uses the Api class so that only relevant values
+  are returned.
 
+  - The query functions will return when the response is received (as opposed
+    to a callback handler to receive all responses). This serialises responses and
+    should simplify user code.
+  - This design design means that KV_SETQ or KV_ADDQ are not supported.
+"""
 class Client:
   
   def __init__(self, uri: str):
@@ -152,12 +175,12 @@ class Client:
     return (self.isRspSuccess(rsp, _RSP_CLEAR_SET), rsp[_RSP_CLEAR_SET]['cnt'])
 
 
+  async def close(self):
+    await self.api.close()
+
+
   def isRspSuccess(self, rsp: dict, cmd: str) -> bool:
     return rsp[cmd][_STATUS] == 1
-    
-
-  async def close(self):  ##### TODO test
-    await self.api.close()
 
 
   async def _doSetAdd(self, cmdName: str, rspName: str, keys: dict) -> bool:
@@ -171,8 +194,12 @@ async def do_stuff():
   client = Client("ws://127.0.0.1:1987/")
   listen_task = await client.listen()
 
-  max = 10
+  if listen_task.done():
+    print("server con failed")
+    return
 
+
+  max = 10
 
   # clear before test
   await client.clear()  
@@ -235,7 +262,7 @@ async def do_stuff():
           f'username{max*2}' not in keys)
 
   
-  # clear_set
+  # clear_set - clear existing keys then set new keys
   (ok, count) = await client.clear_set({'k1':'v1','k2':'v2','k3':'v3','k4':'v4'})
   assert ok and count == max*2  # clear_set() returns number of keys cleared
   
@@ -250,6 +277,8 @@ async def do_stuff():
   assert ok and count == 4
 
   
+  await client.close()
+
   await listen_task
 
 
