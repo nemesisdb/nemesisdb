@@ -33,12 +33,16 @@ The `Client` class handles the connection and contains a function per NemesisDB 
 
 ```python
 async def example_connect():
-  client = Client("ws://127.0.0.1:1987/")
-  listen_task = await client.listen()
+  client = Client()
+  listen_task = await client.listen('ws://127.0.0.1:1987/')
+
+  print('Connected')
 
   # call query functions
 
-  await listen_task
+  await client.close()  # or listen_task.cancel()
+
+  print('Disconnected')
 ```
 
 - Open connection
@@ -50,8 +54,8 @@ Set then get `username` and `password` keys:
 
 ```python
 async def example_setget():
-  client = Client("ws://127.0.0.1:1987/")
-  listen_task = await client.listen()
+  client = Client()
+  listen_task = await client.listen('ws://127.0.0.1:1987/')
 
   setSuccess = await client.set({'username':'billy', 'password':'billy_passy'})
 
@@ -62,7 +66,7 @@ async def example_setget():
     else:
       print('Query failed')
 
-  await listen_task
+  await client.close()
 ```
 
 Output:
@@ -123,6 +127,8 @@ async def example_setget_objects():
     (getOk, values) = await client.get(['server_users'])
     if getOk:
       print(values)
+
+  await client.close()
 ```
 
 Output:
