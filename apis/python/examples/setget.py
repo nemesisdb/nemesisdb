@@ -45,5 +45,6 @@ async def setget_objects():
 
 
 if __name__ == "__main__":
-  #asio.run(setget_basics())
-  asio.run(setget_objects())
+  for f in [setget_basics(), setget_objects()]:
+    print(f'---- {f.__name__} ----')
+    asio.run(f)
