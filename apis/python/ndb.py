@@ -2,12 +2,12 @@
 
 #!/usr/bin/env python
 
-"""Client using the asio API."""
-
 
 import json
-import asyncio as asio
 import logging
+import asyncio as asio
+from typing import Tuple
+from asyncio import CancelledError
 from websockets.asyncio.client import connect
 from websockets import ConnectionClosed
 
@@ -23,7 +23,7 @@ This class is not intended to be used directly, instead
 use the Client class.
 """
 class Api:
-  
+
   def __init__(self):
     pass
 
@@ -32,9 +32,9 @@ class Api:
     self.uri = uri
     self.userClosed = False    
     self.rspEvt = asio.Event()
-    self.rcv_task = None
     self.connectedSem = asio.Semaphore(0)
-        
+    self.rcvTask = None
+    self.queryTask = None
     self.listen_task = asio.create_task(self.open())
     await self.connectedSem.acquire()
 
@@ -44,29 +44,42 @@ class Api:
   async def open(self):
     try:
       async with connect(self.uri, open_timeout=5) as websocket:
-        try:
-          self.ws = websocket
-          self.connectedSem.release()
+        self.ws = websocket
+        self.connectedSem.release()
 
-          while True:    
-            self.message = await asio.create_task(websocket.recv())
-            self.rspEvt.set()
-        except ConnectionClosed:
-          pass
-        finally:        
-          if self.userClosed == False:
-            tasks = asio.all_tasks() - {asio.current_task()}
-            for task in tasks:
-              task.cancel()
-          
-            await asio.gather(*tasks)         
+        while True: ## TODO ! uncomment !
+          self.rcvTask = asio.create_task(websocket.recv(), name='recv')
+          # self.rcvTask.add_done_callback()
+          self.message = await self.rcvTask
+          self.rspEvt.set()
     except OSError:
+      # failed to connect
       if self.connectedSem.locked():
         self.connectedSem.release()
+    except ConnectionClosed:
+      pass
+    except CancelledError:
+      pass
+    finally:
+      self.rspEvt.clear()
+      
+      if self.queryTask != None:
+        self.queryTask.cancel()
+
+      if self.userClosed == False:
+        self.rcvTask.cancel()
       
       
   async def query(self, s: dict, expectRsp: bool) -> dict:
-    await asio.gather(asio.create_task(self._query(json.dumps(s), expectRsp)))   
+    self.queryTask = asio.create_task(self._query(json.dumps(s), expectRsp))   
+
+    # if there is an active query when we are disconnected, the query
+    # task is cancelled, raising an exception.
+    try:
+      await self.queryTask
+    except asio.CancelledError:
+      pass
+
     return json.loads(self.message) if expectRsp else None
 
 
@@ -133,7 +146,7 @@ class Client:
     return await self._doSetAdd(_CMD_ADD, _RSP_ADD, keys)
 
 
-  async def get(self, keys: tuple) -> dict:
+  async def get(self, keys: tuple) -> Tuple[bool, dict]:
     q = {_CMD_GET : {'keys':keys}}
     rsp = await self.api.query(q, True)
     return (self.isRspSuccess(rsp, _RSP_GET), rsp[_RSP_GET]['keys'])
@@ -190,7 +203,7 @@ class Client:
 
 
 
-async def do_stuff():
+async def test():
   client = Client("ws://127.0.0.1:1987/")
   listen_task = await client.listen()
 
@@ -282,6 +295,55 @@ async def do_stuff():
   await listen_task
 
 
+async def example_connect():
+  client = Client("ws://127.0.0.1:1987/")
+  listen_task = await client.listen()
+
+  # call query functions
+
+  #await client.close()  
+  #listen_task.cancel()
+
+  await listen_task
+
+
+async def example_setget_basics():
+  client = Client("ws://127.0.0.1:1987/")
+  listen_task = await client.listen()
+
+  setSuccess = await client.set({'username':'billy', 'password':'billy_passy'})
+
+  if setSuccess:
+    (getOk, values) = await client.get(['username'])
+    if getOk:
+      print(values)
+    else:
+      print('Query failed')
+
+  await listen_task
+
+
+async def example_setget_objects():
+  client = Client("ws://127.0.0.1:1987/")
+  listen_task = await client.listen()
+
+  data = {  "server_ip":"123.456.7.8",
+            "server_port":1987,
+            "server_users":
+            {
+              "admins":["user1", "user2"],
+              "banned":["user3"]
+            }
+          }
+
+  setSuccess = await client.set(data)
+  if setSuccess:
+    (getOk, values) = await client.get(['server_users'])
+    if getOk:
+      print(values)
+
+
 if __name__ == "__main__":
-  asio.run(do_stuff())
+  #asio.run(test())
+  asio.run(example_connect())
 
