@@ -40,12 +40,12 @@ async def exists_end():
   session = await ndb.create_session(client)
   assert session != None and session.tkn > 0
 
-  [ok, exist] = await ndb.session_exists(client, session, [session.tkn])
+  [ok, exist] = await ndb.session_exists(session, [session.tkn])
   assert ok and exist == [session.tkn]
   
-  assert (await ndb.end_session(client, session))
+  assert (await ndb.end_session(session))
 
-  [ok, exist] = await ndb.session_exists(client, session, [session.tkn])
+  [ok, exist] = await ndb.session_exists(session, [session.tkn])
   assert ok and len(exist) == 0
 
   await client.close()
@@ -97,14 +97,14 @@ async def info_infoall():
 
   assert (await client.set({'fname':'james', 'sname':'smith'}, session.tkn))
 
-  (ok, result) = await ndb.session_info(client, session)
+  (ok, result) = await ndb.session_info(session)
   assert (ok and result['tkn'] == session.tkn and
                  result['keyCnt'] == 2 and
                  result['shared'] == False and
                  result['expires'] == False)
 
 
-  (ok, result) = await ndb.session_info_all(client, session)
+  (ok, result) = await ndb.session_info_all(session)
   assert (ok and result['totalSessions'] == 1 and result['totalKeys'] == 2)
 
 

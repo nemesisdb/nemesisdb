@@ -191,28 +191,28 @@ async def create_session(client: SessionClient) -> Session:
   return None
 
 
-async def end_session(client: SessionClient, session: Session):
+async def end_session(session: Session):
   q = {'SH_END':{}}
-  rsp = await client._send_session_query('SH_END', q, session.tkn)
-  return client._is_rsp_valid(rsp, 'SH_END_RSP')
+  rsp = await session.client._send_session_query('SH_END', q, session.tkn)
+  return session.client._is_rsp_valid(rsp, 'SH_END_RSP')
 
 
-async def session_exists(client: SessionClient, session: Session, tkns: List[int]) -> Tuple[bool, List]:
+async def session_exists(session: Session, tkns: List[int]) -> Tuple[bool, List]:
   q = {'SH_EXISTS':{'tkns':tkns}}
-  rsp = await client._send_query('SH_EXISTS', q, 0)
-  return (client._is_rsp_valid(rsp, 'SH_EXISTS_RSP'), rsp['SH_EXISTS_RSP']['exist'])
+  rsp = await session.client._send_query('SH_EXISTS', q, 0)
+  return (session.client._is_rsp_valid(rsp, 'SH_EXISTS_RSP'), rsp['SH_EXISTS_RSP']['exist'])
 
 
-async def session_info(client: SessionClient, session: Session) -> dict:
+async def session_info(session: Session) -> dict:
   q = {'SH_INFO':{}}
-  rsp = await client._send_session_query('SH_INFO', q, session.tkn)
-  return (client._is_rsp_valid(rsp, 'SH_INFO_RSP'), rsp['SH_INFO_RSP'])
+  rsp = await session.client._send_session_query('SH_INFO', q, session.tkn)
+  return (session.client._is_rsp_valid(rsp, 'SH_INFO_RSP'), rsp['SH_INFO_RSP'])
 
 
-async def session_info_all(client: SessionClient, session: Session) -> dict:
+async def session_info_all(session: Session) -> dict:
   q = {'SH_INFO_ALL':{}}
-  rsp = await client._send_session_query('SH_INFO_ALL', q, session.tkn)
-  return (client._is_rsp_valid(rsp, 'SH_INFO_ALL_RSP'), rsp['SH_INFO_ALL_RSP'])
+  rsp = await session.client._send_session_query('SH_INFO_ALL', q, session.tkn)
+  return (session.client._is_rsp_valid(rsp, 'SH_INFO_ALL_RSP'), rsp['SH_INFO_ALL_RSP'])
 
 
 async def end_all_sessions(client: SessionClient) -> Tuple[bool, int]:
