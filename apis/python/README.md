@@ -40,7 +40,6 @@ Set then get `username` and `password` keys:
 from ndb import Client
 
 client = Client()
-
 await client.listen('ws://127.0.0.1:1987/')
 
 setSuccess = await client.set({'username':'billy', 'password':'billy_passy'})
@@ -91,8 +90,8 @@ A key's value can be an object, as here with `server_users`:
 Set the data then get `server_users`:
 
 ```py3
-client = Client("ws://127.0.0.1:1987/")
-listen_task = await client.listen()
+client = Client()
+await client.listen('ws://127.0.0.1:1987/')
 
 data = {  "server_ip":"123.456.7.8",
           "server_port":1987,
@@ -123,8 +122,7 @@ Output:
 
 ```py3
 client = Client()
-
-await connect_client(client)
+await client.listen('ws://127.0.0.1:1987/')
 
 await client.set({'LinuxDistro':'Arch'})
 (getOk, values) = await client.get(('LinuxDistro',))
@@ -133,12 +131,18 @@ print(f'Before add(): {values}')
 await client.add({'LinuxDistro':'Arch btw'})
 (getOk, values) = await client.get(('LinuxDistro',))
 print(f'After add(): {values}')
+
+
+await client.set({'LinuxDistro':'Arch btw'})
+(getOk, values) = await client.get(('LinuxDistro',))
+print(f'After set(): {values}')
 ```
 
 Output:
-```py3
+```
 Before add(): {'LinuxDistro': 'Arch'}
 After add(): {'LinuxDistro': 'Arch'}
+After set(): {'LinuxDistro': 'Arch btw'}
 ```
 
 <br/>
