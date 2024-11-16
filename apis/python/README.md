@@ -163,11 +163,11 @@ Common commands:
 <br/>
 
 # Sessions
-A session is similar to a Redis hashset:
+A session is similar to a Redis hashset. Each session:
 
-- it contains a group of keys
-- each session has a dedicated map
-- a session can expire, deleting keys and optionally, also deleting the session
+- contains a group of keys
+- has a dedicated map
+- can expire, deleting keys, and optionally also deleting the session
 
 The session API is implemented so that the same key-value functions (i.e. `set()`, `get()`, etc) can be used, rather than a separate group of functions.
 
@@ -187,25 +187,28 @@ if session == None:
 
 print(f"Session created with session token: {session.tkn}")
 
-# set keys in the session
 ok = await client.set({'fname':'James', 'sname':'smith'}, session.tkn)
 if not ok:
   print('Set failed')
   return
 ```
 
-- Create a `SessionClient`, rather than a `Client`
-- `create_session()` creates the session, storing the session token
-- There after we use the same functions, such as `set()`, but we pass the token
-
+Output
 
 ```
 Session created with session token: 16204359010587816757
 {'fname': 'James', 'sname': 'smith'}
 ```
+
+- Create a `SessionClient`, rather than a `Client`
+- `create_session()` creates the session
+- The `Session` object stores the session token and client (command functions and websocket connection)
+- There after we use the same functions, such as `set()`, but we pass the token
+
+
 <br/>
 
-## Separation
+## Multiple Sessions
 Because each session has a dedicated map, it's trivial to store and handle data that represents different entities. 
 If we have a session per user to store username and email:
 
