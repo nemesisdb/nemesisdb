@@ -69,9 +69,11 @@ class Client:
 
   async def get(self, keys: tuple, tkn = 0) -> Tuple[bool, dict]:
     q = {KvCmd.GET_REQ : {'keys':keys}}
-    #rsp = await self._send_kv_query(KvCmd.GET_REQ, q)
     rsp = await self._send_query(KvCmd.GET_REQ, q, tkn)
-    return (self._is_rsp_valid(rsp, KvCmd.GET_RSP), rsp[KvCmd.GET_RSP]['keys'])
+    if self._is_rsp_valid(rsp, KvCmd.GET_RSP):
+      return (True, rsp[KvCmd.GET_RSP]['keys'])
+    else:
+      return (False, dict())
   
 
   async def rmv(self, keys: tuple, tkn = 0) -> dict:
