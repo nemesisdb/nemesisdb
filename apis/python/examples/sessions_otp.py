@@ -26,10 +26,10 @@ async def create_otp(client: SessionClient) -> tuple:
   return (session, code)
 
 
-async def validate_otp(client: SessionClient, token: int, userCode: int) -> bool:
+async def validate_otp(session: Session, userCode: int) -> bool:
   # if session doesn't exist, get() returns (False, dict()), otherwise check code
   print(f'Attempting {userCode}')
-  (valid, result) = await client.get(('code',), token)
+  (valid, result) = await session.client.get(('code',), session.tkn)
   return valid and result['code'] == userCode
   
 
@@ -42,7 +42,7 @@ async def otp():
 
   print(f"Correct Code {code}")
 
-  # some time later user submits a value
+  # some time later user submits a code
   # but we simulate this in a loop
 
   valid = False
@@ -51,7 +51,7 @@ async def otp():
 
   for i in range(0, maxAttempts):
     attemptCode = code if i == useCorrectCodeIndex else random.randint(1000, 9999)
-    if (valid := await validate_otp(client, session.tkn, attemptCode)) == True:
+    if (valid := await validate_otp(session, attemptCode)) == True:
       break
     else:
       await asio.sleep(1)

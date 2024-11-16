@@ -92,8 +92,48 @@ async def multiple_sessions():
   await updateRoles(session_user1.tkn)
 
 
+# code below used in the API README
+
+async def newUser(client: SessionClient, username: str, email: str) -> Session:
+  session = await ndb.create_session(client)
+  await client.set({'username':username, 'email':email}, session.tkn)
+  return session
+
+
+async def updateEmail(session: Session, email: str):
+  await session.client.set({'email':email}, session.tkn)
+
+
+async def updateUsername(session: Session, username: str):
+  await session.client.set({'username':username}, session.tkn)
+
+
+async def getUser(session: Session):
+  (ok, values) = await session.client.get(('username', 'email'), session.tkn)
+  if ok:
+    print(values)
+
+
+async def two_sessions():
+  client = SessionClient()
+  await client.listen('ws://127.0.0.1:1987/')
+  
+  user1_session = await newUser(client, 'user1', 'u1@mailg.com')
+  user2_session = await newUser(client, 'user2', 'u2@yoohaa.com')
+
+  await getUser(user1_session)
+  await getUser(user2_session)
+
+  print("Updating")
+  await updateEmail(user1_session, 'u1@chimpmail.com')
+  await updateUsername(user2_session, 'user2_updated')
+
+  await getUser(user1_session)
+  await getUser(user2_session)
+
+
 if __name__ == "__main__":
-  for f in [basics(), multiple_sessions()]:
+  for f in [basics(), multiple_sessions(), two_sessions()]:
     print(f'---- {f.__name__} ----')
     asio.run(f)
 

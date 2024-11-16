@@ -7,24 +7,22 @@ from ndb import Client
 async def setget_basics():
   client = Client()
 
-  listen_task = await connect_client(client)
+  await connect_client(client)
 
   setSuccess = await client.set({'username':'billy', 'password':'billy_passy'})
 
   if setSuccess:
-    (getOk, values) = await client.get(['username'])
+    (getOk, values) = await client.get(('username',))
     if getOk:
       print(values)
     else:
       print('Query failed')
 
-  stop(client)
-
 
 async def setget_objects():
   client = Client()
 
-  listen_task = await connect_client(client)
+  await connect_client(client)
 
   data = {  "server_ip":"123.456.7.8",
             "server_port":1987,
@@ -37,14 +35,30 @@ async def setget_objects():
 
   setSuccess = await client.set(data)
   if setSuccess:
-    (getOk, values) = await client.get(['server_users'])
+    (getOk, values) = await client.get(('server_users',))
     if getOk:
       print(values)
 
-  stop(client)
 
+async def add():
+  client = Client()
+
+  await connect_client(client)
+
+  await client.set({'LinuxDistro':'Arch'})
+  (getOk, values) = await client.get(('LinuxDistro',))
+  print(f'Before add(): {values}')
+
+  await client.add({'LinuxDistro':'Arch btw'})
+  (getOk, values) = await client.get(('LinuxDistro',))
+  print(f'After add(): {values}')
+
+
+  await client.set({'LinuxDistro':'Arch btw'})
+  (getOk, values) = await client.get(('LinuxDistro',))
+  print(f'After set(): {values}')
 
 if __name__ == "__main__":
-  for f in [setget_basics(), setget_objects()]:
+  for f in [setget_basics(), setget_objects(), add()]:
     print(f'---- {f.__name__} ----')
     asio.run(f)

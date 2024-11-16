@@ -103,8 +103,7 @@ class Client:
 
   
   async def keys(self, tkn = 0) -> tuple:
-    q = {KvCmd.KEYS_REQ : {}}
-    rsp = await self._send_query(KvCmd.KEYS_REQ, q, tkn)
+    rsp = await self._send_query(KvCmd.KEYS_REQ, {KvCmd.KEYS_REQ : {}}, tkn)
     
     if self._is_rsp_valid(rsp, KvCmd.KEYS_RSP):
       return (True, rsp[KvCmd.KEYS_RSP]['keys'])
@@ -113,8 +112,7 @@ class Client:
 
 
   async def clear(self, tkn = 0) -> tuple:
-    q = {KvCmd.CLEAR_REQ : {}}
-    rsp = await self._send_query(KvCmd.CLEAR_REQ, q, tkn)
+    rsp = await self._send_query(KvCmd.CLEAR_REQ, {KvCmd.CLEAR_REQ : {}}, tkn)
     
     if self._is_rsp_valid(rsp, KvCmd.CLEAR_RSP):
       return (True, rsp[KvCmd.CLEAR_RSP]['cnt'])
@@ -218,7 +216,7 @@ async def create_session(client: SessionClient, expirySeconds = 0, deleteSession
   if expirySeconds > 0:
     q[SessionCmd.NEW_REQ]['expiry'] = dict({'duration':expirySeconds, 'deleteSession':deleteSessionOnExpire})
     
-  rsp = await client._send_query(SessionCmd.NEW_REQ, q, 0)
+  rsp = await client._send_query(SessionCmd.NEW_REQ, q)
   if client._is_rsp_valid(rsp, SessionCmd.NEW_RSP):
     return Session(rsp[SessionCmd.NEW_RSP]['tkn'], client)
   return None
@@ -230,7 +228,8 @@ async def end_session(session: Session):
 
 
 async def session_exists(session: Session, tkns: List[int]) -> Tuple[bool, List]:
-  rsp = await session.client._send_query(SessionCmd.EXISTS_REQ, {SessionCmd.EXISTS_REQ:{'tkns':tkns}}, 0)
+  # when tkn is 0, _send_query() will not set the 'tkn'
+  rsp = await session.client._send_query(SessionCmd.EXISTS_REQ, {SessionCmd.EXISTS_REQ:{'tkns':tkns}})
   return (session.client._is_rsp_valid(rsp, SessionCmd.EXISTS_RSP), rsp[SessionCmd.EXISTS_RSP]['exist'])
 
 
@@ -245,7 +244,8 @@ async def session_info_all(session: Session) -> dict:
 
 
 async def end_all_sessions(client: SessionClient) -> Tuple[bool, int]:
-  rsp = await client._send_session_query(SessionCmd.END_ALL_REQ, {SessionCmd.END_ALL_REQ:{}}, 0)  # set tkn to 0, it's ignored
+  # when tkn is 0, _send_query() will not set the 'tkn'
+  rsp = await client._send_query(SessionCmd.END_ALL_REQ, {SessionCmd.END_ALL_REQ:{}})
   return (client._is_rsp_valid(rsp, SessionCmd.END_ALL_RSP), rsp[SessionCmd.END_ALL_RSP]['cnt'])
   
 
