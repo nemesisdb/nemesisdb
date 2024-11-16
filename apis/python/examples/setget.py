@@ -1,5 +1,5 @@
 import common
-from common import connect, connect_client, stop
+from common import connect_client, stop
 import asyncio as asio
 from ndb import Client
 

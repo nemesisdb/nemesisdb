@@ -1,136 +1,53 @@
-
-
-#!/usr/bin/env python
-
-
-import json
-import logging
+import connection
 import asyncio as asio
-from typing import Tuple
+from connection import Connection
+from typing import Tuple, List
 from asyncio import CancelledError
 from websockets.asyncio.client import connect
 from websockets import ConnectionClosed
 
-# logger = logging.getLogger('websockets')
-# logger.setLevel(logging.DEBUG)
-# logger.addHandler(logging.StreamHandler())
+
+class Fields:
+  STATUS    = 'st'
 
 
-"""
-The Api class runs the websockets library, handling asyncio
-coroutines.
-This class is not intended to be used directly, instead
-use the Client class.
-"""
-class Api:
-
-  def __init__(self):
-    pass
-
-
-  async def start(self, uri: str):    
-    self.uri = uri
-    self.userClosed = False    
-    self.rspEvt = asio.Event()
-    self.connectedSem = asio.Semaphore(0)
-    self.rcvTask = None
-    self.queryTask = None
-    self.listen_task = asio.create_task(self.open())
-    await self.connectedSem.acquire()
-
-    return self.listen_task
-  
-
-  async def open(self):
-    try:
-      async with connect(self.uri, open_timeout=5) as websocket:
-        self.ws = websocket
-        self.connectedSem.release()
-
-        while True: ## TODO ! uncomment !
-          self.rcvTask = asio.create_task(websocket.recv(), name='recv')
-          # self.rcvTask.add_done_callback()
-          self.message = await self.rcvTask
-          self.rspEvt.set()
-    except OSError:
-      # failed to connect
-      if self.connectedSem.locked():
-        self.connectedSem.release()
-    except (ConnectionClosed, CancelledError):
-      pass
-    finally:
-      self.rspEvt.clear()
-      
-      if self.queryTask != None:
-        self.queryTask.cancel()
-
-      if self.userClosed == False:
-        self.rcvTask.cancel()
-      
-      
-  async def query(self, s: dict, expectRsp: bool) -> dict:
-    self.queryTask = asio.create_task(self._query(json.dumps(s), expectRsp))   
-
-    # if there is an active query when we are disconnected, the query
-    # task is cancelled, raising an exception.
-    try:
-      await self.queryTask
-    except asio.CancelledError:
-      pass
-
-    return json.loads(self.message) if expectRsp else None
+class KvCmd:
+  SET_REQ       = 'KV_SET'
+  SET_RSP       = 'KV_SET_RSP'
+  ADD_REQ       = 'KV_ADD'
+  ADD_RSP       = 'KV_ADD_RSP'
+  GET_REQ       = 'KV_GET'
+  GET_RSP       = 'KV_GET_RSP'
+  RMV_REQ       = 'KV_RMV'
+  RMV_RSP       = 'KV_RMV_RSP'
+  COUNT_REQ     = 'KV_COUNT'
+  COUNT_RSP     = 'KV_COUNT_RSP'
+  CONTAINS_REQ  = 'KV_CONTAINS'
+  CONTAINS_RSP  = 'KV_CONTAINS_RSP'
+  CLEAR_REQ     = 'KV_CLEAR'
+  CLEAR_RSP     = 'KV_CLEAR_RSP'
+  CLEAR_SET_REQ = 'KV_CLEAR_SET'
+  CLEAR_SET_RSP = 'KV_CLEAR_SET_RSP'
+  KEYS_REQ      = 'KV_KEYS'
+  KEYS_RSP      = 'KV_KEYS_RSP'
 
 
-  async def _query(self, s: str, expectRsp: bool):
-    await self.ws.send(s, text=True)
 
-    if expectRsp:
-      await self.rspEvt.wait()
-      self.rspEvt.clear()
+"""Represents a client, use to query the database.
+This classes uses the Api class so that only relevant values
+are returned.
 
-
-  async def close(self):
-    self.userClosed = True
-    await self.ws.close()
-
-
-_STATUS = 'st'
-_CMD_SET = 'KV_SET'
-_RSP_SET = 'KV_SET_RSP'
-_CMD_ADD = 'KV_ADD'
-_RSP_ADD = 'KV_ADD_RSP'
-_CMD_GET = 'KV_GET'
-_RSP_GET = 'KV_GET_RSP'
-_CMD_RMV = 'KV_RMV'
-_RSP_RMV = 'KV_RMV_RSP'
-_CMD_COUNT = 'KV_COUNT'
-_RSP_COUNT = 'KV_COUNT_RSP'
-_CMD_CONTAINS = 'KV_CONTAINS'
-_RSP_CONTAINS = 'KV_CONTAINS_RSP'
-_CMD_CLEAR = 'KV_CLEAR'
-_RSP_CLEAR = 'KV_CLEAR_RSP'
-_CMD_CLEAR_SET = 'KV_CLEAR_SET'
-_RSP_CLEAR_SET = 'KV_CLEAR_SET_RSP'
-_CMD_KEYS = 'KV_KEYS'
-_RSP_KEYS = 'KV_KEYS_RSP'
-
-
-"""
-  Represents a client, use to query the database.
-  This classes uses the Api class so that only relevant values
-  are returned.
-
-  - The query functions will return when the response is received (as opposed
-    to a callback handler to receive all responses). This serialises responses and
-    should simplify user code.
-  - This design design means that KV_SETQ or KV_ADDQ are not supported.
+- The query functions will return when the response is received (as opposed
+  to a callback handler to receive all responses). This serialises responses and
+  should simplify user code.
+- This design design means that KV_SETQ or KV_ADDQ are not supported.
 """
 class Client:
   
   def __init__(self):
     self.uri = ''
     self.listen_task = None
-    self.api = Api()
+    self.api = Connection()
 
 
   async def listen(self, uri: str):
@@ -142,54 +59,71 @@ class Client:
     return self.listen_task
 
 
-  async def set(self, keys: dict) -> bool:
-    return await self._doSetAdd(_CMD_SET, _RSP_SET, keys)
+  async def set(self, keys: dict, tkn = 0) -> bool:
+    return await self._doSetAdd(KvCmd.SET_REQ, KvCmd.SET_RSP, keys, tkn)
   
 
-  async def add(self, keys: dict) -> bool:
-    return await self._doSetAdd(_CMD_ADD, _RSP_ADD, keys)
+  async def add(self, keys: dict, tkn = 0) -> bool:
+    return await self._doSetAdd(KvCmd.ADD_REQ, KvCmd.ADD_RSP, keys, tkn)
 
 
-  async def get(self, keys: tuple) -> Tuple[bool, dict]:
-    q = {_CMD_GET : {'keys':keys}}
-    rsp = await self.api.query(q, True)
-    return (self._isRspSuccess(rsp, _RSP_GET), rsp[_RSP_GET]['keys'])
+  async def get(self, keys: tuple, tkn = 0) -> Tuple[bool, dict]:
+    q = {KvCmd.GET_REQ : {'keys':keys}}
+    #rsp = await self._send_kv_query(KvCmd.GET_REQ, q)
+    rsp = await self._send_query(KvCmd.GET_REQ, q, tkn)
+    return (self._is_rsp_valid(rsp, KvCmd.GET_RSP), rsp[KvCmd.GET_RSP]['keys'])
   
 
-  async def rmv(self, keys: tuple) -> dict:
-    q = {_CMD_RMV : {'keys':keys}}
-    rsp = await self.api.query(q, True)
-    return self._isRspSuccess(rsp, _RSP_RMV)
+  async def rmv(self, keys: tuple, tkn = 0) -> dict:
+    q = {KvCmd.RMV_REQ : {'keys':keys}}
+    rsp = await self._send_query(KvCmd.RMV_REQ, q, tkn)
+    return self._is_rsp_valid(rsp, KvCmd.RMV_RSP)
 
 
-  async def count(self) -> tuple:
-    q = {_CMD_COUNT : {}}
-    rsp = await self.api.query(q, True)
-    return (self._isRspSuccess(rsp, _RSP_COUNT), rsp[_RSP_COUNT]['cnt'])
+  async def count(self, tkn = 0) -> tuple:
+    q = {KvCmd.COUNT_REQ : {}}
+    rsp = await self._send_query(KvCmd.COUNT_REQ, q, tkn)
+
+    if self._is_rsp_valid(rsp, KvCmd.COUNT_RSP):
+      return (True, rsp[KvCmd.COUNT_RSP]['cnt'])
+    else:
+      return (False, 0)
 
 
-  async def contains(self, keys: tuple) -> tuple:
-    q = {_CMD_CONTAINS : {'keys':keys}}
-    rsp = await self.api.query(q, True)
-    return (self._isRspSuccess(rsp, _RSP_CONTAINS), rsp[_RSP_CONTAINS]['contains'])
+  async def contains(self, keys: tuple, tkn = 0) -> tuple:
+    q = {KvCmd.CONTAINS_REQ : {'keys':keys}}
+    rsp = await self._send_query(KvCmd.CONTAINS_REQ, q, tkn)
+
+    if self._is_rsp_valid(rsp, KvCmd.CONTAINS_RSP):
+      return (True, rsp[KvCmd.CONTAINS_RSP]['contains'])
+    else:
+      (False, [])
 
   
-  async def keys(self) -> tuple:
-    q = {_CMD_KEYS : {}}
-    rsp = await self.api.query(q, True)
-    return (self._isRspSuccess(rsp, _RSP_KEYS), rsp[_RSP_KEYS]['keys'])
+  async def keys(self, tkn = 0) -> tuple:
+    q = {KvCmd.KEYS_REQ : {}}
+    rsp = await self._send_query(KvCmd.KEYS_REQ, q, tkn)
+    
+    if self._is_rsp_valid(rsp, KvCmd.KEYS_RSP):
+      return (True, rsp[KvCmd.KEYS_RSP]['keys'])
+    else:
+      return (False, [])
 
 
-  async def clear(self) -> tuple:
-    q = {_CMD_CLEAR : {}}
-    rsp = await self.api.query(q, True)
-    return (self._isRspSuccess(rsp, _RSP_CLEAR), rsp[_RSP_CLEAR]['cnt'])
+  async def clear(self, tkn = 0) -> tuple:
+    q = {KvCmd.CLEAR_REQ : {}}
+    rsp = await self._send_query(KvCmd.CLEAR_REQ, q, tkn)
+    
+    if self._is_rsp_valid(rsp, KvCmd.CLEAR_RSP):
+      return (True, rsp[KvCmd.CLEAR_RSP]['cnt'])
+    else:
+      return (False, [])
+    
 
-
-  async def clear_set(self, keys: dict) -> tuple:
-    q = {_CMD_CLEAR_SET : {'keys':keys}}
-    rsp = await self.api.query(q, True)
-    return (self._isRspSuccess(rsp, _RSP_CLEAR_SET), rsp[_RSP_CLEAR_SET]['cnt'])
+  async def clear_set(self, keys: dict, tkn = 0) -> tuple:
+    q = {KvCmd.CLEAR_SET_REQ : {'keys':keys}}
+    rsp = await self._send_query(KvCmd.CLEAR_SET_REQ, q, tkn)    
+    return (self._is_rsp_valid(rsp, KvCmd.CLEAR_SET_RSP), rsp[KvCmd.CLEAR_SET_RSP]['cnt'])
 
 
   async def close(self):
@@ -200,12 +134,92 @@ class Client:
     return self.listen_task
   
 
-  def _isRspSuccess(self, rsp: dict, cmd: str) -> bool:
-    return rsp[cmd][_STATUS] == 1
+  def _is_rsp_valid(self, rsp: dict, cmd: str) -> bool:
+    return rsp[cmd][Fields.STATUS] == 1
 
 
-  async def _doSetAdd(self, cmdName: str, rspName: str, keys: dict) -> bool:
+  async def _doSetAdd(self, cmdName: str, rspName: str, keys: dict, tkn: int) -> bool:
     q = {cmdName : {'keys':keys}}   # cmdName is either KV_SET or KV_ADD
-    rsp = await self.api.query(q, True)
-    return self._isRspSuccess(rsp, rspName)
+    rsp = await self._send_query(cmdName, q, tkn)
+    return self._is_rsp_valid(rsp, rspName)
+  
+  
+  async def _send_query(self, cmd: str, q: dict, tkn = 0):
+    if tkn != 0:
+      return await self._send_session_query(cmd, q, tkn)
+    else:
+      return await self._send_kv_query(q)
+
+
+  async def _send_kv_query(self, q: dict):
+    return await self.api.query(q)
+  
+
+  async def _send_session_query(self, cmd: str, q: dict, tkn: int):
+    q[cmd]['tkn'] = tkn
+    return await self.api.query(q)
+    
+
+
+"""This extends Client for session specific functionality. 
+Which is nothing at the moment. SessionClient and Client are
+not tied to a particular session, so they don't store the token.
+"""
+class SessionClient(Client):
+  def __init__(self):
+    super().__init__()
+
+
+"""Stores the token and client on which the session was created.
+"""
+class Session:
+  def __init__(self, tkn: int, client: SessionClient):
+    self.tkn = tkn
+    self.client = client
+  
+
+# Top level session functions. These functions are not tied to a 
+# particular session, exact session_info() and end_session(),
+# but there is no other logical place for them.
+
+async def create_session(client: SessionClient) -> Session:
+  # 'name' will be moved to a new SH_NEW_SHARED command
+  q = {'SH_NEW':{'name':'default'}}
+  rsp = await client._send_query('SH_NEW', q, 0)
+  if client._is_rsp_valid(rsp, 'SH_NEW_RSP'):
+    return Session(rsp['SH_NEW_RSP']['tkn'], client)
+  return None
+
+
+async def end_session(client: SessionClient, session: Session):
+  q = {'SH_END':{}}
+  rsp = await client._send_session_query('SH_END', q, session.tkn)
+  return client._is_rsp_valid(rsp, 'SH_END_RSP')
+
+
+async def session_exists(client: SessionClient, session: Session, tkns: List[int]) -> Tuple[bool, List]:
+  q = {'SH_EXISTS':{'tkns':tkns}}
+  rsp = await client._send_query('SH_EXISTS', q, 0)
+  return (client._is_rsp_valid(rsp, 'SH_EXISTS_RSP'), rsp['SH_EXISTS_RSP']['exist'])
+
+
+async def session_info(client: SessionClient, session: Session) -> dict:
+  q = {'SH_INFO':{}}
+  rsp = await client._send_session_query('SH_INFO', q, session.tkn)
+  return (client._is_rsp_valid(rsp, 'SH_INFO_RSP'), rsp['SH_INFO_RSP'])
+
+
+async def session_info_all(client: SessionClient, session: Session) -> dict:
+  q = {'SH_INFO_ALL':{}}
+  rsp = await client._send_session_query('SH_INFO_ALL', q, session.tkn)
+  return (client._is_rsp_valid(rsp, 'SH_INFO_ALL_RSP'), rsp['SH_INFO_ALL_RSP'])
+
+
+async def end_all_sessions(client: SessionClient) -> Tuple[bool, int]:
+  q = {'SH_END_ALL':{}}
+  rsp = await client._send_session_query('SH_END_ALL', q, 0)  # set tkn to 0, it's ignored
+  return (client._is_rsp_valid(rsp, 'SH_END_ALL_RSP'), rsp['SH_END_ALL_RSP']['cnt'])
+  
+
+
 
