@@ -8,6 +8,5 @@ clients/Release/bin/*
 clients/Debug/bin/*
 faff/Debug/*
 faff/Release/*
-apis/python/__pycache__/ndb.cpython-310.pyc
-apis/python/examples/__pycache__/common.cpython-310.pyc
-apis/python/__pycache__/connection.cpython-310.pyc
+apis/python/__pycache__/*
+apis/python/examples/__pycache__/*
