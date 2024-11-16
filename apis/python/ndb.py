@@ -178,47 +178,73 @@ class Session:
     self.client = client
   
 
+
+class SessionCmd:
+  NEW_REQ       = 'SH_NEW'
+  NEW_RSP       = 'SH_NEW_RSP'
+  END_REQ       = 'SH_END'
+  END_RSP       = 'SH_END_RSP'
+  END_ALL_REQ   = 'SH_END_ALL'
+  END_ALL_RSP   = 'SH_END_ALL_RSP'
+  EXISTS_REQ    = 'SH_EXISTS'
+  EXISTS_RSP    = 'SH_EXISTS_RSP'
+  INFO_REQ      = 'SH_INFO'
+  INFO_RSP      = 'SH_INFO_RSP'
+  INFO_ALL_REQ  = 'SH_INFO_ALL'
+  INFO_ALL_RSP  = 'SH_INFO_ALL_RSP'
+
+
 # Top level session functions. These functions are not tied to a 
-# particular session, exact session_info() and end_session(),
+# particular session, except session_info() and end_session(),
 # but there is no other logical place for them.
 
-async def create_session(client: SessionClient) -> Session:
-  # 'name' will be moved to a new SH_NEW_SHARED command
-  q = {'SH_NEW':{'name':'default'}}
-  rsp = await client._send_query('SH_NEW', q, 0)
-  if client._is_rsp_valid(rsp, 'SH_NEW_RSP'):
-    return Session(rsp['SH_NEW_RSP']['tkn'], client)
+"""Create a new session, with optional expiry settings.
+expirySeconds - after this duration (seconds), the session expires. Default 0 - never expires.
+deleteSessionOnExpire - when True, the sessions is deleted. When false, the session is not deleted. 
+
+When a session expires, the keys are always deleted, but deleteSessionOnExpire controls if the 
+actual session is also deleted.
+"""
+async def create_session(client: SessionClient, expirySeconds = 0, deleteSessionOnExpire = False) -> Session:
+  # TODO 'name' will be optional
+  # TODO add SH_NEW_SHARED command 
+  q = {SessionCmd.NEW_REQ:{'name':'default'}}
+
+  if expirySeconds < 0:
+    raise ValueError('expirySeconds must be >= 0')
+  
+  if expirySeconds > 0:
+    q[SessionCmd.NEW_REQ]['expiry'] = dict({'duration':expirySeconds, 'deleteSession':deleteSessionOnExpire})
+    
+  rsp = await client._send_query(SessionCmd.NEW_REQ, q, 0)
+  if client._is_rsp_valid(rsp, SessionCmd.NEW_RSP):
+    return Session(rsp[SessionCmd.NEW_RSP]['tkn'], client)
   return None
 
 
 async def end_session(session: Session):
-  q = {'SH_END':{}}
-  rsp = await session.client._send_session_query('SH_END', q, session.tkn)
-  return session.client._is_rsp_valid(rsp, 'SH_END_RSP')
+  rsp = await session.client._send_session_query(SessionCmd.END_REQ, {SessionCmd.END_REQ:{}}, session.tkn)
+  return session.client._is_rsp_valid(rsp, SessionCmd.END_RSP)
 
 
 async def session_exists(session: Session, tkns: List[int]) -> Tuple[bool, List]:
-  q = {'SH_EXISTS':{'tkns':tkns}}
-  rsp = await session.client._send_query('SH_EXISTS', q, 0)
-  return (session.client._is_rsp_valid(rsp, 'SH_EXISTS_RSP'), rsp['SH_EXISTS_RSP']['exist'])
+  rsp = await session.client._send_query(SessionCmd.EXISTS_REQ, {SessionCmd.EXISTS_REQ:{'tkns':tkns}}, 0)
+  return (session.client._is_rsp_valid(rsp, SessionCmd.EXISTS_RSP), rsp[SessionCmd.EXISTS_RSP]['exist'])
 
 
 async def session_info(session: Session) -> dict:
-  q = {'SH_INFO':{}}
-  rsp = await session.client._send_session_query('SH_INFO', q, session.tkn)
-  return (session.client._is_rsp_valid(rsp, 'SH_INFO_RSP'), rsp['SH_INFO_RSP'])
+  rsp = await session.client._send_session_query(SessionCmd.INFO_REQ, {SessionCmd.INFO_REQ:{}}, session.tkn)
+  return (session.client._is_rsp_valid(rsp, SessionCmd.INFO_RSP), rsp[SessionCmd.INFO_RSP])
 
 
 async def session_info_all(session: Session) -> dict:
-  q = {'SH_INFO_ALL':{}}
-  rsp = await session.client._send_session_query('SH_INFO_ALL', q, session.tkn)
-  return (session.client._is_rsp_valid(rsp, 'SH_INFO_ALL_RSP'), rsp['SH_INFO_ALL_RSP'])
+  rsp = await session.client._send_session_query(SessionCmd.INFO_ALL_REQ, {SessionCmd.INFO_ALL_REQ:{}}, session.tkn)
+  return (session.client._is_rsp_valid(rsp, SessionCmd.INFO_ALL_RSP), rsp[SessionCmd.INFO_ALL_RSP])
 
 
 async def end_all_sessions(client: SessionClient) -> Tuple[bool, int]:
-  q = {'SH_END_ALL':{}}
-  rsp = await client._send_session_query('SH_END_ALL', q, 0)  # set tkn to 0, it's ignored
-  return (client._is_rsp_valid(rsp, 'SH_END_ALL_RSP'), rsp['SH_END_ALL_RSP']['cnt'])
+  rsp = await client._send_session_query(SessionCmd.END_ALL_REQ, {SessionCmd.END_ALL_REQ:{}}, 0)  # set tkn to 0, it's ignored
+  return (client._is_rsp_valid(rsp, SessionCmd.END_ALL_RSP), rsp[SessionCmd.END_ALL_RSP]['cnt'])
   
 
 
