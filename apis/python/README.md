@@ -1,8 +1,8 @@
 # Python API
 
 
-[!WARNING]
-This API is not production ready. I am not an experienced Python dev, so if you see improvements please do submit. This is a starting point for future work.
+> [!WARNING]
+> This API is not production ready. I am not an experienced Python dev, so if you see improvements please do submit. This is a starting point for future work.
 
 
 The API is implemented with the [websockets](https://websockets.readthedocs.io/en/stable/) library which uses asyncio.
@@ -58,7 +58,7 @@ Output:
 ```
 
 - `set()` accepts a `dict` of key:value
-- `get()` accepts an array of keys
+- `get()` accepts a tuple of keys
   - Returns a tuple: `(bool, dict)`
   - `bool`: `True` if command was successful
   - `dict`: keys with values
