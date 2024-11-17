@@ -10,6 +10,7 @@ NemesisDB is an in-memory keyvalue JSON database:
 API and further information in the [docs](https://docs.nemesisdb.io/).
 
 Contents:
+  - [Python API](#python-api)
   - [Design](#design)
   - [Install](#install)
   - [Build for Linux](#build---linux-only)
@@ -168,6 +169,32 @@ Examples of sessions:
 <br/>
 <br/>
 
+
+# Python API
+There is an early version of a [Python API](https://github.com/nemesisdb/nemesisdb/tree/main/apis/python).
+
+Set then retrieve two keys, `username` and `password`:
+
+```py
+from ndb import Client
+
+client = Client()
+await client.listen('ws://127.0.0.1:1987/')
+
+setSuccess = await client.set({'username':'billy', 'password':'billy_passy'})
+
+if setSuccess:
+  (getOk, values) = await client.get(('username','password'))
+  if getOk:
+    print(values)
+  else:
+    print('Query failed')
+```
+
+
+<br/>
+<br/>
+
 # Install
 NemesisDB is available as a Debian package and Docker image:
 
@@ -182,14 +209,13 @@ You can compile for Linux, instructions below.
 
 # Design
 
-As of version 0.5, the engine is single threaded to improve performance. The multihreaded version is collecting GitHub dust on the [0.4.1](https://github.com/nemesisdb/nemesisdb/tree/0.4.1) branch.
+As of version 0.5, the engine is single threaded. The instance is assigned to core 0 by default but can be configured in the server [config](https://docs.nemesisdb.io/home/config).
 
-The instance is assigned to core 0 by default but can be configured in the server [config](https://docs.nemesisdb.io/home/config).
-
+The multihreaded version is collecting GitHub dust on the [0.4.1](https://github.com/nemesisdb/nemesisdb/tree/0.4.1) branch.
 
 <br/>
 
-### Save and Restore
+## Save and Restore
 Session and key value data be saved to file and restored:
 
 Sessions enabled:
