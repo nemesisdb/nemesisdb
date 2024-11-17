@@ -1,10 +1,12 @@
 import sys
+import random
 import asyncio as asio
 
 sys.path.append('../')
 from ndb import Client
 
 
+# TODO split test() into separate functions
 async def test():
   client = Client()
   listen_task = await client.listen('ws://127.0.0.1:1987/')
@@ -96,6 +98,36 @@ async def test():
   await listen_task
 
 
+async def save_load(nKeys: int):
+  dataSetName = f'test_{random.randint(0, 10000)}'
+
+  client = Client()
+  await client.listen('ws://127.0.0.1:1987/')
+
+  # empty db to ensure no keys
+  (cleared, cnt) = await client.clear()
+  assert cleared
+
+
+  # store some keys
+  for i in range(0,nKeys):
+    ok = await client.set({f"username{i}":f"user{i}"})
+    assert ok
+
+  saved = await client.save(dataSetName)
+  assert saved
+
+
+  # clear everything then load
+  (cleared, cnt) = await client.clear()
+  assert cleared and cnt == nKeys
+
+  (loaded, cnt) = await client.load(dataSetName)
+  assert loaded and cnt == nKeys
+
+
 if __name__ == "__main__":
-  asio.run(test())
+  for f in [test(), save_load(1000)]:
+    print(f'---- {f.__name__} ----')
+    asio.run(f)
 

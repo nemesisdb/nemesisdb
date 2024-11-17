@@ -773,11 +773,11 @@ public:
     std::size_t nSessions{0}, nKeys{0};
     
     njson rsp;
-    rsp["SH_LOAD_RSP"]["st"] = toUnderlying(status);
-    rsp["SH_LOAD_RSP"]["name"] = loadName;
-    rsp["SH_LOAD_RSP"]["duration"] = 0; // updated below
-    rsp["SH_LOAD_RSP"]["sessions"] = 0; // always 0 when sessions disabled
-    rsp["SH_LOAD_RSP"]["keys"] = 0; // updated below
+    rsp["KV_LOAD_RSP"]["st"] = toUnderlying(status);
+    rsp["KV_LOAD_RSP"]["name"] = loadName;
+    rsp["KV_LOAD_RSP"]["duration"] = 0; // updated below
+    rsp["KV_LOAD_RSP"]["sessions"] = 0; // always 0 when sessions disabled
+    rsp["KV_LOAD_RSP"]["keys"] = 0; // updated below
 
     try
     {      
@@ -791,8 +791,8 @@ public:
           break;
       }
 
-      rsp["SH_LOAD_RSP"]["duration"] = chrono::duration_cast<chrono::milliseconds>(NemesisClock::now() - start).count();
-      rsp["SH_LOAD_RSP"]["keys"] = nKeys;      
+      rsp["KV_LOAD_RSP"]["duration"] = chrono::duration_cast<chrono::milliseconds>(NemesisClock::now() - start).count();
+      rsp["KV_LOAD_RSP"]["keys"] = nKeys;      
     }
     catch(const std::exception& e)
     {
@@ -800,7 +800,7 @@ public:
       status = RequestStatus::LoadError;
     }
 
-    rsp["SH_LOAD_RSP"]["st"] = toUnderlying(status);
+    rsp["KV_LOAD_RSP"]["st"] = toUnderlying(status);
     
     return rsp;
   }

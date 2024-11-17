@@ -5,6 +5,21 @@ from typing import Tuple, List
 from asyncio import CancelledError
 from websockets.asyncio.client import connect
 from websockets import ConnectionClosed
+from enum import Enum
+
+
+class SaveState(Enum):
+  STARTED = 0
+  COMPLETE = 1
+  FAIL = 2
+
+
+class FieldValues:
+  ST_SUCCESS = 1
+  ST_SAVE_START = 120
+  ST_SAVE_COMPLETE = 121
+  ST_SAVE_ERROR = 123
+  ST_LOAD_COMPLETE = 141
 
 
 class Fields:
@@ -30,7 +45,10 @@ class KvCmd:
   CLEAR_SET_RSP = 'KV_CLEAR_SET_RSP'
   KEYS_REQ      = 'KV_KEYS'
   KEYS_RSP      = 'KV_KEYS_RSP'
-
+  SAVE_REQ      = "KV_SAVE"
+  SAVE_RSP      = "KV_SAVE_RSP"
+  LOAD_REQ      = "KV_LOAD"
+  LOAD_RSP      = "KV_LOAD_RSP"
 
 
 """Represents a client, use to query the database.
@@ -126,6 +144,21 @@ class Client:
     return (self._is_rsp_valid(rsp, KvCmd.CLEAR_SET_RSP), rsp[KvCmd.CLEAR_SET_RSP]['cnt'])
 
 
+  async def save(self, name: str, tkn = 0):
+    q = {KvCmd.SAVE_REQ : {'name':name}}
+    rsp = await self._send_query(KvCmd.SAVE_REQ, q, tkn)
+    return self._is_rsp_valid(rsp, KvCmd.SAVE_RSP, FieldValues.ST_SAVE_COMPLETE)
+
+  
+  async def load(self, name: str, tkn = 0):
+    q = {KvCmd.LOAD_REQ : {'name':name}}
+    rsp = await self._send_query(KvCmd.LOAD_REQ, q, tkn)
+    if self._is_rsp_valid(rsp, KvCmd.LOAD_RSP, FieldValues.ST_LOAD_COMPLETE):
+      return (True, rsp[KvCmd.LOAD_RSP]['keys'])
+    else:
+      return (False, 0)
+  
+
   async def close(self):
     await self.api.close()
 
@@ -134,8 +167,8 @@ class Client:
     return self.listen_task
   
 
-  def _is_rsp_valid(self, rsp: dict, cmd: str) -> bool:
-    return rsp[cmd][Fields.STATUS] == 1
+  def _is_rsp_valid(self, rsp: dict, cmd: str, expected = FieldValues.ST_SUCCESS) -> bool:
+    return rsp[cmd][Fields.STATUS] == expected
 
 
   async def _doSetAdd(self, cmdName: str, rspName: str, keys: dict, tkn: int) -> bool:
@@ -192,6 +225,10 @@ class SessionCmd:
   INFO_RSP      = 'SH_INFO_RSP'
   INFO_ALL_REQ  = 'SH_INFO_ALL'
   INFO_ALL_RSP  = 'SH_INFO_ALL_RSP'
+  SAVE_REQ      = 'SH_SAVE'
+  SAVE_RSP      = 'SH_SAVE_RSP'
+  LOAD_REQ      = 'SH_LOAD'
+  LOAD_RSP      = 'SH_LOAD_RSP'
 
 
 # Top level session functions. These functions are not tied to a 
@@ -213,12 +250,13 @@ async def create_session(client: SessionClient, durationSeconds = 0, deleteSessi
     raise ValueError('expirySeconds must be >= 0')
   
   if durationSeconds > 0:
-    q[SessionCmd.NEW_REQ]['expiry'] = dict({'duration':durationSeconds, 'deleteSession':deleteSessionOnExpire})
+    q[SessionCmd.NEW_REQ]['expiry'] = {'duration':durationSeconds, 'deleteSession':deleteSessionOnExpire}
     
   rsp = await client._send_query(SessionCmd.NEW_REQ, q)
   if client._is_rsp_valid(rsp, SessionCmd.NEW_RSP):
     return Session(rsp[SessionCmd.NEW_RSP]['tkn'], client)
-  return None
+  else:
+    return None
 
 
 async def end_session(session: Session):
@@ -243,10 +281,32 @@ async def session_info_all(session: Session) -> dict:
 
 
 async def end_all_sessions(client: SessionClient) -> Tuple[bool, int]:
-  # when tkn is 0, _send_query() will not set the 'tkn'
   rsp = await client._send_query(SessionCmd.END_ALL_REQ, {SessionCmd.END_ALL_REQ:{}})
   return (client._is_rsp_valid(rsp, SessionCmd.END_ALL_RSP), rsp[SessionCmd.END_ALL_RSP]['cnt'])
   
 
+# TODO move Client.save() to top level? 
+async def save_session(session: Session, name: str) -> bool:
+  q = {SessionCmd.SAVE_REQ:{'name':name, 'tkns':[session.tkn]}}
+  rsp = await session.client._send_query(SessionCmd.SAVE_REQ, q)
+  return session.client._is_rsp_valid(rsp, SessionCmd.SAVE_RSP, FieldValues.ST_SAVE_COMPLETE)
 
 
+async def save_sessions(client: SessionClient, name: str, tkns = list()) -> bool:
+  q = {SessionCmd.SAVE_REQ:{'name':name}}
+  
+  if len(tkns) > 0:
+    q[SessionCmd.SAVE_REQ]['tkns'] = tkns
+
+  rsp = await client._send_query(SessionCmd.SAVE_REQ, q)
+  return client._is_rsp_valid(rsp, SessionCmd.SAVE_RSP, FieldValues.ST_SAVE_COMPLETE)
+
+
+async def load_session(client: SessionClient, name: str) -> Tuple[bool, dict]:
+  q = {SessionCmd.LOAD_REQ:{'name':name}}
+  rsp = await client._send_query(SessionCmd.LOAD_REQ, q)
+  
+  if client._is_rsp_valid(rsp, SessionCmd.LOAD_RSP, FieldValues.ST_LOAD_COMPLETE):
+    return (True, rsp[SessionCmd.LOAD_RSP])
+  else:
+    return (False, dict())

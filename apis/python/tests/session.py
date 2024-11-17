@@ -1,4 +1,5 @@
 import sys
+import random
 import asyncio as asio
 
 sys.path.append('../')
@@ -135,11 +136,109 @@ async def create_expires(waitForExpiry = False):
     assert ok and result['keyCnt'] == 0
 
 
+async def save_load_one_session():
+  dataSetName = f'test_{random.randint(0, 10000)}'
+
+  client = SessionClient()
+  await client.listen('ws://127.0.0.1:1987/')
+
+  # clear before start
+  (cleared, count) = await ndb.end_all_sessions(client)
+  assert cleared
+  
+  session = await ndb.create_session(client)
+  assert session != None and session.tkn > 0
+
+  assert await client.set({'fname':'james', 'sname':'smith'}, session.tkn)
+
+  assert await ndb.save_session(session, dataSetName)
+
+  # clear and load
+  (cleared, count) = await ndb.end_all_sessions(client)
+  assert cleared and count == 1
+
+  (loaded, rsp) = await ndb.load_session(client, dataSetName)
+  assert loaded and rsp['sessions'] == 1 and rsp['keys'] == 2
+  
+
+
+async def save_load_all_sessions(nSessions: int, nKeysPerSession: int):
+  dataSetName = f'test_{random.randint(0, 10000)}'
+
+  client = SessionClient()
+  await client.listen('ws://127.0.0.1:1987/')
+
+  # clear before start
+  (cleared, count) = await ndb.end_all_sessions(client)
+  assert cleared
+
+
+  # create sessions, set two keys per session
+  for _ in range(0, nSessions):
+    session = await ndb.create_session(client)
+    assert session != None and session.tkn > 0
+    for k in range(0,nKeysPerSession):
+      assert await client.set({f'key{k}':'some_value'}, session.tkn)
+  
+
+  # leave 'tkns' arg empty to save all sessions
+  assert await ndb.save_sessions(client, dataSetName)
+
+  # clear then load
+  (cleared, count) = await ndb.end_all_sessions(client)
+  assert cleared and count == nSessions
+
+  (loaded, rsp) = await ndb.load_session(client, dataSetName)
+  assert loaded and rsp['sessions'] == nSessions and rsp['keys'] == nSessions*nKeysPerSession
+  
+
+
+
+async def save_load_select_sessions(nSessions: int, nKeysPerSession: int):
+  dataSetName = f'test_{random.randint(0, 10000)}'
+
+  client = SessionClient()
+  await client.listen('ws://127.0.0.1:1987/')
+
+  # clear before start
+  (cleared, count) = await ndb.end_all_sessions(client)
+  assert cleared
+
+
+  tokensToSave = list()
+
+  # create sessions
+  for s in range(0, nSessions):
+    session = await ndb.create_session(client)
+    assert session != None and session.tkn > 0
+    for k in range(0,nKeysPerSession):
+      assert await client.set({f'key{k}':'some_value'}, session.tkn)
+    
+    # store list of tokens to save
+    if s % 2 == 0:
+      tokensToSave.append(session.tkn)
+
+
+  assert await ndb.save_sessions(client, dataSetName, tokensToSave)
+
+  # clear and then load
+  (cleared, count) = await ndb.end_all_sessions(client)
+  assert cleared and count == nSessions
+
+  (loaded, rsp) = await ndb.load_session(client, dataSetName)
+  assert loaded and rsp['sessions'] == len(tokensToSave) and rsp['keys'] == len(tokensToSave)*nKeysPerSession
+
+  
+
 
 if __name__ == "__main__":
-  tests = [ create(), set_get(), exists_end(),
-            end_all(), end_all_multiple(), info_infoall(), create_expires(True)]
-  
+  tests = [
+            create(), create_expires(False), set_get(), exists_end(),
+            end_all(), end_all_multiple(), info_infoall(),
+            save_load_one_session(), save_load_all_sessions(100, 100),
+            save_load_select_sessions(100,5)
+          ]
+
   for f in tests:
     print(f'---- {f.__name__} ----')
     asio.run(f)
