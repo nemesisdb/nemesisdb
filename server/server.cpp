@@ -76,7 +76,7 @@ int main (int argc, char ** argv)
     else
       PLOGI << "Save: Disabled";
     
-    PLOGI << "Sessions Enabled: " << (server.hasSessions() ? "yes" : "no");
+    PLOGI << "Sessions: " << (server.hasSessions() ? "Enabled" : "Disabled");
     PLOGI << "Interface: " << address;
     
     if (server.run(config))

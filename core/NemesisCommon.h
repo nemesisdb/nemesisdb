@@ -33,14 +33,11 @@ namespace fs = std::filesystem;
 namespace chrono = std::chrono;
 namespace jsonpath = jsoncons::jsonpath;
 
-static const char * NEMESIS_VERSION = "0.6.4";
+static const char * NEMESIS_VERSION = "0.6.5";
 static const std::size_t NEMESIS_CONFIG_VERSION = 5U;
 
 static const std::size_t NEMESIS_KV_MINPAYLOAD = 64U;
 static const std::size_t NEMESIS_KV_MAXPAYLOAD = 8U * 1024U;
-
-static const std::size_t NEMESIS_TS_MINPAYLOAD = 64U;
-static const std::size_t NEMESIS_TS_MAXPAYLOAD = 2U * 1024U * 1024U;
 
 
 enum class ServerMode
