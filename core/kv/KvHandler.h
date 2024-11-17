@@ -365,39 +365,36 @@ private:
   // SESSION
   ndb_always_inline void sessionNew(const std::string_view queryName, const std::string_view queryRspName, KvWebSocket * ws, njson& json)
   {
-    auto validate = [](const njson& cmd) -> std::tuple<RequestStatus, const std::string_view>
-    {
-      if (cmd.at("name").empty())
-        return {RequestStatus::ValueSize, "Session name empty"};
-
-      return {RequestStatus::Ok, ""};
-    };
-
-    if (isValid(queryRspName, ws, json, {{Param::required("name", JsonString)}, {Param::optional("expiry", JsonObject)}, {Param::optional("shared", JsonBool)}}, validate))
+    if (isValid(queryRspName, ws, json, {{Param::optional("expiry", JsonObject)}}))
     {
       const auto& cmd = json.at(queryName);
 
       SessionDuration duration{SessionDuration::rep{0}};
+      
       bool deleteOnExpire = false;
-
       bool valid = true;
 
       if (cmd.contains("expiry"))
       {
-        valid = isValid(queryRspName, "expiry", ws, json, {{Param::required("duration", JsonUInt)}, {Param::required("deleteSession", JsonBool)}});
+        auto validate = [](const njson& cmd) -> std::tuple<RequestStatus, const std::string_view>
+        {
+          if (cmd.at("duration") < 0)
+            return {RequestStatus::ValueSize, "expiry must be >= 0"};
+
+          return {RequestStatus::Ok, ""};
+        };
+        
+        valid = isValid(queryRspName, "expiry", ws, json, {{Param::required("duration", JsonUInt)}, {Param::required("deleteSession", JsonBool)}}, validate);
         if (valid)
         {
           duration = SessionDuration{cmd.at("expiry").at("duration").as<SessionDuration::rep>()};
           deleteOnExpire = cmd.at("expiry").at("deleteSession").as_bool();
         }
       }
-      
-      
+
       if (valid)
       {
-        const std::string name = cmd.at("name").as_string();
-        const bool shared = cmd.get_value_or<bool>("shared", false);
-        send(ws, SessionExecutor<HaveSessions>::newSession(getContainer(), name, createSessionToken(name, shared), shared, duration, deleteOnExpire));
+        send(ws, SessionExecutor<HaveSessions>::newSession(getContainer(), createSessionToken(), duration, deleteOnExpire));
       }
     }
   }
@@ -428,7 +425,7 @@ private:
       njson rsp;
 
       const auto& cmd = json.at(queryName);
-      const auto token = createSessionToken(cmd.at("name").as_string(), true);
+      const auto token = createSessionToken(cmd.at("name").as_string());
       
       // generate a shared token from the name. If a session with the same name was created but isn't shared, 
       // the tokens will be completely different

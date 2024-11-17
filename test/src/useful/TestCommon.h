@@ -96,62 +96,32 @@ class KvSessionTestServer  : public ::testing::Test
 protected:
 	constexpr static auto DefaultCfg = R"(
 	{
-		"version":4,
-		"mode":"kv_sessions",
+		"version":5,
 		"core":0,
+		"sessionsEnabled":true,
 		"ip":"127.0.0.1",
 		"port":1987,
 		"maxPayload":1024,
-		"kv":
+		"persist":
 		{
-			"save":
-			{
-				"enabled":false,
-				"path":"./data"
-			}
-		},
-		"kv_sessions":
-		{
-			"save":
-			{
-				"enabled":false,
-				"path":"./data"
-			}
-		},
-		"ts":
-		{
-			
+			"enabled":false,
+			"path":"./data"
 		}
 	})"sv;
 
 
 	constexpr static auto EnableSaveCfg = R"(
 	{
-		"version":4,
-		"mode":"kv_sessions",
+		"version":5,
 		"core":0,
+		"sessionsEnabled":true,
 		"ip":"127.0.0.1",
 		"port":1987,
 		"maxPayload":1024,
-		"kv":
+		"persist":
 		{
-			"save":
-			{
-				"enabled":false,
-				"path":"./data"
-			}
-		},
-		"kv_sessions":
-		{
-			"save":
-			{
-				"enabled":true,
-				"path":"./data"
-			}
-		},
-		"ts":
-		{
-			
+			"enabled":true,
+			"path":"./data"
 		}
 	})"sv;
 
@@ -406,7 +376,7 @@ struct TestClient
 		{
 			latch = std::make_unique<std::latch>(1);
 
-			testjson sesh{{"SH_NEW", {{"name","test"}}}};
+			testjson sesh{{"SH_NEW", testjson::object()}};
 			ws->send(sesh.dump());
 
 			latch->wait();
@@ -414,7 +384,7 @@ struct TestClient
 
 			auto& rsp = responses[0];
 
-			if (rsp.contains("SH_NEW_RSP") && rsp["SH_NEW_RSP"]["st"] == (int)RequestStatus::Ok)
+			if (rsp.contains("SH_NEW_RSP") && rsp["SH_NEW_RSP"]["st"] == toUnderlying<RequestStatus>(RequestStatus::Ok))
 			{
 				token["tkn"] = rsp["SH_NEW_RSP"]["tkn"];
 				return true;

@@ -36,17 +36,16 @@ class SessionExecutor
 
 public:
   
-  static njson newSession (Sessions& sessions, const std::string& name, const SessionToken tkn, const bool shared, const SessionDuration duration, const bool deleteOnExpire)
+  static njson newSession (Sessions& sessions, const SessionToken tkn, const SessionDuration duration, const bool deleteOnExpire)
   {    
     njson rsp {jsoncons::json_object_arg, {{"SH_NEW_RSP", njson{jsoncons::json_object_arg}}}};
 
     auto& body = rsp.at("SH_NEW_RSP");
     
-    body["tkn"] = tkn;
-    body["name"] = name;    
+    body["tkn"] = tkn; 
     body["st"] = toUnderlying(Ok);
 
-    if (const auto cache = sessions.start(tkn, shared, duration, deleteOnExpire); !cache) [[unlikely]]
+    if (const auto cache = sessions.start(tkn, false, duration, deleteOnExpire); !cache) [[unlikely]]
       body["st"] = toUnderlying(SessionNewFail);
 
     return rsp;

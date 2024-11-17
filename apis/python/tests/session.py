@@ -113,7 +113,7 @@ async def create_expires(waitForExpiry = False):
   serverTimerPeriod = 5 # period of the server's timer which handles expiry
   sessionDuration = 2
 
-  session = await ndb.create_session(client, expirySeconds=sessionDuration)
+  session = await ndb.create_session(client, durationSeconds=sessionDuration)
   assert session != None and session.tkn > 0
 
   await client.set({'k1':'v1', 'k2':'v2', 'k3':'v3'}, session.tkn)

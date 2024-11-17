@@ -17,7 +17,7 @@ client code having to do so manually.
 
 async def create_otp(client: SessionClient) -> tuple:
   # create a session with expiry and session delete  
-  session = await ndb.create_session(client, expirySeconds=2, deleteSessionOnExpire=True)
+  session = await ndb.create_session(client, durationSeconds=2, deleteSessionOnExpire=True)
   
   # set the passcode, have expiry short for this example
   code = random.randint(1000, 9999)  

@@ -85,20 +85,19 @@ struct LoadResult
 
 
 
-ndb_always_inline SessionToken createSessionToken(const SessionName& name, const bool shared)
+ndb_always_inline SessionToken createSessionToken(const SessionName& name)
 {
-  if (shared)
-  {
-    static const std::size_t seed = 99194853094755497U;
-    const auto hash = std::hash<SessionName>{}(name);
-    return (hash | seed);
-  }
-  else
-  {
-    static UUIDv4::UUIDGenerator<std::mt19937_64> uuidGenerator; 
-    const auto uuid = uuidGenerator.getUUID();
-    return uuid.hash();
-  }
+  static const std::size_t seed = 99194853094755497U;
+  const auto hash = std::hash<SessionName>{}(name);
+  return (hash | seed);
+}
+
+
+ndb_always_inline SessionToken createSessionToken()
+{
+  static UUIDv4::UUIDGenerator<std::mt19937_64> uuidGenerator; 
+  const auto uuid = uuidGenerator.getUUID();
+  return uuid.hash();
 }
 
 

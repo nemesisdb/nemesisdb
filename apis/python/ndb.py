@@ -205,16 +205,15 @@ deleteSessionOnExpire - when True, the sessions is deleted. When false, the sess
 When a session expires, the keys are always deleted, but deleteSessionOnExpire controls if the 
 actual session is also deleted.
 """
-async def create_session(client: SessionClient, expirySeconds = 0, deleteSessionOnExpire = False) -> Session:
-  # TODO 'name' will be optional
+async def create_session(client: SessionClient, durationSeconds = 0, deleteSessionOnExpire = False) -> Session:
   # TODO add SH_NEW_SHARED command 
-  q = {SessionCmd.NEW_REQ:{'name':'default'}}
+  q = {SessionCmd.NEW_REQ:{}}
 
-  if expirySeconds < 0:
+  if durationSeconds < 0:
     raise ValueError('expirySeconds must be >= 0')
   
-  if expirySeconds > 0:
-    q[SessionCmd.NEW_REQ]['expiry'] = dict({'duration':expirySeconds, 'deleteSession':deleteSessionOnExpire})
+  if durationSeconds > 0:
+    q[SessionCmd.NEW_REQ]['expiry'] = dict({'duration':durationSeconds, 'deleteSession':deleteSessionOnExpire})
     
   rsp = await client._send_query(SessionCmd.NEW_REQ, q)
   if client._is_rsp_valid(rsp, SessionCmd.NEW_RSP):
