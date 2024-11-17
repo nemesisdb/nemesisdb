@@ -62,7 +62,7 @@ class Connection:
       queryTask = asio.create_task(self._query(json.dumps(s)))
       await queryTask
       msg = queryTask.result()
-      self.rspEvt.clear()
+      
     except asio.CancelledError:
       # if there is an active query when we are disconnected, the query
       # task is cancelled, raising an exception
@@ -74,7 +74,9 @@ class Connection:
   async def _query(self, query: str):
     await self.ws.send(query, text=True)    
     await self.rspEvt.wait()
-    return json.loads(self.message)
+    msg = json.loads(self.message)
+    self.rspEvt.clear()
+    return msg
 
 
   async def close(self):
