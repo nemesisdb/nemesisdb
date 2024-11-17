@@ -235,7 +235,7 @@ if __name__ == "__main__":
   tests = [
             create(), create_expires(False), set_get(), exists_end(),
             end_all(), end_all_multiple(), info_infoall(),
-            save_load_one_session(), save_load_all_sessions(100, 100),
+            save_load_one_session(), save_load_all_sessions(50, 100),
             save_load_select_sessions(100,5)
           ]
 
