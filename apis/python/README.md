@@ -7,18 +7,15 @@
 
 The API is implemented with the [websockets](https://websockets.readthedocs.io/en/stable/) library which uses asyncio.
 
-See the NemesisDB [docs]() TODO.
+See the NemesisDB [docs](https://docs.nemesisdb.io/client_apis/python/Overview).
 
 Functions for all **common** commands are provided, except:
 
 Coming Soon
-- KV_SAVE
-- KV_LOAD
 - KV_UPDATE
 - KV_FIND
 - KV_ARR_APPEND
-- SH_SAVE
-- SH_LOAD
+- SH_NEW_SHARED
 - SH_OPEN
 
 Unsupported

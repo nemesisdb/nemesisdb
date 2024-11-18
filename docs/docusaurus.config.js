@@ -72,7 +72,13 @@ const config = {
             type: 'docSidebar',
             sidebarId: 'apiSidebar',
             position: 'left',
-            label: 'API',            
+            label: 'NemesisDB API',
+          },
+          {
+            type: 'docSidebar',
+            sidebarId: 'clientApisSidebar',
+            position: 'left',
+            label: 'Client APIs',
           },
           {
             type: 'docSidebar',
