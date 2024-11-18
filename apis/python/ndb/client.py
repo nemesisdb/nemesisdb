@@ -50,14 +50,14 @@ class KvCmd:
   LOAD_RSP      = "KV_LOAD_RSP"
 
 
-"""Represents a client, use to query the database.
-This classes uses the Api class so that only relevant values
-are returned.
+"""Used by KvClient and SessionClient to query the database.
 
-- The query functions will return when the response is received (as opposed
-  to a callback handler to receive all responses). This serialises responses and
-  should simplify user code.
-- This design design means that KV_SETQ or KV_ADDQ are not supported.
+Provides a function per database command.
+
+Some functions have an optional 'tkn' parameter - this is only relevant when
+using the SessionClient. When sessions are disabled, leave the 'tkn' as default.
+
+Note: KV_SETQ and KV_ADDQ are not supported.
 """
 class Client(ABC):
   
@@ -67,13 +67,12 @@ class Client(ABC):
     self.api = Connection()
 
   
-  async def listen(self, uri: str):
+  async def open(self, uri: str):
     if uri == '':
       raise ValueError('URI empty')
     
     self.uri = uri
     self.listen_task = await self.api.start(self.uri)
-    return self.listen_task
 
 
   async def set(self, keys: dict, tkn = 0) -> bool:
@@ -186,71 +185,3 @@ class Client(ABC):
   async def _send_session_query(self, cmd: str, q: dict, tkn: int):
     q[cmd]['tkn'] = tkn
     return await self.api.query(q)
-
-  """
-  @abstractmethod
-  async def set(self, keys: dict) -> bool:
-    pass
-  
-
-  @abstractmethod
-  async def add(self, keys: dict) -> bool:
-    pass
-
-  
-  @abstractmethod
-  async def get(self, keys: tuple) -> Tuple[bool, dict]:
-    pass
-  
-
-  @abstractmethod
-  async def rmv(self, keys: tuple) -> dict:
-    pass
-
-  
-  @abstractmethod
-  async def count(self) -> tuple:
-    pass
-
-  
-  @abstractmethod
-  async def contains(self, keys: tuple) -> tuple:
-    pass
-
-  
-  @abstractmethod
-  async def keys(self) -> tuple:
-    pass
-
-
-  @abstractmethod
-  async def clear(self) -> tuple:
-    pass
-    
-
-  @abstractmethod
-  async def clear_set(self, keys: dict) -> tuple:
-    pass
-
-
-  @abstractmethod
-  async def save(self, name: str):
-    pass
-
-  
-  @abstractmethod
-  async def load(self, name: str):
-    pass
-  
-
-  async def close(self):
-    await self.api.close()
-
-
-  def _is_rsp_valid(self, rsp: dict, cmd: str, expected = FieldValues.ST_SUCCESS) -> bool:
-    return rsp[cmd][Fields.STATUS] == expected
-
-
-  async def _send_query(self, cmd: str, q: dict):
-    return await self.api.query(q)
-  """

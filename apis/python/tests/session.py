@@ -10,7 +10,7 @@ from ndb.sessionclient import SessionClient#,create_session, end_all_sessions, e
 
 async def create():
   client = SessionClient()
-  await client.listen('ws://127.0.0.1:1987/')
+  await client.open('ws://127.0.0.1:1987/')
 
   session = await client.create_session()
   assert session.isValid
@@ -20,7 +20,7 @@ async def create():
 
 async def set_get():
   client = SessionClient()
-  await client.listen('ws://127.0.0.1:1987/')
+  await client.open('ws://127.0.0.1:1987/')
 
   session = await client.create_session()
   assert session.isValid
@@ -35,7 +35,7 @@ async def set_get():
 
 async def exists_end():
   client = SessionClient()
-  await client.listen('ws://127.0.0.1:1987/')
+  await client.open('ws://127.0.0.1:1987/')
 
   session = await client.create_session()
   assert session.isValid
@@ -53,7 +53,7 @@ async def exists_end():
 
 async def end_all():
   client = SessionClient()
-  await client.listen('ws://127.0.0.1:1987/')
+  await client.open('ws://127.0.0.1:1987/')
 
   max = 10
 
@@ -68,7 +68,7 @@ async def end_all():
 
 async def end_all_multiple():
   client = SessionClient()
-  await client.listen('ws://127.0.0.1:1987/')
+  await client.open('ws://127.0.0.1:1987/')
 
   max = 10
   sessions = list()
@@ -84,7 +84,7 @@ async def end_all_multiple():
 
 async def info_infoall():
   client = SessionClient()
-  await client.listen('ws://127.0.0.1:1987/')
+  await client.open('ws://127.0.0.1:1987/')
 
   # end all before we begin
   [ok, _] = await client.end_all_sessions()
@@ -109,7 +109,7 @@ async def info_infoall():
 
 async def create_expires(waitForExpiry = False):
   client = SessionClient()
-  await client.listen('ws://127.0.0.1:1987/')
+  await client.open('ws://127.0.0.1:1987/')
 
   serverTimerPeriod = 5 # period of the server's timer which handles expiry
   sessionDuration = 2
@@ -140,7 +140,7 @@ async def save_load_one_session():
   dataSetName = f'test_{random.randint(0, 10000)}'
 
   client = SessionClient()
-  await client.listen('ws://127.0.0.1:1987/')
+  await client.open('ws://127.0.0.1:1987/')
 
   # clear before start
   (cleared, count) = await client.end_all_sessions()
@@ -164,7 +164,7 @@ async def save_load_all_sessions(nSessions: int, nKeysPerSession: int):
   dataSetName = f'test_{random.randint(0, 10000)}'
 
   client = SessionClient()
-  await client.listen('ws://127.0.0.1:1987/')
+  await client.open('ws://127.0.0.1:1987/')
 
   # clear before start
   (cleared, count) = await client.end_all_sessions()
@@ -194,7 +194,7 @@ async def save_load_select_sessions(nSessions: int, nKeysPerSession: int):
   dataSetName = f'test_{random.randint(0, 10000)}'
 
   client = SessionClient()
-  await client.listen('ws://127.0.0.1:1987/')
+  await client.open('ws://127.0.0.1:1987/')
 
   # clear before start
   (cleared, count) = await client.end_all_sessions()

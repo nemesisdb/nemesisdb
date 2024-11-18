@@ -7,7 +7,7 @@ import asyncio as asio
 
 async def basics():
   client = SessionClient()
-  await client.listen('ws://127.0.0.1:1987/')
+  await client.open('ws://127.0.0.1:1987/')
 
   session = await client.create_session()
   if session == None:
@@ -52,18 +52,22 @@ async def multiple_sessions():
   
   async def newUser(tkn: int, uname: str):
     # A new user is prompted to reset password on first login and has limited roles
-    d = {'username':uname,
-         'reset_password':True,
-         'blocked':False,
-         'roles':['NewUser', 'ReadOnly']}    
-    await client.set(d, tkn)
+    user = {'username':uname,
+            'reset_password':True,
+            'blocked':False,
+            'roles':['NewUser', 'ReadOnly']}    
+    
+    await client.set(user, tkn)
   
+
   async def updatePassword(tkn: int):
     # we don't need username, because the session token uniquely identifies this user's data
     await client.set({'reset_password':False}, tkn)
 
+
   async def failedAuth(tkn: int):
     await client.set({'reset_password':True, 'blocked':True}, tkn)
+
 
   async def updateRoles(tkn: int):
     # overwrite 'roles'
@@ -71,7 +75,7 @@ async def multiple_sessions():
 
 
   client = SessionClient()
-  await client.listen('ws://127.0.0.1:1987/')
+  await client.open('ws://127.0.0.1:1987/')
 
   session_user1 = await client.create_session()
   session_user2 = await client.create_session()
@@ -115,7 +119,7 @@ async def getUser(client: SessionClient, tkn: int):
 
 async def two_sessions():
   client = SessionClient()
-  await client.listen('ws://127.0.0.1:1987/')
+  await client.open('ws://127.0.0.1:1987/')
   
   user1_session = await newUser(client, 'user1', 'u1@mailg.com')
   user2_session = await newUser(client, 'user2', 'u2@yoohaa.com')

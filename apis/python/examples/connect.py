@@ -5,7 +5,7 @@ from ndb.kvclient import KvClient
 
 async def connect_close():
   client = KvClient()
-  await client.listen('ws://127.0.0.1:1987/')
+  await client.open('ws://127.0.0.1:1987/')
 
   print('Connected')
 
@@ -18,12 +18,12 @@ async def connect_close():
 
 async def reconnect():
   client = KvClient()
-  await client.listen('ws://127.0.0.1:1987/')
+  await client.open('ws://127.0.0.1:1987/')
   print('Connected')
   await client.close()
   print('Disconnected')
 
-  await client.listen('ws://127.0.0.1:1987/')
+  await client.open('ws://127.0.0.1:1987/')
   print('Connected')
   await client.close()
   print('Disconnected')
@@ -34,7 +34,7 @@ async def multiple_clients():
 
   async def create() -> KvClient:
     client = KvClient()
-    await client.listen('ws://127.0.0.1:1987/')
+    await client.open('ws://127.0.0.1:1987/')
     return client
 
 

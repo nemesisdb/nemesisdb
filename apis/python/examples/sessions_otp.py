@@ -35,7 +35,7 @@ async def validate_otp(client: SessionClient, tkn: int, userCode: int) -> bool:
 
 async def otp():
   client = SessionClient()
-  await client.listen('ws://127.0.0.1:1987/')
+  await client.open('ws://127.0.0.1:1987/')
 
   # this stores the OTP and would send to user's email/phone etc
   (session, code) = await create_otp(client)

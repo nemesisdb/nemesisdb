@@ -42,12 +42,11 @@ session specific functions are supplied.
 """
 class SessionClient:
   def __init__(self):
-    #super().__init__()
     self.client = KvClient()
     
   
-  async def listen(self, uri: str):
-    return await self.client.listen(uri)
+  async def open(self, uri: str):
+    await self.client.open(uri)
   
 
   async def close(self):

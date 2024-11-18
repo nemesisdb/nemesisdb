@@ -10,14 +10,11 @@ from ndb.kvclient import KvClient
 
 async def test():
   client = KvClient()
-  listen_task = await client.listen('ws://127.0.0.1:1987/')
-
-  if listen_task.done():
-    print("server con failed")
-    return
+  await client.open('ws://127.0.0.1:1987/')
 
 
   max = 10
+
 
   # clear before test
   await client.clear()  
@@ -94,16 +91,13 @@ async def test():
   (ok, count) = await client.clear()
   assert ok and count == 4
 
-  
-  await client.close()
-  await listen_task
 
 
 async def save_load(nKeys: int):
   dataSetName = f'test_{random.randint(0, 10000)}'
 
   client = KvClient()
-  await client.listen('ws://127.0.0.1:1987/')
+  await client.open('ws://127.0.0.1:1987/')
 
   # empty db to ensure no keys
   (cleared, cnt) = await client.clear()
