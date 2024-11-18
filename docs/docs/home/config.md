@@ -14,9 +14,8 @@ Default settings:
 
 - Listen on `127.0.0.1:1987`
 - Assigned to core `0`
-- Mode: key value (`kv`)
-  - Sessions disabled
-  - Save disabled
+- Sessions disabled
+- Persistance disabled (`SH_SAVE` and `KV_SAVE` unavailable)
 
 
 <br/>
@@ -59,10 +58,10 @@ This is the **logical** core, which may differ from physical cores when hyperthr
 
 Use `lscpu | grep "CPU(s):"` to find the logical core count.
 
-Core assignment is useful when running multiple instances on the same physical server. If so then ensure the instances are on different ports.
+Core assignment is useful when running multiple instances on the same physical server. 
 
 :::note
-If running multiple instances, remember to change the `port`.
+When running multiple instances, remember to change the `port`.
 :::
 
 :::note

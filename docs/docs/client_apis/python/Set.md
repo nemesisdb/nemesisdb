@@ -25,8 +25,8 @@ Existing keys are overwritten, to avoid this use [add](./Add).
 
 
 ```py title='Set scalar'
-client = Client()
-await client.listen('ws://127.0.0.1:1987/')
+client = KvClient()
+await client.open('ws://127.0.0.1:1987/')
 
 setSuccess = await client.set({'username':'billy', 'password':'billy_passy'})
 
@@ -41,8 +41,8 @@ if setSuccess:
 <br/>
 
 ```py title='Set object'
-client = Client()
-await client.listen('ws://127.0.0.1:1987/')
+client = KvClient()
+await client.open('ws://127.0.0.1:1987/')
 
 data = {  "server_ip":"123.456.7.8",
           "server_port":1987,

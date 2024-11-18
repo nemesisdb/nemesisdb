@@ -176,10 +176,10 @@ There is an early version of a [Python API](https://github.com/nemesisdb/nemesis
 Set then retrieve two keys, `username` and `password`:
 
 ```py
-from ndb import Client
+from ndb.kvclient import KvClient
 
-client = Client()
-await client.listen('ws://127.0.0.1:1987/')
+client = KvClient()
+await client.open('ws://127.0.0.1:1987/')
 
 setSuccess = await client.set({'username':'billy', 'password':'billy_passy'})
 

@@ -24,8 +24,8 @@ Retrieves keys from the database.
 
 
 ```py title='Set various'
-client = Client()
-await client.listen('ws://127.0.0.1:1987/')
+client = KvClient()
+await client.open('ws://127.0.0.1:1987/')
 
 data = {  "server_ip":"123.456.7.8",
           "server_port":1987,
@@ -51,8 +51,8 @@ Output:
 
 
 ```py title='Overwrite'
-client = Client()
-await client.listen('ws://127.0.0.1:1987/')
+client = KvClient()
+await client.open('ws://127.0.0.1:1987/')
 
 data = {  "server_ip":"123.456.7.8",
           "server_port":1987,

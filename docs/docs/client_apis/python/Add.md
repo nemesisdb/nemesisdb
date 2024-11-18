@@ -26,8 +26,8 @@ If a key already exists it is not considered an error.
 ## Examples
 
 ```py title='Avoid overwriting'
-client = Client()
-await client.listen('ws://127.0.0.1:1987/')
+client = KvClient()
+await client.open('ws://127.0.0.1:1987/')
 
 await client.set({'LinuxDistro':'Arch'})
 (getOk, values) = await client.get(('LinuxDistro',))

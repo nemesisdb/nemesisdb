@@ -9,17 +9,18 @@ The API supports sessions being enabled or disabled.
 
 ## Sessions Disabled
 
-- Create a `ndb.Client`
-- Call `Client.listen()` to connect to the server
+- Create a `ndb.kvclient.Client`
+- Call `Client.open()` to connect to the server
 - Use functions such as `set()` and `get()`
+- Ignore the `tkn` argument, that's only relevant for sessions
 - Functions return either a `bool` or `tuple`:
   - If `bool`, it indicates success
   - If a `tuple`, the first value is typically a `bool` to indicate success
 
 
 ```py
-client = Client()
-client.listen('ws://127.0.0.1:1987/')
+client = KvClient()
+await client.open('ws://127.0.0.1:1987/')
 
 setSuccess = await client.set({'username':'billy', 'password':'billy_passy'})
 
@@ -33,20 +34,17 @@ if setSuccess:
 
 ## Sessions Enabled
 
-- Create a `SessionClient`
-- Create a session with `ndb.create_session()`
+- Create a `ndb.sessionclient.SessionClient`
+- Create a session with `SessionClient.create_session()`
 - This returns a `Session` containing the token
-- `SessionClient` inherits from `Client` so the same functions can be used but now set the token
+
 
 
 ```py
 client = SessionClient()
-await client.listen('ws://127.0.0.1:1987/')
+await client.open('ws://127.0.0.1:1987/')
 
-session = await ndb.create_session(client)
-if session == None:
-  return
-
+session = await client.create_session()
 print(f"Session created with session token: {session.tkn}")
 
 # set keys in the session
