@@ -1,11 +1,11 @@
 import common
 from common import connect_client, stop
 import asyncio as asio
-from ndb import Client
+from ndb.kvclient import KvClient
 
 
 async def setget_basics():
-  client = Client()
+  client = KvClient()
 
   await connect_client(client)
 
@@ -20,7 +20,7 @@ async def setget_basics():
 
 
 async def setget_objects():
-  client = Client()
+  client = KvClient()
 
   await connect_client(client)
 
@@ -41,7 +41,7 @@ async def setget_objects():
 
 
 async def setget_multiple():
-  client = Client()
+  client = KvClient()
 
   await connect_client(client)
 
@@ -61,7 +61,7 @@ async def setget_multiple():
 
 
 async def setget_overwrite():
-  client = Client()
+  client = KvClient()
 
   await connect_client(client)
 
@@ -87,7 +87,7 @@ async def setget_overwrite():
 
 
 async def add():
-  client = Client()
+  client = KvClient()
 
   await connect_client(client)
 

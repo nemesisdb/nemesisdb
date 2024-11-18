@@ -1,6 +1,6 @@
 import common
-import ndb
-from ndb import SessionClient, Session
+from typing import Tuple
+from ndb.sessionclient import SessionClient, Session
 
 import asyncio as asio
 import random
@@ -15,9 +15,9 @@ The session is deleted by the server when it expires, avoiding
 client code having to do so manually.
 """
 
-async def create_otp(client: SessionClient) -> tuple:
+async def create_otp(client: SessionClient) -> Tuple[Session, int]:
   # create a session with expiry and session delete  
-  session = await ndb.create_session(client, durationSeconds=2, deleteSessionOnExpire=True)
+  session = await client.create_session(durationSeconds=2, deleteSessionOnExpire=True)
   
   # set the passcode, have expiry short for this example
   code = random.randint(1000, 9999)  
@@ -26,10 +26,10 @@ async def create_otp(client: SessionClient) -> tuple:
   return (session, code)
 
 
-async def validate_otp(session: Session, userCode: int) -> bool:
+async def validate_otp(client: SessionClient, tkn: int, userCode: int) -> bool:
   # if session doesn't exist, get() returns (False, dict()), otherwise check code
   print(f'Attempting {userCode}')
-  (valid, result) = await session.client.get(('code',), session.tkn)
+  (valid, result) = await client.get(('code',), tkn)
   return valid and result['code'] == userCode
   
 
@@ -51,7 +51,7 @@ async def otp():
 
   for i in range(0, maxAttempts):
     attemptCode = code if i == useCorrectCodeIndex else random.randint(1000, 9999)
-    if (valid := await validate_otp(session, attemptCode)) == True:
+    if (valid := await validate_otp(client, session.tkn, attemptCode)) == True:
       break
     else:
       await asio.sleep(1)

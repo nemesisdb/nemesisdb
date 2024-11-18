@@ -1,6 +1,5 @@
 import common
-import ndb
-from ndb import SessionClient, Session
+from ndb.sessionclient import SessionClient, Session
 
 import asyncio as asio
 
@@ -10,7 +9,7 @@ async def basics():
   client = SessionClient()
   await client.listen('ws://127.0.0.1:1987/')
 
-  session = await ndb.create_session(client)
+  session = await client.create_session()
   if session == None:
     return
 
@@ -74,8 +73,8 @@ async def multiple_sessions():
   client = SessionClient()
   await client.listen('ws://127.0.0.1:1987/')
 
-  session_user1 = await ndb.create_session(client)
-  session_user2 = await ndb.create_session(client)
+  session_user1 = await client.create_session()
+  session_user2 = await client.create_session()
 
   print(f'User1 Session: {session_user1.tkn}\nUser2 Session: {session_user2.tkn}\n')
 
@@ -95,21 +94,21 @@ async def multiple_sessions():
 # code below used in the API README
 
 async def newUser(client: SessionClient, username: str, email: str) -> Session:
-  session = await ndb.create_session(client)
+  session = await client.create_session()
   await client.set({'username':username, 'email':email}, session.tkn)
   return session
 
 
-async def updateEmail(session: Session, email: str):
-  await session.client.set({'email':email}, session.tkn)
+async def updateEmail(client: SessionClient, email: str, tkn: int):
+  await client.set({'email':email}, tkn)
 
 
-async def updateUsername(session: Session, username: str):
-  await session.client.set({'username':username}, session.tkn)
+async def updateUsername(client: SessionClient, username: str, tkn: int):
+  await client.set({'username':username}, tkn)
 
 
-async def getUser(session: Session):
-  (ok, values) = await session.client.get(('username', 'email'), session.tkn)
+async def getUser(client: SessionClient, tkn: int):
+  (ok, values) = await client.get(('username', 'email'), tkn)
   if ok:
     print(values)
 
@@ -121,15 +120,15 @@ async def two_sessions():
   user1_session = await newUser(client, 'user1', 'u1@mailg.com')
   user2_session = await newUser(client, 'user2', 'u2@yoohaa.com')
 
-  await getUser(user1_session)
-  await getUser(user2_session)
+  await getUser(client, user1_session.tkn)
+  await getUser(client, user2_session.tkn)
 
   print("Updating")
-  await updateEmail(user1_session, 'u1@chimpmail.com')
-  await updateUsername(user2_session, 'user2_updated')
+  await updateEmail(client, 'u1@chimpmail.com', user1_session.tkn)
+  await updateUsername(client, 'user2_updated', user1_session.tkn)
 
-  await getUser(user1_session)
-  await getUser(user2_session)
+  await getUser(client, user1_session.tkn)
+  await getUser(client, user2_session.tkn)
 
 
 if __name__ == "__main__":

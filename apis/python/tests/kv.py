@@ -2,13 +2,14 @@ import sys
 import random
 import asyncio as asio
 
-sys.path.append('../')
-from ndb import Client
+sys.path.append('../')  # This is probably incorrect
+from ndb.kvclient import KvClient
 
 
 # TODO split test() into separate functions
+
 async def test():
-  client = Client()
+  client = KvClient()
   listen_task = await client.listen('ws://127.0.0.1:1987/')
 
   if listen_task.done():
@@ -101,7 +102,7 @@ async def test():
 async def save_load(nKeys: int):
   dataSetName = f'test_{random.randint(0, 10000)}'
 
-  client = Client()
+  client = KvClient()
   await client.listen('ws://127.0.0.1:1987/')
 
   # empty db to ensure no keys
