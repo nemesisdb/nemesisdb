@@ -7,7 +7,7 @@
   "maxPayload":1024,          // max n bytes the query interface can accept
   "persist":
   {
-    "enabled":true,          // if true, the "path" must exist
+    "enabled":false,          // if true, the "path" must exist
     "path":"./data"
   }
 }
