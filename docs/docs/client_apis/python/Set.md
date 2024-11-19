@@ -4,7 +4,7 @@ displayed_sidebar: clientApisSidebar
 sidebar_label: set
 ---
 
-# Set
+# set
 Store keys to the database.
 
 Existing keys are overwritten, to avoid this use [add](./Add).

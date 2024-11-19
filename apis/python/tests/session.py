@@ -4,7 +4,7 @@ import asyncio as asio
 
 sys.path.append('../')
 import ndb
-from ndb.sessionclient import SessionClient#,create_session, end_all_sessions, end_session, load_session
+from ndb.sessionclient import SessionClient
 
 
 

@@ -1,0 +1,8 @@
+{
+  "label": "Sessions",
+  "position": 11,
+  "link": {
+    "type": "generated-index",
+    "description": "Python API for Sessions"
+  }
+}

@@ -124,17 +124,17 @@ class SessionClient:
 
 
   async def session_exists(self, tkns: List[int]) -> Tuple[bool, List]:
-    # when tkn is 0, _send_query() will not set the 'tkn'
+    # use _send_query() here because we don't set tkn
     rsp = await self.client._send_query(SessionCmd.EXISTS_REQ, {SessionCmd.EXISTS_REQ:{'tkns':tkns}})
     return (self.client._is_rsp_valid(rsp, SessionCmd.EXISTS_RSP), rsp[SessionCmd.EXISTS_RSP]['exist'])
 
 
-  async def session_info(self, tkn: int) -> dict:
+  async def session_info(self, tkn: int) -> Tuple[bool,dict]:
     rsp = await self.client._send_session_query(SessionCmd.INFO_REQ, {SessionCmd.INFO_REQ:{}}, tkn)
     return (self.client._is_rsp_valid(rsp, SessionCmd.INFO_RSP), rsp[SessionCmd.INFO_RSP])
 
 
-  async def session_info_all(self) -> dict:
+  async def session_info_all(self) -> Tuple[bool,dict]:
     # use _send_query() here because we don't set tkn
     rsp = await self.client._send_query(SessionCmd.INFO_ALL_REQ, {SessionCmd.INFO_ALL_REQ:{}})
     return (self.client._is_rsp_valid(rsp, SessionCmd.INFO_ALL_RSP), rsp[SessionCmd.INFO_ALL_RSP])

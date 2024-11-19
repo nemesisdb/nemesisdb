@@ -4,7 +4,7 @@ displayed_sidebar: clientApisSidebar
 sidebar_label: get
 ---
 
-# Get
+# get
 Retrieves keys from the database.
 
 |Param|Type|Description|Required|

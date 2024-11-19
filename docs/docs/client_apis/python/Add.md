@@ -4,7 +4,7 @@ displayed_sidebar: clientApisSidebar
 sidebar_label: add
 ---
 
-# Add
+# add
 Stores keys but does not overwrite a key if it already exists.
 
 To overwrite an existing key, use [set](./Set).
