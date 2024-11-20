@@ -18,15 +18,16 @@ The commands are the same except:
 ## Install Postman
 The tutorial uses the Postman tool as a WebSocket client. The free version is suitable and can be [downloaded](https://www.postman.com/downloads/) for Windows, Linux and Mac.
 
-## Start NemesisDB
+## Configure and Start NemesisDB
 
 Start the server with the default config:
 
 1. Change to the install directory, default is `/usr/local/bin/nemesisdb`
-2. In a terminal:
+2. In `default.jsonc` ensure `sessionsEnabled` is `false`.
+3. In a terminal:
 
 ```bash title="Start server"
-./nemesisdb --config=default.json
+./nemesisdb --config=default.jsonc
 ```
 
 This starts the server on `127.0.0.1:1987`.
@@ -44,8 +45,6 @@ This starts the server on `127.0.0.1:1987`.
 
 ![](img/postman_connected.png)
 
-
-We're ready to fire some commands at the server now.
 
 
 :::info

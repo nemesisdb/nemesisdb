@@ -8,14 +8,13 @@ displayed_sidebar: homeSidebar
 NemesisDB is an in-memory JSON key-value database.
 
 - The query interface JSON over a WebSocket
-- Key Value can be with or without sessions
-- Session and key value data can be persisted to the filesystem, then loaded on startup or at runtime
+- Session support: each session has a dedicated map and can expire
+- Keys can be persisted to the filesystem
+- Persisted data can be loaded at startup or runtime
   
-The database supports sessions which store keys in a dedicated map per session.
-
 ## Sessions Disabled
 - A single map contains all keys
-- All keys must have a unique name to avoid overwriting an existing key  
+- Keys must have a unique name to avoid overwriting an existing key  
 - Lower memory usage and latency
 - No key expiry support
 
@@ -23,7 +22,7 @@ The database supports sessions which store keys in a dedicated map per session.
 - Each session has a dedicated map
 - A session can expire, after which, the keys are deleted
 - A session is identified by a session token (an unsigned int)
-- The session token is used in commands to interact with data in that session
+- The session token is used in commands to access with keys in that session
 
 
 <br/>
