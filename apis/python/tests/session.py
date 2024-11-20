@@ -150,13 +150,13 @@ async def save_load_one_session():
   assert session.isValid
 
   assert await client.set({'fname':'james', 'sname':'smith'}, session.tkn)
-  assert await client.save_session(dataSetName, session.tkn)
+  assert await client.session_save(dataSetName, [session.tkn])
 
   # clear and load
   (cleared, count) = await client.end_all_sessions()
   assert cleared and count == 1
 
-  (loaded, rsp) = await client.load_session(dataSetName)
+  (loaded, rsp) = await client.session_load(dataSetName)
   assert loaded and rsp['sessions'] == 1 and rsp['keys'] == 2
   
 
@@ -180,13 +180,13 @@ async def save_load_all_sessions(nSessions: int, nKeysPerSession: int):
   
 
   # leave 'tkns' empty to save all sessions
-  assert await client.save_sessions(dataSetName)
+  assert await client.session_save(dataSetName)
 
   # clear then load
   (cleared, count) = await client.end_all_sessions()
   assert cleared and count == nSessions
 
-  (loaded, rsp) = await client.load_session(dataSetName)
+  (loaded, rsp) = await client.session_load(dataSetName)
   assert loaded and rsp['sessions'] == nSessions and rsp['keys'] == nSessions*nKeysPerSession
   
 
@@ -215,13 +215,13 @@ async def save_load_select_sessions(nSessions: int, nKeysPerSession: int):
       tokensToSave.append(session.tkn)
 
 
-  assert await client.save_sessions(dataSetName, tokensToSave)
+  assert await client.session_save(dataSetName, tokensToSave)
 
   # clear and then load
   (cleared, count) = await client.end_all_sessions()
   assert cleared and count == nSessions
 
-  (loaded, rsp) = await client.load_session(dataSetName)
+  (loaded, rsp) = await client.session_load(dataSetName)
   assert loaded and rsp['sessions'] == len(tokensToSave) and rsp['keys'] == len(tokensToSave)*nKeysPerSession
 
   

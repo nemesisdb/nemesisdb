@@ -142,15 +142,15 @@ class Client(ABC):
     return (self._is_rsp_valid(rsp, KvCmd.CLEAR_SET_RSP), rsp[KvCmd.CLEAR_SET_RSP]['cnt'])
 
 
-  async def save(self, name: str, tkn = 0):
+  async def save(self, name: str) -> bool:
     q = {KvCmd.SAVE_REQ : {'name':name}}
-    rsp = await self._send_query(KvCmd.SAVE_REQ, q, tkn)
+    rsp = await self._send_query(KvCmd.SAVE_REQ, q)
     return self._is_rsp_valid(rsp, KvCmd.SAVE_RSP, FieldValues.ST_SAVE_COMPLETE)
 
   
-  async def load(self, name: str, tkn = 0):
+  async def load(self, name: str) -> Tuple[bool, int]:
     q = {KvCmd.LOAD_REQ : {'name':name}}
-    rsp = await self._send_query(KvCmd.LOAD_REQ, q, tkn)
+    rsp = await self._send_query(KvCmd.LOAD_REQ, q)
     if self._is_rsp_valid(rsp, KvCmd.LOAD_RSP, FieldValues.ST_LOAD_COMPLETE):
       return (True, rsp[KvCmd.LOAD_RSP]['keys'])
     else:

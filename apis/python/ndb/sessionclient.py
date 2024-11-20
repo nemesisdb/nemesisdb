@@ -140,18 +140,20 @@ class SessionClient:
     return (self.client._is_rsp_valid(rsp, SessionCmd.INFO_ALL_RSP), rsp[SessionCmd.INFO_ALL_RSP])
 
     
-  async def save_session(self, name: str, tkn: int) -> bool:
-    # use _send_query() here because we don't set tkn
-    q = {SessionCmd.SAVE_REQ:{'name':name, 'tkns':[tkn]}}
-    rsp = await self.client._send_query(SessionCmd.SAVE_REQ, q)
-    return self.client._is_rsp_valid(rsp, SessionCmd.SAVE_RSP, FieldValues.ST_SAVE_COMPLETE)
+  # async def save_session(self, name: str, tkn: int) -> bool:
+  #   q = {SessionCmd.SAVE_REQ:{'name':name, 'tkns':[tkn]}}
+  #   rsp = await self.client._send_query(SessionCmd.SAVE_REQ, q)
+  #   return self.client._is_rsp_valid(rsp, SessionCmd.SAVE_RSP, FieldValues.ST_SAVE_COMPLETE)
 
 
   """Save all sessions or specific sessions.
   name - dataset name
-  tkns - if empty saves all sessions, otherwise only sessions whose token is in 'tkns'
+  tkns - if empty, saves all sessions, otherwise only sessions whose token is in 'tkns'
   """
-  async def save_sessions(self, name: str, tkns = list()) -> bool:
+  async def session_save(self, name: str, tkns = list()) -> bool:
+    if name == '':
+      raise ValueError('Name cannot be empty')
+
     q = {SessionCmd.SAVE_REQ:{'name':name}}
     
     if len(tkns) > 0:
@@ -161,7 +163,7 @@ class SessionClient:
     return self.client._is_rsp_valid(rsp, SessionCmd.SAVE_RSP, FieldValues.ST_SAVE_COMPLETE)
 
 
-  async def load_session(self, name: str) -> Tuple[bool, dict]:
+  async def session_load(self, name: str) -> Tuple[bool, dict]:
     q = {SessionCmd.LOAD_REQ:{'name':name}}
     rsp = await self.client._send_query(SessionCmd.LOAD_REQ, q)
     
