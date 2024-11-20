@@ -229,6 +229,12 @@ Sessions disabled:
 <br/>
 <br/>
 
+
+# Performance
+Performance testing has not been a priority, but early indications suggest 90k-120k queries/second. This is in Azure on a single EPYC core setting individual keys from a C++ client. The query rate depends on key/value length, whether using `KV_SET` or `KV_SETQ` (only returns a response on an error) and network/CPU load. 
+
+<br/>
+
 # Build - Linux Only
 
 > [!IMPORTANT]
@@ -272,3 +278,4 @@ Tests:
 - nlohmann json
 - Boost Beast (WebSocket client)
 - Google test
+
