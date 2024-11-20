@@ -13,10 +13,7 @@ async def setget_basics():
 
   if setSuccess:
     (getOk, values) = await client.get(('username',))
-    if getOk:
-      print(values)
-    else:
-      print('Query failed')
+    print (values if getOk else 'Query failed')
 
 
 async def setget_objects():
@@ -33,8 +30,7 @@ async def setget_objects():
             }
           }
 
-  setSuccess = await client.set(data)
-  if setSuccess:
+  if await client.set(data):
     (getOk, values) = await client.get(('server_users',))
     if getOk:
       print(values)

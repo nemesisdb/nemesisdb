@@ -171,7 +171,7 @@ Examples of sessions:
 
 
 # Python API
-There is an early version of a [Python API](https://github.com/nemesisdb/nemesisdb/tree/main/apis/python) with docs [here](https://docs.nemesisdb.io/client_apis/python/Overview)
+There is an early version of a [Python API](https://github.com/nemesisdb/nemesisdb/tree/main/apis/python) with docs [here](https://docs.nemesisdb.io/client_apis/python/Overview).
 
 Set then retrieve two keys, `username` and `password`:
 
@@ -185,10 +185,7 @@ setSuccess = await client.set({'username':'billy', 'password':'billy_passy'})
 
 if setSuccess:
   (getOk, values) = await client.get(('username','password'))
-  if getOk:
-    print(values)
-  else:
-    print('Query failed')
+  print (values if getOk else 'Query failed')
 ```
 
 
@@ -211,7 +208,7 @@ You can compile for Linux, instructions below.
 
 As of version 0.5, the engine is single threaded. The instance is assigned to core 0 by default but can be configured in the server [config](https://docs.nemesisdb.io/home/config).
 
-The multihreaded version is collecting GitHub dust on the [0.4.1](https://github.com/nemesisdb/nemesisdb/tree/0.4.1) branch.
+The multithreaded version is collecting GitHub dust on the [0.4.1](https://github.com/nemesisdb/nemesisdb/tree/0.4.1) branch.
 
 <br/>
 
