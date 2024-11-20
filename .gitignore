@@ -8,3 +8,6 @@ clients/Release/bin/*
 clients/Debug/bin/*
 faff/Debug/*
 faff/Release/*
+apis/python/__pycache__/*
+apis/python/examples/__pycache__/*
+apis/python/ndb/__pycache__/*

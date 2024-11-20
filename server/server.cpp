@@ -42,7 +42,7 @@ int main (int argc, char ** argv)
 
   #ifdef NDB_DEBUG
     config.cfg["version"] = 5;
-    config.cfg["sessionsEnabled"] = false;
+    config.cfg["sessionsEnabled"] = true;
     config.cfg["core"] = 0;
 
     config.cfg["ip"] = "127.0.0.1";
@@ -52,10 +52,8 @@ int main (int argc, char ** argv)
     config.cfg["persist"]["enabled"] = false;
     config.cfg["persist"]["path"] = "./data";
 
-    if (NemesisConfig::serverMode(config.cfg) == ServerMode::KvSessions && !fs::exists(config.cfg["sessions"]["save"]["path"].as_string()))
-      fs::create_directories(config.cfg["sessions"]["save"]["path"].as_string());
-    else if (NemesisConfig::serverMode(config.cfg) == ServerMode::KV && !fs::exists(config.cfg["kv"]["save"]["path"].as_string()))
-      fs::create_directories(config.cfg["kv"]["save"]["path"].as_string());
+    if (config.cfg["persist"]["enabled"] == true && !fs::exists(config.cfg["persist"]["path"].as_string()))
+      fs::create_directories(config.cfg["persist"]["path"].as_string());
 
     // config.loadPath = NemesisConfig::savePath(config.cfg);
     // config.loadName = "t2";
@@ -78,7 +76,7 @@ int main (int argc, char ** argv)
     else
       PLOGI << "Save: Disabled";
     
-    PLOGI << "Sessions Enabled: " << (server.hasSessions() ? "yes" : "no");
+    PLOGI << "Sessions: " << (server.hasSessions() ? "Enabled" : "Disabled");
     PLOGI << "Interface: " << address;
     
     if (server.run(config))

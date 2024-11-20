@@ -10,6 +10,7 @@ NemesisDB is an in-memory keyvalue JSON database:
 API and further information in the [docs](https://docs.nemesisdb.io/).
 
 Contents:
+  - [Python API](#python-api)
   - [Design](#design)
   - [Install](#install)
   - [Build for Linux](#build---linux-only)
@@ -168,6 +169,29 @@ Examples of sessions:
 <br/>
 <br/>
 
+
+# Python API
+There is an early version of a [Python API](https://github.com/nemesisdb/nemesisdb/tree/main/apis/python) with docs [here](https://docs.nemesisdb.io/client_apis/python/Overview).
+
+Set then retrieve two keys, `username` and `password`:
+
+```py
+from ndb.kvclient import KvClient
+
+client = KvClient()
+await client.open('ws://127.0.0.1:1987/')
+
+setSuccess = await client.set({'username':'billy', 'password':'billy_passy'})
+
+if setSuccess:
+  (getOk, values) = await client.get(('username','password'))
+  print (values if getOk else 'Query failed')
+```
+
+
+<br/>
+<br/>
+
 # Install
 NemesisDB is available as a Debian package and Docker image:
 
@@ -182,14 +206,13 @@ You can compile for Linux, instructions below.
 
 # Design
 
-As of version 0.5, the engine is single threaded to improve performance. The multihreaded version is collecting GitHub dust on the [0.4.1](https://github.com/nemesisdb/nemesisdb/tree/0.4.1) branch.
+As of version 0.5, the engine is single threaded. The instance is assigned to core 0 by default but can be configured in the server [config](https://docs.nemesisdb.io/home/config).
 
-The instance is assigned to core 0 by default but can be configured in the server [config](https://docs.nemesisdb.io/home/config).
-
+The multithreaded version is collecting GitHub dust on the [0.4.1](https://github.com/nemesisdb/nemesisdb/tree/0.4.1) branch.
 
 <br/>
 
-### Save and Restore
+## Save and Restore
 Session and key value data be saved to file and restored:
 
 Sessions enabled:
@@ -204,6 +227,12 @@ Sessions disabled:
 
 
 <br/>
+<br/>
+
+
+# Performance
+Performance testing has not been a priority, but early indications suggest 90k-120k queries/second. This is in Azure on a single EPYC core setting individual keys from a C++ client. The query rate depends on key/value length, whether using `KV_SET` or `KV_SETQ` (only returns a response on an error) and network/CPU load. 
+
 <br/>
 
 # Build - Linux Only
@@ -249,3 +278,4 @@ Tests:
 - nlohmann json
 - Boost Beast (WebSocket client)
 - Google test
+

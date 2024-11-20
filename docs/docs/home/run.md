@@ -11,7 +11,7 @@ These instruction are for the Debian package. See [here](/category/docker) for D
 
 The bulk of the server config are set in a JSON [config](./config) file, which is in preference to endless command line arguments.
 
-The server includes a default config which starts the server on `127.0.0.1:1987`. If this is unsuitable, change the `kv::ip` and `kv::port` as required.
+The server includes a default config which starts the server on `127.0.0.1:1987`.
 
 
 ## Arguments
@@ -22,7 +22,7 @@ The command line arguments are preceeded with `--`:
 |:---|:---:|:---|
 |config|Y|Path to the config file|
 |loadName|N|The name of a save point containing data to restore. The name would have been used with `SH_SAVE`|
-|loadPath|N|Path to directory containing the `loadName` data. If not set, uses the `session::save::path` in the config file|
+|loadPath|N|Path to directory containing the `loadName` data. If not set, uses the `persist::path` in the config file|
 
 <br/>
 
@@ -38,40 +38,6 @@ See [Persist Data](./persist) for more information on restoring.
 
 
 ## Examples
-
-### No Restore
-```bash title="Successful start"
-./nemesisdb --config=default.json
-
-NemesisDB v0.3.5 starting
-Registering signals
-Reading config
-Ready
-```
-
-<br/>
-
-```bash title="Can't find config file"
-./nemesisdb --config=dontexist.json
-
-NemesisDB v0.3.5 starting
-Registering signals
-Reading config
-Config file path not found
-```
-
-<br/>
-
-
-```bash title="Save enabled but path does not exist"
-./nemesisdb --config=default.json
-
-NemesisDB v0.3.5 starting
-Registering signals
-Reading config
-session::save::path is not a directory or does not exist
-```
-
 
 <br/>
 

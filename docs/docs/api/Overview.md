@@ -65,10 +65,7 @@ A good place to start is [First Steps](../tutorials/first-steps/setup) which sho
 
 ```json title='Create Session'
 {
-  "SH_NEW":
-  {
-    "name":"user"
-  }
+  "SH_NEW":{}
 }
 ```
 
@@ -76,7 +73,6 @@ A good place to start is [First Steps](../tutorials/first-steps/setup) which sho
 {
   "SH_NEW_RSP":
   {
-    "name":"user1",
     "tkn":12345678910
   }
 }
@@ -99,66 +95,4 @@ After this, you can store data in that session:
 }
 ```
 
-You can send another `SH_NEW` to create a new session, then submit a `KV_SET` with the new session token:
-
-```json title='Create Session'
-{
-  "SH_NEW":
-  {
-    "name":"user"
-  }
-}
-```
-
-```json title='Create session response'
-{
-  "SH_NEW_RSP":
-  {
-    "name":"user",
-    "tkn":6119461887874704569
-  }
-}
-```
-
-Store keys in this new session:
-
-```json
-{
-  "KV_SET":
-  {
-    "tkn":6119461887874704569,
-    "keys":
-    {
-      "username":"user2",
-      "job":"Plumber",
-      "age":61
-    }
-  }
-}
-```
-
-In subsequent `KV_` commands, use the appropriate `tkn` to access each session's data.
-
-This returns "user1":
-
-```json
-{
-  "KV_GET":
-  {
-    "tkn":12345678910,
-    "keys":["username"]
-  }
-}
-```
-<br/>
-
-This returns "user2":
-```json
-{
-  "KV_GET":
-  {
-    "tkn":6119461887874704569,
-    "keys":["username"]
-  }
-}
-```
+See [SH_NEW](sessions/sh-new.md) for details.

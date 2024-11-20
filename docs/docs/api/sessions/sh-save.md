@@ -57,37 +57,18 @@ When loading data, the newest timestamp is selected.
 |duration|unsigned int|Duration, in milliseconds, to write the data|
 
 
-The response is split in two:
-
-- An initial response indicating if the command is accepted
-- A final response confirming the save is complete or error during saving
-
-
-### Initial Response
-`st` can be:
-
-- CommandDisabled (save disabled in the config file)
-- CommandSyntax (`name` not present or not a string)
-- ValueTypeInvalid (`tkns` is present but not an array, or an item in the array is not an unsigned integer)
-- SaveDirWriteFail (failed to create directory/files required before starting)
-- SaveStart (command accepted, expect a final response)
-
-
-### Final Response
 `st` can be:
 
 - SaveComplete (save complete without error)
 - SaveError (save incomplete, error occured)
 
-If the final response status is `SaveError` the data cannot be loaded.
 
 See [response status](./../Statuses) for status values.
 
 <br/>
 
-## Example
+## Examples
 
-### Save All
 
 ```json title="Initiate save"
 {
@@ -98,37 +79,7 @@ See [response status](./../Statuses) for status values.
 }
 ```
 
-Initial response:
-
-```json title="Save accepted"
-{
-  "SH_SAVE_RSP":
-  {
-    "name":"dump",
-    "st": 120
-  }
-}
-```
-Followed by a confirmation:
-
-```json title="Save complete"
-{
-  "SH_SAVE_RSP":
-  {
-    "name":"dump",
-    "st": 121
-  }
-}
-```
-
-After this, the data can be found in:
-
-`<savepath>/dump/<timestamp>`
-
-where `<savepath>` is the path in the server config.
-
-
-### Save Particular Sessions
+<br/>
 
 ```json title="Initiate saving of three sessions"
 {
@@ -144,5 +95,3 @@ where `<savepath>` is the path in the server config.
   }
 }
 ```
-
-A response confirming this was accepted is sent followed by a final `SessionComplete`.

@@ -7,14 +7,11 @@ Creates a new session.
 
 The response includes a session token which is a 64-bit unsigned integer. The session token is used in the `KV_` commands to set, update, find, etc session data.
 
-There are various options but the simplest session creation is:
+To create a session that never expires:
 
-```json title="Create a session that never expires"
+```json
 {
-  "SH_NEW":
-  {
-    "name":"mysession"
-  }
+  "SH_NEW":{}
 }
 ```
 
@@ -25,7 +22,6 @@ which produces a response:
   "SH_NEW_RSP":
   {
     "st": 1,
-    "name": "mysession",
     "tkn": 260071646955705531
   }
 }
@@ -49,22 +45,16 @@ The session token (`tkn`) is used in subsequent `KV_` commands, for example:
 }
 ```
 <br/>
-<br/>
 
+A session can have optional `expiry` settings:
 
-A session requires at least a name but can have optional settings:
-
-- `expiry` : a session can be given a duration, which when reached, the session data is deleted. The session can also be deleted
-- `shared` : this allows clients to get a session token from the session name. This is useful if the same session data is required across separate services without having to distribute the token
-
-There is no session authentication - if a client has the token it can access the data.
+- a session can be given a duration, which when reached, the session's keys are deleted
+- the session can also be deleted
 
 <br/>
 
 |Param|Type|Meaning|Required|
 |:---|:---|:---|:---:|
-|name|string|The session name.<br/> If the session is shared, the name can be used in `SH_OPEN` to get the session token. |Y|
-|shared|bool|Default: `false`<br/> `true`: the session token is created so that the token can be retrieved by the token name with `SH_OPEN`. See [below](#shared-sessions)|N|
 |expiry|object|Default: never expires <br/>Defines session expiry settings. See below.|N|
 
 <br/>
@@ -78,20 +68,22 @@ There is no session authentication - if a client has the token it can access the
 |deleteSession| bool|Flag indicating if the session should be deleted. If `false`, only the data is deleted|Y|
 
 <br/>
-<br/>
 
+## Session Expiry
+A session's expiry time is extended by its `duration` when it is accessed by any `KV_` command - if a session is not accessed for `duration` seconds, it will expire. 
+
+<!-- 
 ## Session Name
 For a session that is not shared (`"shared":false`) the name has no meaning to the server other than it can't be empty. The name is returned in the response so clients can match the name to a session token when working asynchronously.
 
 If the session is shared the name can be used in [`SH_OPEN`](./sh-open.md) to get the session token from its name. This allows services/apps to access the same session without having to exchange the token.
 
+<br/> -->
+
+
+
+<!-- 
 <br/>
-
-## Session Expiry
-A session's expiry time is extended by its `duration` when it is accessed by any `KV_` command. In other words, if a session is not accessed for `duration` seconds, it will expire. By accessing the session's data you are extending the expiry because it suggests the data is required.
-
-<br/>
-
 ## Shared Sessions
 A session can be accessed by any client using the session token but it may be cumbersome to distribute a session token between clients.
 
@@ -99,7 +91,7 @@ A shared session helps by using the `name` to generate the session token. Other 
 
 :::note
 This only applies when a session is shared. If a session is not shared the `name` does not take part in token generation.
-:::
+::: -->
 
 <br/>
 
@@ -112,7 +104,6 @@ See the [response status](./../Statuses) page for status values.
 
 |Param|Type|Meaning|
 |:---|:---|:---|
-|name|string|Session name as used in the request.|
 |tkn|unsigned int|Session token|
 |st|unsigned int|Status|
 
@@ -128,40 +119,17 @@ Possible status values:
 
 ## Examples
 
-### Never expires, not shared
-
-```json
+```json title='Never expires'
 {
-  "SH_NEW":
-  {
-    "name": "user1000"
-  }
+  "SH_NEW":{}
 }
 ```
+<br/>
 
-### Expires after 1 minute, deletes session on expire, not shared
-
-```json
+```json title='Expires after 1 minute, session not deleted'
 {
   "SH_NEW":
   {
-    "name": "sesh1",
-    "expiry":
-    {
-      "duration": 60,
-      "deleteSession":true
-    }
-  }
-}
-```
-
-### Expires after 1 minute, only deletes data on expire, not shared
-
-```json
-{
-  "SH_NEW":
-  {
-    "name": "sesh1",
     "expiry":
     {
       "duration": 60,
@@ -171,28 +139,17 @@ Possible status values:
 }
 ```
 
-### Shared session, never expires
+<br/>
 
-```json
+```json title='Expires after 1 minute, session deleted'
 {
   "SH_NEW":
   {
-    "name": "shared1",
-    "shared": true
+    "expiry":
+    {
+      "duration": 60,
+      "deleteSession":true
+    }
   }
 }
 ```
-
-Because this session is shared, a client can use `SH_OPEN` with the name to retrieve the session token:
-
-```json
-{
-  "SH_OPEN":
-  {
-    "name":"shared1"
-  }
-}
-```
-
-This returns the same token as `SH_NEW`.
-

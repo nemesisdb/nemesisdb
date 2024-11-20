@@ -22,18 +22,10 @@ KvHandler receives a command:
   - calls a handler function
 
 The class handles commands for when sessions are enabled or disabled. To avoid
-code such as this for each command:
-  
-  if(sessionsEnabled)
-  {
-    auto session = getSession();
-    runCommand(session, xyz);
-  }
-  else
-    runCommand(xyz);
+separate functions or passing tokens around unneccessarily, the class uses a
+template param HaveSessions:
 
-The template argument HaveSessions is used:
-  - if true, m_container is a Sessions object (which contains sessions with a map per session)
+  - if true, m_container is a Sessions object (which contains active sessions, each with their map)
   - if false, m_container is a CacheMap object (a single map for all keys)
   - All KV_ commands use executeKvCommand(), which has overloads for sessions being enabled/disabled
 
@@ -105,20 +97,20 @@ private:
     // initialise with 1 bucket and pmr allocator
     HandlerPmrMap h (
     {
-      {KvQueryType::KvSet,        Handler{std::bind_front(&KvHandler<HaveSessions>::set,        std::ref(*this)), "KV_SET",   "KV_SET_RSP"}},
-      {KvQueryType::KvSetQ,       Handler{std::bind_front(&KvHandler<HaveSessions>::setQ,       std::ref(*this)), "KV_SETQ",  "KV_SETQ_RSP"}},
-      {KvQueryType::KvGet,        Handler{std::bind_front(&KvHandler<HaveSessions>::get,        std::ref(*this)), "KV_GET",   "KV_GET_RSP"}},
-      {KvQueryType::KvAdd,        Handler{std::bind_front(&KvHandler<HaveSessions>::add,        std::ref(*this)), "KV_ADD",   "KV_ADD_RSP"}},
-      {KvQueryType::KvAddQ,       Handler{std::bind_front(&KvHandler<HaveSessions>::addQ,       std::ref(*this)), "KV_ADDQ",  "KV_ADDQ_RSP"}},
-      {KvQueryType::KvRemove,     Handler{std::bind_front(&KvHandler<HaveSessions>::remove,     std::ref(*this)), "KV_RMV",   "KV_RMV_RSP"}},
-      {KvQueryType::KvClear,      Handler{std::bind_front(&KvHandler<HaveSessions>::clear,      std::ref(*this)), "KV_CLEAR", "KV_CLEAR_RSP"}},
-      {KvQueryType::KvCount,      Handler{std::bind_front(&KvHandler<HaveSessions>::count,      std::ref(*this)), "KV_COUNT", "KV_COUNT_RSP"}},
-      {KvQueryType::KvContains,   Handler{std::bind_front(&KvHandler<HaveSessions>::contains,   std::ref(*this)), "KV_CONTAINS",  "KV_CONTAINS_RSP"}},
-      {KvQueryType::KvFind,       Handler{std::bind_front(&KvHandler<HaveSessions>::find,       std::ref(*this)), "KV_FIND",      "KV_FIND_RSP"}},
-      {KvQueryType::KvUpdate,     Handler{std::bind_front(&KvHandler<HaveSessions>::update,     std::ref(*this)), "KV_UPDATE",    "KV_UPDATE_RSP"}},
-      {KvQueryType::KvKeys,       Handler{std::bind_front(&KvHandler<HaveSessions>::keys,       std::ref(*this)), "KV_KEYS",      "KV_KEYS_RSP"}},
-      {KvQueryType::KvClearSet,   Handler{std::bind_front(&KvHandler<HaveSessions>::clearSet,   std::ref(*this)), "KV_CLEAR_SET", "KV_CLEAR_SET_RSP"}},
-      {KvQueryType::KvArrayAppend, Handler{std::bind_front(&KvHandler<HaveSessions>::arrayAppend, std::ref(*this)), "KV_ARR_APPEND", "KV_ARR_APPEND_RSP"}}
+      {KvQueryType::KvSet,          Handler{std::bind_front(&KvHandler<HaveSessions>::set,        std::ref(*this)), "KV_SET",   "KV_SET_RSP"}},
+      {KvQueryType::KvSetQ,         Handler{std::bind_front(&KvHandler<HaveSessions>::setQ,       std::ref(*this)), "KV_SETQ",  "KV_SETQ_RSP"}},
+      {KvQueryType::KvGet,          Handler{std::bind_front(&KvHandler<HaveSessions>::get,        std::ref(*this)), "KV_GET",   "KV_GET_RSP"}},
+      {KvQueryType::KvAdd,          Handler{std::bind_front(&KvHandler<HaveSessions>::add,        std::ref(*this)), "KV_ADD",   "KV_ADD_RSP"}},
+      {KvQueryType::KvAddQ,         Handler{std::bind_front(&KvHandler<HaveSessions>::addQ,       std::ref(*this)), "KV_ADDQ",  "KV_ADDQ_RSP"}},
+      {KvQueryType::KvRemove,       Handler{std::bind_front(&KvHandler<HaveSessions>::remove,     std::ref(*this)), "KV_RMV",   "KV_RMV_RSP"}},
+      {KvQueryType::KvClear,        Handler{std::bind_front(&KvHandler<HaveSessions>::clear,      std::ref(*this)), "KV_CLEAR", "KV_CLEAR_RSP"}},
+      {KvQueryType::KvCount,        Handler{std::bind_front(&KvHandler<HaveSessions>::count,      std::ref(*this)), "KV_COUNT", "KV_COUNT_RSP"}},
+      {KvQueryType::KvContains,     Handler{std::bind_front(&KvHandler<HaveSessions>::contains,   std::ref(*this)), "KV_CONTAINS",  "KV_CONTAINS_RSP"}},
+      {KvQueryType::KvFind,         Handler{std::bind_front(&KvHandler<HaveSessions>::find,       std::ref(*this)), "KV_FIND",      "KV_FIND_RSP"}},
+      {KvQueryType::KvUpdate,       Handler{std::bind_front(&KvHandler<HaveSessions>::update,     std::ref(*this)), "KV_UPDATE",    "KV_UPDATE_RSP"}},
+      {KvQueryType::KvKeys,         Handler{std::bind_front(&KvHandler<HaveSessions>::keys,       std::ref(*this)), "KV_KEYS",      "KV_KEYS_RSP"}},
+      {KvQueryType::KvClearSet,     Handler{std::bind_front(&KvHandler<HaveSessions>::clearSet,   std::ref(*this)), "KV_CLEAR_SET", "KV_CLEAR_SET_RSP"}},
+      {KvQueryType::KvArrayAppend,  Handler{std::bind_front(&KvHandler<HaveSessions>::arrayAppend, std::ref(*this)), "KV_ARR_APPEND", "KV_ARR_APPEND_RSP"}}
       
     }, 1, alloc);
 
@@ -311,6 +303,9 @@ private:
   }
 
 
+  // Returns either the Sessions or CacheMap:
+  //  - Sessions: the map from the relevant session is used
+  //  - CacheMap: when sessions are disabled, a single map is used
   std::conditional_t<HaveSessions, Sessions&, CacheMap&> getContainer()
   {
     return m_container;
@@ -365,39 +360,36 @@ private:
   // SESSION
   ndb_always_inline void sessionNew(const std::string_view queryName, const std::string_view queryRspName, KvWebSocket * ws, njson& json)
   {
-    auto validate = [](const njson& cmd) -> std::tuple<RequestStatus, const std::string_view>
-    {
-      if (cmd.at("name").empty())
-        return {RequestStatus::ValueSize, "Session name empty"};
-
-      return {RequestStatus::Ok, ""};
-    };
-
-    if (isValid(queryRspName, ws, json, {{Param::required("name", JsonString)}, {Param::optional("expiry", JsonObject)}, {Param::optional("shared", JsonBool)}}, validate))
+    if (isValid(queryRspName, ws, json, {{Param::optional("expiry", JsonObject)}}))
     {
       const auto& cmd = json.at(queryName);
 
       SessionDuration duration{SessionDuration::rep{0}};
+      
       bool deleteOnExpire = false;
-
       bool valid = true;
 
       if (cmd.contains("expiry"))
       {
-        valid = isValid(queryRspName, "expiry", ws, json, {{Param::required("duration", JsonUInt)}, {Param::required("deleteSession", JsonBool)}});
+        auto validate = [](const njson& cmd) -> std::tuple<RequestStatus, const std::string_view>
+        {
+          if (cmd.at("duration") < 0)
+            return {RequestStatus::ValueSize, "expiry must be >= 0"};
+
+          return {RequestStatus::Ok, ""};
+        };
+        
+        valid = isValid(queryRspName, "expiry", ws, json, {{Param::required("duration", JsonUInt)}, {Param::required("deleteSession", JsonBool)}}, validate);
         if (valid)
         {
           duration = SessionDuration{cmd.at("expiry").at("duration").as<SessionDuration::rep>()};
           deleteOnExpire = cmd.at("expiry").at("deleteSession").as_bool();
         }
       }
-      
-      
+
       if (valid)
       {
-        const std::string name = cmd.at("name").as_string();
-        const bool shared = cmd.get_value_or<bool>("shared", false);
-        send(ws, SessionExecutor<HaveSessions>::newSession(getContainer(), name, createSessionToken(name, shared), shared, duration, deleteOnExpire));
+        send(ws, SessionExecutor<HaveSessions>::newSession(getContainer(), createSessionToken(), duration, deleteOnExpire));
       }
     }
   }
@@ -428,7 +420,7 @@ private:
       njson rsp;
 
       const auto& cmd = json.at(queryName);
-      const auto token = createSessionToken(cmd.at("name").as_string(), true);
+      const auto token = createSessionToken(cmd.at("name").as_string());
       
       // generate a shared token from the name. If a session with the same name was created but isn't shared, 
       // the tokens will be completely different
@@ -782,7 +774,7 @@ private:
   }
 
 
-  ndb_always_inline void kvLoad(const std::string_view queryName, const std::string_view queryRspName, KvWebSocket * ws, njson& json)
+  void kvLoad(const std::string_view queryName, const std::string_view queryRspName, KvWebSocket * ws, njson& json)
   {
     if (isValid(queryRspName, ws, json, {{Param::required("name", JsonString)}}))
     {
@@ -812,22 +804,27 @@ private:
 
     njson rsp;
     rsp[queryRspName]["name"] = name;
+    rsp[queryRspName]["st"] = toUnderlying(RequestStatus::SaveDirWriteFail);
     
     const auto setPath = std::to_string(KvSaveClock::now().time_since_epoch().count());
     const auto root = fs::path {NemesisConfig::savePath(m_config)} / name / setPath;
     const auto metaPath = fs::path{root} / "md";
     const auto dataPath = fs::path{root} / "data";
 
+    RequestStatus status = RequestStatus::Ok;
+
     std::ofstream metaStream;
 
     if (!fs::create_directories(metaPath))
-      rsp[queryRspName]["st"] = toUnderlying(RequestStatus::SaveDirWriteFail);
+      status = RequestStatus::SaveDirWriteFail;
     else if (metaStream.open(metaPath / "md.json", std::ios_base::trunc | std::ios_base::out); !metaStream.is_open())
-      rsp[queryRspName]["st"] = toUnderlying(RequestStatus::SaveDirWriteFail);
+      status = RequestStatus::SaveDirWriteFail;
+    
+    if (status != RequestStatus::Ok)
+      send(ws, rsp);
     else
     {
       rsp[queryRspName]["st"] = toUnderlying(RequestStatus::SaveStart);
-      send(ws, rsp);
       
       const auto start = KvSaveClock::now();
       KvSaveStatus metaDataStatus = KvSaveStatus::Pending;
@@ -880,9 +877,9 @@ private:
       metaStream.seekp(0);
 
       metadata.dump(metaStream);
-    }
 
-    send(ws, rsp);
+      send(ws, rsp);
+    }
   }
   
 

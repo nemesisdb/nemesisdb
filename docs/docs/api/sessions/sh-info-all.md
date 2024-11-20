@@ -18,6 +18,6 @@ See the [response status](./../Statuses) page for status values.
 
 |Param|Type|Meaning|
 |:---|:---|:---|
-|totalSessions|unsigned int|Number of session|
+|totalSessions|unsigned int|Number of sessions|
 |totalKeys|unsigned int|Number of keys over all the sessions|
 

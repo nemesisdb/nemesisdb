@@ -55,26 +55,6 @@ When loading data, the newest timestamp is selected.
 |duration|unsigned int|Duration, in milliseconds, for the save to complete|
 
 
-There may be two responses:
-
-1. Initial: indicates if the command is accepted
-   - If this `st` is SaveStart, it is followed by a second response when the save is complete/failed
-   - If this `st` is any other value, a second response is not sent
-2. Final: confirms the save is complete or an error occured  
-
-
-
-### Initial Response
-`st` can be:
-
-- SaveStart (command accepted, expect a final response)
-- CommandDisabled (save disabled in the config file)
-- CommandSyntax 
-- ValueTypeInvalid
-- SaveDirWriteFail (failed to create directory/files required before starting)
-
-
-### Final Response
 `st` can be:
 
 - SaveComplete (save complete without error)
@@ -84,7 +64,7 @@ See [response status](./../Statuses) for status values.
 
 <br/>
 
-## Example
+## Examples
 
 ```json title="Initiate save"
 {
@@ -95,19 +75,6 @@ See [response status](./../Statuses) for status values.
 }
 ```
 
-Initial response:
-
-```json title="Save accepted"
-{
-  "KV_SAVE_RSP":
-  {
-    "name":"users",
-    "st": 120
-  }
-}
-```
-
-Final response:
 
 ```json title="Save complete"
 {
