@@ -13,7 +13,8 @@ Restores keys that were previously saved with `save()`.
 
 
 :::note
-With sessions enabled, use `SessionClient.load()`.
+- Persistance does _not_ have to be enabled for this command
+- This command can only be used with sessions are disabled. With sessions enabled, use `SessionClient.load()`.
 :::
 
 

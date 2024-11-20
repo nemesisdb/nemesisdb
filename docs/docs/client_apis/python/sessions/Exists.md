@@ -14,9 +14,9 @@ Given an array of tokens, returns those that exist.
 
 ## Returns
 
-`tuple(bool, int)`
+`tuple(bool, List[int])`
 - `bool` : `True` is the command was successful, otherwise `False`
-- `int` : the number of sessions ended
+- `List[int]` : the tokens that exist - each token in the `tkns` parameter that exist will be returned
 
 
 ## Examples
@@ -26,3 +26,5 @@ Given an array of tokens, returns those that exist.
 tokens = [123,456,789]
 (ok, exist) = await client.exists(tokens)
 ```
+
+- Illustrative purposes only, a token won't have such a small value

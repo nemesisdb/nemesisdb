@@ -7,7 +7,7 @@ sidebar_label: end_all_sessions
 # end_all_sessions
 Ends all sessions.
 
-The sessions is ended immediately, with all keys being deleted, effectively clearing the database.
+The sessions end immediately, with all keys being deleted, effectively clearing the database.
 
 
 ## Returns

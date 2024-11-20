@@ -18,7 +18,8 @@ The saved sessions can be restored with [session_load()](./Load).
 The `name` is used with `session_load()` to restore the same sessions.
 
 :::note
-This command is only for when sessions are enabled. If disabled, use [save()](../Save).
+- Persistance must be enabled in the server config
+- This command is only for when sessions are enabled. If disabled, use [save()](../Save).
 :::
 
 

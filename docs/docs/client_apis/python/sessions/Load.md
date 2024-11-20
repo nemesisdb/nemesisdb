@@ -15,7 +15,8 @@ Restore sessions that were saved with [session_save()](./Save).
 
 
 :::note
-This command is only for when sessions are enabled. If disabled, use [load()](../Load).
+- Persistance does _not_ have to be enabled for this command.
+- This command is only for when sessions are enabled. If disabled, use [load()](../Load).
 :::
 
 
@@ -49,12 +50,15 @@ if session.isValid:
   dataSetName = 'my_data'
   
   await client.set({'fname':'james', 'sname':'smith'}, session.tkn)
+  
+  # save to filesystem
   await client.session_save(dataSetName, [session.tkn])
 
   # clear and restore
   (cleared, count) = await client.end_all_sessions()
   assert cleared and count == 1
 
+  # restore keys
   (loaded, rsp) = await client.session_load(dataSetName)
   assert loaded and rsp['sessions'] == 1 and rsp['keys'] == 2
 ```
