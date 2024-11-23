@@ -139,7 +139,6 @@ private:
   {
     QueryTypePmrMap map ( 
     {  
-      // kv commands required irrespective of sessions
       {"KV_SET",          KvQueryType::KvSet},
       {"KV_SETQ",         KvQueryType::KvSetQ},
       {"KV_GET",          KvQueryType::KvGet},
@@ -153,27 +152,10 @@ private:
       {"KV_UPDATE",       KvQueryType::KvUpdate},
       {"KV_KEYS",         KvQueryType::KvKeys},
       {"KV_CLEAR_SET",    KvQueryType::KvClearSet},
-      {"KV_ARR_APPEND",   KvQueryType::KvArrayAppend}
+      {"KV_ARR_APPEND",   KvQueryType::KvArrayAppend},
+      {"KV_SAVE",         KvQueryType::KvSave},
+      {"KV_LOAD",         KvQueryType::KvLoad}
     }, 1, alloc); 
-
-
-    if constexpr (HaveSessions)
-    {
-      map.try_emplace("SH_NEW",      KvQueryType::ShNew);
-      map.try_emplace("SH_END",      KvQueryType::ShEnd);
-      map.try_emplace("SH_OPEN",     KvQueryType::ShOpen);
-      map.try_emplace("SH_INFO",     KvQueryType::ShInfo);
-      map.try_emplace("SH_INFO_ALL", KvQueryType::ShInfoAll);
-      map.try_emplace("SH_SAVE",     KvQueryType::ShSave);
-      map.try_emplace("SH_LOAD",     KvQueryType::ShLoad);
-      map.try_emplace("SH_END_ALL",  KvQueryType::ShEndAll);
-      map.try_emplace("SH_EXISTS",   KvQueryType::ShExists);
-    }
-    else
-    {
-      map.try_emplace("KV_SAVE",     KvQueryType::KvSave);
-      map.try_emplace("KV_LOAD",     KvQueryType::KvLoad);
-    }
 
     return map;
   }
@@ -346,7 +328,10 @@ private:
   {
     if (!rsp.empty())
     {
-      setToken(rsp.object_range().begin()->value(), tkn);
+      //setToken(rsp.object_range().begin()->value(), tkn);
+      auto& rspBody = rsp.object_range().begin()->value();
+      rspBody["tkn"] = tkn;
+
       send(ws, rsp);
     }      
   }
