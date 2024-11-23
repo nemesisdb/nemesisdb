@@ -75,12 +75,6 @@ inline const std::int16_t METADATA_VERSION = 2;
   };
 
 
-  // inline void setToken (njson& rsp, const SessionToken& token)
-  // {
-  //   rsp["tkn"] = token;
-  // }
-
-
   struct LoadResult
   {  
     RequestStatus status;
@@ -88,8 +82,6 @@ inline const std::int16_t METADATA_VERSION = 2;
     std::size_t nKeys{0};
     NemesisClock::duration duration{0};
   };
-
-
 
 
   ndb_always_inline SessionToken createSessionToken(const SessionName& name)
@@ -105,16 +97,6 @@ inline const std::int16_t METADATA_VERSION = 2;
     static UUIDv4::UUIDGenerator<std::mt19937_64> uuidGenerator; 
     const auto uuid = uuidGenerator.getUUID();
     return uuid.hash();
-  }
-
-
-  uuid createUuid ()
-  {
-    static UUIDv4::UUIDGenerator<std::mt19937_64> uuidGenerator; 
-    
-    uuid s;
-    uuidGenerator.getUUID().str(s);
-    return s;
   }
 
 

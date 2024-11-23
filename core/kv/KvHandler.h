@@ -49,21 +49,6 @@ public:
     
   {
   }
-
-  // KvHandler(const njson& config) requires (HaveSessions) :
-  //   m_config(config),
-  //   m_container() // Sessions sets the initial bucket count
-    
-  // {
-  // }
-
-
-  // KvHandler(const njson& config) requires (!HaveSessions) :
-  //   m_config(config),
-  //   m_container(50'000) // Adds ~2Mb to initial memory use
-    
-  // {
-  // }
   
 
 private:
@@ -162,26 +147,7 @@ private:
 
 
 public:
-  
-  template<typename T, std::size_t Size>
-  struct PmrResource
-  {
-    PmrResource() : mbr(std::data(buffer), std::size(buffer)), alloc(&mbr)
-    {
-
-    }
-
-    std::pmr::polymorphic_allocator<T>& getAlloc ()
-    {
-      return alloc;
-    }
-
-    private:
-      std::array<std::byte, Size> buffer;
-      std::pmr::monotonic_buffer_resource mbr;
-      std::pmr::polymorphic_allocator<T> alloc;
-  };
-  
+   
 
   RequestStatus handle(KvWebSocket * ws, const std::string_view& command, njson& request)
   {      
@@ -220,13 +186,7 @@ public:
   {
     SessionExecutor::sessionMonitor(m_sessions);
   }
-  
-
-  void load(const std::string& loadName, const fs::path& dataSetsRoot, KvWebSocket * ws)
-  {
-    send (ws, doLoad(loadName, dataSetsRoot));
-  }
-  
+    
 
   LoadResult internalLoad(const std::string& loadName, const fs::path& dataSetsRoot)
   {
@@ -245,6 +205,7 @@ public:
   }
 
 
+  // This can be called when we receive a KV_LOAD, SH_LOAD or when loading on startup 
   njson doLoad (const std::string& loadName, const fs::path& dataSetsRoot)
   {
     PLOGI << "Loading from " << dataSetsRoot;
@@ -312,33 +273,18 @@ private:
   }
 
 
-  void handleKvExecuteResult(KvWebSocket * ws, const njson& rsp)
-    requires(!HaveSessions)
-  {
-    if (!rsp.empty())
-      send(ws, rsp);
-  }
-
-
-  void handleKvExecuteResult(KvWebSocket * ws, njson& rsp, const SessionToken& tkn)
-    requires(HaveSessions)
-  {
-    if (!rsp.empty())
-    {
-      auto& rspBody = rsp.object_range().begin()->value();
-      rspBody["tkn"] = tkn;
-
-      send(ws, rsp);
-    }      
-  }
-
-
   template<typename F>
   void callKvHandler(KvWebSocket * ws, CacheMap& map, const SessionToken& token, const njson& cmdRoot, F&& handler)
     requires(HaveSessions && std::is_invocable_v<F, CacheMap&, njson&>)
   {
     auto rsp = std::invoke(handler, map, cmdRoot);
-    handleKvExecuteResult(ws, rsp, token);
+    if (!rsp.empty())
+    {
+      auto& rspBody = rsp.object_range().begin()->value();
+      rspBody["tkn"] = token;
+
+      send(ws, rsp);
+    } 
   }
 
 
@@ -347,7 +293,8 @@ private:
     requires(!HaveSessions && std::is_invocable_v<F, CacheMap&, njson&>)
   {
     const auto rsp = std::invoke(handler, map, cmdRoot);
-    handleKvExecuteResult(ws, rsp);
+    if (!rsp.empty())
+      send(ws, rsp);
   }
 
 
@@ -364,7 +311,7 @@ private:
         callKvHandler(ws, session->get().map, token, cmdRoot, std::forward<F>(handler));
     }
     else
-      callKvHandler(ws, getContainer(), cmdRoot, std::forward<F>(handler));
+      callKvHandler(ws, m_map, cmdRoot, std::forward<F>(handler));
   }
 
 
@@ -509,7 +456,7 @@ private:
   }
 
 
-  void kvSave(const std::string_view queryName, const std::string_view queryRspName, KvWebSocket * ws, njson& json)
+  void kvSave(const std::string_view queryName, const std::string_view queryRspName, KvWebSocket * ws, njson& json)  requires (!HaveSessions)
   {
     if (!NemesisConfig::persistEnabled(m_config))
       send(ws, createErrorResponseNoTkn(queryRspName, RequestStatus::CommandDisabled));
@@ -531,7 +478,7 @@ private:
   }
 
 
-  void kvLoad(const std::string_view queryName, const std::string_view queryRspName, KvWebSocket * ws, njson& json)
+  void kvLoad(const std::string_view queryName, const std::string_view queryRspName, KvWebSocket * ws, njson& json) requires (!HaveSessions)
   {
     if (isValid(queryRspName, ws, json, {{Param::required("name", JsonString)}}))
     {
@@ -549,13 +496,13 @@ private:
       else
       {
         const auto [root, md, data, pathsValid] = getLoadPaths(fs::path{NemesisConfig::savePath(m_config)} / loadName);
-        load(loadName, data, ws);
+        send(ws, doLoad(loadName, data));
       }
     }
   }
 
   
-  void doSave (const std::string_view queryName, const std::string_view queryRspName, KvWebSocket * ws, njson& cmd)
+  void doSave (const std::string_view queryName, const std::string_view queryRspName, KvWebSocket * ws, njson& cmd) requires (!HaveSessions)
   {
     const auto& name = cmd.at("name").as_string();
     const auto rootDirName = std::to_string(KvSaveClock::now().time_since_epoch().count());
@@ -590,7 +537,7 @@ private:
 
       try
       {
-        rsp = KvExecutor::saveKv(getContainer(), dataPath, name);
+        rsp = KvExecutor::saveKv(m_map, dataPath, name);
         metaDataStatus = KvSaveStatus::Complete;
       }
       catch(const std::exception& e)

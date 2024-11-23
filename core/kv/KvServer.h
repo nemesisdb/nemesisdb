@@ -127,7 +127,7 @@ public:
       {
         if (NemesisConfig::persistEnabled(config))
         {
-          // test we can write to the kv save path
+          // test we can write to the persist path
           if (std::filesystem::path path {NemesisConfig::savePath(config)}; !std::filesystem::exists(path) || !std::filesystem::is_directory(path))
           {
             PLOGF << "save path is not a directory or does not exist";
@@ -135,7 +135,7 @@ public:
           }
           else
           {
-            const auto filename = createUuid();
+            const auto filename = std::to_string(NemesisClock::now().time_since_epoch().count());
             const fs::path fullPath{path / filename};
 
             if (std::ofstream testStream{fullPath}; !testStream.good())
