@@ -108,6 +108,7 @@
     "regex": "cpp",
     "scoped_allocator": "cpp",
     "*.inc": "cpp",
-    "format": "cpp"
+    "format": "cpp",
+    "stacktrace": "cpp"
   }  
 }

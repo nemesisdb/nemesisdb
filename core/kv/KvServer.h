@@ -12,7 +12,9 @@
 #include <uwebsockets/App.h>
 #include <core/kv/KvCommon.h>
 #include <core/kv/KvHandler.h>
+#include <core/kv/ShHandler.h>
 #include <core/NemesisConfig.h>
+
 
 
 namespace nemesis { namespace core { namespace kv {
@@ -75,8 +77,10 @@ public:
   }
 
 
-  bool run (NemesisConfig& config)
+  bool run (NemesisConfig& config, std::shared_ptr<Sessions> sessions)
   {
+    m_sessions = sessions;
+
     if (!init(config.cfg))
       return false;
 
@@ -117,32 +121,43 @@ public:
 
     bool init(const njson& config)
     {
-      if (NemesisConfig::persistEnabled(config))
-      {
-        // test we can write to the kv save path
-        if (std::filesystem::path path {NemesisConfig::savePath(config)}; !std::filesystem::exists(path) || !std::filesystem::is_directory(path))
-        {
-          PLOGF << "save path is not a directory or does not exist";
-          return false;
-        }
-        else
-        {
-          const auto filename = createUuid();
-          const fs::path fullPath{path / filename};
+      bool init = true;
 
-          if (std::ofstream testStream{fullPath}; !testStream.good())
+      try
+      {
+        if (NemesisConfig::persistEnabled(config))
+        {
+          // test we can write to the kv save path
+          if (std::filesystem::path path {NemesisConfig::savePath(config)}; !std::filesystem::exists(path) || !std::filesystem::is_directory(path))
           {
-            PLOGF << "Failed test write to save path: " << path;
+            PLOGF << "save path is not a directory or does not exist";
             return false;
           }
           else
-            std::filesystem::remove(fullPath);
-        }
-      }
-      
-      m_kvHandler = new kv::KvHandler<HaveSessions> {config};
+          {
+            const auto filename = createUuid();
+            const fs::path fullPath{path / filename};
 
-      return true;
+            if (std::ofstream testStream{fullPath}; !testStream.good())
+            {
+              PLOGF << "Failed test write to save path: " << path;
+              return false;
+            }
+            else
+              std::filesystem::remove(fullPath);
+          }
+        }
+        
+        m_kvHandler = new kv::KvHandler<HaveSessions> {config, m_sessions};
+        m_shHandler = std::make_shared<ShHandler>(config, m_sessions);
+      }
+      catch(const std::exception& e)
+      {
+        PLOGF << e.what();
+        init = false;
+      }
+
+      return init;
     }
     
     
@@ -182,18 +197,34 @@ public:
                 {
                   njson request = decoder.get_result();
 
-                  if (request.empty() || !request.is_object()) // top level must always be an object
+                  // top level must be an object with one child
+                  if (!request.is_object() || request.size() != 1U)
                     ws->send(createErrorResponse(RequestStatus::CommandSyntax).to_string(), kv::WsSendOpCode);
-                  else if (request.size() > 1U)
-                    ws->send(createErrorResponse(RequestStatus::CommandMultiple).to_string(), kv::WsSendOpCode);
                   else
                   {
-                    const auto& commandName = request.object_range().cbegin()->key();
+                    const std::string& commandName = request.object_range().cbegin()->key();
 
                     if (!request.at(commandName).is_object())
-                      ws->send(createErrorResponse(commandName+"_RSP", RequestStatus::CommandType).to_string(), kv::WsSendOpCode);
-                    else if (const auto status = m_kvHandler->handle(ws, commandName, request); status != RequestStatus::Ok)
-                      ws->send(createErrorResponse(commandName+"_RSP", status).to_string(), kv::WsSendOpCode);
+                      ws->send(createErrorResponse(commandName+"_RSP", RequestStatus::CommandSyntax).to_string(), kv::WsSendOpCode);
+                    else
+                    {
+                      if (const auto pos = commandName.find('_'); pos == std::string::npos)
+                        ws->send(createErrorResponse(commandName+"_RSP", RequestStatus::CommandSyntax).to_string(), kv::WsSendOpCode);
+                      else
+                      {
+                        const auto type = commandName.substr(0, pos);
+                        PLOGD << type;
+
+                        if (type == "SH")
+                        {
+                          m_shHandler->handle(ws, commandName, request);
+                        }
+                        else if (type == "KV")
+                        {
+                          m_kvHandler->handle(ws, commandName, request);
+                        }
+                      }
+                    }                      
                   }
                 }
               }
@@ -338,6 +369,8 @@ public:
     std::atomic_bool m_run;
     us_timer_t * m_monitorTimer{};
     KvHandler<HaveSessions> * m_kvHandler{};
+    std::shared_ptr<ShHandler> m_shHandler;
+    std::shared_ptr<Sessions> m_sessions;
 };
 
 

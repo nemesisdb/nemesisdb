@@ -8,6 +8,7 @@
 #include <core/NemesisCommon.h>
 #include <core/kv/KvCommon.h>
 #include <core/kv/KvServer.h>
+#include <core/kv/KvSessions.h>
 #include <core/LogFormatter.h>
 #include <jsoncons/json_traits_macros.hpp>
 
@@ -42,14 +43,14 @@ int main (int argc, char ** argv)
 
   #ifdef NDB_DEBUG
     config.cfg["version"] = 5;
-    config.cfg["sessionsEnabled"] = true;
+    config.cfg["sessionsEnabled"] = false;
     config.cfg["core"] = 0;
 
     config.cfg["ip"] = "127.0.0.1";
     config.cfg["port"] = 1987;
     config.cfg["maxPayload"] = 2048;
 
-    config.cfg["persist"]["enabled"] = false;
+    config.cfg["persist"]["enabled"] = true;
     config.cfg["persist"]["path"] = "./data";
 
     if (config.cfg["persist"]["enabled"] == true && !fs::exists(config.cfg["persist"]["path"].as_string()))
@@ -79,7 +80,10 @@ int main (int argc, char ** argv)
     PLOGI << "Sessions: " << (server.hasSessions() ? "Enabled" : "Disabled");
     PLOGI << "Interface: " << address;
     
-    if (server.run(config))
+
+    auto sessions = std::make_shared<nemesis::core::kv::Sessions>();
+
+    if (server.run(config, sessions))
       run.wait();
     else
     {
