@@ -292,8 +292,7 @@ private:
   }
 
  
-  template<typename Json>
-  std::optional<std::reference_wrapper<Sessions::Session>> getSession (KvWebSocket * ws, const std::string_view cmdRspName, const Json& cmd, SessionToken& token)
+  std::optional<std::reference_wrapper<Sessions::Session>> getSession (KvWebSocket * ws, const std::string_view cmdRspName, const njson& cmd, SessionToken& token)
     requires(HaveSessions)
   {
     if (getSessionToken(ws, cmdRspName, cmd, token))
@@ -313,8 +312,7 @@ private:
   }
 
 
-  template<typename Json>
-  void handleKvExecuteResult(KvWebSocket * ws, const Json& rsp)
+  void handleKvExecuteResult(KvWebSocket * ws, const njson& rsp)
     requires(!HaveSessions)
   {
     if (!rsp.empty())
@@ -322,13 +320,11 @@ private:
   }
 
 
-  template<typename Json>
-  void handleKvExecuteResult(KvWebSocket * ws, Json& rsp, const SessionToken& tkn)
+  void handleKvExecuteResult(KvWebSocket * ws, njson& rsp, const SessionToken& tkn)
     requires(HaveSessions)
   {
     if (!rsp.empty())
     {
-      //setToken(rsp.object_range().begin()->value(), tkn);
       auto& rspBody = rsp.object_range().begin()->value();
       rspBody["tkn"] = tkn;
 
@@ -337,27 +333,27 @@ private:
   }
 
 
-  template<typename Json, typename F>
-  void callKvHandler(KvWebSocket * ws, CacheMap& map, const SessionToken& token, const Json& cmdRoot, F&& handler)
-    requires(HaveSessions && std::is_invocable_v<F, CacheMap&, Json&>)
+  template<typename F>
+  void callKvHandler(KvWebSocket * ws, CacheMap& map, const SessionToken& token, const njson& cmdRoot, F&& handler)
+    requires(HaveSessions && std::is_invocable_v<F, CacheMap&, njson&>)
   {
     auto rsp = std::invoke(handler, map, cmdRoot);
     handleKvExecuteResult(ws, rsp, token);
   }
 
 
-  template<typename Json, typename F>
-  void callKvHandler(KvWebSocket * ws, CacheMap& map,const Json& cmdRoot, F&& handler)
-    requires(!HaveSessions && std::is_invocable_v<F, CacheMap&, Json&>)
+  template<typename F>
+  void callKvHandler(KvWebSocket * ws, CacheMap& map,const njson& cmdRoot, F&& handler)
+    requires(!HaveSessions && std::is_invocable_v<F, CacheMap&, njson&>)
   {
     const auto rsp = std::invoke(handler, map, cmdRoot);
     handleKvExecuteResult(ws, rsp);
   }
 
 
-  template<typename Json, typename F>
-  void executeKvCommand(const std::string_view cmdRspName, KvWebSocket * ws, const Json& cmd, F&& handler)
-    requires((HaveSessions && std::is_invocable_v<F, CacheMap&, SessionToken&, Json&>) || std::is_invocable_v<F, CacheMap&, Json&>)
+  template<typename F>
+  void executeKvCommand(const std::string_view cmdRspName, KvWebSocket * ws, const njson& cmd, F&& handler)
+    requires((HaveSessions && std::is_invocable_v<F, CacheMap&, SessionToken&, njson&>) || std::is_invocable_v<F, CacheMap&, njson&>)
   {
     const auto& cmdRoot = cmd.object_range().cbegin()->value();
 
