@@ -1,10 +1,18 @@
 import unittest
 import random
+import os
 from common import NDBSessionTest
 
 
 class SaveLoad(NDBSessionTest):
 
+  """
+  Save load requires the server has persistance enabled. It is not possible to find this
+  via a command, so it can be skipped by calling with  './run.sh skip' which sets
+  NDB_SKIP_SAVELOAD
+  """
+
+  @unittest.skipIf(os.environ.get('NDB_SKIP_SAVELOAD') != None, 'Skipping Save/Load')
   async def test_save_load(self):
     nSessions = 10
     tokens = []
