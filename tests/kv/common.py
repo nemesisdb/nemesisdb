@@ -1,7 +1,7 @@
 import sys
 from unittest import IsolatedAsyncioTestCase
 
-sys.path.append('../apis/python')
+sys.path.append('../../apis/python')
 from ndb.kvclient import KvClient
 
 

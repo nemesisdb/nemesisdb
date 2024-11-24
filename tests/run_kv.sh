@@ -6,4 +6,6 @@ fi
 
 echo Run as: \"$0 skip\" to exclude save/load test
 
+cd kv
 python3 -m unittest -f
+cd -

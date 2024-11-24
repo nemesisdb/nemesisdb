@@ -12,3 +12,5 @@ apis/python/__pycache__/*
 apis/python/examples/__pycache__/*
 apis/python/ndb/__pycache__/*
 tests/__pycache__/*
+tests/kv/__pycache__/*
+tests/sessions/__pycache__/*
