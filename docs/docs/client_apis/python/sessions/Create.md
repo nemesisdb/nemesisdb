@@ -59,7 +59,7 @@ await client.open('ws://127.0.0.1:1987/')
 
 session = await client.create_session()
 if session.isValid:
-  print(f'Session created with token {session.token}')
+  print(f'Session created with token {session.tkn}')
 else
   print('Fail')
 ```
