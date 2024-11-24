@@ -18,7 +18,7 @@ class SaveLoad(NDBTest):
     valid = await self.client.set(input)
     self.assertTrue(valid)
 
-    datasetName = 'test_'+ str(random.randint(1000,999999))
+    datasetName = 'kv_'+ str(random.randint(1000,999999))
     
     saved = await self.client.save(datasetName)
     self.assertTrue(saved)
