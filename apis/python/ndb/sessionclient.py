@@ -45,8 +45,8 @@ class SessionClient:
     self.client = KvClient()
     
   
-  async def open(self, uri: str):
-    await self.client.open(uri)
+  async def open(self, uri: str) -> bool:
+    return await self.client.open(uri)
   
 
   async def close(self):
@@ -131,21 +131,26 @@ class SessionClient:
 
   async def session_info(self, tkn: int) -> Tuple[bool,dict]:
     rsp = await self.client._send_session_query(SessionCmd.INFO_REQ, {SessionCmd.INFO_REQ:{}}, tkn)
-    return (self.client._is_rsp_valid(rsp, SessionCmd.INFO_RSP), rsp[SessionCmd.INFO_RSP])
-
-
+    if self.client._is_rsp_valid(rsp, SessionCmd.INFO_RSP):
+      info = dict(rsp[SessionCmd.INFO_RSP])
+      info.pop('st')
+      return (True, info)
+    else:
+      return (False, dict())
+    
+    
   async def session_info_all(self) -> Tuple[bool,dict]:
     # use _send_query() here because we don't set tkn
     rsp = await self.client._send_query(SessionCmd.INFO_ALL_REQ, {SessionCmd.INFO_ALL_REQ:{}})
-    return (self.client._is_rsp_valid(rsp, SessionCmd.INFO_ALL_RSP), rsp[SessionCmd.INFO_ALL_RSP])
+    if self.client._is_rsp_valid(rsp, SessionCmd.INFO_ALL_RSP):
+      info = dict(rsp[SessionCmd.INFO_ALL_RSP])
+      info.pop('st')
+      return (True, info)
+    else:
+      return (False, dict())
+      
 
     
-  # async def save_session(self, name: str, tkn: int) -> bool:
-  #   q = {SessionCmd.SAVE_REQ:{'name':name, 'tkns':[tkn]}}
-  #   rsp = await self.client._send_query(SessionCmd.SAVE_REQ, q)
-  #   return self.client._is_rsp_valid(rsp, SessionCmd.SAVE_RSP, FieldValues.ST_SAVE_COMPLETE)
-
-
   """Save all sessions or specific sessions.
   name - dataset name
   tkns - if empty, saves all sessions, otherwise only sessions whose token is in 'tkns'
@@ -168,7 +173,9 @@ class SessionClient:
     rsp = await self.client._send_query(SessionCmd.LOAD_REQ, q)
     
     if self.client._is_rsp_valid(rsp, SessionCmd.LOAD_RSP, FieldValues.ST_LOAD_COMPLETE):
-      return (True, rsp[SessionCmd.LOAD_RSP])
+      info = dict(rsp[SessionCmd.LOAD_RSP])
+      info.pop('st')
+      return (True, info)
     else:
       return (False, dict())
 
