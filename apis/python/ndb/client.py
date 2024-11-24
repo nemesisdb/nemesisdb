@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from enum import Enum
 from ndb.connection import Connection
-from typing import Tuple
+from typing import Tuple, List
 from asyncio import CancelledError
 
 
@@ -50,29 +50,28 @@ class KvCmd:
   LOAD_RSP      = "KV_LOAD_RSP"
 
 
-"""Used by KvClient and SessionClient to query the database.
-
-Provides a function per database command.
-
-Some functions have an optional 'tkn' parameter - this is only relevant when
-using the SessionClient. When sessions are disabled, leave the 'tkn' as default.
-
-Note: KV_SETQ and KV_ADDQ are not supported.
-"""
 class Client(ABC):
-  
+  """Used by KvClient and SessionClient to query the database.
+
+  Provides a function per database command.
+
+  Most functions have an optional 'tkn' parameter - this is only relevant when
+  using the SessionClient. When sessions are disabled, leave the 'tkn' as default.
+
+  Note: KV_SETQ and KV_ADDQ are not supported.
+  """
+
   def __init__(self):
     self.uri = ''
     self.listen_task = None
     self.api = Connection()
 
   
-  async def open(self, uri: str):
+  async def open(self, uri: str) -> bool:
     if uri == '':
       raise ValueError('URI empty')
     
-    self.uri = uri
-    self.listen_task = await self.api.start(self.uri)
+    return await self.api.start(uri)
 
 
   async def set(self, keys: dict, tkn = 0) -> bool:
@@ -92,7 +91,7 @@ class Client(ABC):
       return (False, dict())
   
 
-  async def rmv(self, keys: tuple, tkn = 0) -> dict:
+  async def rmv(self, keys: tuple, tkn = 0) -> bool:
     q = {KvCmd.RMV_REQ : {'keys':keys}}
     rsp = await self._send_query(KvCmd.RMV_REQ, q, tkn)
     return self._is_rsp_valid(rsp, KvCmd.RMV_RSP)
@@ -108,7 +107,7 @@ class Client(ABC):
       return (False, 0)
 
 
-  async def contains(self, keys: tuple, tkn = 0) -> tuple:
+  async def contains(self, keys: tuple, tkn = 0) -> Tuple[bool, List]:
     q = {KvCmd.CONTAINS_REQ : {'keys':keys}}
     rsp = await self._send_query(KvCmd.CONTAINS_REQ, q, tkn)
 
@@ -127,19 +126,22 @@ class Client(ABC):
       return (False, [])
 
 
-  async def clear(self, tkn = 0) -> tuple:
+  async def clear(self, tkn = 0) -> Tuple[bool, int]:
     rsp = await self._send_query(KvCmd.CLEAR_REQ, {KvCmd.CLEAR_REQ : {}}, tkn)
     
     if self._is_rsp_valid(rsp, KvCmd.CLEAR_RSP):
       return (True, rsp[KvCmd.CLEAR_RSP]['cnt'])
     else:
-      return (False, [])
+      return (False, 0)
     
 
-  async def clear_set(self, keys: dict, tkn = 0) -> tuple:
+  async def clear_set(self, keys: dict, tkn = 0) -> Tuple[bool, int]:
     q = {KvCmd.CLEAR_SET_REQ : {'keys':keys}}
     rsp = await self._send_query(KvCmd.CLEAR_SET_REQ, q, tkn)    
-    return (self._is_rsp_valid(rsp, KvCmd.CLEAR_SET_RSP), rsp[KvCmd.CLEAR_SET_RSP]['cnt'])
+    if self._is_rsp_valid(rsp, KvCmd.CLEAR_SET_RSP):
+      return (True, rsp[KvCmd.CLEAR_SET_RSP]['cnt'])
+    else:
+      return (False, 0)
 
 
   async def save(self, name: str) -> bool:
@@ -178,10 +180,10 @@ class Client(ABC):
       return await self._send_kv_query(q)
 
 
-  async def _send_kv_query(self, q: dict):
+  async def _send_kv_query(self, q: dict) -> dict:
     return await self.api.query(q)
 
   
-  async def _send_session_query(self, cmd: str, q: dict, tkn: int):
+  async def _send_session_query(self, cmd: str, q: dict, tkn: int) -> dict:
     q[cmd]['tkn'] = tkn
     return await self.api.query(q)
