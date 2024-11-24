@@ -110,5 +110,8 @@
     "*.inc": "cpp",
     "format": "cpp",
     "stacktrace": "cpp"
-  }  
+  },
+  "python.analysis.extraPaths": [
+    "./apis/python"
+  ]
 }
