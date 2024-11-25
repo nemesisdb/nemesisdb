@@ -1,5 +1,8 @@
 import unittest
-from common import NDBTest
+import sys
+sys.path.append('../')
+from base import NDBTest
+
 
 
 class Add(NDBTest):

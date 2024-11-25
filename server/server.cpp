@@ -73,9 +73,9 @@ int main (int argc, char ** argv)
   auto runServer = [&config, &error, persist, address]<typename Server> (Server&& server)
   {
     if (persist)
-      PLOGI << "Save: Enabled (" << NemesisConfig::savePath(config.cfg) << ')';
+      PLOGI << "Persist: Enabled (" << NemesisConfig::savePath(config.cfg) << ')';
     else
-      PLOGI << "Save: Disabled";
+      PLOGI << "Persist: Disabled";
     
     PLOGI << "Sessions: " << (server.hasSessions() ? "Enabled" : "Disabled");
     PLOGI << "Interface: " << address;

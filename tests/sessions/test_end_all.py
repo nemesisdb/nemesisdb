@@ -1,5 +1,7 @@
 import unittest
-from common import NDBSessionTest
+import sys
+sys.path.append('../')
+from base import NDBSessionTest
 
 
 class EndAll(NDBSessionTest):

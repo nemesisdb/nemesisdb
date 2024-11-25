@@ -1,7 +1,9 @@
 import random
 import unittest
 import os
-from common import NDBTest
+import sys
+sys.path.append('../')
+from base import NDBTest
 
 
 class SaveLoad(NDBTest):

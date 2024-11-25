@@ -50,6 +50,11 @@ class KvCmd:
   LOAD_RSP      = "KV_LOAD_RSP"
 
 
+class SvCmd:
+  INFO_REQ    = 'SV_INFO'
+  INFO_RSP    = 'SV_INFO_RSP'
+
+
 class Client(ABC):
   """Used by KvClient and SessionClient to query the database.
 
@@ -158,6 +163,16 @@ class Client(ABC):
     else:
       return (False, 0)
   
+
+  async def server_info(self) -> Tuple[bool, dict]:
+    rsp = await self._send_query(SvCmd.INFO_REQ, {SvCmd.INFO_REQ : {}})
+    if self._is_rsp_valid(rsp, SvCmd.INFO_RSP):
+      info = dict(rsp.get(SvCmd.INFO_RSP))
+      info.pop('st')
+      return (True, info)
+    else:
+      return (False, dict())
+
 
   async def close(self):
     await self.api.close()

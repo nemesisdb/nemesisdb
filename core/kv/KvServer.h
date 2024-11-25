@@ -14,7 +14,7 @@
 #include <core/kv/KvHandler.h>
 #include <core/kv/ShHandler.h>
 #include <core/NemesisConfig.h>
-
+#include <core/NemesisCommon.h>
 
 
 namespace nemesis { namespace core { namespace kv {
@@ -76,6 +76,7 @@ public:
   bool run (NemesisConfig& config, std::shared_ptr<Sessions> sessions)
   {
     m_sessions = sessions;
+    m_config = config.cfg;
 
     if (!init(config.cfg))
       return false;
@@ -219,8 +220,22 @@ public:
                         {
                           m_kvHandler->handle(ws, commandName, request);
                         }
+                        else if (commandName == "SV_INFO")
+                        {
+                          static njson Prepared {jsoncons::json_object_arg, {{"SV_INFO_RSP", {jsoncons::json_object_arg,
+                                                                              {
+                                                                                {"st", toUnderlying(RequestStatus::Ok)},  // for compatibility with APIs and consistancy
+                                                                                {"serverVersion", NEMESIS_VERSION},
+                                                                                {"sessionsEnabled", NemesisConfig::sessionsEnabled(m_config)},
+                                                                                {"persistEnabled", NemesisConfig::persistEnabled(m_config)}
+                                                                              }}}
+                                                                            }};
+                          static std::string PreparedRsp = Prepared.to_string();
+
+                          ws->send(PreparedRsp, kv::WsSendOpCode);
+                        }
                       }
-                    }                      
+                    }
                   }
                 }
               }
@@ -368,6 +383,7 @@ public:
     std::shared_ptr<KvHandler<HaveSessions>> m_kvHandler;
     std::shared_ptr<ShHandler> m_shHandler;
     std::shared_ptr<Sessions> m_sessions;
+    njson m_config;
 };
 
 

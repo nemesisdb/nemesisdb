@@ -1,7 +1,9 @@
 import unittest
 import random
 import os
-from common import NDBSessionTest
+import sys
+sys.path.append('../')
+from base import NDBSessionTest
 
 
 class SaveLoad(NDBSessionTest):

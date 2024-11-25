@@ -87,6 +87,10 @@ class SessionClient:
 
   async def clear_set(self, keys: dict, tkn: int) -> tuple:
     return await self.client.clear_set(keys, tkn)
+  
+  
+  async def server_info(self) -> Tuple[bool, dict]:
+    return await self.client.server_info()
 
 
   """Create a new session, with optional expiry settings.
