@@ -178,72 +178,8 @@ public:
             m_wsClients.insert(ws);
           },          
           .message = [this](KvWebSocket * ws, std::string_view message, uWS::OpCode opCode)
-          { 
-            if (opCode != uWS::OpCode::TEXT)
-              ws->send(createErrorResponse(RequestStatus::OpCodeInvalid).to_string(), kv::WsSendOpCode);
-            else
-            {
-              jsoncons::json_decoder<njson> decoder;
-              jsoncons::json_string_reader reader(message, decoder);
-              
-              try
-              {
-                if (reader.read(); !decoder.is_valid())
-                  ws->send(createErrorResponse(RequestStatus::JsonInvalid).to_string(), kv::WsSendOpCode);
-                else
-                {
-                  njson request = decoder.get_result();
-
-                  // top level must be an object with one child
-                  if (!request.is_object() || request.size() != 1U)
-                    ws->send(createErrorResponse(RequestStatus::CommandSyntax).to_string(), kv::WsSendOpCode);
-                  else
-                  {
-                    const std::string& commandName = request.object_range().cbegin()->key();
-
-                    if (!request.at(commandName).is_object())
-                      ws->send(createErrorResponse(commandName+"_RSP", RequestStatus::CommandSyntax).to_string(), kv::WsSendOpCode);
-                    else
-                    {
-                      if (const auto pos = commandName.find('_'); pos == std::string::npos)
-                        ws->send(createErrorResponse(commandName+"_RSP", RequestStatus::CommandSyntax).to_string(), kv::WsSendOpCode);
-                      else
-                      {
-                        const auto type = commandName.substr(0, pos);
-                        PLOGD << type;
-
-                        if (type == "SH")
-                        {
-                          m_shHandler->handle(ws, commandName, request);
-                        }
-                        else if (type == "KV")
-                        {
-                          m_kvHandler->handle(ws, commandName, request);
-                        }
-                        else if (commandName == "SV_INFO")
-                        {
-                          static njson Prepared {jsoncons::json_object_arg, {{"SV_INFO_RSP", {jsoncons::json_object_arg,
-                                                                              {
-                                                                                {"st", toUnderlying(RequestStatus::Ok)},  // for compatibility with APIs and consistancy
-                                                                                {"serverVersion", NEMESIS_VERSION},
-                                                                                {"sessionsEnabled", NemesisConfig::sessionsEnabled(m_config)},
-                                                                                {"persistEnabled", NemesisConfig::persistEnabled(m_config)}
-                                                                              }}}
-                                                                            }};
-                          static std::string PreparedRsp = Prepared.to_string();
-
-                          ws->send(PreparedRsp, kv::WsSendOpCode);
-                        }
-                      }
-                    }
-                  }
-                }
-              }
-              catch (const jsoncons::ser_error& jsonEx)
-              {
-                ws->send(createErrorResponse(RequestStatus::JsonInvalid).to_string(), kv::WsSendOpCode);
-              }              
-            }
+          {
+            onMessage(ws, message, opCode);
           },
           .close = [this](KvWebSocket * ws, int /*code*/, std::string_view /*message*/)
           {
@@ -333,6 +269,76 @@ public:
       }
 
       return started;
+    }
+
+
+    void onMessage(KvWebSocket * ws, std::string_view message, uWS::OpCode opCode)
+    { 
+      if (opCode != uWS::OpCode::TEXT)
+        ws->send(createErrorResponse(RequestStatus::OpCodeInvalid).to_string(), kv::WsSendOpCode);
+      else
+      {
+        jsoncons::json_decoder<njson> decoder;
+        jsoncons::json_string_reader reader(message, decoder);
+        
+        try
+        {
+          if (reader.read(); !decoder.is_valid())
+            ws->send(createErrorResponse(RequestStatus::JsonInvalid).to_string(), kv::WsSendOpCode);
+          else
+          {
+            njson request = decoder.get_result();
+
+            // top level must be an object with one child
+            if (!request.is_object() || request.size() != 1U)
+              ws->send(createErrorResponse(RequestStatus::CommandSyntax).to_string(), kv::WsSendOpCode);
+            else
+            {
+              const std::string& commandName = request.object_range().cbegin()->key();
+
+              if (!request.at(commandName).is_object())
+                ws->send(createErrorResponse(commandName+"_RSP", RequestStatus::CommandSyntax).to_string(), kv::WsSendOpCode);
+              else
+              {
+                if (const auto pos = commandName.find('_'); pos == std::string::npos)
+                  ws->send(createErrorResponse(commandName+"_RSP", RequestStatus::CommandSyntax).to_string(), kv::WsSendOpCode);
+                else
+                {
+                  const auto type = commandName.substr(0, pos);
+                  PLOGD << type;
+
+                  if (type == "SH")
+                  {
+                    m_shHandler->handle(ws, commandName, request);
+                  }
+                  else if (type == "KV")
+                  {
+                    m_kvHandler->handle(ws, commandName, request);
+                  }
+                  else if (commandName == "SV_INFO")
+                  {
+                    static njson Prepared {jsoncons::json_object_arg, {{"SV_INFO_RSP", {jsoncons::json_object_arg,
+                                                                        {
+                                                                          {"st", toUnderlying(RequestStatus::Ok)},  // for compatibility with APIs and consistancy
+                                                                          {"serverVersion", NEMESIS_VERSION},
+                                                                          {"sessionsEnabled", NemesisConfig::sessionsEnabled(m_config)},
+                                                                          {"persistEnabled", NemesisConfig::persistEnabled(m_config)}
+                                                                        }}}
+                                                                      }};
+                    static std::string PreparedRsp = Prepared.to_string();
+
+                    ws->send(PreparedRsp, kv::WsSendOpCode);
+                  }
+                }
+              }
+            }
+          }
+        }
+        catch (const jsoncons::ser_error& jsonEx)
+        {
+          ws->send(createErrorResponse(RequestStatus::JsonInvalid).to_string(), kv::WsSendOpCode);
+        }              
+      }
     }
 
 
