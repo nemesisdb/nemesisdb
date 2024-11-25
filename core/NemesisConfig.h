@@ -174,7 +174,7 @@ NemesisConfig readConfig (const int argc, char ** argv)
     po::notify(vm);
     parsedArgs = true;
   }
-  catch(po::error_with_option_name pex)
+  catch(const po::error_with_option_name& pex)
   {
     PLOGF << pex.what();
   }
