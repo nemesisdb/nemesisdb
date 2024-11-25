@@ -1,7 +1,4 @@
-import sys
-import os
 from unittest import IsolatedAsyncioTestCase
-
 from ndb.kvclient import KvClient
 from ndb.sessionclient import SessionClient
 
