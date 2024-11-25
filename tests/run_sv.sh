@@ -6,7 +6,11 @@ then
 else
   
   # to find base.py
-  export PYTHONPATH=$(pwd)
+  BASE=$(pwd)
+  # to find Py API
+  PY_API=$(pwd)/../apis/python
+  
+  export PYTHONPATH="$BASE:$PY_API"
 
   source ./useful.sh  
 
