@@ -16,6 +16,10 @@ Options:
     - Can run more remote client instances to negate peformance
     - Far easier to maintain
     - Avoids dragging in boost::beast/boost::asio and dependencies
+    - If chosen, have clear plan to avoid a mess like the C++ apps have become:
+      - Have a set of defined tests: local client sends "execute test [n] on server host:port". Each tests particular functionality or drives the server in a particular way
+      - `remote_client` : opens WS server, waits for command, execute test, report results, send results to local client
+      - `local_client` : connects to remote clients, sends message, display results received from remote client(s)
     
 2. Continue
     - Remote clients' servers can be replaced with uWebSockets
