@@ -5,6 +5,9 @@ then
   echo "FAIL: server already running"
 else
   
+  # to find base.py
+  export PYTHONPATH=$(pwd)
+
   source ./useful.sh  
 
   run_kv_server

@@ -1,8 +1,6 @@
 import unittest
 import random
 import os
-import sys
-sys.path.append('../')
 from base import NDBSessionTest
 
 
