@@ -274,7 +274,7 @@ Server:
 - uuid_v4 : create UUIDs with SIMD
 - Boost Program Options : argv options
 
-Tests:
+Tests Client:
 - nlohmann json
 - Boost Beast (WebSocket client)
 - Google test
