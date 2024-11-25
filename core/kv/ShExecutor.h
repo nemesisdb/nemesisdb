@@ -223,7 +223,7 @@ private:
 
   // SAVE DATA
 
-  static void saveSelectSessions (const njson& cmd, const Sessions::SessionsMap& allSessions, const fs::path& path, const std::size_t MaxDataFileSize)
+  static void saveSelectSessions (const njson& cmd, const Sessions::SessionsMap& allSessions, const fs::path& path, const std::streamoff MaxDataFileSize)
   {
     std::string buffer;
     buffer.reserve(MaxDataFileSize);
@@ -260,7 +260,7 @@ private:
   }
 
 
-  static void saveAllSessions (const Sessions::SessionsMap& allSessions, const fs::path& path, const std::size_t MaxDataFileSize)
+  static void saveAllSessions (const Sessions::SessionsMap& allSessions, const fs::path& path, const std::streamoff MaxDataFileSize)
   {    
     std::string buffer; // vector<char> ?
     buffer.reserve(MaxDataFileSize);

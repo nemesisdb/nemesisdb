@@ -354,7 +354,10 @@ public:
         {
           PLOGI << "Status: Success";
           if constexpr (HaveSessions)
+          {
             PLOGI << "Sessions: " << loadResult.nSessions ;
+          }
+            
           PLOGI << "Keys: " << loadResult.nKeys ;
           PLOGI << "Duration: " << chrono::duration_cast<std::chrono::milliseconds>(loadResult.duration).count() << "ms";
         }

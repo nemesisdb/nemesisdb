@@ -99,9 +99,6 @@ public:
     static HandlerPmrMap MsgHandlers{createHandlers(handlerPmrResource.getAlloc())}; 
     static QueryTypePmrMap QueryNameToType{createQueryTypeNameMap(queryTypeNamePmrResource.getAlloc())};
     
-
-    RequestStatus status = RequestStatus::Ok;
-    
     if (const auto itType = QueryNameToType.find(command) ; itType == QueryNameToType.cend())
       ws->send(createErrorResponse(command+"_RSP", RequestStatus::CommandNotExist).to_string(), kv::WsSendOpCode);
     else if (const auto handlerIt = MsgHandlers.find(itType->second) ; handlerIt == MsgHandlers.cend())

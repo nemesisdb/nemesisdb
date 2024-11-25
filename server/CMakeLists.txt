@@ -24,6 +24,8 @@ set(CPACK_PROJECT_VERSION ${PROJECT_VERSION})
 
 add_executable(nemesisdb server.cpp)
 
+#when we have GCC-14
+#target_compile_options(nemesisdb PUBLIC -Wnrvo) 
 target_compile_features(nemesisdb PUBLIC cxx_std_20)
-# target_compile_options(nemesisdb PRIVATE -Wall) # TODO reinstate when finished pmr
+target_compile_options(nemesisdb PRIVATE -Wall) # TODO reinstate when finished pmr
 target_link_libraries(nemesisdb PRIVATE "" -luSockets -lz -lboost_program_options)

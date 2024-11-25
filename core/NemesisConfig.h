@@ -96,7 +96,10 @@ inline bool isValid (std::function<bool()> isValidCheck, const std::string_view 
 {
   const auto valid = isValidCheck();
   if (!valid)
+  {
     PLOGF << "\n** Config Error **\n" << msg << "\n****\n";
+  }
+    
   return valid;
 };
 

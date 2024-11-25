@@ -320,7 +320,7 @@ public:
 
   static njson saveKv (const CacheMap& map, const fs::path& path, const std::string_view name)
   {
-    static const std::size_t MaxDataFileSize = 10U * 1024U * 1024U;
+    static const std::streamoff MaxDataFileSize = 10U * 1024U * 1024U;
 
     auto start = NemesisClock::now();
 
@@ -341,7 +341,6 @@ public:
         std::stringstream sstream{buffer};
         std::size_t nFiles = 0;
         
-        const std::size_t totalKeys = map.count();
         bool first = true;
 
         for(const auto& [k, v] : map.map())
@@ -382,7 +381,7 @@ public:
   static njson loadKv (const std::string& loadName, CacheMap& map, const fs::path& dataRoot)
   {
     RequestStatus status{RequestStatus::Loading};
-    std::size_t nSessions{0}, nKeys{0};
+    std::size_t nKeys{0};
     
     njson rsp;
     rsp["KV_LOAD_RSP"]["st"] = toUnderlying(status);
