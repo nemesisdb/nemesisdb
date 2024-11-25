@@ -60,9 +60,6 @@ public:
 
       for(auto sock : m_sockets)
         us_listen_socket_close(0, sock);
-
-      if (m_kvHandler)
-        delete m_kvHandler;
     }
     catch (const std::exception& ex)
     {
@@ -73,7 +70,6 @@ public:
     m_wsClients.clear();
     m_sockets.clear();
     m_monitorTimer = nullptr;
-    m_kvHandler = nullptr;
   }
 
 
@@ -148,7 +144,7 @@ public:
           }
         }
         
-        m_kvHandler = new kv::KvHandler<HaveSessions> {config, m_sessions};
+        m_kvHandler = std::make_shared<kv::KvHandler<HaveSessions>> (config, m_sessions);
         m_shHandler = std::make_shared<ShHandler>(config, m_sessions);
       }
       catch(const std::exception& e)
@@ -360,7 +356,7 @@ public:
   private:
     struct TimerData
     {
-      KvHandler<HaveSessions> * kvHandler{};
+      std::shared_ptr<KvHandler<HaveSessions>> kvHandler;
     };
 
     std::unique_ptr<std::jthread> m_thread;
@@ -368,7 +364,8 @@ public:
     std::set<KvWebSocket *> m_wsClients;    
     std::atomic_bool m_run;
     us_timer_t * m_monitorTimer{};
-    KvHandler<HaveSessions> * m_kvHandler{};
+    // TODO profile runtime cost of shared_ptr vs raw ptr
+    std::shared_ptr<KvHandler<HaveSessions>> m_kvHandler;
     std::shared_ptr<ShHandler> m_shHandler;
     std::shared_ptr<Sessions> m_sessions;
 };
