@@ -78,7 +78,7 @@ int main (int argc, char ** argv)
       PLOGI << "Persist: Disabled";
     
     PLOGI << "Sessions: " << (server.hasSessions() ? "Enabled" : "Disabled");
-    PLOGI << "Interface: " << address;
+    PLOGI << "Query Interface: " << address;
     
 
     auto sessions = std::make_shared<nemesis::core::kv::Sessions>();
