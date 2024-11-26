@@ -347,16 +347,18 @@ public:
             {
               // yuck, but this is how jsoncons initialises json objects
               // the json_object_arg is a tag, followed by initializer_list<pair<string, njson>>
-              static const njson Prepared {jsoncons::json_object_arg, {{"SV_INFO_RSP", {jsoncons::json_object_arg,
-                                                                        {
-                                                                          {"st", toUnderlying(RequestStatus::Ok)},  // for compatibility with APIs and consistancy
-                                                                          {"serverVersion", NEMESIS_VERSION},
-                                                                          {"sessionsEnabled", NemesisConfig::sessionsEnabled(m_config)},
-                                                                          {"persistEnabled", NemesisConfig::persistEnabled(m_config)}
-                                                                        }}}
-                                                                      }};
+              // Can create Prepared in one go, but split for [relative] readability. Copy children from Info into Prepared
+              static const njson Info {jsoncons::json_object_arg, {
+                                                                    {"st", toUnderlying(RequestStatus::Ok)},  // for compatibility with APIs and consistancy
+                                                                    {"serverVersion",   NEMESIS_VERSION},
+                                                                    {"sessionsEnabled", NemesisConfig::sessionsEnabled(m_config)},
+                                                                    {"persistEnabled",  NemesisConfig::persistEnabled(m_config)}
+                                                                  }};
 
-              static const std::string PreparedRsp = Prepared.to_string();
+              static const njson Prepared {jsoncons::json_object_arg, {{"SV_INFO_RSP", {jsoncons::json_object_arg,  Info.object_range().cbegin(),
+                                                                                                                    Info.object_range().cend()}}}}; 
+              
+              static const std::string PreparedRsp {Prepared.to_string()};
 
               ws->send(PreparedRsp, kv::WsSendOpCode);
             }
