@@ -1,13 +1,16 @@
-import common
-from common import connect_client
 import asyncio as asio
+import sys
+sys.path.append('../')
 from ndb.kvclient import KvClient
+
 
 
 async def setget_basics():
   client = KvClient()
 
-  await connect_client(client)
+  if not (await client.open('ws://127.0.0.1:1987/')):
+    print('Failed to connect')
+    return
 
   setSuccess = await client.set({'username':'billy', 'password':'billy_passy'})
 
@@ -19,7 +22,9 @@ async def setget_basics():
 async def setget_objects():
   client = KvClient()
 
-  await connect_client(client)
+  if not (await client.open('ws://127.0.0.1:1987/')):
+    print('Failed to connect')
+    return
 
   data = {  "server_ip":"123.456.7.8",
             "server_port":1987,
@@ -39,8 +44,10 @@ async def setget_objects():
 async def setget_multiple():
   client = KvClient()
 
-  await connect_client(client)
-
+  if not (await client.open('ws://127.0.0.1:1987/')):
+    print('Failed to connect')
+    return
+  
   data = {  "server_ip":"123.456.7.8",
             "server_port":1987,
             "server_users":
@@ -59,7 +66,9 @@ async def setget_multiple():
 async def setget_overwrite():
   client = KvClient()
 
-  await connect_client(client)
+  if not (await client.open('ws://127.0.0.1:1987/')):
+    print('Failed to connect')
+    return
 
   data = {  "server_ip":"123.456.7.8",
             "server_port":1987,
@@ -85,7 +94,9 @@ async def setget_overwrite():
 async def add():
   client = KvClient()
 
-  await connect_client(client)
+  if not (await client.open('ws://127.0.0.1:1987/')):
+    print('Failed to connect')
+    return
 
   await client.set({'LinuxDistro':'Arch'})
   (getOk, values) = await client.get(('LinuxDistro',))

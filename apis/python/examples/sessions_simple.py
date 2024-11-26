@@ -1,4 +1,6 @@
-import common
+import sys
+sys.path.append('../')
+
 from ndb.sessionclient import SessionClient, Session
 
 import asyncio as asio
@@ -7,7 +9,9 @@ import asyncio as asio
 
 async def basics():
   client = SessionClient()
-  await client.open('ws://127.0.0.1:1987/')
+  if not (await client.open('ws://127.0.0.1:1987/')):
+    print('Failed to connect')
+    return
 
   session = await client.create_session()
   if session == None:
@@ -75,7 +79,9 @@ async def multiple_sessions():
 
 
   client = SessionClient()
-  await client.open('ws://127.0.0.1:1987/')
+  if not (await client.open('ws://127.0.0.1:1987/')):
+    print('Failed to connect')
+    return
 
   session_user1 = await client.create_session()
   session_user2 = await client.create_session()
@@ -119,7 +125,9 @@ async def getUser(client: SessionClient, tkn: int):
 
 async def two_sessions():
   client = SessionClient()
-  await client.open('ws://127.0.0.1:1987/')
+  if not (await client.open('ws://127.0.0.1:1987/')):
+    print('Failed to connect')
+    return
   
   user1_session = await newUser(client, 'user1', 'u1@mailg.com')
   user2_session = await newUser(client, 'user2', 'u2@yoohaa.com')
