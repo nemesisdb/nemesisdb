@@ -14,6 +14,7 @@
 #include <core/kv/KvHandler.h>
 #include <core/sh/ShHandler.h>
 #include <core/kv/SvCommands.h>
+#include <core/Persistance.h>
 #include <core/NemesisConfig.h>
 #include <core/NemesisCommon.h>
 

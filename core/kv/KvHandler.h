@@ -9,6 +9,7 @@
 #include <ranges>
 #include <ankerl/unordered_dense.h>
 #include <core/NemesisCommon.h>
+#include <core/Persistance.h>
 #include <core/kv/KvCommon.h>
 #include <core/kv/KvExecutor.h>
 #include <core/sh/ShExecutor.h>

@@ -11,7 +11,6 @@
 namespace nemesis { namespace core { namespace sh {
 
 using namespace nemesis::core;
-//using namespace nemesis::core::kv;
 namespace sh = nemesis::core::sh;
 
 

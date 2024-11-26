@@ -7,6 +7,7 @@
 #include <tuple>
 #include <ankerl/unordered_dense.h>
 #include <core/NemesisCommon.h>
+#include <core/Persistance.h>
 #include <core/sh/ShCommon.h>
 #include <core/sh/KvSessions.h>
 #include <core/sh/ShCommands.h>
