@@ -30,6 +30,7 @@ class Connection:
     self.connectedSem = asio.Semaphore(0)
     self.rcvTask = None
     self.listen_task = asio.create_task(self.open())
+    self.ws = None
     
     # the listen_task will release this semaphore
     # when it fails/succeeds to connect
@@ -85,5 +86,6 @@ class Connection:
 
   async def close(self):
     self.userClosed = True
-    await self.ws.close()
+    if self.ws:
+      await self.ws.close()
 
