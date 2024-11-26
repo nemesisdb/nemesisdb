@@ -53,14 +53,11 @@ public:
 
 private:
 
-  using Handle = std::function<void(const std::string_view, const std::string_view, KvWebSocket *, njson&)>;
-
   struct Handler
   {
-    Handler(Handle&& h, const std::string_view name, const std::string_view rsp) :
-      handler(std::move(h)),
-      qryName(name),
-      qryRspName(rsp)
+    using Handle = std::function<void(KvWebSocket *, njson&)>;
+
+    Handler(Handle&& h) : handler(std::move(h))
     {
 
     }
@@ -71,12 +68,10 @@ private:
 
     void operator()(KvWebSocket * ws, njson& request)
     {
-      handler(qryName, qryRspName, ws, request);
+      handler(ws, request);
     }
 
     Handle handler;
-    std::string_view qryName;
-    std::string_view qryRspName;
   };
 
 
@@ -90,20 +85,20 @@ private:
     // initialise with 1 bucket and pmr allocator
     HandlerPmrMap h (
     {
-      {KvQueryType::KvSet,          Handler{std::bind_front(&KvHandler<HaveSessions>::set,        std::ref(*this)), "KV_SET",   "KV_SET_RSP"}},
-      {KvQueryType::KvSetQ,         Handler{std::bind_front(&KvHandler<HaveSessions>::setQ,       std::ref(*this)), "KV_SETQ",  "KV_SETQ_RSP"}},
-      {KvQueryType::KvGet,          Handler{std::bind_front(&KvHandler<HaveSessions>::get,        std::ref(*this)), "KV_GET",   "KV_GET_RSP"}},
-      {KvQueryType::KvAdd,          Handler{std::bind_front(&KvHandler<HaveSessions>::add,        std::ref(*this)), "KV_ADD",   "KV_ADD_RSP"}},
-      {KvQueryType::KvAddQ,         Handler{std::bind_front(&KvHandler<HaveSessions>::addQ,       std::ref(*this)), "KV_ADDQ",  "KV_ADDQ_RSP"}},
-      {KvQueryType::KvRemove,       Handler{std::bind_front(&KvHandler<HaveSessions>::remove,     std::ref(*this)), "KV_RMV",   "KV_RMV_RSP"}},
-      {KvQueryType::KvClear,        Handler{std::bind_front(&KvHandler<HaveSessions>::clear,      std::ref(*this)), "KV_CLEAR", "KV_CLEAR_RSP"}},
-      {KvQueryType::KvCount,        Handler{std::bind_front(&KvHandler<HaveSessions>::count,      std::ref(*this)), "KV_COUNT", "KV_COUNT_RSP"}},
-      {KvQueryType::KvContains,     Handler{std::bind_front(&KvHandler<HaveSessions>::contains,   std::ref(*this)), "KV_CONTAINS",  "KV_CONTAINS_RSP"}},
-      {KvQueryType::KvFind,         Handler{std::bind_front(&KvHandler<HaveSessions>::find,       std::ref(*this)), "KV_FIND",      "KV_FIND_RSP"}},
-      {KvQueryType::KvUpdate,       Handler{std::bind_front(&KvHandler<HaveSessions>::update,     std::ref(*this)), "KV_UPDATE",    "KV_UPDATE_RSP"}},
-      {KvQueryType::KvKeys,         Handler{std::bind_front(&KvHandler<HaveSessions>::keys,       std::ref(*this)), "KV_KEYS",      "KV_KEYS_RSP"}},
-      {KvQueryType::KvClearSet,     Handler{std::bind_front(&KvHandler<HaveSessions>::clearSet,   std::ref(*this)), "KV_CLEAR_SET", "KV_CLEAR_SET_RSP"}},
-      {KvQueryType::KvArrayAppend,  Handler{std::bind_front(&KvHandler<HaveSessions>::arrayAppend, std::ref(*this)), "KV_ARR_APPEND", "KV_ARR_APPEND_RSP"}}
+      {KvQueryType::KvSet,          Handler{std::bind_front(&KvHandler<HaveSessions>::set,        std::ref(*this))}},
+      {KvQueryType::KvSetQ,         Handler{std::bind_front(&KvHandler<HaveSessions>::setQ,       std::ref(*this))}},
+      {KvQueryType::KvGet,          Handler{std::bind_front(&KvHandler<HaveSessions>::get,        std::ref(*this))}},
+      {KvQueryType::KvAdd,          Handler{std::bind_front(&KvHandler<HaveSessions>::add,        std::ref(*this))}},
+      {KvQueryType::KvAddQ,         Handler{std::bind_front(&KvHandler<HaveSessions>::addQ,       std::ref(*this))}},
+      {KvQueryType::KvRemove,       Handler{std::bind_front(&KvHandler<HaveSessions>::remove,     std::ref(*this))}},
+      {KvQueryType::KvClear,        Handler{std::bind_front(&KvHandler<HaveSessions>::clear,      std::ref(*this))}},
+      {KvQueryType::KvCount,        Handler{std::bind_front(&KvHandler<HaveSessions>::count,      std::ref(*this))}},
+      {KvQueryType::KvContains,     Handler{std::bind_front(&KvHandler<HaveSessions>::contains,   std::ref(*this))}},
+      {KvQueryType::KvFind,         Handler{std::bind_front(&KvHandler<HaveSessions>::find,       std::ref(*this))}},
+      {KvQueryType::KvUpdate,       Handler{std::bind_front(&KvHandler<HaveSessions>::update,     std::ref(*this))}},
+      {KvQueryType::KvKeys,         Handler{std::bind_front(&KvHandler<HaveSessions>::keys,       std::ref(*this))}},
+      {KvQueryType::KvClearSet,     Handler{std::bind_front(&KvHandler<HaveSessions>::clearSet,   std::ref(*this))}},
+      {KvQueryType::KvArrayAppend,  Handler{std::bind_front(&KvHandler<HaveSessions>::arrayAppend, std::ref(*this))}}
       
     }, 1, alloc);
 
@@ -111,8 +106,8 @@ private:
     if constexpr (!HaveSessions)
     {
       // KV_SAVE and KV_LOAD are only enabled when sessions are disabled, when sessions are enabled SH_SAVE/SH_LOAD are used
-      h.emplace(KvQueryType::KvSave,  Handler{std::bind_front(&KvHandler<HaveSessions>::kvSave, std::ref(*this)), "KV_SAVE",  "KV_SAVE_RSP"});
-      h.emplace(KvQueryType::KvLoad,  Handler{std::bind_front(&KvHandler<HaveSessions>::kvLoad, std::ref(*this)), "KV_LOAD",  "KV_LOAD_RSP"});
+      h.emplace(KvQueryType::KvSave,  Handler{std::bind_front(&KvHandler<HaveSessions>::kvSave, std::ref(*this))});
+      h.emplace(KvQueryType::KvLoad,  Handler{std::bind_front(&KvHandler<HaveSessions>::kvLoad, std::ref(*this))});
     }
 
     return h;
@@ -124,22 +119,22 @@ private:
   {
     QueryTypePmrMap map ( 
     {  
-      {"KV_SET",          KvQueryType::KvSet},
-      {"KV_SETQ",         KvQueryType::KvSetQ},
-      {"KV_GET",          KvQueryType::KvGet},
-      {"KV_ADD",          KvQueryType::KvAdd},
-      {"KV_ADDQ",         KvQueryType::KvAddQ},
-      {"KV_RMV",          KvQueryType::KvRemove},
-      {"KV_CLEAR",        KvQueryType::KvClear},
-      {"KV_COUNT",        KvQueryType::KvCount},
-      {"KV_CONTAINS",     KvQueryType::KvContains},
-      {"KV_FIND",         KvQueryType::KvFind},
-      {"KV_UPDATE",       KvQueryType::KvUpdate},
-      {"KV_KEYS",         KvQueryType::KvKeys},
-      {"KV_CLEAR_SET",    KvQueryType::KvClearSet},
-      {"KV_ARR_APPEND",   KvQueryType::KvArrayAppend},
-      {"KV_SAVE",         KvQueryType::KvSave},
-      {"KV_LOAD",         KvQueryType::KvLoad}
+      {SetReq,          KvQueryType::KvSet},
+      {SetQReq,         KvQueryType::KvSetQ},
+      {GetReq,          KvQueryType::KvGet},
+      {AddReq,          KvQueryType::KvAdd},
+      {AddQReq,         KvQueryType::KvAddQ},
+      {RmvReq,          KvQueryType::KvRemove},
+      {ClearReq,        KvQueryType::KvClear},
+      {CountReq,        KvQueryType::KvCount},
+      {ContainsReq,     KvQueryType::KvContains},
+      {FindReq,         KvQueryType::KvFind},
+      {UpdateReq,       KvQueryType::KvUpdate},
+      {KeysReq,         KvQueryType::KvKeys},
+      {ClearSetReq,     KvQueryType::KvClearSet},
+      {ArrAppendReq,    KvQueryType::KvArrayAppend},
+      {SaveReq,         KvQueryType::KvSave},
+      {LoadReq,         KvQueryType::KvLoad}
     }, 1, alloc); 
 
     return map;
@@ -315,88 +310,88 @@ private:
   }
 
 
-  ndb_always_inline void set(const std::string_view queryName, const std::string_view queryRspName, KvWebSocket * ws, njson& request)
+  ndb_always_inline void set(KvWebSocket * ws, njson& request)
   {
     auto validate = [](const njson& cmd) -> std::tuple<RequestStatus, const std::string_view>
     {
       return cmd.at("keys").empty() ? std::make_tuple(RequestStatus::ValueSize, "keys") : std::make_tuple(RequestStatus::Ok, "");
     };
     
-    if (isValid(queryRspName, ws, request, {{Param::required("keys", JsonObject)}}, validate))
-      executeKvCommand(queryRspName, ws, request, KvExecutor::set);
+    if (isValid(SetRsp, ws, request, {{Param::required("keys", JsonObject)}}, validate))
+      executeKvCommand(SetRsp, ws, request, KvExecutor::set);
   }
 
   
-  ndb_always_inline void setQ(const std::string_view queryName, const std::string_view queryRspName, KvWebSocket * ws, njson& request)
+  ndb_always_inline void setQ(KvWebSocket * ws, njson& request)
   {
     auto validate = [](const njson& cmd) -> std::tuple<RequestStatus, const std::string_view>
     {
       return cmd.at("keys").empty() ? std::make_tuple(RequestStatus::ValueSize, "keys") : std::make_tuple(RequestStatus::Ok, "");
     };
 
-    if (isValid(queryRspName, ws, request, {{Param::required("keys", JsonObject)}}, validate))
-      executeKvCommand(queryRspName, ws, request, KvExecutor::setQ);
+    if (isValid(SetQRsp, ws, request, {{Param::required("keys", JsonObject)}}, validate))
+      executeKvCommand(SetQRsp, ws, request, KvExecutor::setQ);
   }
 
   
-  ndb_always_inline void get(const std::string_view queryName, const std::string_view queryRspName, KvWebSocket * ws, njson& request)
+  ndb_always_inline void get(KvWebSocket * ws, njson& request)
   {
-    if (isValid(queryRspName, ws, request, {{Param::required("keys", JsonArray)}}))
-      executeKvCommand(queryRspName, ws, request, KvExecutor::get);
+    if (isValid(GetReq, ws, request, {{Param::required("keys", JsonArray)}}))
+      executeKvCommand(GetRsp, ws, request, KvExecutor::get);
   }
 
   
-  ndb_always_inline void add(const std::string_view queryName, const std::string_view queryRspName, KvWebSocket * ws, njson& json)
+  ndb_always_inline void add(KvWebSocket * ws, njson& json)
   {
-    if (isValid(queryRspName, ws, json, {{Param::required("keys", JsonObject)}}))
-      executeKvCommand(queryRspName, ws, json, KvExecutor::add);
+    if (isValid(AddRsp, ws, json, {{Param::required("keys", JsonObject)}}))
+      executeKvCommand(AddRsp, ws, json, KvExecutor::add);
   }
 
 
-  ndb_always_inline void addQ(const std::string_view queryName, const std::string_view queryRspName, KvWebSocket * ws, njson& json)
+  ndb_always_inline void addQ(KvWebSocket * ws, njson& json)
   {
     auto validate = [](const njson& cmd) -> std::tuple<RequestStatus, const std::string_view>
     {
       return cmd.at("keys").empty() ? std::make_tuple(RequestStatus::ValueSize, "keys") : std::make_tuple(RequestStatus::Ok, "");
     };
 
-    if (isValid(queryRspName, ws, json, {{Param::required("keys", JsonObject)}}, validate))
-      executeKvCommand(queryRspName, ws, json, KvExecutor::addQ);
+    if (isValid(AddQRsp, ws, json, {{Param::required("keys", JsonObject)}}, validate))
+      executeKvCommand(AddQRsp, ws, json, KvExecutor::addQ);
   }
 
 
-  ndb_always_inline void remove(const std::string_view queryName, const std::string_view queryRspName, KvWebSocket * ws, njson& json)
+  ndb_always_inline void remove(KvWebSocket * ws, njson& json)
   {
     auto validate = [](const njson& cmd) -> std::tuple<RequestStatus, const std::string_view>
     {
       return cmd.at("keys").empty() ? std::make_tuple(RequestStatus::ValueSize, "keys") : std::make_tuple(RequestStatus::Ok, "");
     };
 
-    if (isValid(queryRspName, ws, json, {{Param::required("keys", JsonArray)}}, validate))
-      executeKvCommand(queryRspName, ws, json, KvExecutor::remove);
+    if (isValid(RmvRsp, ws, json, {{Param::required("keys", JsonArray)}}, validate))
+      executeKvCommand(RmvRsp, ws, json, KvExecutor::remove);
   }
 
   
-  ndb_always_inline void clear(const std::string_view queryName, const std::string_view queryRspName, KvWebSocket * ws, njson& json)
+  ndb_always_inline void clear(KvWebSocket * ws, njson& json)
   {
-    executeKvCommand(queryRspName, ws, json, KvExecutor::clear);
+    executeKvCommand(ClearRsp, ws, json, KvExecutor::clear);
   }
 
 
-  ndb_always_inline void count(const std::string_view queryName, const std::string_view queryRspName, KvWebSocket * ws, njson& json)
+  ndb_always_inline void count(KvWebSocket * ws, njson& json)
   {
-    executeKvCommand(queryRspName, ws, json, KvExecutor::count);
+    executeKvCommand(CountRsp, ws, json, KvExecutor::count);
   }
 
 
-  ndb_always_inline void contains(const std::string_view queryName, const std::string_view queryRspName, KvWebSocket * ws, njson& json)
+  ndb_always_inline void contains(KvWebSocket * ws, njson& json)
   {
-    if (isValid(queryRspName, ws, json, {{Param::required("keys", JsonArray)}}))
-      executeKvCommand(queryRspName, ws, json, KvExecutor::contains);
+    if (isValid(ContainsRsp, ws, json, {{Param::required("keys", JsonArray)}}))
+      executeKvCommand(ContainsRsp, ws, json, KvExecutor::contains);
   }
 
 
-  ndb_always_inline void find(const std::string_view queryName, const std::string_view queryRspName, KvWebSocket * ws, njson& json)
+  ndb_always_inline void find(KvWebSocket * ws, njson& json)
   {
     auto validate = [](const njson& cmd) -> std::tuple<RequestStatus, const std::string_view>
     {
@@ -408,19 +403,19 @@ private:
       return {RequestStatus::Ok, ""};
     };
 
-    if (isValid(queryRspName, ws, json, {{Param::required("path", JsonString)}, {Param::required("rsp", JsonString)}, {Param::optional("keys", JsonArray)}}, validate))
+    if (isValid(FindRsp, ws, json, {{Param::required("path", JsonString)}, {Param::required("rsp", JsonString)}, {Param::optional("keys", JsonArray)}}, validate))
     {
-      auto& cmd = json.at(queryName);
+      auto& cmd = json.at(FindReq);
 
       if (!cmd.contains("keys"))
         cmd["keys"] = njson::array(); // executor expects "keys"
 
-      executeKvCommand(queryRspName, ws, json, KvExecutor::find);
+      executeKvCommand(FindRsp, ws, json, KvExecutor::find);
     }
   }
 
 
-  ndb_always_inline void update(const std::string_view queryName, const std::string_view queryRspName, KvWebSocket * ws, njson& json)
+  ndb_always_inline void update(KvWebSocket * ws, njson& json)
   {
     auto validate = [](const njson& cmd) -> std::tuple<RequestStatus, const std::string_view>
     {
@@ -431,35 +426,35 @@ private:
       return {RequestStatus::Ok, ""};
     };
 
-    if (isValid(queryRspName, ws, json, {{Param::required("key", JsonString)}, {Param::required("path", JsonString)}}, validate))
-      executeKvCommand(queryRspName, ws, json, KvExecutor::update);
+    if (isValid(UpdateRsp, ws, json, {{Param::required("key", JsonString)}, {Param::required("path", JsonString)}}, validate))
+      executeKvCommand(UpdateRsp, ws, json, KvExecutor::update);
   }
 
 
-  ndb_always_inline void keys(const std::string_view queryName, const std::string_view queryRspName, KvWebSocket * ws, njson& json)
+  ndb_always_inline void keys(KvWebSocket * ws, njson& json)
   {
-    executeKvCommand(queryRspName, ws, json, KvExecutor::keys);
+    executeKvCommand(KeysRsp, ws, json, KvExecutor::keys);
   }
 
 
-  ndb_always_inline void clearSet(const std::string_view queryName, const std::string_view queryRspName, KvWebSocket * ws, njson& json)
+  ndb_always_inline void clearSet(KvWebSocket * ws, njson& json)
   {
-    if (isValid(queryRspName, ws, json, {{Param::required("keys", JsonObject)}}))
-      executeKvCommand(queryRspName, ws, json, KvExecutor::clearSet);
+    if (isValid(ClearSetRsp, ws, json, {{Param::required("keys", JsonObject)}}))
+      executeKvCommand(ClearSetRsp, ws, json, KvExecutor::clearSet);
   }
   
 
-  ndb_always_inline void arrayAppend(const std::string_view queryName, const std::string_view queryRspName, KvWebSocket * ws, njson& json)
+  ndb_always_inline void arrayAppend(KvWebSocket * ws, njson& json)
   {
-    if (isValid(queryRspName, ws, json, {{Param::required("key", JsonString)}, {Param::required("items", JsonArray)}, {Param::optional("name", JsonString)}}))
-      executeKvCommand(queryRspName, ws, json, KvExecutor::arrayAppend);
+    if (isValid(ArrAppendRsp, ws, json, {{Param::required("key", JsonString)}, {Param::required("items", JsonArray)}, {Param::optional("name", JsonString)}}))
+      executeKvCommand(ArrAppendRsp, ws, json, KvExecutor::arrayAppend);
   }
 
 
-  void kvSave(const std::string_view queryName, const std::string_view queryRspName, KvWebSocket * ws, njson& json)  requires (!HaveSessions)
+  void kvSave(KvWebSocket * ws, njson& json)  requires (!HaveSessions)
   {
     if (!NemesisConfig::persistEnabled(m_config))
-      send(ws, createErrorResponseNoTkn(queryRspName, RequestStatus::CommandDisabled));
+      send(ws, createErrorResponseNoTkn(SaveRsp, RequestStatus::CommandDisabled));
     else
     {
       auto validate = [](const njson& cmd) -> std::tuple<RequestStatus, const std::string_view>
@@ -470,27 +465,27 @@ private:
           return {RequestStatus::Ok, ""};
       };
       
-      if (isValid(queryRspName, ws, json, {{Param::required("name", JsonString)}}, validate))
+      if (isValid(SaveRsp, ws, json, {{Param::required("name", JsonString)}}, validate))
       {
-        doSave(queryName, queryRspName, ws, json.at(queryName));
+        doSave(SaveRsp, ws, json.at(SaveReq));
       }
     }
   }
 
 
-  void kvLoad(const std::string_view queryName, const std::string_view queryRspName, KvWebSocket * ws, njson& json) requires (!HaveSessions)
+  void kvLoad(KvWebSocket * ws, njson& json) requires (!HaveSessions)
   {
-    if (isValid(queryRspName, ws, json, {{Param::required("name", JsonString)}}))
+    if (isValid(LoadRsp, ws, json, {{Param::required("name", JsonString)}}))
     {
-      const auto& loadName = json.at(queryName).at("name").as_string();
+      const auto& loadName = json.at(LoadReq).at("name").as_string();
 
       if (const auto [valid, msg] = validatePreLoad(loadName, fs::path{NemesisConfig::savePath(m_config)}, false); !valid)
       {
         PLOGE << msg;
 
         njson rsp;
-        rsp[queryRspName]["st"] = toUnderlying(RequestStatus::LoadError);
-        rsp[queryRspName]["name"] = loadName;
+        rsp[LoadRsp]["st"] = toUnderlying(RequestStatus::LoadError);
+        rsp[LoadRsp]["name"] = loadName;
         send (ws, rsp);
       }
       else
@@ -502,7 +497,7 @@ private:
   }
 
   
-  void doSave (const std::string_view queryName, const std::string_view queryRspName, KvWebSocket * ws, njson& cmd) requires (!HaveSessions)
+  void doSave (const std::string_view queryRspName, KvWebSocket * ws, njson& cmd) requires (!HaveSessions)
   {
     const auto& name = cmd.at("name").as_string();
     const auto rootDirName = std::to_string(KvSaveClock::now().time_since_epoch().count());

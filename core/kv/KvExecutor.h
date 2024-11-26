@@ -5,6 +5,7 @@
 #include <core/NemesisCommon.h>
 #include <core/kv/KvCommon.h>
 #include <core/kv/KvSessions.h>
+#include <core/kv/KvCommands.h>
 
 
 namespace nemesis { namespace core { namespace kv {
@@ -20,8 +21,8 @@ public:
 
   static njson set (CacheMap& map,  const njson& cmd)
   {
-    njson rsp {jsoncons::json_object_arg, {{"KV_SET_RSP", jsoncons::json_object_arg_t{}}}};
-    auto& body = rsp.at("KV_SET_RSP");
+    njson rsp {jsoncons::json_object_arg, {{SetRsp, jsoncons::json_object_arg_t{}}}};
+    auto& body = rsp.at(SetRsp);
 
     body["st"] = toUnderlying(RequestStatus::Ok);
 
@@ -52,8 +53,8 @@ public:
     catch(const std::exception& e)
     {
       PLOGE << e.what();
-      rsp = njson {jsoncons::json_object_arg, {{"KV_SETQ_RSP", jsoncons::json_object_arg_t{}}}};
-      rsp["KV_SETQ_RSP"]["st"] = toUnderlying(RequestStatus::Unknown);
+      rsp = njson {jsoncons::json_object_arg, {{SetQRsp, jsoncons::json_object_arg_t{}}}};
+      rsp[SetQRsp]["st"] = toUnderlying(RequestStatus::Unknown);
     }
 
     return rsp;
@@ -62,14 +63,14 @@ public:
 
   static njson get (CacheMap& map,  const njson& cmd)
   {
-    static njson Prepared {jsoncons::json_object_arg, {{"KV_GET_RSP", {jsoncons::json_object_arg,
+    static njson Prepared {jsoncons::json_object_arg, {{GetRsp, {jsoncons::json_object_arg,
                                                                       {
                                                                         {"st", toUnderlying(RequestStatus::Ok)},
                                                                         {"keys", njson{}} // initialise as an empty object
                                                                       }}}}};
     
     njson rsp = Prepared;
-    auto& body = rsp.at("KV_GET_RSP");
+    auto& body = rsp.at(GetRsp);
     auto& keys = body.at("keys");
 
     try
@@ -97,9 +98,9 @@ public:
 
   static njson add (CacheMap& map,  const njson& cmd)
   {
-    njson rsp {jsoncons::json_object_arg, {{"KV_ADD_RSP", jsoncons::json_object_arg_t{}}}};
+    njson rsp {jsoncons::json_object_arg, {{AddRsp, jsoncons::json_object_arg_t{}}}};
     
-    rsp["KV_ADD_RSP"]["st"] = toUnderlying(RequestStatus::Ok);
+    rsp[AddRsp]["st"] = toUnderlying(RequestStatus::Ok);
 
     try
     {
@@ -109,7 +110,7 @@ public:
     catch(const std::exception& e)
     {
       PLOGE << e.what();
-      rsp["KV_ADD_RSP"]["st"] = toUnderlying(RequestStatus::Unknown);
+      rsp[AddRsp]["st"] = toUnderlying(RequestStatus::Unknown);
     }
 
     return rsp;
@@ -128,8 +129,8 @@ public:
     catch (const std::exception& ex)
     {
       PLOGE << ex.what();
-      rsp = njson {jsoncons::json_object_arg, {{"KV_ADDQ_RSP", jsoncons::json_object_arg_t{}}}};
-      rsp["KV_ADDQ_RSP"]["st"] = toUnderlying(RequestStatus::Unknown);
+      rsp = njson {jsoncons::json_object_arg, {{AddQRsp, jsoncons::json_object_arg_t{}}}};
+      rsp[AddQRsp]["st"] = toUnderlying(RequestStatus::Unknown);
     }
 
     return rsp;
@@ -139,7 +140,7 @@ public:
   static njson remove (CacheMap& map,  const njson& cmd)
   {
     njson rsp;
-    rsp["KV_RMV_RSP"]["st"] = toUnderlying(RequestStatus::Ok);
+    rsp[RmvRsp]["st"] = toUnderlying(RequestStatus::Ok);
 
     try
     {
@@ -154,7 +155,7 @@ public:
     }
     catch(const std::exception& e)
     {
-      rsp["KV_RMV_RSP"]["st"] = toUnderlying(RequestStatus::Unknown);
+      rsp[RmvRsp]["st"] = toUnderlying(RequestStatus::Unknown);
       PLOGE << e.what();
     }
     
@@ -167,8 +168,8 @@ public:
     const auto[ok, count] = map.clear();
 
     njson rsp;
-    rsp["KV_CLEAR_RSP"]["st"] = ok ? toUnderlying(RequestStatus::Ok) : toUnderlying(RequestStatus::Unknown);
-    rsp["KV_CLEAR_RSP"]["cnt"] = count;
+    rsp[ClearRsp]["st"] = ok ? toUnderlying(RequestStatus::Ok) : toUnderlying(RequestStatus::Unknown);
+    rsp[ClearRsp]["cnt"] = count;
     
     return rsp;
   }
@@ -177,10 +178,10 @@ public:
   static njson contains (CacheMap& map,  const njson& cmd)
   {
     njson rsp;
-    rsp["KV_CONTAINS_RSP"]["st"] = toUnderlying(RequestStatus::Ok);
-    rsp["KV_CONTAINS_RSP"]["contains"] = njson::array{};
+    rsp[ContainsRsp]["st"] = toUnderlying(RequestStatus::Ok);
+    rsp[ContainsRsp]["contains"] = njson::array{};
 
-    auto& contains = rsp.at("KV_CONTAINS_RSP").at("contains");
+    auto& contains = rsp.at(ContainsRsp).at("contains");
 
     for (auto&& item : cmd["keys"].array_range())
     {
@@ -204,24 +205,24 @@ public:
     njson result = njson::array();
 
     if (!map.find(cmd, paths, result))
-      rsp["KV_FIND_RSP"]["st"] = toUnderlying(RequestStatus::PathInvalid);
+      rsp[FindRsp]["st"] = toUnderlying(RequestStatus::PathInvalid);
     else
     {       
-      rsp["KV_FIND_RSP"]["st"] = toUnderlying(RequestStatus::Ok);
+      rsp[FindRsp]["st"] = toUnderlying(RequestStatus::Ok);
 
       if (cmd.at("rsp") != "kv")
-        rsp["KV_FIND_RSP"][paths ? "paths" : "keys"] = std::move(result);
+        rsp[FindRsp][paths ? "paths" : "keys"] = std::move(result);
       else
       {
         // return key-values the same as KV_GET
-        rsp["KV_FIND_RSP"]["keys"] = njson::object();
+        rsp[FindRsp]["keys"] = njson::object();
 
         for(auto& item : result.array_range())
         {
           const auto& key = item.as_string();
 
           if (const auto value = map.get(key); value)
-            rsp["KV_FIND_RSP"]["keys"][key] = (*value).get();
+            rsp[FindRsp]["keys"][key] = (*value).get();
         } 
       }
     }
@@ -238,8 +239,8 @@ public:
     const auto [keyExists, count] = map.update(key, path, cachedvalue::parse(cmd.at("value").to_string()));
     
     njson rsp;
-    rsp["KV_UPDATE_RSP"]["st"] = keyExists ? toUnderlying(RequestStatus::Ok) : toUnderlying(RequestStatus::KeyNotExist);
-    rsp["KV_UPDATE_RSP"]["cnt"] = count;
+    rsp[UpdateRsp]["st"] = keyExists ? toUnderlying(RequestStatus::Ok) : toUnderlying(RequestStatus::KeyNotExist);
+    rsp[UpdateRsp]["cnt"] = count;
 
     return rsp;
   }
@@ -248,8 +249,8 @@ public:
   static njson keys (CacheMap& map,  const njson& cmd)
   {
     njson rsp;
-    rsp["KV_KEYS_RSP"]["st"] = toUnderlying(RequestStatus::Ok);
-    rsp["KV_KEYS_RSP"]["keys"] = std::move(map.keys());
+    rsp[KeysRsp]["st"] = toUnderlying(RequestStatus::Ok);
+    rsp[KeysRsp]["keys"] = std::move(map.keys());
     return rsp;
   }
 
@@ -257,13 +258,13 @@ public:
   static njson clearSet (CacheMap& map,  const njson& cmd)
   {
     njson rsp;
-    rsp["KV_CLEAR_SET_RSP"]["st"] = toUnderlying(RequestStatus::Ok);
+    rsp[ClearSetRsp]["st"] = toUnderlying(RequestStatus::Ok);
 
     try
     {
       if (const auto[valid, size] = map.clear(); valid)
       {
-        rsp["KV_CLEAR_SET_RSP"]["cnt"] = size;
+        rsp[ClearSetRsp]["cnt"] = size;
 
         for(const auto& kv : cmd["keys"].object_range())
           map.set(kv.key(), kv.value());
@@ -271,15 +272,15 @@ public:
       else
       {
         PLOGE << "KV_CLEAR_SET failed to clear";
-        rsp["KV_CLEAR_SET_RSP"]["st"] = toUnderlying(RequestStatus::Unknown);
-        rsp["KV_CLEAR_SET_RSP"]["cnt"] = 0U;
+        rsp[ClearSetRsp]["st"] = toUnderlying(RequestStatus::Unknown);
+        rsp[ClearSetRsp]["cnt"] = 0U;
       }
     }
     catch(const std::exception& e)
     {
       PLOGE << e.what();
-      rsp["KV_CLEAR_SET_RSP"]["st"] = toUnderlying(RequestStatus::Unknown);
-      rsp["KV_CLEAR_SET_RSP"]["cnt"] = 0U;
+      rsp[ClearSetRsp]["st"] = toUnderlying(RequestStatus::Unknown);
+      rsp[ClearSetRsp]["cnt"] = 0U;
     }
 
     return rsp;
@@ -289,8 +290,8 @@ public:
   static njson count (CacheMap& map,  const njson& cmd)
   {
     njson rsp;
-    rsp["KV_COUNT_RSP"]["st"] = toUnderlying(RequestStatus::Ok);
-    rsp["KV_COUNT_RSP"]["cnt"] = map.count();
+    rsp[CountRsp]["st"] = toUnderlying(RequestStatus::Ok);
+    rsp[CountRsp]["cnt"] = map.count();
     return rsp;
   }
 
@@ -313,7 +314,7 @@ public:
       st = RequestStatus::KeyNotExist;
 
     njson rsp;
-    rsp["KV_ARR_APPEND_RSP"]["st"] = toUnderlying(st);
+    rsp[ArrAppendRsp]["st"] = toUnderlying(st);
     return rsp;
   }
 
@@ -327,7 +328,7 @@ public:
     RequestStatus status = RequestStatus::SaveComplete;
 
     njson rsp;
-    rsp["KV_SAVE_RSP"]["name"] = name;
+    rsp[SaveRsp]["name"] = name;
 
     try
     {
@@ -371,8 +372,8 @@ public:
     }
     
 
-    rsp["KV_SAVE_RSP"]["st"] = toUnderlying(status);
-    rsp["KV_SAVE_RSP"]["duration"] = chrono::duration_cast<chrono::milliseconds>(NemesisClock::now() - start).count();
+    rsp[SaveRsp]["st"] = toUnderlying(status);
+    rsp[SaveRsp]["duration"] = chrono::duration_cast<chrono::milliseconds>(NemesisClock::now() - start).count();
 
     return rsp;
   }
@@ -384,11 +385,11 @@ public:
     std::size_t nKeys{0};
     
     njson rsp;
-    rsp["KV_LOAD_RSP"]["st"] = toUnderlying(status);
-    rsp["KV_LOAD_RSP"]["name"] = loadName;
-    rsp["KV_LOAD_RSP"]["duration"] = 0; // updated below
-    rsp["KV_LOAD_RSP"]["sessions"] = 0; // always 0 when sessions disabled
-    rsp["KV_LOAD_RSP"]["keys"] = 0; // updated below
+    rsp[LoadRsp]["st"] = toUnderlying(status);
+    rsp[LoadRsp]["name"] = loadName;
+    rsp[LoadRsp]["duration"] = 0; // updated below
+    rsp[LoadRsp]["sessions"] = 0; // always 0 when sessions disabled
+    rsp[LoadRsp]["keys"] = 0; // updated below
 
     try
     {      
@@ -402,8 +403,8 @@ public:
           break;
       }
 
-      rsp["KV_LOAD_RSP"]["duration"] = chrono::duration_cast<chrono::milliseconds>(NemesisClock::now() - start).count();
-      rsp["KV_LOAD_RSP"]["keys"] = nKeys;      
+      rsp[LoadRsp]["duration"] = chrono::duration_cast<chrono::milliseconds>(NemesisClock::now() - start).count();
+      rsp[LoadRsp]["keys"] = nKeys;      
     }
     catch(const std::exception& e)
     {
@@ -411,7 +412,7 @@ public:
       status = RequestStatus::LoadError;
     }
 
-    rsp["KV_LOAD_RSP"]["st"] = toUnderlying(status);
+    rsp[LoadRsp]["st"] = toUnderlying(status);
     
     return rsp;
   }

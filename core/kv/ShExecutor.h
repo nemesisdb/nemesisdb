@@ -6,12 +6,13 @@
 #include <core/NemesisCommon.h>
 #include <core/kv/KvCommon.h>
 #include <core/kv/KvSessions.h>
-
+#include <core/kv/ShCommands.h>
 
 namespace nemesis { namespace core { namespace kv {
 
 using namespace nemesis::core;
 using namespace nemesis::core::kv;
+namespace sh = nemesis::core::sh;
 
 
 
@@ -23,9 +24,10 @@ public:
   
   static njson newSession (std::shared_ptr<Sessions> sessions, const SessionToken tkn, const SessionDuration duration, const bool deleteOnExpire)
   {    
-    njson rsp {jsoncons::json_object_arg, {{"SH_NEW_RSP", njson{jsoncons::json_object_arg}}}};
+    //njson rsp {jsoncons::json_object_arg, {{sh::NewRsp, njson{jsoncons::json_object_arg}}}};
+    njson rsp {jsoncons::json_object_arg, {{sh::NewRsp, njson::object()}}};
 
-    auto& body = rsp.at("SH_NEW_RSP");
+    auto& body = rsp.at(sh::NewRsp);
     
     body["tkn"] = tkn; 
     body["st"] = toUnderlying(Ok);
@@ -42,24 +44,24 @@ public:
     const auto status = sessions->end(tkn) ? RequestStatus::Ok : RequestStatus::SessionNotExist;
     
     njson rsp;
-    rsp["SH_END_RSP"]["st"] = toUnderlying(status);
-    rsp["SH_END_RSP"]["tkn"] = tkn;
+    rsp[sh::EndRsp]["st"] = toUnderlying(status);
+    rsp[sh::EndRsp]["tkn"] = tkn;
     return rsp;
   }
 
 
-  static bool openSession (std::shared_ptr<Sessions> sessions, const SessionToken& tkn)
-  {
-    const auto [exists, shared] = sessions->openShared(tkn);
-    return exists && shared;
-  }
+  // static bool openSession (std::shared_ptr<Sessions> sessions, const SessionToken& tkn)
+  // {
+  //   const auto [exists, shared] = sessions->openShared(tkn);
+  //   return exists && shared;
+  // }
 
 
   static njson sessionInfo (std::shared_ptr<Sessions> sessions, const SessionToken& tkn)
   {
-    njson rsp {jsoncons::json_object_arg, {{"SH_INFO_RSP", njson{jsoncons::json_object_arg}}}};
+    njson rsp {jsoncons::json_object_arg, {{sh::InfoRsp, njson{jsoncons::json_object_arg}}}};
 
-    auto& body = rsp.at("SH_INFO_RSP");
+    auto& body = rsp.at(sh::InfoRsp);
 
     body["tkn"] = tkn;
     body["shared"] = njson::null();
@@ -95,9 +97,9 @@ public:
   static njson sessionInfoAll (std::shared_ptr<Sessions> sessions)
   {
     njson rsp;
-    rsp["SH_INFO_ALL_RSP"]["st"] = toUnderlying(RequestStatus::Ok);
-    rsp["SH_INFO_ALL_RSP"]["totalSessions"] = sessions->countSessions();
-    rsp["SH_INFO_ALL_RSP"]["totalKeys"] = sessions->countKeys();
+    rsp[sh::InfoAllRsp]["st"] = toUnderlying(RequestStatus::Ok);
+    rsp[sh::InfoAllRsp]["totalSessions"] = sessions->countSessions();
+    rsp[sh::InfoAllRsp]["totalKeys"] = sessions->countKeys();
     return rsp;
   }
 
@@ -105,9 +107,9 @@ public:
   static njson sessionExists (std::shared_ptr<Sessions> sessions, const njson& tkns)
   {
     njson rsp;
-    rsp["SH_EXISTS_RSP"]["st"] = toUnderlying(RequestStatus::Ok);
-    rsp["SH_EXISTS_RSP"]["exist"] = njson::make_array();
-    rsp["SH_EXISTS_RSP"]["exist"].reserve(std::min<std::size_t>(tkns.size(), 100U));
+    rsp[sh::ExistsRsp]["st"] = toUnderlying(RequestStatus::Ok);
+    rsp[sh::ExistsRsp]["exist"] = njson::make_array();
+    rsp[sh::ExistsRsp]["exist"].reserve(std::min<std::size_t>(tkns.size(), 100U));
 
     for (const auto& item : tkns.array_range())
     {
@@ -115,11 +117,11 @@ public:
       {
         const auto& tkn = item.as<SessionToken>();
         if (sessions->contains(tkn))
-          rsp["SH_EXISTS_RSP"]["exist"].push_back(tkn);
+          rsp[sh::ExistsRsp]["exist"].push_back(tkn);
       }
     }
 
-    rsp["SH_EXISTS_RSP"]["exist"].shrink_to_fit();
+    rsp[sh::ExistsRsp]["exist"].shrink_to_fit();
 
     return rsp;
   }
@@ -128,8 +130,8 @@ public:
   static njson sessionEndAll (std::shared_ptr<Sessions> sessions)
   {
     njson rsp;
-    rsp["SH_END_ALL_RSP"]["st"] = toUnderlying(RequestStatus::Ok);
-    rsp["SH_END_ALL_RSP"]["cnt"] = sessions->clear();
+    rsp[sh::EndAllRsp]["st"] = toUnderlying(RequestStatus::Ok);
+    rsp[sh::EndAllRsp]["cnt"] = sessions->clear();
     return rsp;
   }
 
@@ -148,8 +150,8 @@ public:
     RequestStatus status = RequestStatus::SaveComplete;
 
     njson rsp;
-    rsp["SH_SAVE_RSP"]["st"] = toUnderlying(status);
-    rsp["SH_SAVE_RSP"]["name"] = name;
+    rsp[sh::SaveRsp]["st"] = toUnderlying(status);
+    rsp[sh::SaveRsp]["name"] = name;
 
     
     try
@@ -172,8 +174,8 @@ public:
       status = RequestStatus::SaveError;
     }
 
-    rsp["SH_SAVE_RSP"]["st"] = toUnderlying(status);
-    rsp["SH_SAVE_RSP"]["duration"] = chrono::duration_cast<chrono::milliseconds>(NemesisClock::now() - start).count();
+    rsp[sh::SaveRsp]["st"] = toUnderlying(status);
+    rsp[sh::SaveRsp]["duration"] = chrono::duration_cast<chrono::milliseconds>(NemesisClock::now() - start).count();
 
     return rsp;
   }
@@ -188,7 +190,7 @@ public:
     if (!fs::exists(dataRoot))
     {
       status = RequestStatus::LoadError;
-      rsp["SH_LOAD_RSP"]["m"] = "Dataset does not exist";
+      rsp[sh::LoadRsp]["m"] = "Dataset does not exist";
     }
     else
     {
@@ -209,11 +211,11 @@ public:
       }
     }
         
-    rsp["SH_LOAD_RSP"]["name"] = loadName;
-    rsp["SH_LOAD_RSP"]["st"] = status == RequestStatus::LoadComplete ?  toUnderlying(RequestStatus::LoadComplete) :
-                                                                        toUnderlying(RequestStatus::LoadError);
-    rsp["SH_LOAD_RSP"]["sessions"] = nSessions;
-    rsp["SH_LOAD_RSP"]["keys"] = nKeys;
+    rsp[sh::LoadRsp]["name"] = loadName;
+    rsp[sh::LoadRsp]["st"] = status == RequestStatus::LoadComplete ?  toUnderlying(RequestStatus::LoadComplete) :
+                                                                      toUnderlying(RequestStatus::LoadError);
+    rsp[sh::LoadRsp]["sessions"] = nSessions;
+    rsp[sh::LoadRsp]["keys"] = nKeys;
 
     return rsp;
   }
