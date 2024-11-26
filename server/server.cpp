@@ -8,7 +8,7 @@
 #include <core/NemesisCommon.h>
 #include <core/kv/KvCommon.h>
 #include <core/kv/KvServer.h>
-#include <core/kv/KvSessions.h>
+#include <core/sh/KvSessions.h>
 #include <core/LogFormatter.h>
 #include <jsoncons/json_traits_macros.hpp>
 
@@ -81,7 +81,7 @@ int main (int argc, char ** argv)
     PLOGI << "Query Interface: " << address;
     
 
-    auto sessions = std::make_shared<nemesis::core::kv::Sessions>();
+    auto sessions = std::make_shared<nemesis::core::sh::Sessions>();
 
     if (server.run(config, sessions))
       run.wait();

@@ -12,7 +12,7 @@
 #include <uwebsockets/App.h>
 #include <core/kv/KvCommon.h>
 #include <core/kv/KvHandler.h>
-#include <core/kv/ShHandler.h>
+#include <core/sh/ShHandler.h>
 #include <core/kv/SvCommands.h>
 #include <core/NemesisConfig.h>
 #include <core/NemesisCommon.h>

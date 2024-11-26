@@ -11,11 +11,14 @@
 #include <core/NemesisCommon.h>
 #include <core/kv/KvCommon.h>
 #include <core/kv/KvExecutor.h>
-#include <core/kv/ShExecutor.h>
-#include <core/kv/KvSessions.h>
+#include <core/sh/ShExecutor.h>
+#include <core/sh/KvSessions.h>
 
 
 namespace nemesis { namespace core { namespace kv {
+
+using namespace nemesis::core::sh;
+
 
 /*
 KvHandler receives a command:

@@ -3,8 +3,8 @@
 
 #include <functional>
 #include <core/NemesisCommon.h>
+#include <core/CacheMap.h>
 #include <core/kv/KvCommon.h>
-#include <core/kv/KvSessions.h>
 #include <core/kv/KvCommands.h>
 
 

@@ -5,13 +5,13 @@
 #include <fstream>
 #include <core/NemesisCommon.h>
 #include <core/kv/KvCommon.h>
-#include <core/kv/KvSessions.h>
-#include <core/kv/ShCommands.h>
+#include <core/sh/KvSessions.h>
+#include <core/sh/ShCommands.h>
 
-namespace nemesis { namespace core { namespace kv {
+namespace nemesis { namespace core { namespace sh {
 
 using namespace nemesis::core;
-using namespace nemesis::core::kv;
+//using namespace nemesis::core::kv;
 namespace sh = nemesis::core::sh;
 
 

@@ -7,12 +7,12 @@
 #include <tuple>
 #include <ankerl/unordered_dense.h>
 #include <core/NemesisCommon.h>
-#include <core/kv/KvCommon.h>
-#include <core/kv/KvSessions.h>
-#include <core/kv/ShCommands.h>
+#include <core/sh/ShCommon.h>
+#include <core/sh/KvSessions.h>
+#include <core/sh/ShCommands.h>
 
 
-namespace nemesis { namespace core { namespace kv {
+namespace nemesis { namespace core { namespace sh {
 
 namespace sh = nemesis::core::sh;
 
@@ -103,9 +103,9 @@ public:
     static QueryTypePmrMap QueryNameToType{createQueryTypeNameMap(queryTypeNamePmrResource.getAlloc())};
     
     if (const auto itType = QueryNameToType.find(command) ; itType == QueryNameToType.cend())
-      ws->send(createErrorResponse(command+"_RSP", RequestStatus::CommandNotExist).to_string(), kv::WsSendOpCode);
+      ws->send(createErrorResponse(command+"_RSP", RequestStatus::CommandNotExist).to_string(), WsSendOpCode);
     else if (const auto handlerIt = MsgHandlers.find(itType->second) ; handlerIt == MsgHandlers.cend())
-      ws->send(createErrorResponse(command+"_RSP", RequestStatus::CommandDisabled).to_string(), kv::WsSendOpCode);
+      ws->send(createErrorResponse(command+"_RSP", RequestStatus::CommandDisabled).to_string(), WsSendOpCode);
     else
     {
       try
@@ -116,7 +116,7 @@ public:
       catch (const std::exception& kex)
       {
         PLOGF << kex.what();
-        ws->send(createErrorResponse(command+"_RSP", RequestStatus::Unknown).to_string(), kv::WsSendOpCode);
+        ws->send(createErrorResponse(command+"_RSP", RequestStatus::Unknown).to_string(), WsSendOpCode);
       }
     }
   }
