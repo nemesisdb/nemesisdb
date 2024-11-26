@@ -22,7 +22,7 @@ class ShHandler
 {
   struct Handler
   {
-    using HandleFunc = std::function<void(KvWebSocket *, njson&)>;
+    using HandleFunc = std::function<Response(KvWebSocket *, njson&)>;
 
     Handler(HandleFunc&& h) : handler(std::move(h))
     {
@@ -33,9 +33,9 @@ class ShHandler
     Handler(Handler&&) = default;
     Handler& operator= (Handler&&) = default;
 
-    void operator()(KvWebSocket * ws, njson& request)
+    Response operator()(KvWebSocket * ws, njson& request)
     {
-      handler(ws, request);
+      return handler(ws, request);
     }
 
     HandleFunc handler;
@@ -96,7 +96,7 @@ public:
   }
 
 
-  void handle(KvWebSocket * ws, const std::string& command, njson& request)
+  Response handle(KvWebSocket * ws, const std::string& command, njson& request)
   {
     static PmrResource<typename HandlerPmrMap::value_type, 1024U> handlerPmrResource; // TODO buffer size
     static PmrResource<typename HandlerPmrMap::value_type, 1024U> queryTypeNamePmrResource; // TODO buffer size
@@ -104,36 +104,40 @@ public:
     static QueryTypePmrMap QueryNameToType{createQueryTypeNameMap(queryTypeNamePmrResource.getAlloc())};
     
     if (const auto itType = QueryNameToType.find(command) ; itType == QueryNameToType.cend())
-      ws->send(createErrorResponse(command+"_RSP", RequestStatus::CommandNotExist).to_string(), WsSendOpCode);
+      //ws->send(createErrorResponse(command+"_RSP", RequestStatus::CommandNotExist).to_string(), WsSendOpCode);
+      return Response{.rsp = createErrorResponse(command+"_RSP", RequestStatus::CommandNotExist)};
     else if (const auto handlerIt = MsgHandlers.find(itType->second) ; handlerIt == MsgHandlers.cend())
-      ws->send(createErrorResponse(command+"_RSP", RequestStatus::CommandDisabled).to_string(), WsSendOpCode);
+      //ws->send(createErrorResponse(command+"_RSP", RequestStatus::CommandDisabled).to_string(), WsSendOpCode);
+      return Response{.rsp = createErrorResponse(command+"_RSP", RequestStatus::CommandDisabled)};
     else
     {
       try
       {
         auto& handler = handlerIt->second;
-        handler(ws, request);
+        return handler(ws, request);
       }
       catch (const std::exception& kex)
       {
         PLOGF << kex.what();
-        ws->send(createErrorResponse(command+"_RSP", RequestStatus::Unknown).to_string(), WsSendOpCode);
+        //ws->send(createErrorResponse(command+"_RSP", RequestStatus::Unknown).to_string(), WsSendOpCode);
+        return Response{.rsp = createErrorResponse(command+"_RSP", RequestStatus::Unknown)};
       }
     }
   }
 
 
 private:
-  ndb_always_inline void sessionNew(KvWebSocket * ws, njson& req)
+  ndb_always_inline Response sessionNew(KvWebSocket * ws, njson& req)
   {
-    if (isValid(sh::NewRsp, ws, req, {{Param::optional("expiry", JsonObject)}}))
+    if (auto [topLevelValid, rsp] = isValid(sh::NewRsp, ws, req, {{Param::optional("expiry", JsonObject)}}); !topLevelValid)
+      return Response{.rsp = std::move(rsp)};
+    else
     {
       const auto& cmd = req.at(sh::NewReq);
 
       SessionDuration duration{SessionDuration::rep{0}};
       
       bool deleteOnExpire = false;
-      bool valid = true;
 
       if (cmd.contains("expiry"))
       {
@@ -141,37 +145,41 @@ private:
         {
           if (cmd.at("duration") < 0)
             return {RequestStatus::ValueSize, "expiry must be >= 0"};
-
-          return {RequestStatus::Ok, ""};
+          else
+            return {RequestStatus::Ok, ""};
         };
+
         
-        valid = isValid(sh::NewRsp, "expiry", ws, req, {{Param::required("duration", JsonUInt)}, {Param::required("deleteSession", JsonBool)}}, validate);
-        if (valid)
+        auto [expiryValid, rsp] = isValid(sh::NewRsp, "expiry", ws, req, {{Param::required("duration", JsonUInt)},
+                                                                    {Param::required("deleteSession", JsonBool)}}, validate);
+        if (!expiryValid)
+          return Response{.rsp = std::move(rsp)};
+        else
         {
           duration = SessionDuration{cmd.at("expiry").at("duration").as<SessionDuration::rep>()};
           deleteOnExpire = cmd.at("expiry").at("deleteSession").as_bool();
         }
       }
 
-      if (valid)
-      {
-        send(ws, SessionExecutor::newSession(m_sessions, createSessionToken(), duration, deleteOnExpire));
-      }
+      // here if no expiry set, or expiry is set and it is valid
+      return SessionExecutor::newSession(m_sessions, createSessionToken(), duration, deleteOnExpire);
     }
   }
 
 
-  ndb_always_inline void sessionEnd(KvWebSocket * ws, njson& json)
+  ndb_always_inline Response sessionEnd(KvWebSocket * ws, njson& json)
   {
     SessionToken token;
     
     if (getSessionToken(ws, sh::EndRsp, json.at(sh::EndReq), token))
-      send(ws, SessionExecutor::endSession(m_sessions, token));
+      return SessionExecutor::endSession(m_sessions, token);
+    else
+      return Response{.rsp = createErrorResponse(sh::EndRsp, RequestStatus::SessionNotExist)};
   }
 
   
   /*
-  ndb_always_inline void sessionOpen(KvWebSocket * ws, njson& json)
+  ndb_always_inline Response sessionOpen(KvWebSocket * ws, njson& json)
   {
     auto validate = [](const njson& cmd) -> std::tuple<RequestStatus, const std::string_view>
     {
@@ -182,7 +190,7 @@ private:
     };
     
 
-    if (isValid(queryRspName, ws, json, {{Param::required("name", JsonString)}}, validate))
+    if (auto [valid, rsp] = isValid(queryRspName, ws, json, {{Param::required("name", JsonString)}}, validate))
     {
       njson rsp;
 
@@ -208,44 +216,48 @@ private:
   */
 
   
-  ndb_always_inline void sessionInfo(KvWebSocket * ws, njson& json)
+  ndb_always_inline Response sessionInfo(KvWebSocket * ws, njson& json)
   {
     auto& cmd = json.at(sh::InfoReq);
 
     if (cmd.size() != 1U)
-      send(ws, createErrorResponse(sh::InfoRsp, RequestStatus::CommandSyntax));
+      return Response{.rsp = createErrorResponse(sh::InfoRsp, RequestStatus::CommandSyntax)};
     else
     {
       SessionToken token;
     
       if (getSessionToken(ws, sh::InfoReq, cmd, token))
-        send(ws, SessionExecutor::sessionInfo(m_sessions, token));
+        return SessionExecutor::sessionInfo(m_sessions, token);
+      else
+        return Response{.rsp = createErrorResponse(sh::InfoRsp, RequestStatus::SessionNotExist)};
     }
   }
   
   
-  ndb_always_inline void sessionInfoAll(KvWebSocket * ws, njson& json)
+  ndb_always_inline Response sessionInfoAll(KvWebSocket * ws, njson& json)
   {
-    send(ws, SessionExecutor::sessionInfoAll(m_sessions));
+    return SessionExecutor::sessionInfoAll(m_sessions);
   }
   
   
-  ndb_always_inline void sessionExists(KvWebSocket * ws, njson& json)
+  ndb_always_inline Response sessionExists(KvWebSocket * ws, njson& json)
   {
     const auto& cmd = json.at(sh::ExistsReq);
 
-    if (isValid(sh::ExistsRsp, ws, json, {{Param::required("tkns", JsonArray)}}))
-      send(ws, SessionExecutor::sessionExists(m_sessions, cmd.at("tkns")));
+    if (auto [valid, rsp] = isValid(sh::ExistsRsp, ws, json, {{Param::required("tkns", JsonArray)}}); valid)
+      return SessionExecutor::sessionExists(m_sessions, cmd.at("tkns"));
+    else
+      return Response{.rsp = std::move(rsp)};
   }
 
 
-  ndb_always_inline void sessionEndAll(KvWebSocket * ws, njson& json)
+  ndb_always_inline Response sessionEndAll(KvWebSocket * ws, njson& json)
   {
-    send(ws, SessionExecutor::sessionEndAll(m_sessions));
+    return SessionExecutor::sessionEndAll(m_sessions);
   }
 
   
-  ndb_always_inline void sessionSave(KvWebSocket * ws, njson& json)
+  ndb_always_inline Response sessionSave(KvWebSocket * ws, njson& json)
   {
     auto validate = [](const njson& cmd) -> std::tuple<RequestStatus, const std::string_view>
     {
@@ -268,15 +280,24 @@ private:
 
     
     if (!NemesisConfig::persistEnabled(m_config))
-      send(ws, createErrorResponseNoTkn(sh::SaveRsp, RequestStatus::CommandDisabled));
-    else if (isValid(sh::SaveRsp, ws, json, {{Param::required("name", JsonString)}, {Param::optional("tkns", JsonArray)}}, validate))
-      doSave(sh::SaveReq, sh::SaveRsp, ws, json.at(sh::SaveReq));
+      return Response{.rsp = createErrorResponseNoTkn(sh::SaveRsp, RequestStatus::CommandDisabled)};
+    else 
+    {
+      auto [valid, rsp] = isValid(sh::SaveRsp, ws, json, {{Param::required("name", JsonString)}, {Param::optional("tkns", JsonArray)}}, validate);
+
+      if (valid)
+        return doSave(sh::SaveReq, sh::SaveRsp, ws, json.at(sh::SaveReq));
+      else
+        return Response{.rsp = std::move(rsp)};
+    }
   } 
 
   
-  ndb_always_inline void sessionLoad(KvWebSocket * ws, njson& json)
+  ndb_always_inline Response sessionLoad(KvWebSocket * ws, njson& json)
   {
-    if (isValid(sh::LoadRsp, ws, json, {{Param::required("name", JsonString)}}))
+    if (auto [valid, rsp] = isValid(sh::LoadRsp, ws, json, {{Param::required("name", JsonString)}}); !valid)
+      return Response{.rsp = std::move(rsp)};
+    else
     {
       const auto& loadName = json.at(sh::LoadReq).at("name").as_string();
 
@@ -284,22 +305,23 @@ private:
       {
         PLOGE << msg;
 
-        njson rsp;
-        rsp[sh::LoadRsp]["st"] = toUnderlying(RequestStatus::LoadError);
-        rsp[sh::LoadRsp]["name"] = loadName;
-        send (ws, rsp);
+        Response response;
+        response.rsp[sh::LoadRsp]["st"] = toUnderlying(RequestStatus::LoadError);
+        response.rsp[sh::LoadRsp]["name"] = loadName;
+        return response;
       }
       else
       {
         // ignore pathsValid here because validatePreLoad() fails if not paths not valid
         const auto [root, md, data, pathsValid] = getLoadPaths(fs::path{NemesisConfig::savePath(m_config)} / loadName);
-        send (ws, doLoad(loadName, data));
+        return doLoad(loadName, data);
       }
     }
   }
 
   
 private:
+  // move to NemesisCommon
   bool getSessionToken(KvWebSocket * ws, const std::string_view queryRspName, const njson& cmdRoot, SessionToken& tkn)
   {
     if (cmdRoot.contains("tkn") && cmdRoot.at("tkn").is<SessionToken>())
@@ -309,13 +331,12 @@ private:
     }
     else
     {
-      send(ws, createErrorResponse(queryRspName, RequestStatus::SessionTokenInvalid));
       return false;
     }
   }
 
 
-  void doSave (const std::string_view queryName, const std::string_view queryRspName, KvWebSocket * ws, njson& cmd)
+  Response doSave (const std::string_view queryName, const std::string_view queryRspName, KvWebSocket * ws, njson& cmd)
   {
     const auto& name = cmd.at("name").as_string();
     const auto rootDirName = std::to_string(KvSaveClock::now().time_since_epoch().count());
@@ -337,7 +358,8 @@ private:
       njson rsp;
       rsp[queryRspName]["name"] = name;
       rsp[queryRspName]["st"] = toUnderlying(status);
-      send(ws, rsp);
+      //send(ws, rsp);
+     return Response{.rsp = std::move(rsp)};
     }
     else
     {
@@ -346,17 +368,18 @@ private:
       metaData.dump(metaStream);
       
       KvSaveStatus metaDataStatus = KvSaveStatus::Pending;
-      njson rsp;
+      Response response;
 
       try
       {
-        rsp = SessionExecutor::saveSessions(m_sessions, cmd, name, dataPath);
+        response = SessionExecutor::saveSessions(m_sessions, cmd, name, dataPath);
         metaDataStatus = KvSaveStatus::Complete;
       }
       catch(const std::exception& e)
       {
         PLOGE << e.what();
         metaDataStatus = KvSaveStatus::Error;
+        response.rsp[queryRspName]["st"] = toUnderlying(RequestStatus::SaveError);
       }
       
       // update metdata
@@ -365,20 +388,20 @@ private:
       metaStream.seekp(0);
       metaData.dump(metaStream);
 
-      send(ws, rsp);
+      return response;
     }
   }
 
 
-  njson doLoad (const std::string& loadName, const fs::path& dataSetsRoot)
+  Response doLoad (const std::string& loadName, const fs::path& dataSetsRoot)
   {
     PLOGI << "Loading from " << dataSetsRoot;
     
-    njson rsp = SessionExecutor::loadSessions (loadName, m_sessions, dataSetsRoot);  
+    Response response = SessionExecutor::loadSessions (loadName, m_sessions, dataSetsRoot);  
 
     PLOGI << "Loading complete";
 
-    return rsp;
+    return response;
   }
 
 private:

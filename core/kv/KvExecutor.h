@@ -19,10 +19,12 @@ class KvExecutor
 {
 public:
 
-  static njson set (CacheMap& map,  const njson& cmd)
+  static Response set (CacheMap& map,  const njson& cmd)
   {
-    njson rsp {jsoncons::json_object_arg, {{SetRsp, jsoncons::json_object_arg_t{}}}};
-    auto& body = rsp.at(SetRsp);
+    Response response;
+    response.rsp = njson {jsoncons::json_object_arg, {{SetRsp, jsoncons::json_object_arg_t{}}}};
+
+    auto& body = response.rsp.at(SetRsp);
 
     body["st"] = toUnderlying(RequestStatus::Ok);
 
@@ -37,13 +39,13 @@ public:
       body["st"] = toUnderlying(RequestStatus::Unknown);
     }
 
-    return rsp;
+    return response;
   }
 
 
-  static njson setQ (CacheMap& map,  const njson& cmd)
+  static Response setQ (CacheMap& map,  const njson& cmd)
   {
-    njson rsp;
+    Response response;
 
     try
     {         
@@ -53,24 +55,26 @@ public:
     catch(const std::exception& e)
     {
       PLOGE << e.what();
-      rsp = njson {jsoncons::json_object_arg, {{SetQRsp, jsoncons::json_object_arg_t{}}}};
-      rsp[SetQRsp]["st"] = toUnderlying(RequestStatus::Unknown);
+      response.rsp = njson {jsoncons::json_object_arg, {{SetQRsp, jsoncons::json_object_arg_t{}}}};
+      response.rsp[SetQRsp]["st"] = toUnderlying(RequestStatus::Unknown);
     }
 
-    return rsp;
+    return response;
   }
 
 
-  static njson get (CacheMap& map,  const njson& cmd)
+  static Response get (CacheMap& map,  const njson& cmd)
   {
     static njson Prepared {jsoncons::json_object_arg, {{GetRsp, {jsoncons::json_object_arg,
-                                                                      {
-                                                                        {"st", toUnderlying(RequestStatus::Ok)},
-                                                                        {"keys", njson{}} // initialise as an empty object
-                                                                      }}}}};
+                                                                  {
+                                                                    {"st", toUnderlying(RequestStatus::Ok)},
+                                                                    {"keys", njson{}} // initialise as an empty object
+                                                                  }}}}};
     
-    njson rsp = Prepared;
-    auto& body = rsp.at(GetRsp);
+    Response response;
+    response.rsp = Prepared;
+
+    auto& body = response.rsp.at(GetRsp);
     auto& keys = body.at("keys");
 
     try
@@ -92,15 +96,16 @@ public:
       body["st"] = toUnderlying(RequestStatus::Unknown);
     }
     
-    return rsp;
+    return response;
   }
 
 
-  static njson add (CacheMap& map,  const njson& cmd)
+  static Response add (CacheMap& map,  const njson& cmd)
   {
-    njson rsp {jsoncons::json_object_arg, {{AddRsp, jsoncons::json_object_arg_t{}}}};
+    Response response;
+    response.rsp = njson {jsoncons::json_object_arg, {{AddRsp, jsoncons::json_object_arg_t{}}}};
     
-    rsp[AddRsp]["st"] = toUnderlying(RequestStatus::Ok);
+    response.rsp[AddRsp]["st"] = toUnderlying(RequestStatus::Ok);
 
     try
     {
@@ -110,16 +115,16 @@ public:
     catch(const std::exception& e)
     {
       PLOGE << e.what();
-      rsp[AddRsp]["st"] = toUnderlying(RequestStatus::Unknown);
+      response.rsp[AddRsp]["st"] = toUnderlying(RequestStatus::Unknown);
     }
 
-    return rsp;
+    return response;
   }
 
 
-  static njson addQ (CacheMap& map,  const njson& cmd)
+  static Response addQ (CacheMap& map,  const njson& cmd)
   {
-    njson rsp;
+    Response response;
 
     try
     {
@@ -129,18 +134,18 @@ public:
     catch (const std::exception& ex)
     {
       PLOGE << ex.what();
-      rsp = njson {jsoncons::json_object_arg, {{AddQRsp, jsoncons::json_object_arg_t{}}}};
-      rsp[AddQRsp]["st"] = toUnderlying(RequestStatus::Unknown);
+      response.rsp = njson {jsoncons::json_object_arg, {{AddQRsp, jsoncons::json_object_arg_t{}}}};
+      response.rsp[AddQRsp]["st"] = toUnderlying(RequestStatus::Unknown);
     }
 
-    return rsp;
+    return response;
   }
 
 
-  static njson remove (CacheMap& map,  const njson& cmd)
+  static Response remove (CacheMap& map,  const njson& cmd)
   {
-    njson rsp;
-    rsp[RmvRsp]["st"] = toUnderlying(RequestStatus::Ok);
+    Response response;
+    response.rsp[RmvRsp]["st"] = toUnderlying(RequestStatus::Ok);
 
     try
     {
@@ -155,33 +160,34 @@ public:
     }
     catch(const std::exception& e)
     {
-      rsp[RmvRsp]["st"] = toUnderlying(RequestStatus::Unknown);
       PLOGE << e.what();
+      response.rsp[RmvRsp]["st"] = toUnderlying(RequestStatus::Unknown);
     }
     
-    return rsp;
+    return response;
   }
 
 
-  static njson clear (CacheMap& map,  const njson& cmd)
+  static Response clear (CacheMap& map,  const njson& cmd)
   {
     const auto[ok, count] = map.clear();
-
-    njson rsp;
-    rsp[ClearRsp]["st"] = ok ? toUnderlying(RequestStatus::Ok) : toUnderlying(RequestStatus::Unknown);
-    rsp[ClearRsp]["cnt"] = count;
     
-    return rsp;
+    Response response;
+    
+    response.rsp[ClearRsp]["st"] = ok ? toUnderlying(RequestStatus::Ok) : toUnderlying(RequestStatus::Unknown);
+    response.rsp[ClearRsp]["cnt"] = count;
+    
+    return response;
   }
 
 
-  static njson contains (CacheMap& map,  const njson& cmd)
+  static Response contains (CacheMap& map,  const njson& cmd)
   {
-    njson rsp;
-    rsp[ContainsRsp]["st"] = toUnderlying(RequestStatus::Ok);
-    rsp[ContainsRsp]["contains"] = njson::array{};
+    Response response;
+    response.rsp[ContainsRsp]["st"] = toUnderlying(RequestStatus::Ok);
+    response.rsp[ContainsRsp]["contains"] = njson::array{};
 
-    auto& contains = rsp.at(ContainsRsp).at("contains");
+    auto& contains = response.rsp.at(ContainsRsp).at("contains");
 
     for (auto&& item : cmd["keys"].array_range())
     {
@@ -192,79 +198,79 @@ public:
       }
     }
 
-    return rsp;
+    return response;
   }
 
   
-  static njson find (CacheMap& map,  const njson& cmd)
+  static Response find (CacheMap& map,  const njson& cmd)
   {
     const bool paths = cmd.at("rsp") == "paths";
 
-    njson rsp;
+    Response response;
 
     njson result = njson::array();
 
     if (!map.find(cmd, paths, result))
-      rsp[FindRsp]["st"] = toUnderlying(RequestStatus::PathInvalid);
+      response.rsp[FindRsp]["st"] = toUnderlying(RequestStatus::PathInvalid);
     else
     {       
-      rsp[FindRsp]["st"] = toUnderlying(RequestStatus::Ok);
+      response.rsp[FindRsp]["st"] = toUnderlying(RequestStatus::Ok);
 
       if (cmd.at("rsp") != "kv")
-        rsp[FindRsp][paths ? "paths" : "keys"] = std::move(result);
+        response.rsp[FindRsp][paths ? "paths" : "keys"] = std::move(result);
       else
       {
         // return key-values the same as KV_GET
-        rsp[FindRsp]["keys"] = njson::object();
+        response.rsp[FindRsp]["keys"] = njson::object();
 
         for(auto& item : result.array_range())
         {
           const auto& key = item.as_string();
 
           if (const auto value = map.get(key); value)
-            rsp[FindRsp]["keys"][key] = (*value).get();
+            response.rsp[FindRsp]["keys"][key] = (*value).get();
         } 
       }
     }
 
-    return rsp;
+    return response;
   }
 
 
-  static njson update (CacheMap& map,  const njson& cmd)
+  static Response update (CacheMap& map,  const njson& cmd)
   {
     const auto& key = cmd.at("key").as_string();
     const auto& path = cmd.at("path").as_string();
 
     const auto [keyExists, count] = map.update(key, path, cachedvalue::parse(cmd.at("value").to_string()));
     
-    njson rsp;
-    rsp[UpdateRsp]["st"] = keyExists ? toUnderlying(RequestStatus::Ok) : toUnderlying(RequestStatus::KeyNotExist);
-    rsp[UpdateRsp]["cnt"] = count;
+    Response response;
+    response.rsp[UpdateRsp]["st"] = keyExists ? toUnderlying(RequestStatus::Ok) : toUnderlying(RequestStatus::KeyNotExist);
+    response.rsp[UpdateRsp]["cnt"] = count;
 
-    return rsp;
+    return response;
   }
 
 
-  static njson keys (CacheMap& map,  const njson& cmd)
+  static Response keys (CacheMap& map,  const njson& cmd)
   {
-    njson rsp;
-    rsp[KeysRsp]["st"] = toUnderlying(RequestStatus::Ok);
-    rsp[KeysRsp]["keys"] = std::move(map.keys());
-    return rsp;
+    Response response;
+    response.rsp[KeysRsp]["st"] = toUnderlying(RequestStatus::Ok);
+    response.rsp[KeysRsp]["keys"] = std::move(map.keys());
+    return response;
   }
 
 
-  static njson clearSet (CacheMap& map,  const njson& cmd)
+  static Response clearSet (CacheMap& map,  const njson& cmd)
   {
-    njson rsp;
-    rsp[ClearSetRsp]["st"] = toUnderlying(RequestStatus::Ok);
+    Response response;
+    response.rsp[ClearSetRsp]["st"] = toUnderlying(RequestStatus::Ok);
 
     try
     {
       if (const auto[valid, size] = map.clear(); valid)
       {
-        rsp[ClearSetRsp]["cnt"] = size;
+        response.rsp[ClearSetRsp]["cnt"] = size;
 
         for(const auto& kv : cmd["keys"].object_range())
           map.set(kv.key(), kv.value());
@@ -272,31 +278,31 @@ public:
       else
       {
         PLOGE << "KV_CLEAR_SET failed to clear";
-        rsp[ClearSetRsp]["st"] = toUnderlying(RequestStatus::Unknown);
-        rsp[ClearSetRsp]["cnt"] = 0U;
+        response.rsp[ClearSetRsp]["st"] = toUnderlying(RequestStatus::Unknown);
+        response.rsp[ClearSetRsp]["cnt"] = 0U;
       }
     }
     catch(const std::exception& e)
     {
       PLOGE << e.what();
-      rsp[ClearSetRsp]["st"] = toUnderlying(RequestStatus::Unknown);
-      rsp[ClearSetRsp]["cnt"] = 0U;
+      response.rsp[ClearSetRsp]["st"] = toUnderlying(RequestStatus::Unknown);
+      response.rsp[ClearSetRsp]["cnt"] = 0U;
     }
 
-    return rsp;
+    return response;
   }
 
 
-  static njson count (CacheMap& map,  const njson& cmd)
+  static Response count (CacheMap& map,  const njson& cmd)
   {
-    njson rsp;
-    rsp[CountRsp]["st"] = toUnderlying(RequestStatus::Ok);
-    rsp[CountRsp]["cnt"] = map.count();
-    return rsp;
+    Response response;
+    response.rsp[CountRsp]["st"] = toUnderlying(RequestStatus::Ok);
+    response.rsp[CountRsp]["cnt"] = map.count();
+    return response;
   }
 
 
-  static njson arrayAppend (CacheMap& map,  const njson& cmd)
+  static Response arrayAppend (CacheMap& map,  const njson& cmd)
   {
     const auto& key = cmd.at("key").as_string();
     const auto& items = cmd.at("items");
@@ -313,13 +319,13 @@ public:
     else
       st = RequestStatus::KeyNotExist;
 
-    njson rsp;
-    rsp[ArrAppendRsp]["st"] = toUnderlying(st);
-    return rsp;
+    Response response;
+    response.rsp[ArrAppendRsp]["st"] = toUnderlying(st);
+    return response;
   }
 
 
-  static njson saveKv (const CacheMap& map, const fs::path& path, const std::string_view name)
+  static Response saveKv (const CacheMap& map, const fs::path& path, const std::string_view name)
   {
     static const std::streamoff MaxDataFileSize = 10U * 1024U * 1024U;
 
@@ -327,8 +333,8 @@ public:
 
     RequestStatus status = RequestStatus::SaveComplete;
 
-    njson rsp;
-    rsp[SaveRsp]["name"] = name;
+    Response response;
+    response.rsp[SaveRsp]["name"] = name;
 
     try
     {
@@ -372,24 +378,24 @@ public:
     }
     
 
-    rsp[SaveRsp]["st"] = toUnderlying(status);
-    rsp[SaveRsp]["duration"] = chrono::duration_cast<chrono::milliseconds>(NemesisClock::now() - start).count();
+    response.rsp[SaveRsp]["st"] = toUnderlying(status);
+    response.rsp[SaveRsp]["duration"] = chrono::duration_cast<chrono::milliseconds>(NemesisClock::now() - start).count();
 
-    return rsp;
+    return response;
   }
 
 
-  static njson loadKv (const std::string& loadName, CacheMap& map, const fs::path& dataRoot)
+  static Response loadKv (const std::string& loadName, CacheMap& map, const fs::path& dataRoot)
   {
     RequestStatus status{RequestStatus::Loading};
     std::size_t nKeys{0};
     
-    njson rsp;
-    rsp[LoadRsp]["st"] = toUnderlying(status);
-    rsp[LoadRsp]["name"] = loadName;
-    rsp[LoadRsp]["duration"] = 0; // updated below
-    rsp[LoadRsp]["sessions"] = 0; // always 0 when sessions disabled
-    rsp[LoadRsp]["keys"] = 0; // updated below
+    Response response;
+    response.rsp[LoadRsp]["st"] = toUnderlying(status);
+    response.rsp[LoadRsp]["name"] = loadName;
+    response.rsp[LoadRsp]["duration"] = 0; // updated below
+    response.rsp[LoadRsp]["sessions"] = 0; // always 0 when sessions disabled
+    response.rsp[LoadRsp]["keys"] = 0; // updated below
 
     try
     {      
@@ -403,8 +409,8 @@ public:
           break;
       }
 
-      rsp[LoadRsp]["duration"] = chrono::duration_cast<chrono::milliseconds>(NemesisClock::now() - start).count();
-      rsp[LoadRsp]["keys"] = nKeys;      
+      response.rsp[LoadRsp]["duration"] = chrono::duration_cast<chrono::milliseconds>(NemesisClock::now() - start).count();
+      response.rsp[LoadRsp]["keys"] = nKeys;      
     }
     catch(const std::exception& e)
     {
@@ -412,9 +418,9 @@ public:
       status = RequestStatus::LoadError;
     }
 
-    rsp[LoadRsp]["st"] = toUnderlying(status);
+    response.rsp[LoadRsp]["st"] = toUnderlying(status);
     
-    return rsp;
+    return response;
   }
 
 

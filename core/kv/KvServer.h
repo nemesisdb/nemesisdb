@@ -324,32 +324,34 @@ public:
     {
       // top level must be an object with one child
       if (!request.is_object() || request.size() != 1U)
-        ws->send(createErrorResponse(RequestStatus::CommandSyntax).to_string(), kv::WsSendOpCode);
+        send(ws, createErrorResponse(RequestStatus::CommandSyntax));
       else
       {
         const std::string& command = request.object_range().cbegin()->key();
 
         if (!request.at(command).is_object())
-          ws->send(createErrorResponse(command+"_RSP", RequestStatus::CommandSyntax).to_string(), kv::WsSendOpCode);
+          send(ws, createErrorResponse(command+"_RSP", RequestStatus::CommandSyntax));
         else
         {
           if (const auto pos = command.find('_'); pos == std::string::npos)
-            ws->send(createErrorResponse(command+"_RSP", RequestStatus::CommandSyntax).to_string(), kv::WsSendOpCode);
+            send(ws, createErrorResponse(command+"_RSP", RequestStatus::CommandSyntax));
           else
           {
             const auto type = command.substr(0, pos);
 
             if (type == "SH")
             {
-              m_shHandler->handle(ws, command, request);
+              const Response response = m_shHandler->handle(ws, command, request);
+              send(ws, response.rsp);
             }
             else if (type == "KV")
             {
-              m_kvHandler->handle(ws, command, request);
+              const Response response = m_kvHandler->handle(ws, command, request);
+              send(ws, response.rsp);
             }
             else if (command == sv::InfoReq)
             {
-              // yuck, but this is how jsoncons initialises json objects
+              // vomit, but this is how jsoncons initialises json objects
               // the json_object_arg is a tag, followed by initializer_list<pair<string, njson>>
               // Can create Prepared in one go, but split for [relative] readability. Copy children from Info into Prepared
               static const njson Info {jsoncons::json_object_arg, {
@@ -362,9 +364,7 @@ public:
               static const njson Prepared {jsoncons::json_object_arg, {{sv::InfoRsp, {jsoncons::json_object_arg,  Info.object_range().cbegin(),
                                                                                                                   Info.object_range().cend()}}}}; 
               
-              static const std::string PreparedRsp {Prepared.to_string()};
-
-              ws->send(PreparedRsp, kv::WsSendOpCode);
+              send(ws, Prepared);
             }
           }
         }

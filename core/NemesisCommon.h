@@ -87,7 +87,6 @@ enum class RequestStatus
 const uWS::OpCode WsSendOpCode = uWS::OpCode::TEXT;
 
 using njson = jsoncons::ojson;
-//using uuid = std::string;
 using NemesisClock = chrono::steady_clock;
 using NemesisTimePoint = NemesisClock::time_point;
 
@@ -216,6 +215,12 @@ struct WsSession
 using KvWebSocket = uWS::WebSocket<false, true, WsSession>;
 
 
+struct Response
+{
+  njson rsp;
+};
+
+
 ndb_always_inline void send (KvWebSocket * ws, const njson& msg)
 {
   ws->send(msg.to_string(), WsSendOpCode);
@@ -290,7 +295,7 @@ static inline njson createErrorResponse (const RequestStatus status, const std::
 
 
 template<typename Json>
-bool doIsValid (const std::string_view queryRspName, KvWebSocket * ws, 
+std::tuple<bool, njson> doIsValid (const std::string_view queryRspName, KvWebSocket * ws, 
                 const Json& cmd, const std::map<const std::string_view, const Param>& params,
                 std::function<std::tuple<RequestStatus, const std::string_view>(const Json&)> onPostValidate = nullptr)
 {
@@ -299,28 +304,29 @@ bool doIsValid (const std::string_view queryRspName, KvWebSocket * ws,
                                             RequestStatus::ParamMissing,
                                             RequestStatus::ValueTypeInvalid>(cmd, params, onPostValidate);
   
-  if (stat != RequestStatus::Ok)
+  if (stat != RequestStatus::Ok) [[unlikely]]
   {
     PLOGD << msg;
-    send(ws, createErrorResponse(queryRspName, stat, msg));
+    return {false, createErrorResponse(queryRspName, stat, msg)};
   }
-    
-  return stat == RequestStatus::Ok;
+  else
+    return {true, njson{}};
 }
 
 
-bool isValid (const std::string_view queryRspName, KvWebSocket * ws, 
-              const njson& cmd, const std::map<const std::string_view, const Param>& params,
-              typename std::function<std::tuple<RequestStatus, const std::string_view>(const njson&)> onPostValidate = nullptr)
+std::tuple<bool, njson> isValid ( const std::string_view queryRspName, KvWebSocket * ws, 
+                                  const njson& cmd, const std::map<const std::string_view, const Param>& params,
+                                  typename std::function<std::tuple<RequestStatus, const std::string_view>(const njson&)> onPostValidate = nullptr)
 {
   const auto& cmdRoot = cmd.object_range().cbegin()->value();
   return doIsValid(queryRspName, ws, cmdRoot, params, onPostValidate);
 }
 
 
-bool isValid (const std::string_view queryRspName, const std::string_view child, KvWebSocket * ws, 
-              const njson& cmd, const std::map<const std::string_view, const Param>& params,
-              std::function<std::tuple<RequestStatus, const std::string_view>(const njson&)> onPostValidate = nullptr)
+std::tuple<bool, njson> isValid (const std::string_view queryRspName,
+                                const std::string_view child, KvWebSocket * ws, 
+                                const njson& cmd, const std::map<const std::string_view, const Param>& params,
+                                std::function<std::tuple<RequestStatus, const std::string_view>(const njson&)> onPostValidate = nullptr)
 {
   const auto& childObject = cmd.object_range().cbegin()->value()[child];
   return doIsValid(queryRspName, ws, childObject, params, onPostValidate);
