@@ -1,8 +1,6 @@
 #ifndef NDB_CORE_SHCOMMANDS_H
 #define NDB_CORE_SHCOMMANDS_H
 
-#include <string>
-
 
 namespace nemesis { namespace core { namespace sh {
 

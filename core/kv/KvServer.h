@@ -13,11 +13,14 @@
 #include <core/kv/KvCommon.h>
 #include <core/kv/KvHandler.h>
 #include <core/kv/ShHandler.h>
+#include <core/kv/SvCommands.h>
 #include <core/NemesisConfig.h>
 #include <core/NemesisCommon.h>
 
 
 namespace nemesis { namespace core { namespace kv {
+
+namespace sv = nemesis::core::sv;
 
 
 template<bool HaveSessions>
@@ -343,7 +346,7 @@ public:
             {
               m_kvHandler->handle(ws, command, request);
             }
-            else if (command == "SV_INFO")
+            else if (command == sv::InfoReq)
             {
               // yuck, but this is how jsoncons initialises json objects
               // the json_object_arg is a tag, followed by initializer_list<pair<string, njson>>
@@ -355,8 +358,8 @@ public:
                                                                     {"persistEnabled",  NemesisConfig::persistEnabled(m_config)}
                                                                   }};
 
-              static const njson Prepared {jsoncons::json_object_arg, {{"SV_INFO_RSP", {jsoncons::json_object_arg,  Info.object_range().cbegin(),
-                                                                                                                    Info.object_range().cend()}}}}; 
+              static const njson Prepared {jsoncons::json_object_arg, {{sv::InfoRsp, {jsoncons::json_object_arg,  Info.object_range().cbegin(),
+                                                                                                                  Info.object_range().cend()}}}}; 
               
               static const std::string PreparedRsp {Prepared.to_string()};
 

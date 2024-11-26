@@ -1,8 +1,6 @@
 #ifndef NDB_CORE_KVCOMMANDS_H
 #define NDB_CORE_KVCOMMANDS_H
 
-#include <string>
-
 
 namespace nemesis { namespace core { namespace kv {
 
