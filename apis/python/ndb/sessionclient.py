@@ -1,5 +1,6 @@
-from ndb.client import FieldValues, Fields, KvCmd
+from ndb.client import FieldValues
 from ndb.kvclient import KvClient
+from ndb.logging import logger
 from typing import Tuple, List
 
 
@@ -41,8 +42,8 @@ Similar to KvClient but key value functions require a token, and
 session specific functions are supplied.
 """
 class SessionClient:
-  def __init__(self):
-    self.client = KvClient()
+  def __init__(self, debug = False):
+    self.client = KvClient(debug=debug)
     
   
   async def open(self, uri: str) -> bool:
@@ -112,7 +113,9 @@ class SessionClient:
       
     rsp = await self.client._send_query(SessionCmd.NEW_REQ, q)
     if self.client._is_rsp_valid(rsp, SessionCmd.NEW_RSP):
-      return Session(rsp[SessionCmd.NEW_RSP]['tkn'])
+      token = rsp[SessionCmd.NEW_RSP]['tkn']
+      logger.debug(f'Created session: {token}')
+      return Session(token)
     else:
       return Session(0)
 

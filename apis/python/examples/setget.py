@@ -6,7 +6,7 @@ from ndb.kvclient import KvClient
 
 
 async def setget_basics():
-  client = KvClient()
+  client = KvClient(debug=True) # toggle for debug
 
   if not (await client.open('ws://127.0.0.1:1987/')):
     print('Failed to connect')

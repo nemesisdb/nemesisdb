@@ -1,21 +1,18 @@
 import json
-import logging
 import asyncio as asio
 from asyncio import CancelledError
 from websockets.asyncio.client import connect
 from websockets import ConnectionClosed
 
-# logger = logging.getLogger('websockets')
-# logger.setLevel(logging.DEBUG)
-# logger.addHandler(logging.StreamHandler())
 
+# TODO could allow enable of websockets logger here
 
 class Connection:
   """
-  The Api class runs the websockets library, handling asyncio
-  coroutines.
-  This class is not intended to be used directly, instead
-  use the Client class.
+  The Api class runs the websockets library, handling asyncio coroutines.
+  
+  This class is not intended to be used directly, instead use KvClient or 
+  SessionClient.
   """
 
   def __init__(self):
@@ -31,7 +28,7 @@ class Connection:
     self.rcvTask = None
     self.listen_task = asio.create_task(self.open())
     self.ws = None
-    
+
     # the listen_task will release this semaphore
     # when it fails/succeeds to connect
     await self.connectedSem.acquire()

@@ -8,7 +8,7 @@ import asyncio as asio
 
 
 async def basics():
-  client = SessionClient()
+  client = SessionClient(debug=False) # toggle for debug logs
   if not (await client.open('ws://127.0.0.1:1987/')):
     print('Failed to connect')
     return

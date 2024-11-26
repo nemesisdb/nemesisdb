@@ -1,8 +1,10 @@
-from abc import ABC, abstractmethod
+from abc import ABC
 from enum import Enum
 from ndb.connection import Connection
+from ndb.logging import logger
 from typing import Tuple, List
 from asyncio import CancelledError
+import logging
 
 
 
@@ -66,17 +68,23 @@ class Client(ABC):
   Note: KV_SETQ and KV_ADDQ are not supported.
   """
 
-  def __init__(self):
+  def __init__(self, debug = False):
     self.uri = ''
     self.listen_task = None
     self.api = Connection()
-
+    if debug:
+      logger.setLevel(logging.DEBUG)
+      logger.addHandler(logging.StreamHandler())
+      
   
   async def open(self, uri: str) -> bool:
     if uri == '':
       raise ValueError('URI empty')
     
-    return await self.api.start(uri)
+    
+    connected = await self.api.start(uri)
+    logger.debug('Client: connected' if connected else 'Client: failed to connect')
+    return connected
 
 
   async def set(self, keys: dict, tkn = 0) -> bool:
@@ -179,7 +187,9 @@ class Client(ABC):
 
 
   def _is_rsp_valid(self, rsp: dict, cmd: str, expected = FieldValues.ST_SUCCESS) -> bool:
-    return rsp[cmd][Fields.STATUS] == expected
+    valid = rsp[cmd][Fields.STATUS] == expected
+    logger.debug(cmd + ' ' + ('Response Ok' if valid else f'Response Fail: {str(rsp)}'))
+    return valid
 
 
   async def _doSetAdd(self, cmdName: str, rspName: str, keys: dict, tkn: int) -> bool:
@@ -189,6 +199,7 @@ class Client(ABC):
   
   
   async def _send_query(self, cmd: str, q: dict, tkn = 0):
+    logger.debug('Send query: '+ str(q))
     if tkn != 0:
       return await self._send_session_query(cmd, q, tkn)
     else:
