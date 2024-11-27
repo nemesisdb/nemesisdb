@@ -5,7 +5,7 @@
 #include <fstream>
 #include <core/NemesisCommon.h>
 #include <core/kv/KvCommon.h>
-#include <core/sh/KvSessions.h>
+#include <core/sh/ShSessions.h>
 #include <core/sh/ShCommands.h>
 
 namespace nemesis { namespace core { namespace sh {

@@ -3,24 +3,28 @@
 
 #include <functional>
 #include <vector>
-#include <set>
 #include <tuple>
 #include <latch>
 #include <thread>
 #include <chrono>
 #include <iostream>
 #include <uwebsockets/App.h>
-#include <core/kv/KvCommon.h>
-#include <core/kv/KvHandler.h>
-#include <core/sh/ShHandler.h>
-#include <core/kv/SvCommands.h>
 #include <core/Persistance.h>
 #include <core/NemesisConfig.h>
 #include <core/NemesisCommon.h>
+#include <core/kv/KvCommon.h>
+#include <core/kv/KvHandler.h>
+#include <core/sh/ShHandler.h>
+#include <core/sh/ShSessions.h>
+#include <core/sv/SvCommands.h>
 
 
-namespace nemesis { namespace core { namespace kv {
 
+namespace nemesis { namespace core {
+
+
+namespace kv = nemesis::core::kv;
+namespace sh = nemesis::core::sh;
 namespace sv = nemesis::core::sv;
 
 
@@ -77,7 +81,7 @@ public:
   }
 
 
-  bool run (NemesisConfig& config, std::shared_ptr<Sessions> sessions)
+  bool run (NemesisConfig& config, std::shared_ptr<sh::Sessions> sessions)
   {
     m_sessions = sessions;
     m_config = config.cfg;
@@ -150,7 +154,7 @@ public:
         }
         
         m_kvHandler = std::make_shared<kv::KvHandler<HaveSessions>> (config, m_sessions);
-        m_shHandler = std::make_shared<ShHandler>(config, m_sessions);
+        m_shHandler = std::make_shared<sh::ShHandler>(config, m_sessions);
       }
       catch(const std::exception& e)
       {
@@ -428,7 +432,7 @@ public:
   private:
     struct TimerData
     {
-      std::shared_ptr<KvHandler<HaveSessions>> kvHandler;
+      std::shared_ptr<kv::KvHandler<HaveSessions>> kvHandler;
     };
 
     std::unique_ptr<std::jthread> m_thread;
@@ -437,9 +441,9 @@ public:
     std::atomic_bool m_run;
     us_timer_t * m_monitorTimer{};
     // TODO profile runtime cost of shared_ptr vs raw ptr
-    std::shared_ptr<KvHandler<HaveSessions>> m_kvHandler;
-    std::shared_ptr<ShHandler> m_shHandler;
-    std::shared_ptr<Sessions> m_sessions;
+    std::shared_ptr<kv::KvHandler<HaveSessions>> m_kvHandler;
+    std::shared_ptr<sh::ShHandler> m_shHandler;
+    std::shared_ptr<sh::Sessions> m_sessions;
     njson m_config;
 };
 
@@ -448,7 +452,6 @@ using KvServer = Server<false>;
 using KvSessionServer = Server<true>;
 
 
-}
 }
 }
 

@@ -4,12 +4,12 @@
 #include <algorithm>
 #include <latch>
 #include <filesystem>
+#include <core/Server.h>
 #include <core/NemesisConfig.h>
 #include <core/NemesisCommon.h>
-#include <core/kv/KvCommon.h>
-#include <core/kv/KvServer.h>
-#include <core/sh/KvSessions.h>
 #include <core/LogFormatter.h>
+#include <core/kv/KvCommon.h>
+#include <core/sh/ShSessions.h>
 #include <jsoncons/json_traits_macros.hpp>
 
 
@@ -96,9 +96,9 @@ int main (int argc, char ** argv)
 
 
   if (NemesisConfig::serverMode(config.cfg) == ServerMode::KV)
-    runServer (kv::KvServer{});
+    runServer (KvServer{});
   else
-    runServer (kv::KvSessionServer{});
+    runServer (KvSessionServer{});
 
   return error;
 }
