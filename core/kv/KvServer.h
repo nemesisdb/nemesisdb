@@ -346,7 +346,7 @@ public:
               if (!response.rsp.empty())
                 send(ws, response.rsp);
             }
-            else if (type == "SH")
+            else if (HaveSessions && type == "SH")
             {
               const Response response = m_shHandler->handle(command, request);
               if (!response.rsp.empty())
@@ -369,6 +369,11 @@ public:
               
               send(ws, Prepared);
             }
+            else
+            {
+              static const njson Prepared {createErrorResponse(command+"_RSP", RequestStatus::CommandNotExist)};
+              send(ws, Prepared);
+            }
           }
         }
       }
@@ -383,11 +388,21 @@ public:
       }
       else
       {
-        const auto [root, md, data, pathsValid] = getLoadPaths(config.loadPath / config.loadName);
-        const auto loadResult = m_kvHandler->internalLoad(config.loadName, data);
-        const auto success = loadResult.status == RequestStatus::LoadComplete;
-
         PLOGI << "-- Load --";
+
+        const auto [root, md, data, pathsValid] = getLoadPaths(config.loadPath / config.loadName);
+        LoadResult loadResult;
+
+        if constexpr (HaveSessions)
+        {
+          loadResult = m_shHandler->internalLoad(config.loadName, data);
+        }
+        else
+        {
+          loadResult = m_kvHandler->internalLoad(config.loadName, data);
+        }
+        
+        const auto success = loadResult.status == RequestStatus::LoadComplete;
     
         if (success)
         {

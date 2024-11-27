@@ -110,9 +110,10 @@ private:
     
     if constexpr (!HaveSessions)
     {
-      // KV_SAVE and KV_LOAD are only enabled when sessions are disabled, when sessions are enabled SH_SAVE/SH_LOAD are used
-      h.emplace(KvQueryType::KvSave,  Handler{std::bind_front(&KvHandler<HaveSessions>::kvSave, std::ref(*this))});
-      h.emplace(KvQueryType::KvLoad,  Handler{std::bind_front(&KvHandler<HaveSessions>::kvLoad, std::ref(*this))});
+      // KV_SAVE/KV_LOAD are only enabled when sessions are disabled
+      // SH_SAVE/SH_LOAD are used when sessions are enabled 
+      h.emplace(KvQueryType::KvSave,  Handler{std::bind_front(&KvHandler<HaveSessions>::save, std::ref(*this))});
+      h.emplace(KvQueryType::KvLoad,  Handler{std::bind_front(&KvHandler<HaveSessions>::load, std::ref(*this))});
     }
 
     return h;
@@ -185,7 +186,7 @@ public:
   }
     
 
-  // TODO check load/save , it's confusing after code splitting KvHandler into ShHandler
+  // Called when loading at startup, so can be loading with sessions enabled or disabled.
   LoadResult internalLoad(const std::string& loadName, const fs::path& dataSetsRoot)
   {
     const auto start = NemesisClock::now();
@@ -195,19 +196,10 @@ public:
 
     LoadResult loadResult;
     loadResult.duration = NemesisClock::now() - start;
-    loadResult.status = static_cast<RequestStatus>(rsp[sh::LoadRsp]["st"].as<std::uint64_t>());
+    loadResult.status = static_cast<RequestStatus>(rsp[kv::LoadRsp]["st"].as<std::uint64_t>());
+    loadResult.nKeys = rsp[kv::LoadRsp]["keys"].as<std::size_t>();
+    loadResult.nSessions = 0;
     
-    if constexpr (HaveSessions)
-    {
-      loadResult.nSessions = rsp[sh::LoadRsp]["sessions"].as<std::size_t>(); // this is 0 when loading RawKv (no sessions)
-      loadResult.nKeys = rsp[sh::LoadRsp]["keys"].as<std::size_t>();
-    }
-    else
-    {
-      loadResult.nSessions = 0; // sessions disabled
-      loadResult.nKeys = rsp[kv::LoadRsp]["keys"].as<std::size_t>();
-    }
-
     return loadResult;
   }
 
@@ -428,9 +420,7 @@ private:
   }
 
   
-  // TODO check load/save , it's confusing after code splitting KvHandler into ShHandler
-
-  Response kvSave(njson& request)  requires (!HaveSessions)
+  Response save(njson& request)  requires (!HaveSessions)
   {
     if (!NemesisConfig::persistEnabled(m_config))
       return Response{.rsp = createErrorResponseNoTkn(SaveRsp, RequestStatus::CommandDisabled)};
@@ -444,7 +434,7 @@ private:
   }
 
 
-  Response kvLoad(njson& request) requires (!HaveSessions)
+  Response load(njson& request) requires (!HaveSessions)
   {
     if (auto [valid, rsp] = kv::validateLoad(request) ; !valid)
       return Response{.rsp = std::move(rsp)};
@@ -474,31 +464,22 @@ private:
   Response doSave (const std::string_view queryRspName, njson& cmd) requires (!HaveSessions)
   {
     const auto& name = cmd.at("name").as_string();
-    const auto rootDirName = std::to_string(KvSaveClock::now().time_since_epoch().count());
-    const auto root = fs::path {NemesisConfig::savePath(m_config)} / name / rootDirName;
+    const auto dataSetDir = std::to_string(KvSaveClock::now().time_since_epoch().count());
+    const auto root = fs::path {NemesisConfig::savePath(m_config)} / name / dataSetDir;
     const auto metaPath = root / "md";
     const auto dataPath = root / "data";
+    
 
-    RequestStatus status = RequestStatus::Ok;
-
-    std::ofstream metaStream;
-
-    if (!fs::create_directories(metaPath))
-      status = RequestStatus::SaveDirWriteFail;
-    else if (metaStream.open(metaPath / "md.json", std::ios_base::trunc | std::ios_base::out); !metaStream.is_open())
-      status = RequestStatus::SaveDirWriteFail;
-        
-    if (status != RequestStatus::Ok)
+    if (auto [preparedStatus, metaStream] = prepareSave(cmd, root); preparedStatus != RequestStatus::Ok)
     {
-      Response response;
-      response.rsp[queryRspName]["name"] = name;
-      response.rsp[queryRspName]["st"] = toUnderlying(status);
-      return response;
+      njson rsp;
+      rsp[queryRspName]["name"] = name;
+      rsp[queryRspName]["st"] = toUnderlying(preparedStatus);
+      return Response{.rsp = std::move(rsp)};
     }
     else
     {
-      auto metaData = createInitialSaveMetaData(name, false);
-      metaData.dump(metaStream);
+      auto metaData = createInitialSaveMetaData(metaStream, name, false);
       
       KvSaveStatus metaDataStatus = KvSaveStatus::Pending;
       Response response;
@@ -516,27 +497,18 @@ private:
       }
       
       // update metdata
-      completeSaveMetaData(metaData, metaDataStatus);
+      completeSaveMetaData(metaStream, metaData, metaDataStatus);
       
-      metaStream.seekp(0);
-      metaData.dump(metaStream);
-
       return response;
     }
   }
   
 
-  // TODO check load/save , it's confusing after code splitting KvHandler into ShHandler
   njson doLoad (const std::string& loadName, const fs::path& dataSetsRoot)
   {
     PLOGI << "Loading from " << dataSetsRoot;
     
-    Response response;
-
-    if constexpr (HaveSessions)
-      response = SessionExecutor::loadSessions (loadName, getContainer(), dataSetsRoot);   
-    else
-      response = KvExecutor::loadKv (loadName, getContainer(), dataSetsRoot);   
+    Response response = KvExecutor::loadKv (loadName, getContainer(), dataSetsRoot);
 
     PLOGI << "Loading complete";
 

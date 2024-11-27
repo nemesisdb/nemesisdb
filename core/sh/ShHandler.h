@@ -124,6 +124,22 @@ public:
   }
 
 
+  LoadResult internalLoad(const std::string& loadName, const fs::path& dataSetsRoot)
+  {
+    const auto start = NemesisClock::now();
+    
+    const njson rsp = doLoad(loadName, dataSetsRoot);
+
+    LoadResult loadResult;
+    loadResult.duration = NemesisClock::now() - start;
+    loadResult.status = static_cast<RequestStatus>(rsp[sh::LoadRsp]["st"].as<std::uint64_t>());
+    loadResult.nSessions = rsp[sh::LoadRsp]["sessions"].as<std::size_t>();
+    loadResult.nKeys = rsp[sh::LoadRsp]["keys"].as<std::size_t>();
+
+    return loadResult;
+  }
+
+
 private:
   ndb_always_inline Response sessionNew(njson& req)
   {
@@ -273,7 +289,7 @@ private:
       {
         // can ignore pathsValid here because if paths are invalid, validatePreLoad() returns false
         const auto [root, md, data, pathsValid] = getLoadPaths(fs::path{NemesisConfig::savePath(m_config)} / loadName);
-        return doLoad(loadName, data);
+        return Response{.rsp = doLoad(loadName, data)};
       }
     }    
   }
@@ -298,33 +314,22 @@ private:
   Response doSave (const std::string_view queryName, const std::string_view queryRspName, njson& cmd)
   {
     const auto& name = cmd.at("name").as_string();
-    const auto rootDirName = std::to_string(KvSaveClock::now().time_since_epoch().count());
-    const auto root = fs::path {NemesisConfig::savePath(m_config)} / name / rootDirName;
+    const auto dataSetDir = std::to_string(KvSaveClock::now().time_since_epoch().count());
+    const auto root = fs::path {NemesisConfig::savePath(m_config)} / name / dataSetDir;
     const auto metaPath = root / "md";
     const auto dataPath = root / "data";
+    
 
-    RequestStatus status = RequestStatus::Ok;
-
-    std::ofstream metaStream;
-
-    if (!fs::create_directories(metaPath))
-      status = RequestStatus::SaveDirWriteFail;
-    else if (metaStream.open(metaPath / "md.json", std::ios_base::trunc | std::ios_base::out); !metaStream.is_open())
-      status = RequestStatus::SaveDirWriteFail;
-        
-    if (status != RequestStatus::Ok)
+    if (auto [preparedStatus, metaStream] = prepareSave(cmd, root); preparedStatus != RequestStatus::Ok)
     {
       njson rsp;
       rsp[queryRspName]["name"] = name;
-      rsp[queryRspName]["st"] = toUnderlying(status);
-      //send(ws, rsp);
-     return Response{.rsp = std::move(rsp)};
+      rsp[queryRspName]["st"] = toUnderlying(preparedStatus);
+      return Response{.rsp = std::move(rsp)};
     }
     else
     {
-      auto metaData = createInitialSaveMetaData(name, true);
-      
-      metaData.dump(metaStream);
+      auto metaData = createInitialSaveMetaData(metaStream, name, true);
       
       KvSaveStatus metaDataStatus = KvSaveStatus::Pending;
       Response response;
@@ -342,25 +347,22 @@ private:
       }
       
       // update metdata
-      completeSaveMetaData(metaData, metaDataStatus);
-      
-      metaStream.seekp(0);
-      metaData.dump(metaStream);
+      completeSaveMetaData(metaStream, metaData, metaDataStatus);
 
       return response;
     }
   }
 
 
-  Response doLoad (const std::string& loadName, const fs::path& dataSetsRoot)
+  njson doLoad (const std::string& loadName, const fs::path& dataSetsRoot)
   {
     PLOGI << "Loading from " << dataSetsRoot;
     
-    Response response = SessionExecutor::loadSessions (loadName, m_sessions, dataSetsRoot);  
+    Response response = SessionExecutor::loadSessions (loadName, m_sessions, dataSetsRoot); 
 
     PLOGI << "Loading complete";
 
-    return response;
+    return response.rsp;
   }
 
 private:
