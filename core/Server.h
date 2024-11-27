@@ -63,7 +63,7 @@ public:
       if (m_monitorTimer)
         us_timer_close(m_monitorTimer);
 
-      for (auto ws : m_wsClients)
+      for (auto ws : m_clients)
         ws->end(1000); // calls wsApp.close()
 
       for(auto sock : m_sockets)
@@ -75,7 +75,7 @@ public:
     }
     
 
-    m_wsClients.clear();
+    m_clients.clear();
     m_sockets.clear();
     m_monitorTimer = nullptr;
   }
@@ -171,20 +171,21 @@ public:
       bool listening{false};
       std::latch startLatch (1);
 
-
+      // TODO consider using path per command type, i.e. all kv commands go to /kv and similar for /sh and /sv
+      //      will this reduce checks, if not then don't bother (command has to be checked anyway)
       auto listen = [this, ip, port, &listening, &startLatch, maxPayload]()
       {
         auto wsApp = uWS::App().ws<WsSession>("/*",
         {
-          .compression = uWS::DISABLED, // consider uWS::SHARED_COMPRESSOR
+          // settings
+          .compression = uWS::DISABLED, // TODO consider uWS::SHARED_COMPRESSOR
           .maxPayloadLength = maxPayload,
           .idleTimeout = 180, // TODO should be configurable?
-          .maxBackpressure = 24 * 1024 * 1024,
+          .maxBackpressure = 128 * 1024,  // TODO reduce when draining handles properly
           // handlers
-          .upgrade = nullptr,
           .open = [this](KvWebSocket * ws)
           {
-            m_wsClients.insert(ws);
+            m_clients.insert(ws);
           },          
           .message = [this](KvWebSocket * ws, std::string_view message, uWS::OpCode opCode)
           {
@@ -193,18 +194,13 @@ public:
           .drain = [](KvWebSocket * ws)
           {
             // TODO
-            // Doing so properly requires changes because must check return value of ws->send():
-            //  - if it returns BACKPRESSURE we must (I think):
-            //    - queue the message
-            //    - when drain() is called we can begin sending from queue
+            // https://github.com/uNetworking/uWebSockets/blob/master/misc/READMORE.md
             //
-            // 1. send() in KvCommon is useless
-            // 2. Perhaps move send() to here
-            // 3. All functions return the response (in onMessage()), 
-            // 4. onMessage() calls send(), which will handle queueing etc
+            // Something like:
             //
-            // or, create a struct Response which encapsulates the json rsp but also a flag for error condition, which 
-            // may be useful
+            //  a) ws->getBufferedAmount() is the bytes that have not been sent (i.e. are buffered)
+            //  b) keep sending until ws->getBufferedAmount() >= maxBackpressure (perhaps check current message can be sent within the backpressure)
+            //  c) at which we either drop the messages or queue            
           },
           .close = [this](KvWebSocket * ws, int /*code*/, std::string_view /*message*/)
           {
@@ -213,7 +209,7 @@ public:
             // when we shutdown, we have to call ws->end() to close each client otherwise uWS loop doesn't return,
             // but when we call ws->end(), this lambda is called, so we need to avoid mutex deadlock with this flag
             if (m_run)
-              m_wsClients.erase(ws);
+              m_clients.erase(ws);
           }
         })
         .listen(ip, port, [this, port, &listening, &startLatch](auto * listenSocket)
@@ -437,7 +433,7 @@ public:
 
     std::unique_ptr<std::jthread> m_thread;
     std::vector<us_listen_socket_t *> m_sockets;
-    std::set<KvWebSocket *> m_wsClients;    
+    std::set<KvWebSocket *> m_clients;    
     std::atomic_bool m_run;
     us_timer_t * m_monitorTimer{};
     // TODO profile runtime cost of shared_ptr vs raw ptr
