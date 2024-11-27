@@ -294,47 +294,6 @@ static inline njson createErrorResponse (const RequestStatus status, const std::
 }
 
 
-template<typename Json>
-std::tuple<bool, njson> doIsValid (const std::string_view queryRspName, KvWebSocket * ws, 
-                const Json& cmd, const std::map<const std::string_view, const Param>& params,
-                std::function<std::tuple<RequestStatus, const std::string_view>(const Json&)> onPostValidate = nullptr)
-{
-  const auto [stat, msg] = isCmdValid<Json, RequestStatus,
-                                            RequestStatus::Ok,
-                                            RequestStatus::ParamMissing,
-                                            RequestStatus::ValueTypeInvalid>(cmd, params, onPostValidate);
-  
-  if (stat != RequestStatus::Ok) [[unlikely]]
-  {
-    PLOGD << msg;
-    return {false, createErrorResponse(queryRspName, stat, msg)};
-  }
-  else
-    return {true, njson{}};
-}
-
-
-std::tuple<bool, njson> isValid ( const std::string_view queryRspName, KvWebSocket * ws, 
-                                  const njson& cmd, const std::map<const std::string_view, const Param>& params,
-                                  typename std::function<std::tuple<RequestStatus, const std::string_view>(const njson&)> onPostValidate = nullptr)
-{
-  const auto& cmdRoot = cmd.object_range().cbegin()->value();
-  return doIsValid(queryRspName, ws, cmdRoot, params, onPostValidate);
-}
-
-
-std::tuple<bool, njson> isValid (const std::string_view queryRspName,
-                                const std::string_view child, KvWebSocket * ws, 
-                                const njson& cmd, const std::map<const std::string_view, const Param>& params,
-                                std::function<std::tuple<RequestStatus, const std::string_view>(const njson&)> onPostValidate = nullptr)
-{
-  const auto& childObject = cmd.object_range().cbegin()->value()[child];
-  return doIsValid(queryRspName, ws, childObject, params, onPostValidate);
-}
-
-
-// NEW, REMOVE ABOVE
-
 std::tuple<bool, njson> doIsValid (const std::string_view queryRspName, 
                 const njson& cmd, const std::map<const std::string_view, const Param>& params,
                 std::function<std::tuple<RequestStatus, const std::string_view>(const njson&)> onPostValidate = nullptr)
@@ -361,17 +320,6 @@ std::tuple<bool, njson> isValid ( const std::string_view queryRspName,
 {
   return doIsValid(queryRspName, req, params, onPostValidate);
 }
-
-
-// std::tuple<bool, njson> isValid (const std::string_view queryRspName,
-//                                 const std::string_view child,
-//                                 const njson& cmd,
-//                                 const std::map<const std::string_view, const Param>& params,
-//                                 std::function<std::tuple<RequestStatus, const std::string_view>(const njson&)> onPostValidate = nullptr)
-// {
-//   const auto& childObject = cmd.object_range().cbegin()->value()[child];
-//   return doIsValid(queryRspName, childObject, params, onPostValidate);
-// }
 
 
 } // namespace core

@@ -339,15 +339,18 @@ public:
           {
             const auto type = command.substr(0, pos);
 
+            // TODO remind myself why/if an empty response can be returned
             if (type == "KV")
             {
-              const Response response = m_kvHandler->handle(ws, command, request);
-              send(ws, response.rsp);
+              const Response response = m_kvHandler->handle(command, request);
+              if (!response.rsp.empty())
+                send(ws, response.rsp);
             }
             else if (type == "SH")
             {
               const Response response = m_shHandler->handle(command, request);
-              send(ws, response.rsp);
+              if (!response.rsp.empty())
+                send(ws, response.rsp);
             }
             else if (command == sv::InfoReq)
             {

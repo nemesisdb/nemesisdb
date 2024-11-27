@@ -14,8 +14,10 @@ namespace nemesis { namespace core { namespace sh {
 
   Validity makeValid ()
   {
-    return Validity{true, njson{}};
+    const static Validity result {true, njson{}};
+    return result;
   }
+  
 
   Validity makeInvalid (njson rsp)
   {
@@ -23,7 +25,7 @@ namespace nemesis { namespace core { namespace sh {
   }
 
 
-  Validity validateNew (njson& req)
+  Validity validateNew (const njson& req)
   {
     if (auto [topLevelValid, rsp] = isValid(sh::NewRsp, req.at(sh::NewReq), {{Param::optional("expiry", JsonObject)}}); !topLevelValid)
       return Validity{false, std::move(rsp)};
@@ -53,7 +55,7 @@ namespace nemesis { namespace core { namespace sh {
   }
 
 
-  Validity validateExists (njson& req)
+  Validity validateExists (const njson& req)
   {
     if (auto [valid, rsp] = isValid(sh::ExistsRsp, req.at(sh::ExistsReq), {{Param::required("tkns", JsonArray)}}); !valid)
       return makeInvalid(std::move(rsp));
@@ -62,7 +64,7 @@ namespace nemesis { namespace core { namespace sh {
   }
 
 
-  Validity validateSave (njson& req)
+  Validity validateSave (const njson& req)
   {
     auto validate = [](const njson& cmd) -> std::tuple<RequestStatus, const std::string_view>
     {
@@ -96,7 +98,7 @@ namespace nemesis { namespace core { namespace sh {
   }
 
 
-  Validity validateLoad (njson& req)
+  Validity validateLoad (const njson& req)
   {
     if (auto [valid, rsp] = isValid(sh::LoadRsp, req.at(sh::LoadReq), {{Param::required("name", JsonString)}}); !valid)
       return makeInvalid(std::move(rsp));
