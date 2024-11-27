@@ -31,8 +31,8 @@ session1 = await client.create_session()
 session2 = await client.create_session()
 
 if session1.isValid and session2.isValid:
-  print(f'Session 1 token {session1.token}')
-  print(f'Session 2 token {session2.token}')
+  print(f'Session 1 token {session1.tkn}')
+  print(f'Session 2 token {session2.tkn}')
 
 (ok, count) = await client.end_all_sessions()
 if ok:

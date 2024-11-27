@@ -1,5 +1,6 @@
-import common
 from typing import Tuple
+import sys
+sys.path.append('../')
 from ndb.sessionclient import SessionClient, Session
 
 import asyncio as asio
@@ -22,7 +23,6 @@ async def create_otp(client: SessionClient) -> Tuple[Session, int]:
   # set the passcode, have expiry short for this example
   code = random.randint(1000, 9999)  
   await client.set({'code':code}, session.tkn)
-  
   return (session, code)
 
 
@@ -35,7 +35,9 @@ async def validate_otp(client: SessionClient, tkn: int, userCode: int) -> bool:
 
 async def otp():
   client = SessionClient()
-  await client.open('ws://127.0.0.1:1987/')
+  if not (await client.open('ws://127.0.0.1:1987/')):
+    print('Failed to connect')
+    return
 
   # this stores the OTP and would send to user's email/phone etc
   (session, code) = await create_otp(client)
@@ -43,7 +45,8 @@ async def otp():
   print(f"Correct Code {code}")
 
   # some time later user submits a code
-  # but we simulate this in a loop
+  # simulate this in a loop, attempting the correct code
+  # on attempt 'userCorrectCodeIndex', otherwise random code
 
   valid = False
   maxAttempts = 5

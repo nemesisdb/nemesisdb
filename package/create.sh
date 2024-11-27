@@ -44,7 +44,7 @@ echo Copying server binary
 cp ../server/Release/bin/nemesisdb $installDir
 
 echo Copying server config
-cp ../server/configs/default.json $installDir
+cp ../server/configs/default.jsonc $installDir
 
 echo Building package
 dpkg-deb --build --root-owner-group staging/$packageName

@@ -108,6 +108,10 @@
     "regex": "cpp",
     "scoped_allocator": "cpp",
     "*.inc": "cpp",
-    "format": "cpp"
-  }  
+    "format": "cpp",
+    "stacktrace": "cpp"
+  },
+  "python.analysis.extraPaths": [
+    "./apis/python"
+  ]
 }

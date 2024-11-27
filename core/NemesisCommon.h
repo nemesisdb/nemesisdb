@@ -19,6 +19,7 @@
 #include <plog/Log.h>
 #include <plog/Appenders/ColorConsoleAppender.h>
 
+
 #define ndb_always_inline inline __attribute__((always_inline))
 
 #ifndef NDEBUG
@@ -27,13 +28,14 @@
   #define NDB_RELEASE
 #endif
 
+
 namespace nemesis { namespace core {
 
 namespace fs = std::filesystem;
 namespace chrono = std::chrono;
 namespace jsonpath = jsoncons::jsonpath;
 
-static const char * NEMESIS_VERSION = "0.6.5";
+static const char * NEMESIS_VERSION = "0.6.6";
 static const std::size_t NEMESIS_CONFIG_VERSION = 5U;
 
 static const std::size_t NEMESIS_KV_MINPAYLOAD = 64U;
@@ -44,8 +46,7 @@ enum class ServerMode
 {
   None,
   KV,
-  KvSessions,
-  TS
+  KvSessions
 };
 
 
@@ -81,19 +82,11 @@ enum class RequestStatus
 };
 
 
-enum class KvSaveStatus
-{
-  Pending = 0,
-  Complete,
-  Error
-};
-
 
 // general
 const uWS::OpCode WsSendOpCode = uWS::OpCode::TEXT;
 
 using njson = jsoncons::ojson;
-using uuid = std::string;
 using NemesisClock = chrono::steady_clock;
 using NemesisTimePoint = NemesisClock::time_point;
 
@@ -121,6 +114,13 @@ using SessionExpireTime = SessionClock::time_point;
 using SessionDuration = chrono::seconds;
 using SessionExpireTimePoint = chrono::time_point<SessionClock, std::chrono::seconds>;
 
+
+template <typename E>
+constexpr typename std::underlying_type<E>::type toUnderlying(const E e) noexcept
+{
+  // replace with std::to_underlying() in C++23
+  return static_cast<typename std::underlying_type_t<E>>(e);
+}
 
 
 struct Param
@@ -168,10 +168,23 @@ std::tuple<StatusT, const std::string_view> isCmdValid (const JSON& msg,
 }
 
 
-struct ServerStats
+template<typename T, std::size_t Size>
+struct PmrResource
 {
-  std::atomic_size_t queryCount{0U};
+  PmrResource() : mbr(std::data(buffer), std::size(buffer)), alloc(&mbr)
+  {
 
+  }
+
+  std::pmr::polymorphic_allocator<T>& getAlloc ()
+  {
+    return alloc;
+  }
+
+  private:
+    std::array<std::byte, Size> buffer;
+    std::pmr::monotonic_buffer_resource mbr;
+    std::pmr::polymorphic_allocator<T> alloc;
 };
 
 
@@ -200,6 +213,19 @@ struct WsSession
 
 
 using KvWebSocket = uWS::WebSocket<false, true, WsSession>;
+
+
+struct Response
+{
+  njson rsp;
+};
+
+
+ndb_always_inline void send (KvWebSocket * ws, const njson& msg)
+{
+  ws->send(msg.to_string(), WsSendOpCode);
+}
+
 
 
 template<class Formatter>
@@ -268,18 +294,32 @@ static inline njson createErrorResponse (const RequestStatus status, const std::
 }
 
 
-template <typename E>
-constexpr typename std::underlying_type<E>::type toUnderlying(const E e) noexcept
+std::tuple<bool, njson> doIsValid (const std::string_view queryRspName, 
+                const njson& cmd, const std::map<const std::string_view, const Param>& params,
+                std::function<std::tuple<RequestStatus, const std::string_view>(const njson&)> onPostValidate = nullptr)
 {
-  // replace with std::to_underlying() in C++23
-  return static_cast<typename std::underlying_type_t<E>>(e);
+  const auto [stat, msg] = isCmdValid<njson, RequestStatus,
+                                            RequestStatus::Ok,
+                                            RequestStatus::ParamMissing,
+                                            RequestStatus::ValueTypeInvalid>(cmd, params, onPostValidate);
+  
+  if (stat != RequestStatus::Ok) [[unlikely]]
+  {
+    PLOGD << msg;
+    return {false, createErrorResponse(queryRspName, stat, msg)};
+  }
+  else
+    return {true, njson{}};
 }
 
 
-std::size_t countFiles (const fs::path& path)
+std::tuple<bool, njson> isValid ( const std::string_view queryRspName, 
+                                  const njson& req,
+                                  const std::map<const std::string_view, const Param>& params,
+                                  std::function<std::tuple<RequestStatus, const std::string_view>(const njson&)> onPostValidate = nullptr)
 {
-  return (std::size_t)std::distance(fs::directory_iterator{path}, fs::directory_iterator{});
-};
+  return doIsValid(queryRspName, req, params, onPostValidate);
+}
 
 
 } // namespace core

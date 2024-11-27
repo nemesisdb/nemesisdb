@@ -4,11 +4,12 @@
 #include <algorithm>
 #include <latch>
 #include <filesystem>
+#include <core/Server.h>
 #include <core/NemesisConfig.h>
 #include <core/NemesisCommon.h>
-#include <core/kv/KvCommon.h>
-#include <core/kv/KvServer.h>
 #include <core/LogFormatter.h>
+#include <core/kv/KvCommon.h>
+#include <core/sh/ShSessions.h>
 #include <jsoncons/json_traits_macros.hpp>
 
 
@@ -49,7 +50,7 @@ int main (int argc, char ** argv)
     config.cfg["port"] = 1987;
     config.cfg["maxPayload"] = 2048;
 
-    config.cfg["persist"]["enabled"] = false;
+    config.cfg["persist"]["enabled"] = true;
     config.cfg["persist"]["path"] = "./data";
 
     if (config.cfg["persist"]["enabled"] == true && !fs::exists(config.cfg["persist"]["path"].as_string()))
@@ -72,14 +73,17 @@ int main (int argc, char ** argv)
   auto runServer = [&config, &error, persist, address]<typename Server> (Server&& server)
   {
     if (persist)
-      PLOGI << "Save: Enabled (" << NemesisConfig::savePath(config.cfg) << ')';
+      PLOGI << "Persist: Enabled (" << NemesisConfig::savePath(config.cfg) << ')';
     else
-      PLOGI << "Save: Disabled";
+      PLOGI << "Persist: Disabled";
     
     PLOGI << "Sessions: " << (server.hasSessions() ? "Enabled" : "Disabled");
-    PLOGI << "Interface: " << address;
+    PLOGI << "Query Interface: " << address;
     
-    if (server.run(config))
+
+    auto sessions = std::make_shared<nemesis::core::sh::Sessions>();
+
+    if (server.run(config, sessions))
       run.wait();
     else
     {
@@ -92,9 +96,9 @@ int main (int argc, char ** argv)
 
 
   if (NemesisConfig::serverMode(config.cfg) == ServerMode::KV)
-    runServer (kv::KvServer{});
+    runServer (KvServer{});
   else
-    runServer (kv::KvSessionServer{});
+    runServer (KvSessionServer{});
 
   return error;
 }

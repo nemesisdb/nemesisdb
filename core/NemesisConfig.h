@@ -12,6 +12,9 @@
 namespace nemesis { namespace core {
 
 
+//
+// TODO NemesisConfig is a confusing mess, sort it
+//  
 struct NemesisConfig
 {
   struct InterfaceSettings
@@ -54,6 +57,11 @@ struct NemesisConfig
     return cfg.at("persist").at("enabled") == true;
   }
 
+  static bool sessionsEnabled(const njson& cfg)
+  {
+    return cfg.at("sessionsEnabled") == true;
+  }
+
   static std::size_t preferredCore(const njson& cfg) 
   {
     return cfg["core"].as<std::size_t>();
@@ -66,7 +74,7 @@ struct NemesisConfig
 
   static ServerMode serverMode (const njson& cfg)
   {
-    return cfg.at("sessionsEnabled") == true ? ServerMode::KvSessions : ServerMode::KV;
+    return sessionsEnabled(cfg) ? ServerMode::KvSessions : ServerMode::KV;
   }
 
   static InterfaceSettings wsSettings (const njson& cfg)
@@ -76,7 +84,6 @@ struct NemesisConfig
             .maxPayload = cfg.at("maxPayload").as<std::size_t>() };
   }
 
-  
 
   njson cfg;
   std::filesystem::path loadPath; // only used if started with --loadName
@@ -89,7 +96,10 @@ inline bool isValid (std::function<bool()> isValidCheck, const std::string_view 
 {
   const auto valid = isValidCheck();
   if (!valid)
+  {
     PLOGF << "\n** Config Error **\n" << msg << "\n****\n";
+  }
+    
   return valid;
 };
 
@@ -164,7 +174,7 @@ NemesisConfig readConfig (const int argc, char ** argv)
     po::notify(vm);
     parsedArgs = true;
   }
-  catch(po::error_with_option_name pex)
+  catch(const po::error_with_option_name& pex)
   {
     PLOGF << pex.what();
   }

@@ -1,22 +1,19 @@
 import json
-import logging
 import asyncio as asio
 from asyncio import CancelledError
 from websockets.asyncio.client import connect
 from websockets import ConnectionClosed
 
-# logger = logging.getLogger('websockets')
-# logger.setLevel(logging.DEBUG)
-# logger.addHandler(logging.StreamHandler())
 
+# TODO could allow enable of websockets logger here
 
-"""
-The Api class runs the websockets library, handling asyncio
-coroutines.
-This class is not intended to be used directly, instead
-use the Client class.
-"""
 class Connection:
+  """
+  The Api class runs the websockets library, handling asyncio coroutines.
+  
+  This class is not intended to be used directly, instead use KvClient or 
+  SessionClient.
+  """
 
   def __init__(self):
     pass
@@ -24,20 +21,25 @@ class Connection:
 
   async def start(self, uri: str):    
     self.uri = uri
-    self.userClosed = False    
+    self.userClosed = False
+    self.opened = False 
     self.rspEvt = asio.Event()
     self.connectedSem = asio.Semaphore(0)
     self.rcvTask = None
     self.listen_task = asio.create_task(self.open())
-    await self.connectedSem.acquire()
+    self.ws = None
 
-    return self.listen_task # TODO does this need to be returned? probably not
+    # the listen_task will release this semaphore
+    # when it fails/succeeds to connect
+    await self.connectedSem.acquire()
+    return self.opened
   
 
   async def open(self):
     try:
       async with connect(self.uri, open_timeout=5) as websocket:
         self.ws = websocket
+        self.opened = True
         self.connectedSem.release()
 
         while True:
@@ -52,8 +54,9 @@ class Connection:
       pass
     finally:
       self.rspEvt.clear()
+      self.opened = False
 
-      if self.userClosed == False:
+      if self.userClosed == False and self.rcvTask != None:
         self.rcvTask.cancel()
 
 
@@ -62,7 +65,6 @@ class Connection:
       queryTask = asio.create_task(self._query(json.dumps(s)))
       await queryTask
       msg = queryTask.result()
-      
     except asio.CancelledError:
       # if there is an active query when we are disconnected, the query
       # task is cancelled, raising an exception
@@ -81,5 +83,6 @@ class Connection:
 
   async def close(self):
     self.userClosed = True
-    await self.ws.close()
+    if self.ws:
+      await self.ws.close()
 
