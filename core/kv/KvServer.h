@@ -339,14 +339,14 @@ public:
           {
             const auto type = command.substr(0, pos);
 
-            if (type == "SH")
-            {
-              const Response response = m_shHandler->handle(ws, command, request);
-              send(ws, response.rsp);
-            }
-            else if (type == "KV")
+            if (type == "KV")
             {
               const Response response = m_kvHandler->handle(ws, command, request);
+              send(ws, response.rsp);
+            }
+            else if (type == "SH")
+            {
+              const Response response = m_shHandler->handle(command, request);
               send(ws, response.rsp);
             }
             else if (command == sv::InfoReq)

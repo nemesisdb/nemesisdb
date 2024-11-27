@@ -333,6 +333,47 @@ std::tuple<bool, njson> isValid (const std::string_view queryRspName,
 }
 
 
+// NEW, REMOVE ABOVE
+
+std::tuple<bool, njson> doIsValid (const std::string_view queryRspName, 
+                const njson& cmd, const std::map<const std::string_view, const Param>& params,
+                std::function<std::tuple<RequestStatus, const std::string_view>(const njson&)> onPostValidate = nullptr)
+{
+  const auto [stat, msg] = isCmdValid<njson, RequestStatus,
+                                            RequestStatus::Ok,
+                                            RequestStatus::ParamMissing,
+                                            RequestStatus::ValueTypeInvalid>(cmd, params, onPostValidate);
+  
+  if (stat != RequestStatus::Ok) [[unlikely]]
+  {
+    PLOGD << msg;
+    return {false, createErrorResponse(queryRspName, stat, msg)};
+  }
+  else
+    return {true, njson{}};
+}
+
+
+std::tuple<bool, njson> isValid ( const std::string_view queryRspName, 
+                                  const njson& req,
+                                  const std::map<const std::string_view, const Param>& params,
+                                  std::function<std::tuple<RequestStatus, const std::string_view>(const njson&)> onPostValidate = nullptr)
+{
+  return doIsValid(queryRspName, req, params, onPostValidate);
+}
+
+
+// std::tuple<bool, njson> isValid (const std::string_view queryRspName,
+//                                 const std::string_view child,
+//                                 const njson& cmd,
+//                                 const std::map<const std::string_view, const Param>& params,
+//                                 std::function<std::tuple<RequestStatus, const std::string_view>(const njson&)> onPostValidate = nullptr)
+// {
+//   const auto& childObject = cmd.object_range().cbegin()->value()[child];
+//   return doIsValid(queryRspName, childObject, params, onPostValidate);
+// }
+
+
 } // namespace core
 } // namespace nemesis
 

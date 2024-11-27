@@ -43,7 +43,7 @@ int main (int argc, char ** argv)
 
   #ifdef NDB_DEBUG
     config.cfg["version"] = 5;
-    config.cfg["sessionsEnabled"] = false;
+    config.cfg["sessionsEnabled"] = true;
     config.cfg["core"] = 0;
 
     config.cfg["ip"] = "127.0.0.1";
