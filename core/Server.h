@@ -28,7 +28,7 @@ namespace sh = nemesis::core::sh;
 namespace sv = nemesis::core::sv;
 
 
-template<bool HaveSessions>
+
 class Server
 {
 
@@ -44,14 +44,6 @@ public:
     stop();
   }
 
-
-  constexpr bool hasSessions () const
-  {
-    if constexpr (HaveSessions) 
-      return true;
-    else
-      return false;
-  }
 
 
   void stop()
@@ -153,7 +145,7 @@ public:
           }
         }
         
-        m_kvHandler = std::make_shared<kv::KvHandler<HaveSessions>> (config, m_sessions);
+        m_kvHandler = std::make_shared<kv::KvHandler> (config, m_sessions);
         m_shHandler = std::make_shared<sh::ShHandler>(config, m_sessions);
       }
       catch(const std::exception& e)
@@ -229,11 +221,8 @@ public:
         if (!wsApp.constructorFailed())
         {
           bool timerSet = true;
-
-          if constexpr (HaveSessions)
-          {
-            #ifndef NDB_UNIT_TEST
-
+          
+          #ifndef NDB_UNIT_TEST
             const auto periodMs = chrono::milliseconds{5'000};
 
             PLOGD << "Creating monitor timer for " << periodMs.count() << "ms";
@@ -241,21 +230,20 @@ public:
             if (m_monitorTimer = us_create_timer((struct us_loop_t *) uWS::Loop::get(), 0, sizeof(TimerData)); m_monitorTimer)
             {
               auto * timerData = reinterpret_cast<TimerData *> (us_timer_ext(m_monitorTimer));
-              timerData->kvHandler = m_kvHandler;
+              timerData->shHandler = m_shHandler;
 
               us_timer_set(m_monitorTimer, [](struct us_timer_t * timer)
               {
                 if (auto * timerData = reinterpret_cast<TimerData *> (us_timer_ext(timer)); timerData)
-                  timerData->kvHandler->monitor();
+                  timerData->shHandler->monitor();
               },
               periodMs.count(),
               periodMs.count());
             }
             else
               timerSet = false;
-
-            #endif
-          }
+          #endif
+          
 
           if (timerSet)
             wsApp.run();
@@ -297,7 +285,7 @@ public:
     void onMessage(KvWebSocket * ws, std::string_view message, uWS::OpCode opCode)
     { 
       if (opCode != uWS::OpCode::TEXT)
-        ws->send(createErrorResponse(RequestStatus::OpCodeInvalid).to_string(), kv::WsSendOpCode);
+        send(ws, createErrorResponse(RequestStatus::OpCodeInvalid));
       else
       {
         jsoncons::json_decoder<njson> decoder;
@@ -306,7 +294,7 @@ public:
         try
         {
           if (reader.read(); !decoder.is_valid())
-            ws->send(createErrorResponse(RequestStatus::JsonInvalid).to_string(), kv::WsSendOpCode);
+            send(ws, createErrorResponse(RequestStatus::JsonInvalid));
           else
           {
             handleMessage(ws, decoder.get_result());
@@ -314,7 +302,7 @@ public:
         }
         catch (const jsoncons::ser_error& jsonEx)
         {
-          ws->send(createErrorResponse(RequestStatus::JsonInvalid).to_string(), kv::WsSendOpCode);
+          send(ws, createErrorResponse(RequestStatus::JsonInvalid));
         }              
       }
     }
@@ -346,7 +334,7 @@ public:
               if (!response.rsp.empty())
                 send(ws, response.rsp);
             }
-            else if (HaveSessions && type == "SH")
+            else if (type == "SH")
             {
               const Response response = m_shHandler->handle(command, request);
               if (!response.rsp.empty())
@@ -360,9 +348,9 @@ public:
               static const njson Info {jsoncons::json_object_arg, {
                                                                     {"st", toUnderlying(RequestStatus::Ok)},  // for compatibility with APIs and consistancy
                                                                     {"serverVersion",   NEMESIS_VERSION},
-                                                                    {"sessionsEnabled", NemesisConfig::sessionsEnabled(m_config)},
                                                                     {"persistEnabled",  NemesisConfig::persistEnabled(m_config)}
                                                                   }};
+
 
               static const njson Prepared {jsoncons::json_object_arg, {{sv::InfoRsp, {jsoncons::json_object_arg,  Info.object_range().cbegin(),
                                                                                                                   Info.object_range().cend()}}}}; 
@@ -382,35 +370,31 @@ public:
 
     std::tuple<bool, const std::string_view> load(const NemesisConfig& config)
     {
-      if (const auto [valid, msg] = validatePreLoad(config.loadName, config.loadPath, HaveSessions); !valid)
+      PLOGI << "-- Load --";
+
+      if (PreLoadInfo info = validatePreLoad(config.loadName, config.loadPath); !info.valid)
       {
-        return {false, msg};
+        return {false, info.err};
       }
       else
       {
-        PLOGI << "-- Load --";
-
-        const auto [root, md, data, pathsValid] = getLoadPaths(config.loadPath / config.loadName);
         LoadResult loadResult;
 
-        if constexpr (HaveSessions)
-        {
-          loadResult = m_shHandler->internalLoad(config.loadName, data);
-        }
+        if (info.dataType == SaveDataType::SessionKv)
+          loadResult = m_shHandler->internalLoad(config.loadName, info.paths.data);
         else
-        {
-          loadResult = m_kvHandler->internalLoad(config.loadName, data);
-        }
+          loadResult = m_kvHandler->internalLoad(config.loadName, info.paths.data);
         
         const auto success = loadResult.status == RequestStatus::LoadComplete;
     
         if (success)
         {
           PLOGI << "Status: Success";
-          if constexpr (HaveSessions)
+
+          if (info.dataType == SaveDataType::SessionKv)
           {
             PLOGI << "Sessions: " << loadResult.nSessions ;
-          }
+          }              
             
           PLOGI << "Keys: " << loadResult.nKeys ;
           PLOGI << "Duration: " << chrono::duration_cast<std::chrono::milliseconds>(loadResult.duration).count() << "ms";
@@ -421,14 +405,14 @@ public:
         PLOGI << "----------";
         
         return {success, ""};
-      }     
+      }    
     }
     
 
   private:
     struct TimerData
     {
-      std::shared_ptr<kv::KvHandler<HaveSessions>> kvHandler;
+      std::shared_ptr<sh::ShHandler> shHandler;
     };
 
     std::unique_ptr<std::jthread> m_thread;
@@ -437,15 +421,15 @@ public:
     std::atomic_bool m_run;
     us_timer_t * m_monitorTimer{};
     // TODO profile runtime cost of shared_ptr vs raw ptr
-    std::shared_ptr<kv::KvHandler<HaveSessions>> m_kvHandler;
+    std::shared_ptr<kv::KvHandler> m_kvHandler;
     std::shared_ptr<sh::ShHandler> m_shHandler;
     std::shared_ptr<sh::Sessions> m_sessions;
     njson m_config;
 };
 
 
-using KvServer = Server<false>;
-using KvSessionServer = Server<true>;
+// using KvServer = Server<false>;
+// using KvSessionServer = Server<true>;
 
 
 }

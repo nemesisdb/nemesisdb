@@ -43,7 +43,7 @@ int main (int argc, char ** argv)
 
   #ifdef NDB_DEBUG
     config.cfg["version"] = 5;
-    config.cfg["sessionsEnabled"] = true;
+    //config.cfg["sessionsEnabled"] = true;
     config.cfg["core"] = 0;
 
     config.cfg["ip"] = "127.0.0.1";
@@ -77,7 +77,7 @@ int main (int argc, char ** argv)
     else
       PLOGI << "Persist: Disabled";
     
-    PLOGI << "Sessions: " << (server.hasSessions() ? "Enabled" : "Disabled");
+    //PLOGI << "Sessions: " << (server.hasSessions() ? "Enabled" : "Disabled");
     PLOGI << "Query Interface: " << address;
     
 
@@ -94,11 +94,12 @@ int main (int argc, char ** argv)
     server.stop();
   };
 
+  runServer(Server{});
 
-  if (NemesisConfig::serverMode(config.cfg) == ServerMode::KV)
-    runServer (KvServer{});
-  else
-    runServer (KvSessionServer{});
+  // if (NemesisConfig::serverMode(config.cfg) == ServerMode::KV)
+  //   runServer (KvServer{});
+  // else
+  //   runServer (KvSessionServer{});
 
   return error;
 }

@@ -44,7 +44,7 @@ class ShHandler
 
   
   using QueryTypePmrMap = ankerl::unordered_dense::pmr::map<std::string_view, ShQueryType>;
-  using HandlerPmrMap = ankerl::unordered_dense::pmr::map<ShQueryType, Handler>;
+  using HandlerPmrMap = ankerl::unordered_dense::pmr::map<sh::ShQueryType, Handler>;
 
 
   template<class Alloc>
@@ -137,6 +137,13 @@ public:
     loadResult.nKeys = rsp[sh::LoadRsp]["keys"].as<std::size_t>();
 
     return loadResult;
+  }
+
+
+  // TODO should this be moved to ShHandler?
+  void monitor ()
+  {
+    SessionExecutor::sessionMonitor(m_sessions);
   }
 
 
@@ -276,9 +283,9 @@ private:
     {
       const auto& loadName = req.at(sh::LoadReq).at("name").as_string();
 
-      if (const auto [preLoadValid, msg] = validatePreLoad(loadName, fs::path{NemesisConfig::savePath(m_config)}, true); !preLoadValid)
+      if (const PreLoadInfo info = validatePreLoad(loadName, fs::path{NemesisConfig::savePath(m_config)}); !info.valid)
       {
-        PLOGE << msg;
+        PLOGE << info.err;
 
         Response response;
         response.rsp[sh::LoadRsp]["st"] = toUnderlying(RequestStatus::LoadError);

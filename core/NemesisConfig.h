@@ -57,10 +57,10 @@ struct NemesisConfig
     return cfg.at("persist").at("enabled") == true;
   }
 
-  static bool sessionsEnabled(const njson& cfg)
-  {
-    return cfg.at("sessionsEnabled") == true;
-  }
+  // static bool sessionsEnabled(const njson& cfg)
+  // {
+  //   return cfg.at("sessionsEnabled") == true;
+  // }
 
   static std::size_t preferredCore(const njson& cfg) 
   {
@@ -72,10 +72,10 @@ struct NemesisConfig
     return cfg.at("maxPayload").as<std::size_t>();
   }
 
-  static ServerMode serverMode (const njson& cfg)
-  {
-    return sessionsEnabled(cfg) ? ServerMode::KvSessions : ServerMode::KV;
-  }
+  // static ServerMode serverMode (const njson& cfg)
+  // {
+  //   return sessionsEnabled(cfg) ? ServerMode::KvSessions : ServerMode::KV;
+  // }
 
   static InterfaceSettings wsSettings (const njson& cfg)
   {
@@ -123,7 +123,7 @@ NemesisConfig parse(std::filesystem::path path)
 
     bool valid =  isValid([&cfg]{ return cfg.contains("version") && cfg.at("version").is_uint64(); },   "Require version as an unsigned int") &&
                   isValid([&cfg]{ return cfg.at("version") == nemesis::core::NEMESIS_CONFIG_VERSION; }, "Config version must be " + std::to_string(nemesis::core::NEMESIS_CONFIG_VERSION)) &&
-                  isValid([&cfg]{ return cfg.contains("sessionsEnabled") && cfg.at("sessionsEnabled").is_bool(); },         "'sessionsEnabled' must be bool") &&
+                  //isValid([&cfg]{ return cfg.contains("sessionsEnabled") && cfg.at("sessionsEnabled").is_bool(); },         "'sessionsEnabled' must be bool") &&
                   isValid([&cfg]{ return !cfg.contains("core") || (cfg.contains("core") && cfg.at("core").is_uint64()); },  "'core' must be an unsigned integer") &&
                   isValid([&cfg]{ return cfg.contains("ip") && cfg.contains("port") && cfg.contains("maxPayload"); },       "Require ip, port, maxPayload and save") &&
                   isValid([&cfg]{ return cfg.at("ip").is_string() && cfg.at("port").is_uint64() && cfg.at("maxPayload").is_uint64(); }, "ip must string, port and maxPayload must be unsigned integer") &&
