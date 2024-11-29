@@ -1,4 +1,4 @@
-from ndb.client import FieldValues
+from ndb.client import StValues
 from ndb.kvclient import KvClient
 from ndb.logging import logger
 from typing import Tuple, List
@@ -172,14 +172,14 @@ class SessionClient:
       q[SessionCmd.SAVE_REQ]['tkns'] = tkns
 
     rsp = await self.client._send_query(SessionCmd.SAVE_REQ, q)
-    return self.client._is_rsp_valid(rsp, SessionCmd.SAVE_RSP, FieldValues.ST_SAVE_COMPLETE)
+    return self.client._is_rsp_valid(rsp, SessionCmd.SAVE_RSP, StValues.ST_SAVE_COMPLETE)
 
 
   async def session_load(self, name: str) -> Tuple[bool, dict]:
     q = {SessionCmd.LOAD_REQ:{'name':name}}
     rsp = await self.client._send_query(SessionCmd.LOAD_REQ, q)
     
-    if self.client._is_rsp_valid(rsp, SessionCmd.LOAD_RSP, FieldValues.ST_LOAD_COMPLETE):
+    if self.client._is_rsp_valid(rsp, SessionCmd.LOAD_RSP, StValues.ST_LOAD_COMPLETE):
       info = dict(rsp[SessionCmd.LOAD_RSP])
       info.pop('st')
       return (True, info)

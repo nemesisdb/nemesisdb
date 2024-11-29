@@ -53,8 +53,8 @@ class SetGet(NDBTest):
 
 
   async def test_set_no_keys(self):
-    valid = await self.client.set({})
-    self.assertFalse(valid)
+    valid = await self.client.set({}) # having empty keys is valid
+    self.assertTrue(valid)
 
 
   async def test_get_no_keys(self):
