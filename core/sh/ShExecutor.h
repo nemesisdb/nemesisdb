@@ -58,7 +58,7 @@ public:
   static Response sessionInfo (std::shared_ptr<Sessions> sessions, const SessionToken& tkn)
   {
     Response response;
-    response.rsp = njson {jsoncons::json_object_arg, {{cmds::InfoRsp, njson{jsoncons::json_object_arg}}}}; 
+    response.rsp = njson {jsoncons::json_object_arg, {{cmds::InfoRsp, njson::object()}}}; 
 
     auto& body = response.rsp.at(cmds::InfoRsp);
 
