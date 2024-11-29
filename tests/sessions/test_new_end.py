@@ -21,8 +21,7 @@ class NewEnd(NDBSessionTest):
     session = await self.client.create_session()
     self.assertTrue(session.isValid)
 
-    ended = await self.client.end_session(session.tkn)
-    self.assertTrue(ended)
+    await self.client.end_session(session.tkn)
 
   
   async def test_end_multiple(self):
@@ -35,9 +34,7 @@ class NewEnd(NDBSessionTest):
       sessions.append(session)
 
     for session in sessions:
-      ended = await self.client.end_session(session.tkn)
-      self.assertTrue(ended)
-
+      await self.client.end_session(session.tkn)
 
 
 if __name__ == "__main__":

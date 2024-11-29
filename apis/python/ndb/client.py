@@ -30,6 +30,23 @@ class SvCmd:
   INFO_RSP    = 'SV_INFO_RSP'
 
 
+class NdbException(Exception):
+  pass
+
+
+class ConnectError(NdbException):
+   def __init__(self, msg='Connection failed'):
+    super().__init__(msg)
+
+
+class ResponseError(NdbException):
+  def __init__(self, rsp):
+    super().__init__('Response failed')
+    self.rsp = rsp
+
+
+
+  
 class Client(ABC):
   """Inherited by KvClient and SessionClient to query the database.
 
@@ -38,7 +55,6 @@ class Client(ABC):
 
   def __init__(self, debug = False):
     self.uri = ''
-    self.listen_task = None
     self.api = Connection()
     if debug:
       logger.setLevel(logging.DEBUG)
@@ -54,28 +70,28 @@ class Client(ABC):
     return connected
 
 
-  async def sendCmd(self, cmdReq: str, cmdRsp: str, body: dict, stSuccess = StValues.ST_SUCCESS):
+  async def _sendCmd(self, cmdReq: str, cmdRsp: str, body: dict, stSuccess = StValues.ST_SUCCESS):
     req = {cmdReq : body}
     rsp = await self.api.query(req)
-    return (self._is_rsp_valid(rsp, cmdRsp, stSuccess), rsp)
+    self._raise_if_invalid(rsp, cmdRsp, stSuccess)
+    return rsp
     
 
   # server_info is independent from kv and sh
-  async def server_info(self) -> Tuple[bool, dict]:
-    rsp = await self._send_query(SvCmd.INFO_REQ, {SvCmd.INFO_REQ : {}})
-    if self._is_rsp_valid(rsp, SvCmd.INFO_RSP):
-      info = dict(rsp.get(SvCmd.INFO_RSP))
-      info.pop('st')
-      return (True, info)
-    else:
-      return (False, dict())
+  async def server_info(self) -> dict:
+    rsp = await self._sendCmd(SvCmd.INFO_REQ, SvCmd.INFO_RSP, {})
+    info = dict(rsp.get(SvCmd.INFO_RSP))
+    info.pop('st')
+    return info
 
 
   async def close(self):
     await self.api.close()
  
 
-  def _is_rsp_valid(self, rsp: dict, cmd: str, expected = StValues.ST_SUCCESS) -> bool:
-    valid = rsp[cmd][Fields.STATUS] == expected
-    logger.debug(cmd + ' ' + ('Response Ok' if valid else f'Response Fail: {str(rsp)}'))
-    return valid
+  def _raise_if_invalid(self, rsp: dict, cmdRsp: str, expected = StValues.ST_SUCCESS):
+    if rsp[cmdRsp][Fields.STATUS] != expected:
+      raise ResponseError(rsp)
+    
+    logger.debug(cmdRsp + ' ' + ('Response Ok'))
+    

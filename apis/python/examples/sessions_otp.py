@@ -29,8 +29,8 @@ async def create_otp(client: SessionClient) -> Tuple[Session, int]:
 async def validate_otp(client: SessionClient, tkn: int, userCode: int) -> bool:
   # if session doesn't exist, get() returns (False, dict()), otherwise check code
   print(f'Attempting {userCode}')
-  (valid, result) = await client.get(('code',), tkn)
-  return valid and result['code'] == userCode
+  result = await client.get(('code',), tkn)
+  return result['code'] == userCode
   
 
 async def otp():

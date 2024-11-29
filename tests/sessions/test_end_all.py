@@ -11,8 +11,7 @@ class EndAll(NDBSessionTest):
       session = await self.client.create_session()
       self.assertTrue(session.isValid)
 
-    (ended, count) = await self.client.end_all_sessions()
-    self.assertTrue(ended)
+    count = await self.client.end_all_sessions()
     self.assertEqual(count, nSessions)
 
 

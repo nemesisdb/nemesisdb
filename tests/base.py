@@ -11,8 +11,7 @@ class NDBTest(IsolatedAsyncioTestCase):
     self.assertTrue(connected, 'Connection failed')
     
     # clear before each test
-    (valid, _) = await self.client.clear()
-    self.assertTrue(valid)
+    await self.client.clear()
 
 
 class NDBSessionTest(IsolatedAsyncioTestCase):
@@ -23,5 +22,4 @@ class NDBSessionTest(IsolatedAsyncioTestCase):
     self.assertTrue(connected, 'Connection failed')
     
     # clear before each test
-    (valid, _) = await self.client.end_all_sessions()
-    self.assertTrue(valid)
+    await self.client.end_all_sessions()

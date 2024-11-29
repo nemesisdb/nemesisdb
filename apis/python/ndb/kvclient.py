@@ -1,5 +1,3 @@
-
-
 from ndb.client import Client
 from ndb.client import StValues
 from typing import Tuple, List
@@ -30,63 +28,60 @@ class KvCmd:
   LOAD_RSP      = "KV_LOAD_RSP"
 
 
-"""Client for when server has sessions disabled.
-If sessions are enabled, use SessionClient.
-"""
 class KvClient(Client):
-  # no extra work required, just use Client functions as they are.
+  """Client for storing independent keys (i.e. keys not in a session).
+  """
+  
   def __init__(self, debug = False):
     super().__init__(debug)
 
 
-  async def set(self, keys: dict, tkn = 0) -> bool:
-    return await self.sendCmd(KvCmd.SET_REQ, KvCmd.SET_RSP, {'keys':keys})
+  async def set(self, keys: dict):
+    await self._sendCmd(KvCmd.SET_REQ, KvCmd.SET_RSP, {'keys':keys})
   
 
-  async def add(self, keys: dict, tkn = 0) -> bool:
-    return await self.sendCmd(KvCmd.ADD_REQ, KvCmd.ADD_RSP, {'keys':keys})
+  async def add(self, keys: dict) -> bool:
+    await self._sendCmd(KvCmd.ADD_REQ, KvCmd.ADD_RSP, {'keys':keys})
 
 
-  async def get(self, keys: tuple, tkn = 0) -> Tuple[bool, dict]:
-    ok, rsp = await self.sendCmd(KvCmd.GET_REQ, KvCmd.GET_RSP, {'keys':keys})
-    return (ok, rsp[KvCmd.GET_RSP]['keys'] if ok else dict())
+  async def get(self, keys: tuple) -> dict:
+    rsp = await self._sendCmd(KvCmd.GET_REQ, KvCmd.GET_RSP, {'keys':keys})
+    return rsp[KvCmd.GET_RSP]['keys']
 
 
-  async def rmv(self, keys: tuple, tkn = 0) -> bool:
-    ok, _ = await self.sendCmd(KvCmd.RMV_REQ, KvCmd.RMV_RSP, {'keys':keys})
-    return ok
+  async def rmv(self, keys: tuple):
+    await self._sendCmd(KvCmd.RMV_REQ, KvCmd.RMV_RSP, {'keys':keys})
 
 
-  async def count(self, tkn = 0) -> tuple:
-    ok, rsp = await self.sendCmd(KvCmd.COUNT_REQ, KvCmd.COUNT_RSP, {})
-    return (ok, rsp[KvCmd.COUNT_RSP]['cnt'] if ok else 0)
+  async def count(self) -> int:
+    rsp = await self._sendCmd(KvCmd.COUNT_REQ, KvCmd.COUNT_RSP, {})
+    return rsp[KvCmd.COUNT_RSP]['cnt']
 
 
-  async def contains(self, keys: tuple, tkn = 0) -> Tuple[bool, List]:
-    ok, rsp = await self.sendCmd(KvCmd.CONTAINS_REQ, KvCmd.CONTAINS_RSP, {'keys':keys})
-    return (ok, rsp[KvCmd.CONTAINS_RSP]['contains'] if ok else [])
+  async def contains(self, keys: tuple) -> List:
+    rsp = await self._sendCmd(KvCmd.CONTAINS_REQ, KvCmd.CONTAINS_RSP, {'keys':keys})
+    return rsp[KvCmd.CONTAINS_RSP]['contains']
 
   
-  async def keys(self, tkn = 0) -> tuple:
-    ok, rsp = await self.sendCmd(KvCmd.KEYS_REQ, KvCmd.KEYS_RSP, {})
-    return (ok, rsp[KvCmd.KEYS_RSP]['keys'] if ok else [])
+  async def keys(self) -> int:
+    rsp = await self._sendCmd(KvCmd.KEYS_REQ, KvCmd.KEYS_RSP, {})
+    return rsp[KvCmd.KEYS_RSP]['keys']
   
 
-  async def clear(self, tkn = 0) -> Tuple[bool, int]:
-    ok, rsp = await self.sendCmd(KvCmd.CLEAR_REQ, KvCmd.CLEAR_RSP, {})
-    return (ok, rsp[KvCmd.CLEAR_RSP]['cnt'] if ok else 0)
+  async def clear(self) -> int:
+    rsp = await self._sendCmd(KvCmd.CLEAR_REQ, KvCmd.CLEAR_RSP, {})
+    return rsp[KvCmd.CLEAR_RSP]['cnt']
         
 
-  async def clear_set(self, keys: dict, tkn = 0) -> Tuple[bool, int]:
-    ok, rsp = await self.sendCmd(KvCmd.CLEAR_SET_REQ, KvCmd.CLEAR_SET_RSP, {'keys':keys})
-    return (ok, rsp[KvCmd.CLEAR_SET_RSP]['cnt'] if ok else 0)
+  async def clear_set(self, keys: dict) -> int:
+    rsp = await self._sendCmd(KvCmd.CLEAR_SET_REQ, KvCmd.CLEAR_SET_RSP, {'keys':keys})
+    return rsp[KvCmd.CLEAR_SET_RSP]['cnt'] 
 
 
-  async def save(self, name: str) -> bool:
-    ok, _ = await self.sendCmd(KvCmd.SAVE_REQ, KvCmd.SAVE_RSP, {'name':name}, StValues.ST_SAVE_COMPLETE)
-    return ok
+  async def save(self, name: str):
+    await self._sendCmd(KvCmd.SAVE_REQ, KvCmd.SAVE_RSP, {'name':name}, StValues.ST_SAVE_COMPLETE)
     
 
-  async def load(self, name: str) -> Tuple[bool, int]:
-    ok, rsp = await self.sendCmd(KvCmd.LOAD_REQ, KvCmd.LOAD_RSP, {'name':name}, StValues.ST_LOAD_COMPLETE)
-    return (ok, rsp[KvCmd.LOAD_RSP]['keys'] if ok else 0)
+  async def load(self, name: str) -> int:
+    rsp = await self._sendCmd(KvCmd.LOAD_REQ, KvCmd.LOAD_RSP, {'name':name}, StValues.ST_LOAD_COMPLETE)
+    return rsp[KvCmd.LOAD_RSP]['keys']

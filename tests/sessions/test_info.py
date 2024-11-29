@@ -8,10 +8,9 @@ class Info(NDBSessionTest):
     session = await self.client.create_session()
     self.assertTrue(session.isValid)
     
-    set = await self.client.set({'a':10, 'b':'x'}, session.tkn)
-    self.assertTrue(set)
-
-    (valid, info) = await self.client.session_info(session.tkn)
+    await self.client.set({'a':10, 'b':'x'}, session.tkn)
+    
+    info = await self.client.session_info(session.tkn)
     self.assertTrue(session.isValid)
     self.assertEqual(info['tkn'], session.tkn)
     self.assertEqual(info['keyCnt'], 2)
@@ -28,14 +27,12 @@ class Info(NDBSessionTest):
       session = await self.client.create_session()
       self.assertTrue(session.isValid)
       
-      set = await self.client.set({'a':10, 'b':'x'}, session.tkn)
-      self.assertTrue(set)
+      await self.client.set({'a':10, 'b':'x'}, session.tkn)
 
       tokens.append(session.tkn)
 
 
-    (valid, info) = await self.client.session_info_all()    
-    self.assertTrue(valid)
+    info = await self.client.session_info_all()    
     self.assertEqual(info['totalSessions'], nSessions)
     self.assertEqual(info['totalKeys'], nSessions*2)  # we set 2 keys per session
     
