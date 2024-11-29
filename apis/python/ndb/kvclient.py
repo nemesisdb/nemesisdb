@@ -40,11 +40,11 @@ class KvClient(Client):
 
 
   async def set(self, keys: dict, tkn = 0) -> bool:
-    return await self._doSetAdd(KvCmd.SET_REQ, KvCmd.SET_RSP, keys)
+    return await self.sendCmd(KvCmd.SET_REQ, KvCmd.SET_RSP, {'keys':keys})
   
 
   async def add(self, keys: dict, tkn = 0) -> bool:
-    return await self._doSetAdd(KvCmd.ADD_REQ, KvCmd.ADD_RSP, keys)
+    return await self.sendCmd(KvCmd.ADD_REQ, KvCmd.ADD_RSP, {'keys':keys})
 
 
   async def get(self, keys: tuple, tkn = 0) -> Tuple[bool, dict]:
@@ -90,7 +90,3 @@ class KvClient(Client):
   async def load(self, name: str) -> Tuple[bool, int]:
     ok, rsp = await self.sendCmd(KvCmd.LOAD_REQ, KvCmd.LOAD_RSP, {'name':name}, StValues.ST_LOAD_COMPLETE)
     return (ok, rsp[KvCmd.LOAD_RSP]['keys'] if ok else 0)
-
-
-  async def _doSetAdd(self, cmdName: str, rspName: str, keys: dict) -> bool:
-    return await self.sendCmd(cmdName, rspName, {'keys':keys})

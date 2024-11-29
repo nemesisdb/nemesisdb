@@ -1,11 +1,10 @@
-from ndb.client import StValues
-from ndb.kvclient import KvClient
+from ndb.client import Client, StValues
 from ndb.logging import logger
 from typing import Tuple, List
 
 
 
-class SessionCmd:
+class ShCmd:
   NEW_REQ       = 'SH_NEW'
   NEW_RSP       = 'SH_NEW_RSP'
   END_REQ       = 'SH_END'
@@ -22,6 +21,25 @@ class SessionCmd:
   SAVE_RSP      = 'SH_SAVE_RSP'
   LOAD_REQ      = 'SH_LOAD'
   LOAD_RSP      = 'SH_LOAD_RSP'
+  #
+  SET_REQ       = 'SH_SET'
+  SET_RSP       = 'SH_SET_RSP'
+  ADD_REQ       = 'SH_ADD'
+  ADD_RSP       = 'SH_ADD_RSP'
+  GET_REQ       = 'SH_GET'
+  GET_RSP       = 'SH_GET_RSP'
+  RMV_REQ       = 'SH_RMV'
+  RMV_RSP       = 'SH_RMV_RSP'
+  COUNT_REQ     = 'SH_COUNT'
+  COUNT_RSP     = 'SH_COUNT_RSP'
+  CONTAINS_REQ  = 'SH_CONTAINS'
+  CONTAINS_RSP  = 'SH_CONTAINS_RSP'
+  CLEAR_REQ     = 'SH_CLEAR'
+  CLEAR_RSP     = 'SH_CLEAR_RSP'
+  CLEAR_SET_REQ = 'SH_CLEAR_SET'
+  CLEAR_SET_RSP = 'SH_CLEAR_SET_RSP'
+  KEYS_REQ      = 'SH_KEYS'
+  KEYS_RSP      = 'SH_KEYS_RSP'
 
 
 
@@ -41,57 +59,53 @@ class Session:
 Similar to KvClient but key value functions require a token, and
 session specific functions are supplied.
 """
-class SessionClient:
+class SessionClient(Client):
+  
   def __init__(self, debug = False):
-    self.client = KvClient(debug=debug)
+    super().__init__(debug)
     
   
-  async def open(self, uri: str) -> bool:
-    return await self.client.open(uri)
-  
-
-  async def close(self):
-    await self.client.close()
-
-
   async def set(self, keys: dict, tkn: int) -> bool:
-    return await self.client.set(keys, tkn)
+    return await self.sendTknCmd(ShCmd.SET_REQ, ShCmd.SET_RSP, {'keys':keys}, tkn)
   
 
   async def add(self, keys: dict, tkn: int) -> bool:
-    return await self.client.add(keys, tkn)
+    return await self.sendTknCmd(ShCmd.ADD_REQ, ShCmd.ADD_RSP, {'keys':keys}, tkn)
 
 
   async def get(self, keys: tuple, tkn: int) -> Tuple[bool, dict]:
-    return await self.client.get(keys, tkn)
-  
+    ok, rsp = await self.sendTknCmd(ShCmd.GET_REQ, ShCmd.GET_RSP, {'keys':keys}, tkn)
+    return (ok, rsp[ShCmd.GET_RSP]['keys'] if ok else dict())
 
-  async def rmv(self, keys: tuple, tkn: int) -> dict:
-    return await self.client.rmv(keys, tkn)
+
+  async def rmv(self, keys: tuple, tkn: int) -> bool:
+    ok, _ = await self.sendTknCmd(ShCmd.RMV_REQ, ShCmd.RMV_RSP, {'keys':keys}, tkn)
+    return ok
 
 
   async def count(self, tkn: int) -> tuple:
-    return await self.client.count(tkn)
+    ok, rsp = await self.sendTknCmd(ShCmd.COUNT_REQ, ShCmd.COUNT_RSP, {}, tkn)
+    return (ok, rsp[ShCmd.COUNT_RSP]['cnt'] if ok else 0)
 
 
-  async def contains(self, keys: tuple, tkn: int) -> tuple:
-    return await self.client.contains(keys, tkn)
+  async def contains(self, keys: tuple, tkn: int) -> Tuple[bool, List]:
+    ok, rsp = await self.sendTknCmd(ShCmd.CONTAINS_REQ, ShCmd.CONTAINS_RSP, {'keys':keys}, tkn)
+    return (ok, rsp[ShCmd.CONTAINS_RSP]['contains'] if ok else [])
 
   
   async def keys(self, tkn: int) -> tuple:
-    return await self.client.keys(tkn)
-
-
-  async def clear(self, tkn: int) -> tuple:
-    return await self.client.keys(tkn)
-    
-
-  async def clear_set(self, keys: dict, tkn: int) -> tuple:
-    return await self.client.clear_set(keys, tkn)
+    ok, rsp = await self.sendTknCmd(ShCmd.KEYS_REQ, ShCmd.KEYS_RSP, {}, tkn)
+    return (ok, rsp[ShCmd.KEYS_RSP]['keys'] if ok else [])
   
-  
-  async def server_info(self) -> Tuple[bool, dict]:
-    return await self.client.server_info()
+
+  async def clear(self, tkn: int) -> Tuple[bool, int]:
+    ok, rsp = await self.sendTknCmd(ShCmd.CLEAR_REQ, ShCmd.CLEAR_RSP, {}, tkn)
+    return (ok, rsp[ShCmd.CLEAR_RSP]['cnt'] if ok else 0)
+        
+
+  async def clear_set(self, keys: dict, tkn: int) -> Tuple[bool, int]:
+    ok, rsp = await self.sendTknCmd(ShCmd.CLEAR_SET_REQ, ShCmd.CLEAR_SET_RSP, {'keys':keys}, tkn)
+    return (ok, rsp[ShCmd.CLEAR_SET_RSP]['cnt'] if ok else 0)
 
 
   """Create a new session, with optional expiry settings.
@@ -103,17 +117,17 @@ class SessionClient:
   """
   async def create_session(self, durationSeconds = 0, deleteSessionOnExpire = False) -> Session:
     # TODO add SH_NEW_SHARED command 
-    q = {SessionCmd.NEW_REQ:{}}
+    body = dict()
 
     if durationSeconds < 0:
       raise ValueError('expirySeconds must be >= 0')
     
     if durationSeconds > 0:
-      q[SessionCmd.NEW_REQ]['expiry'] = {'duration':durationSeconds, 'deleteSession':deleteSessionOnExpire}
+      body['expiry'] = {'duration':durationSeconds, 'deleteSession':deleteSessionOnExpire}
       
-    rsp = await self.client._send_query(SessionCmd.NEW_REQ, q)
-    if self.client._is_rsp_valid(rsp, SessionCmd.NEW_RSP):
-      token = rsp[SessionCmd.NEW_RSP]['tkn']
+    ok, rsp = await self.sendCmd(ShCmd.NEW_REQ, ShCmd.NEW_RSP, body)
+    if ok:
+      token = rsp[ShCmd.NEW_RSP]['tkn']
       logger.debug(f'Created session: {token}')
       return Session(token)
     else:
@@ -121,42 +135,40 @@ class SessionClient:
 
 
   async def end_session(self, tkn: int):
-    rsp = await self.client._send_session_query(SessionCmd.END_REQ, {SessionCmd.END_REQ:{}}, tkn)
-    return self.client._is_rsp_valid(rsp, SessionCmd.END_RSP)
+    ok, _ = await self.sendTknCmd(ShCmd.END_REQ, ShCmd.END_RSP, {}, tkn)
+    return ok
 
 
   async def end_all_sessions(self) -> Tuple[bool, int]:
-    rsp = await self.client._send_query(SessionCmd.END_ALL_REQ, {SessionCmd.END_ALL_REQ:{}})
-    return (self.client._is_rsp_valid(rsp, SessionCmd.END_ALL_RSP), rsp[SessionCmd.END_ALL_RSP]['cnt'])
+    ok, rsp = await self.sendCmd(ShCmd.END_ALL_REQ, ShCmd.END_ALL_RSP, {})
+    return (ok, rsp[ShCmd.END_ALL_RSP]['cnt'] if ok else 0)
 
 
   async def session_exists(self, tkns: List[int]) -> Tuple[bool, List]:
-    # use _send_query() here because we don't set tkn
-    rsp = await self.client._send_query(SessionCmd.EXISTS_REQ, {SessionCmd.EXISTS_REQ:{'tkns':tkns}})
-    return (self.client._is_rsp_valid(rsp, SessionCmd.EXISTS_RSP), rsp[SessionCmd.EXISTS_RSP]['exist'])
-
+    ok, rsp = await self.sendCmd(ShCmd.EXISTS_REQ, ShCmd.EXISTS_RSP, {'tkns':tkns})
+    return (ok, rsp[ShCmd.EXISTS_RSP]['exist'] if ok else [])
+    
 
   async def session_info(self, tkn: int) -> Tuple[bool,dict]:
-    rsp = await self.client._send_session_query(SessionCmd.INFO_REQ, {SessionCmd.INFO_REQ:{}}, tkn)
-    if self.client._is_rsp_valid(rsp, SessionCmd.INFO_RSP):
-      info = dict(rsp[SessionCmd.INFO_RSP])
+    ok, rsp = await self.sendTknCmd(ShCmd.INFO_REQ, ShCmd.INFO_RSP, {}, tkn)
+    if ok:
+      info = dict(rsp[ShCmd.INFO_RSP])
       info.pop('st')
+      print(info)
       return (True, info)
     else:
       return (False, dict())
     
     
   async def session_info_all(self) -> Tuple[bool,dict]:
-    # use _send_query() here because we don't set tkn
-    rsp = await self.client._send_query(SessionCmd.INFO_ALL_REQ, {SessionCmd.INFO_ALL_REQ:{}})
-    if self.client._is_rsp_valid(rsp, SessionCmd.INFO_ALL_RSP):
-      info = dict(rsp[SessionCmd.INFO_ALL_RSP])
+    ok, rsp = await self.sendCmd(ShCmd.INFO_ALL_REQ, ShCmd.INFO_ALL_RSP, {})
+    if ok:
+      info = dict(rsp[ShCmd.INFO_ALL_RSP])
       info.pop('st')
       return (True, info)
     else:
       return (False, dict())
-      
-
+    
     
   """Save all sessions or specific sessions.
   name - dataset name
@@ -166,21 +178,19 @@ class SessionClient:
     if name == '':
       raise ValueError('Name cannot be empty')
 
-    q = {SessionCmd.SAVE_REQ:{'name':name}}
+    body = {'name':name}
     
     if len(tkns) > 0:
-      q[SessionCmd.SAVE_REQ]['tkns'] = tkns
+      body['tkns'] = tkns
 
-    rsp = await self.client._send_query(SessionCmd.SAVE_REQ, q)
-    return self.client._is_rsp_valid(rsp, SessionCmd.SAVE_RSP, StValues.ST_SAVE_COMPLETE)
+    ok, _ = await self.sendCmd(ShCmd.SAVE_REQ, ShCmd.SAVE_RSP, body, StValues.ST_SAVE_COMPLETE)
+    return ok
 
 
   async def session_load(self, name: str) -> Tuple[bool, dict]:
-    q = {SessionCmd.LOAD_REQ:{'name':name}}
-    rsp = await self.client._send_query(SessionCmd.LOAD_REQ, q)
-    
-    if self.client._is_rsp_valid(rsp, SessionCmd.LOAD_RSP, StValues.ST_LOAD_COMPLETE):
-      info = dict(rsp[SessionCmd.LOAD_RSP])
+    ok, rsp = await self.sendCmd(ShCmd.LOAD_REQ, ShCmd.LOAD_RSP, {'name':name}, StValues.ST_LOAD_COMPLETE)
+    if ok:
+      info = dict(rsp[ShCmd.LOAD_RSP])
       info.pop('st')
       return (True, info)
     else:

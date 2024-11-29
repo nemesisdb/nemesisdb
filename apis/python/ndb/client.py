@@ -67,7 +67,7 @@ class Client(ABC):
   
   
   async def sendTknCmd(self, cmdReq: str, cmdRsp: str, body: dict, tkn: int):
-    body['tkn'] = tkn
+    body['tkn'] = tkn   
     return await self.sendCmd(cmdReq, cmdRsp, body)
   
 
@@ -89,20 +89,3 @@ class Client(ABC):
     valid = rsp[cmd][Fields.STATUS] == expected
     logger.debug(cmd + ' ' + ('Response Ok' if valid else f'Response Fail: {str(rsp)}'))
     return valid
-
-  
-  async def _send_query(self, cmd: str, q: dict, tkn = 0):
-    logger.debug('Send query: '+ str(q))
-    if tkn != 0:
-      return await self._send_session_query(cmd, q, tkn)
-    else:
-      return await self._send_kv_query(q)
-
-
-  async def _send_kv_query(self, q: dict) -> dict:
-    return await self.api.query(q)
-
-  
-  async def _send_session_query(self, cmd: str, q: dict, tkn: int) -> dict:
-    q[cmd]['tkn'] = tkn
-    return await self.api.query(q)
