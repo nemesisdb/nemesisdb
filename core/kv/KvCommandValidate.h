@@ -26,13 +26,8 @@ namespace nemesis { namespace kv {
 
 
   Validity validateSet (const std::string_view cmdReq, const std::string_view cmdRsp, const njson& req)
-  {
-    auto validate = [](const njson& cmd) -> std::tuple<RequestStatus, const std::string_view>
-    {
-      return cmd.at("keys").empty() ? std::make_tuple(RequestStatus::ValueSize, "keys") : std::make_tuple(RequestStatus::Ok, "");
-    };
-    
-    if (auto [valid, rsp] = isValid(cmdRsp, req.at(cmdReq), {{Param::required("keys", JsonObject)}}, validate); !valid)
+  {    
+    if (auto [valid, rsp] = isValid(cmdRsp, req.at(cmdReq), {{Param::required("keys", JsonObject)}}); !valid)
       return makeInvalid(std::move(rsp));
     else  [[likely]]
       return makeValid();
@@ -40,13 +35,8 @@ namespace nemesis { namespace kv {
 
 
   Validity validateSetQ(const std::string_view cmdReq, const std::string_view cmdRsp, const njson& req)
-  {
-    auto validate = [](const njson& cmd) -> std::tuple<RequestStatus, const std::string_view>
-    {
-      return cmd.at("keys").empty() ? std::make_tuple(RequestStatus::ValueSize, "keys") : std::make_tuple(RequestStatus::Ok, "");
-    };
-    
-    if (auto [valid, rsp] = isValid(cmdRsp, req.at(cmdReq), {{Param::required("keys", JsonObject)}}, validate); !valid)
+  {    
+    if (auto [valid, rsp] = isValid(cmdRsp, req.at(cmdReq), {{Param::required("keys", JsonObject)}}); !valid)
       return makeInvalid(std::move(rsp));
     else  [[likely]]
       return makeValid();
