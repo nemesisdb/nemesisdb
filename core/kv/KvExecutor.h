@@ -12,14 +12,15 @@
 #include <core/sh/ShCommands.h>
 
 
-namespace nemesis { namespace core { namespace kv {
+namespace nemesis { namespace kv {
 
 using namespace nemesis::core;
 
-namespace shcmds = nemesis::core::sh::cmds;
+namespace shcmds = nemesis::sh::cmds;
+namespace kvcmds = nemesis::kv::cmds;
 
 
-template<bool HaveSessions>
+template<bool WithSessions>
 class KvExecutor
 {
   template<bool Sessions, const char * kv, const char * sh>
@@ -58,14 +59,12 @@ class KvExecutor
     }
   };
 
-  
-
 
 public:
 
   static Response set (CacheMap& map,  const njson& cmd)
   {
-    using Rsp = RspMeta<HaveSessions, kv::SetRsp, shcmds::SetRsp>;
+    using Rsp = RspMeta<WithSessions, kvcmds::SetRsp, shcmds::SetRsp>;
 
     Response response = Rsp::make();
     auto& body = response.rsp.at(Rsp::name);
@@ -89,7 +88,9 @@ public:
 
   static Response setQ (CacheMap& map,  const njson& cmd)
   {
-    Response response;
+    using Rsp = KvOnlyMeta<kvcmds::GetRsp>;
+
+    Response response = Rsp::make();
 
     try
     {         
@@ -99,8 +100,8 @@ public:
     catch(const std::exception& e)
     {
       PLOGE << e.what();
-      response.rsp = njson {jsoncons::json_object_arg, {{SetQRsp, jsoncons::json_object_arg_t{}}}};
-      response.rsp[SetQRsp]["st"] = toUnderlying(RequestStatus::Unknown);
+      response.rsp = njson {jsoncons::json_object_arg, {{Rsp::name, jsoncons::json_object_arg_t{}}}};
+      response.rsp[Rsp::name]["st"] = toUnderlying(RequestStatus::Unknown);
     }
 
     return response;
@@ -109,7 +110,7 @@ public:
 
   static Response get (CacheMap& map,  const njson& cmd)
   {
-    using Rsp = RspMeta<HaveSessions, kv::GetRsp, shcmds::GetRsp>;
+    using Rsp = RspMeta<WithSessions, kvcmds::GetRsp, shcmds::GetRsp>;
 
     Response response = Rsp::make();
 
@@ -144,7 +145,7 @@ public:
 
   static Response add (CacheMap& map,  const njson& cmd)
   {
-    using Rsp = RspMeta<HaveSessions, kv::AddRsp, shcmds::AddRsp>;
+    using Rsp = RspMeta<WithSessions, kvcmds::AddRsp, shcmds::AddRsp>;
 
     Response response = Rsp::make();
 
@@ -168,7 +169,7 @@ public:
 
   static Response addQ (CacheMap& map,  const njson& cmd)
   {
-    using Rsp = KvOnlyMeta<kv::AddQRsp>;
+    using Rsp = KvOnlyMeta<kvcmds::AddQRsp>;
 
     Response response;
 
@@ -190,7 +191,7 @@ public:
 
   static Response remove (CacheMap& map,  const njson& cmd)
   {
-    using Rsp = RspMeta<HaveSessions, kv::RmvRsp, shcmds::RmvRsp>;
+    using Rsp = RspMeta<WithSessions, kvcmds::RmvRsp, shcmds::RmvRsp>;
 
     Response response = Rsp::make();
 
@@ -221,7 +222,7 @@ public:
 
   static Response clear (CacheMap& map,  const njson& cmd)
   {
-    using Rsp = RspMeta<HaveSessions, kv::ClearRsp, shcmds::ClearRsp>;
+    using Rsp = RspMeta<WithSessions, kvcmds::ClearRsp, shcmds::ClearRsp>;
 
     const auto[ok, count] = map.clear();
 
@@ -235,7 +236,7 @@ public:
 
   static Response contains (CacheMap& map,  const njson& cmd)
   {
-    using Rsp = RspMeta<HaveSessions, kv::ContainsRsp, shcmds::ContainsRsp>;
+    using Rsp = RspMeta<WithSessions, kvcmds::ContainsRsp, shcmds::ContainsRsp>;
 
     Response response = Rsp::make();
 
@@ -259,7 +260,7 @@ public:
   
   static Response find (CacheMap& map,  const njson& cmd)
   {
-    using Rsp = KvOnlyMeta<kv::FindRsp>;
+    using Rsp = KvOnlyMeta<kvcmds::FindRsp>;
 
     Response response = Rsp::make();
 
@@ -298,7 +299,7 @@ public:
 
   static Response update (CacheMap& map,  const njson& cmd)
   {
-    using Rsp = KvOnlyMeta<kv::UpdateRsp>;
+    using Rsp = KvOnlyMeta<kvcmds::UpdateRsp>;
 
     const auto& key = cmd.at("key").as_string();
     const auto& path = cmd.at("path").as_string();
@@ -315,7 +316,7 @@ public:
 
   static Response keys (CacheMap& map,  const njson& cmd)
   {
-    using Rsp = RspMeta<HaveSessions, kv::KeysRsp, shcmds::KeysRsp>;
+    using Rsp = RspMeta<WithSessions, kvcmds::KeysRsp, shcmds::KeysRsp>;
 
     Response response = Rsp::make();
     response.rsp.at(Rsp::name)["st"] = toUnderlying(RequestStatus::Ok);
@@ -326,7 +327,7 @@ public:
 
   static Response clearSet (CacheMap& map,  const njson& cmd)
   {
-    using Rsp = RspMeta<HaveSessions, kv::ClearSetRsp, shcmds::ClearSetRsp>;
+    using Rsp = RspMeta<WithSessions, kvcmds::ClearSetRsp, shcmds::ClearSetRsp>;
 
     Response response = Rsp::make();
     auto& body = response.rsp.at(Rsp::name);
@@ -362,7 +363,7 @@ public:
 
   static Response count (CacheMap& map,  const njson& cmd)
   {
-    using Rsp = RspMeta<HaveSessions, kv::CountRsp, shcmds::CountRsp>;
+    using Rsp = RspMeta<WithSessions, kvcmds::CountRsp, shcmds::CountRsp>;
 
     Response response = Rsp::make();
     response.rsp.at(Rsp::name)["st"] = toUnderlying(RequestStatus::Ok);
@@ -373,7 +374,7 @@ public:
 
   static Response arrayAppend (CacheMap& map,  const njson& cmd)
   {
-    using Rsp = KvOnlyMeta<kv::ArrAppendRsp>;
+    using Rsp = KvOnlyMeta<kvcmds::ArrAppendRsp>;
 
 
     const auto& key = cmd.at("key").as_string();
@@ -406,7 +407,7 @@ public:
     RequestStatus status = RequestStatus::SaveComplete;
 
     Response response;
-    response.rsp[SaveRsp]["name"] = name;
+    response.rsp[kvcmds::SaveRsp]["name"] = name;
 
     try
     {
@@ -450,8 +451,8 @@ public:
     }
     
 
-    response.rsp[SaveRsp]["st"] = toUnderlying(status);
-    response.rsp[SaveRsp]["duration"] = chrono::duration_cast<chrono::milliseconds>(NemesisClock::now() - start).count();
+    response.rsp[kvcmds::SaveRsp]["st"] = toUnderlying(status);
+    response.rsp[kvcmds::SaveRsp]["duration"] = chrono::duration_cast<chrono::milliseconds>(NemesisClock::now() - start).count();
 
     return response;
   }
@@ -463,11 +464,11 @@ public:
     std::size_t nKeys{0};
     
     Response response;
-    response.rsp[LoadRsp]["st"] = toUnderlying(status);
-    response.rsp[LoadRsp]["name"] = loadName;
-    response.rsp[LoadRsp]["duration"] = 0; // updated below
-    response.rsp[LoadRsp]["sessions"] = 0; // always 0 when sessions disabled
-    response.rsp[LoadRsp]["keys"] = 0; // updated below
+    response.rsp[kvcmds::LoadRsp]["st"] = toUnderlying(status);
+    response.rsp[kvcmds::LoadRsp]["name"] = loadName;
+    response.rsp[kvcmds::LoadRsp]["duration"] = 0; // updated below
+    response.rsp[kvcmds::LoadRsp]["sessions"] = 0; // always 0 when sessions disabled
+    response.rsp[kvcmds::LoadRsp]["keys"] = 0; // updated below
 
     try
     {      
@@ -481,8 +482,8 @@ public:
           break;
       }
 
-      response.rsp[LoadRsp]["duration"] = chrono::duration_cast<chrono::milliseconds>(NemesisClock::now() - start).count();
-      response.rsp[LoadRsp]["keys"] = nKeys;      
+      response.rsp[kvcmds::LoadRsp]["duration"] = chrono::duration_cast<chrono::milliseconds>(NemesisClock::now() - start).count();
+      response.rsp[kvcmds::LoadRsp]["keys"] = nKeys;      
     }
     catch(const std::exception& e)
     {
@@ -490,7 +491,7 @@ public:
       status = RequestStatus::LoadError;
     }
 
-    response.rsp[LoadRsp]["st"] = toUnderlying(status);
+    response.rsp[kvcmds::LoadRsp]["st"] = toUnderlying(status);
     
     return response;
   }
@@ -537,7 +538,6 @@ private:
 };
 
 
-}
 }
 }
 

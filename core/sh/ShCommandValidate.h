@@ -6,9 +6,9 @@
 #include <core/sh/ShCommands.h>
 
 
-namespace nemesis { namespace core { namespace sh {
+namespace nemesis { namespace sh {
 
-  using namespace sh::cmds;
+  using namespace nemesis::sh::cmds;
   using Validity = std::tuple<bool, njson>;
 
 
@@ -105,7 +105,6 @@ namespace nemesis { namespace core { namespace sh {
     else
       return makeValid();
   }
-}
 }
 }
 

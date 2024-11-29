@@ -19,12 +19,12 @@
 
 
 
-namespace nemesis { namespace core {
+namespace nemesis { 
 
 
-namespace kv = nemesis::core::kv;
-namespace sh = nemesis::core::sh;
-namespace sv = nemesis::core::sv;
+using namespace nemesis::kv;
+using namespace nemesis::sh;
+using namespace nemesis::sv;
 
 
 
@@ -144,7 +144,7 @@ public:
           }
         }
         
-        m_kvHandler = std::make_shared<kv::KvHandler> (config, m_sessions);
+        m_kvHandler = std::make_shared<kv::KvHandler> (config);
         m_shHandler = std::make_shared<sh::ShHandler>(config, m_sessions);
       }
       catch(const std::exception& e)
@@ -341,7 +341,7 @@ public:
               if (!response.rsp.empty())
                 send(ws, response.rsp);
             }
-            else if (command == sv::InfoReq)
+            else if (command == sv::cmds::InfoReq)
             {
               // vomit, but this is how jsoncons initialises json objects
               // the json_object_arg is a tag, followed by initializer_list<pair<string, njson>>
@@ -353,8 +353,8 @@ public:
                                                                   }};
 
 
-              static const njson Prepared {jsoncons::json_object_arg, {{sv::InfoRsp, {jsoncons::json_object_arg,  Info.object_range().cbegin(),
-                                                                                                                  Info.object_range().cend()}}}}; 
+              static const njson Prepared {jsoncons::json_object_arg, {{sv::cmds::InfoRsp, {jsoncons::json_object_arg,  Info.object_range().cbegin(),
+                                                                                                                        Info.object_range().cend()}}}}; 
               
               send(ws, Prepared);
             }
@@ -435,6 +435,6 @@ public:
 };
 
 }
-}
+
 
 #endif

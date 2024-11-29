@@ -6,9 +6,9 @@
 #include <core/kv/KvCommands.h>
 
 
-namespace nemesis { namespace core { namespace kv {
+namespace nemesis { namespace kv {
 
-
+  using namespace nemesis::kv;
   using Validity = std::tuple<bool, njson>;
 
 
@@ -169,7 +169,7 @@ namespace nemesis { namespace core { namespace kv {
 
   Validity validateSave(const njson& req)
   {
-    if (auto [valid, rsp] = isValid(kv::SaveRsp, req.at(kv::SaveReq), {{Param::required("name", JsonString)}}); !valid)
+    if (auto [valid, rsp] = isValid(kv::cmds::SaveRsp, req.at(kv::cmds::SaveReq), {{Param::required("name", JsonString)}}); !valid)
       return makeInvalid(std::move(rsp));
     else  [[likely]]
       return makeValid();
@@ -178,14 +178,13 @@ namespace nemesis { namespace core { namespace kv {
 
   Validity validateLoad(const njson& req)
   {
-    if (auto [valid, rsp] = isValid(kv::LoadRsp, req.at(kv::LoadReq), {{Param::required("name", JsonString)}}); !valid)
+    if (auto [valid, rsp] = isValid(kv::cmds::LoadRsp, req.at(kv::cmds::LoadReq), {{Param::required("name", JsonString)}}); !valid)
       return makeInvalid(std::move(rsp));
     else  [[likely]]
       return makeValid();
   }
 
   
-}
 }
 }
 

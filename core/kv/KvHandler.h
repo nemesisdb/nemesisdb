@@ -11,13 +11,13 @@
 #include <core/kv/KvCommon.h>
 #include <core/kv/KvExecutor.h>
 #include <core/kv/KvCommandValidate.h>
-#include <core/sh/ShExecutor.h>
-#include <core/sh/ShSessions.h>
 
 
-namespace nemesis { namespace core { namespace kv {
 
-using namespace nemesis::core::sh;
+namespace nemesis { namespace kv {
+
+
+using namespace nemesis::kv::cmds;
 
 
 /*
@@ -28,8 +28,7 @@ KvHandler receives a command:
 class KvHandler
 {
 public:
-  KvHandler(const njson& config, std::shared_ptr<Sessions> sessions) :
-    m_config(config)
+  KvHandler(const njson& config) : m_config(config)
     
   {
   }
@@ -421,7 +420,6 @@ private:
   CacheMap m_map;
 };
 
-}
 }
 }
 

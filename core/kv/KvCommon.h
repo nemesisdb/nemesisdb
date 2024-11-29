@@ -10,7 +10,7 @@
 #include <core/NemesisCommon.h>
 
 
-namespace nemesis { namespace core { namespace kv {
+namespace nemesis {  namespace kv {
 
 
   enum class KvQueryType : std::uint8_t
@@ -37,9 +37,6 @@ namespace nemesis { namespace core { namespace kv {
     Unknown,
   };
 
-  
-  
-}
 }
 }
 

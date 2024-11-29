@@ -13,9 +13,8 @@
 #include <jsoncons/json_traits_macros.hpp>
 
 
-using namespace nemesis::core;
+using namespace nemesis;
 
-namespace kv = nemesis::core::kv;
 
 static std::latch run{1U};
 static plog::ColorConsoleAppender<NdbFormatter> consoleAppender;
@@ -74,7 +73,7 @@ int main (int argc, char ** argv)
   
 
   int error = 0;
-  auto sessions = std::make_shared<nemesis::core::sh::Sessions>();
+  auto sessions = std::make_shared<nemesis::sh::Sessions>();
 
   Server server;
   if (server.run(config, sessions))

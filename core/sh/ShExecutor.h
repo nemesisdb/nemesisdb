@@ -8,11 +8,10 @@
 #include <core/sh/ShSessions.h>
 #include <core/sh/ShCommands.h>
 
-namespace nemesis { namespace core { namespace sh {
+namespace nemesis { namespace sh {
 
 using namespace nemesis::core;
-namespace sh = nemesis::core::sh;
-
+using namespace nemesis::sh;
 
 
 class SessionExecutor
@@ -375,7 +374,6 @@ private:
 
 };
 
-}
 }
 }
 

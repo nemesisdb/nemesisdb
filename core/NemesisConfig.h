@@ -9,7 +9,7 @@
 #include <core/NemesisCommon.h>
 
 
-namespace nemesis { namespace core {
+namespace nemesis { 
 
 
 //
@@ -118,13 +118,13 @@ NemesisConfig parse(std::filesystem::path path)
     njson cfg = njson::parse(configStream);
 
     bool valid =  isValid([&cfg]{ return cfg.contains("version") && cfg.at("version").is_uint64(); },   "Require version as an unsigned int") &&
-                  isValid([&cfg]{ return cfg.at("version") == nemesis::core::NEMESIS_CONFIG_VERSION; }, "Config version must be " + std::to_string(nemesis::core::NEMESIS_CONFIG_VERSION)) &&
+                  isValid([&cfg]{ return cfg.at("version") == nemesis::NEMESIS_CONFIG_VERSION; }, "Config version must be " + std::to_string(nemesis::NEMESIS_CONFIG_VERSION)) &&
                   //isValid([&cfg]{ return cfg.contains("sessionsEnabled") && cfg.at("sessionsEnabled").is_bool(); },         "'sessionsEnabled' must be bool") &&
                   isValid([&cfg]{ return !cfg.contains("core") || (cfg.contains("core") && cfg.at("core").is_uint64()); },  "'core' must be an unsigned integer") &&
                   isValid([&cfg]{ return cfg.contains("ip") && cfg.contains("port") && cfg.contains("maxPayload"); },       "Require ip, port, maxPayload and save") &&
                   isValid([&cfg]{ return cfg.at("ip").is_string() && cfg.at("port").is_uint64() && cfg.at("maxPayload").is_uint64(); }, "ip must string, port and maxPayload must be unsigned integer") &&
-                  isValid([&cfg]{ return cfg.at("maxPayload") >= nemesis::core::NEMESIS_KV_MINPAYLOAD; }, "maxPayload below minimum") &&
-                  isValid([&cfg]{ return cfg.at("maxPayload") <= nemesis::core::NEMESIS_KV_MAXPAYLOAD; }, "maxPayload exceeds maximum") ;
+                  isValid([&cfg]{ return cfg.at("maxPayload") >= nemesis::NEMESIS_KV_MINPAYLOAD; }, "maxPayload below minimum") &&
+                  isValid([&cfg]{ return cfg.at("maxPayload") <= nemesis::NEMESIS_KV_MAXPAYLOAD; }, "maxPayload exceeds maximum") ;
 
     if (valid && validatePersist(cfg.at("persist")))
       config = NemesisConfig{std::move(cfg)};
@@ -218,8 +218,6 @@ NemesisConfig readConfig (const int argc, char ** argv)
 }
 
 
-
-} // namespace core
 } // namespace nemesis
 
 #endif

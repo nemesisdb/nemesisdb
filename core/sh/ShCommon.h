@@ -11,7 +11,16 @@
 #include <core/NemesisCommon.h>
 
 
-namespace nemesis { namespace core { namespace sh {
+namespace nemesis { namespace sh {
+
+  using namespace nemesis::core;
+  
+  using SessionToken = std::uint64_t;
+  using SessionName = std::string;
+  using SessionClock = chrono::steady_clock;
+  using SessionExpireTime = SessionClock::time_point;
+  using SessionDuration = chrono::seconds;
+  using SessionExpireTimePoint = chrono::time_point<SessionClock, std::chrono::seconds>;
 
 
   enum class ShQueryType : std::uint8_t
@@ -55,8 +64,17 @@ namespace nemesis { namespace core { namespace sh {
     static UUIDv4::UUIDGenerator<std::mt19937_64> uuidGenerator; 
     const auto uuid = uuidGenerator.getUUID();
     return uuid.hash();
-  }  
-}
+  }
+
+  
+  static inline njson createErrorResponse (const std::string_view commandRsp, const RequestStatus status, const SessionToken tkn)
+  {
+    njson rsp;
+    rsp[commandRsp]["st"] = toUnderlying(status);
+    rsp[commandRsp]["tkn"] = tkn;
+    rsp[commandRsp]["m"] = "";
+    return rsp;
+  }
 }
 }
 

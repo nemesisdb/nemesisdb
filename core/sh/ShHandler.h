@@ -17,10 +17,9 @@
 #include <core/kv/KvCommandValidate.h>
 
 
-namespace nemesis { namespace core { namespace sh {
+namespace nemesis { namespace sh {
 
-//namespace cmds = nemesis::core::sh::cmds;
-namespace kv = nemesis::core::kv;
+namespace kv = nemesis::kv;
 
 
 class ShHandler
@@ -515,7 +514,5 @@ private:
 
 }
 }
-}
-
 
 #endif
