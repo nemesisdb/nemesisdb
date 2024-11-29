@@ -1,28 +1,12 @@
 {
-  "version":4,  // must be version 4 from NemesisDB v0.6.1
-  "mode":"kv",  // "ts", "kv" or "kv_sessions"
-  "core":0,     // core the server instance is assigned to. If not present or value is greater than max cores, defaults to 0
-  "ip":"0.0.0.0",
+  "version":5,                // must be version 5 from server v0.6.4
+  "core":0,                   // CPU core the server instance is assigned to. If not present or value is greater than max cores, defaults to 0
+  "ip":"0.0.0.0",             // must be IPv4
   "port":1987,
-  "maxPayload":1024,  
-  "kv":
+  "maxPayload":1024,          // max n bytes the query interface can accept
+  "persist":
   {
-    "save":
-    {
-      "enabled":false,
-      "path":"./data"
-    }
-  },
-  "kv_sessions":
-  {
-    "save":
-    {
-      "enabled":false,
-      "path":"./data"
-    }
-  },
-  "ts":
-  {
-    
+    "enabled":true,           // if true, the "path" must exist
+    "path":"./data"
   }
 }
