@@ -8,7 +8,7 @@
 
 namespace nemesis { namespace core { namespace sh {
 
-
+  using namespace sh::cmds;
   using Validity = std::tuple<bool, njson>;
 
 
@@ -27,11 +27,11 @@ namespace nemesis { namespace core { namespace sh {
 
   Validity validateNew (const njson& req)
   {
-    if (auto [topLevelValid, rsp] = isValid(sh::NewRsp, req.at(sh::NewReq), {{Param::optional("expiry", JsonObject)}}); !topLevelValid)
+    if (auto [topLevelValid, rsp] = isValid(NewRsp, req.at(NewReq), {{Param::optional("expiry", JsonObject)}}); !topLevelValid)
       return Validity{false, std::move(rsp)};
     else
     {
-      if (req.at(sh::NewReq).contains("expiry"))
+      if (req.at(NewReq).contains("expiry"))
       {
         auto validate = [](const njson& cmd) -> std::tuple<RequestStatus, const std::string_view>
         {
@@ -42,7 +42,7 @@ namespace nemesis { namespace core { namespace sh {
         };
 
         
-        auto [expiryValid, rsp] = isValid(sh::NewRsp, req.at(sh::NewReq).at("expiry"), {{Param::required("duration", JsonUInt)},
+        auto [expiryValid, rsp] = isValid(NewRsp, req.at(NewReq).at("expiry"), {{Param::required("duration", JsonUInt)},
                                                                                         {Param::required("deleteSession", JsonBool)}}, validate);
 
         if (!expiryValid)
@@ -57,7 +57,7 @@ namespace nemesis { namespace core { namespace sh {
 
   Validity validateExists (const njson& req)
   {
-    if (auto [valid, rsp] = isValid(sh::ExistsRsp, req.at(sh::ExistsReq), {{Param::required("tkns", JsonArray)}}); !valid)
+    if (auto [valid, rsp] = isValid(ExistsRsp, req.at(ExistsReq), {{Param::required("tkns", JsonArray)}}); !valid)
       return makeInvalid(std::move(rsp));
     else
       return makeValid();
@@ -88,8 +88,8 @@ namespace nemesis { namespace core { namespace sh {
     };
 
 
-    auto [valid, rsp] = isValid(sh::SaveRsp, req.at(sh::SaveReq), { {Param::required("name", JsonString)},
-                                                                    {Param::optional("tkns", JsonArray)}}, validate);
+    auto [valid, rsp] = isValid(SaveRsp, req.at(SaveReq), { {Param::required("name", JsonString)},
+                                                            {Param::optional("tkns", JsonArray)}}, validate);
 
     if (!valid)
       return makeInvalid(std::move(rsp));
@@ -100,7 +100,7 @@ namespace nemesis { namespace core { namespace sh {
 
   Validity validateLoad (const njson& req)
   {
-    if (auto [valid, rsp] = isValid(sh::LoadRsp, req.at(sh::LoadReq), {{Param::required("name", JsonString)}}); !valid)
+    if (auto [valid, rsp] = isValid(LoadRsp, req.at(LoadReq), {{Param::required("name", JsonString)}}); !valid)
       return makeInvalid(std::move(rsp));
     else
       return makeValid();

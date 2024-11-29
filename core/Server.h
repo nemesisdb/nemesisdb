@@ -6,7 +6,6 @@
 #include <tuple>
 #include <latch>
 #include <thread>
-#include <chrono>
 #include <iostream>
 #include <uwebsockets/App.h>
 #include <core/Persistance.h>
@@ -327,7 +326,9 @@ public:
           {
             const auto type = command.substr(0, pos);
 
-            // TODO remind myself why/if an empty response can be returned
+            // TODO Q: remind myself why/if an empty response can be returned
+            //      A: because of AddQ and SetQ - if no error, Response is empty. 
+            //         considering remove these commands anyway
             if (type == "KV")
             {
               const Response response = m_kvHandler->handle(command, request);
@@ -387,7 +388,9 @@ public:
         
         const auto success = loadResult.status == RequestStatus::LoadComplete;
     
-        if (success)
+        if (!success)
+          PLOGI << "Status: Fail";
+        else
         {
           PLOGI << "Status: Success";
 
@@ -399,8 +402,6 @@ public:
           PLOGI << "Keys: " << loadResult.nKeys ;
           PLOGI << "Duration: " << chrono::duration_cast<std::chrono::milliseconds>(loadResult.duration).count() << "ms";
         }
-        else
-          PLOGI << "Status: Fail";
 
         PLOGI << "----------";
         
@@ -408,6 +409,12 @@ public:
       }    
     }
     
+
+    ndb_always_inline void send (KvWebSocket * ws, const njson& msg)
+    {
+      ws->send(msg.to_string(), WsSendOpCode);
+    }
+
 
   private:
     struct TimerData
@@ -426,11 +433,6 @@ public:
     std::shared_ptr<sh::Sessions> m_sessions;
     njson m_config;
 };
-
-
-// using KvServer = Server<false>;
-// using KvSessionServer = Server<true>;
-
 
 }
 }

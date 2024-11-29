@@ -29,7 +29,7 @@ class KvHandler
 {
 public:
   KvHandler(const njson& config, std::shared_ptr<Sessions> sessions) :
-    m_config(config)//,m_sessions(sessions)
+    m_config(config)
     
   {
   }
@@ -153,7 +153,7 @@ public:
 
   
 
-  // Called when loading at startup, so can be loading with sessions enabled or disabled.
+  // Called when loading at startup
   LoadResult internalLoad(const std::string& loadName, const fs::path& dataSetsRoot)
   {
     const auto start = NemesisClock::now();
@@ -201,123 +201,123 @@ private:
   
   ndb_always_inline Response set(njson& request)
   {
-    if (auto [valid, rsp] = validateSet(request); !valid)
+    if (auto [valid, rsp] = validateSet(SetReq, SetRsp, request); !valid)
       return Response{.rsp = std::move(rsp)};
     else
-      return executeKvCommand(SetRsp, request, KvExecutor::set);
+      return executeKvCommand(SetRsp, request, KvExecutor<false>::set);
   }
 
   
   ndb_always_inline Response setQ(njson& request)
   {
-    if (auto [valid, rsp] = validateSetQ(request); !valid)
+    if (auto [valid, rsp] = validateSetQ(SetQReq, SetQRsp, request); !valid)
       return Response{.rsp = std::move(rsp)};
     else
-      return executeKvCommand(SetQRsp, request, KvExecutor::setQ);
+      return executeKvCommand(SetQRsp, request, KvExecutor<false>::setQ);
   }
 
   
   ndb_always_inline Response get(njson& request)
   {
-    if (auto [valid, rsp] = validateGet(request); !valid)
+    if (auto [valid, rsp] = validateGet(GetReq, GetRsp, request); !valid)
       return Response{.rsp = std::move(rsp)};
     else
-      return executeKvCommand(GetRsp, request, KvExecutor::get);
+      return executeKvCommand(GetRsp, request, KvExecutor<false>::get);
   }
 
   
   ndb_always_inline Response add(njson& request)
   {
-    if (auto [valid, rsp] = validateAdd(request) ; !valid)
+    if (auto [valid, rsp] = validateAdd(AddReq, AddRsp, request) ; !valid)
       return Response{.rsp = std::move(rsp)};
     else
-      return executeKvCommand(AddRsp, request, KvExecutor::add);
+      return executeKvCommand(AddRsp, request, KvExecutor<false>::add);
   }
 
 
   ndb_always_inline Response addQ(njson& request)
   {
-    if (auto [valid, rsp] = validateAddQ(request) ; !valid)
+    if (auto [valid, rsp] = validateAddQ(AddQReq, AddQRsp, request) ; !valid)
       return Response{.rsp = std::move(rsp)};
     else
-      return executeKvCommand(AddQRsp, request, KvExecutor::addQ);
+      return executeKvCommand(AddQRsp, request, KvExecutor<false>::addQ);
   }
 
 
   ndb_always_inline Response remove(njson& request)
   {
-    if (auto [valid, rsp] = validateRemove(request) ; !valid)
+    if (auto [valid, rsp] = validateRemove(RmvReq, RmvRsp, request) ; !valid)
       return Response{.rsp = std::move(rsp)};
     else
-      return executeKvCommand(RmvRsp, request, KvExecutor::remove);
+      return executeKvCommand(RmvRsp, request, KvExecutor<false>::remove);
   }
 
   
   ndb_always_inline Response clear(njson& request)
   {
-    return executeKvCommand(ClearRsp, request, KvExecutor::clear);
+    return executeKvCommand(ClearRsp, request, KvExecutor<false>::clear);
   }
 
 
   ndb_always_inline Response count(njson& request)
   {
-    return executeKvCommand(CountRsp, request, KvExecutor::count);
+    return executeKvCommand(CountRsp, request, KvExecutor<false>::count);
   }
 
 
   ndb_always_inline Response contains(njson& request)
   {
-    if (auto [valid, rsp] = validateContains(request) ; !valid)
+    if (auto [valid, rsp] = validateContains(ContainsReq, ContainsRsp, request) ; !valid)
       return Response{.rsp = std::move(rsp)};
     else
-      return executeKvCommand(ContainsRsp, request, KvExecutor::contains);
+      return executeKvCommand(ContainsRsp, request, KvExecutor<false>::contains);
   }
 
 
   ndb_always_inline Response find(njson& request)
   {
-    if (auto [valid, rsp] = validateFind(request) ; !valid)
+    if (auto [valid, rsp] = validateFind(FindReq, FindRsp, request) ; !valid)
       return Response{.rsp = std::move(rsp)};
     else
     {
       if (!request.at(FindReq).contains("keys"))
         request.at(FindReq)["keys"] = njson::array(); // executor expects "keys"
 
-      return executeKvCommand(FindRsp, request, KvExecutor::find);
+      return executeKvCommand(FindRsp, request, KvExecutor<false>::find);
     }
   }
 
 
   ndb_always_inline Response update(njson& request)
   {
-    if (auto [valid, rsp] = validateUpdate(request) ; !valid)
+    if (auto [valid, rsp] = validateUpdate(UpdateReq, UpdateRsp, request) ; !valid)
       return Response{.rsp = std::move(rsp)};
     else
-      return executeKvCommand(UpdateRsp, request, KvExecutor::update);
+      return executeKvCommand(UpdateRsp, request, KvExecutor<false>::update);
   }
 
 
   ndb_always_inline Response keys(njson& request)
   {
-    return executeKvCommand(KeysRsp, request, KvExecutor::keys);
+    return executeKvCommand(KeysRsp, request, KvExecutor<false>::keys);
   }
 
 
   ndb_always_inline Response clearSet(njson& request)
   {
-    if (auto [valid, rsp] = validateClearSet(request) ; !valid)
+    if (auto [valid, rsp] = validateClearSet(ClearSetReq, ClearSetRsp, request) ; !valid)
       return Response{.rsp = std::move(rsp)};
     else
-      return executeKvCommand(ClearSetRsp, request, KvExecutor::clearSet);
+      return executeKvCommand(ClearSetRsp, request, KvExecutor<false>::clearSet);
   }
   
 
   ndb_always_inline Response arrayAppend(njson& request)
   {
-    if (auto [valid, rsp] = validateArrayAppend(request) ; !valid)
+    if (auto [valid, rsp] = validateArrayAppend(ArrAppendReq, ArrAppendRsp, request) ; !valid)
       return Response{.rsp = std::move(rsp)};
     else
-      return executeKvCommand(ArrAppendRsp, request, KvExecutor::arrayAppend);
+      return executeKvCommand(ArrAppendRsp, request, KvExecutor<false>::arrayAppend);
   }
 
   
@@ -386,7 +386,7 @@ private:
 
       try
       {
-        response = KvExecutor::saveKv(m_map, dataPath, name);
+        response = KvExecutor<false>::saveKv(m_map, dataPath, name);
         metaDataStatus = KvSaveStatus::Complete;
       }
       catch(const std::exception& e)
@@ -408,7 +408,7 @@ private:
   {
     PLOGI << "Loading from " << dataSetsRoot;
     
-    Response response = KvExecutor::loadKv (loadName, getContainer(), dataSetsRoot);
+    Response response = KvExecutor<false>::loadKv (loadName, getContainer(), dataSetsRoot);
 
     PLOGI << "Loading complete";
 

@@ -221,10 +221,7 @@ struct Response
 };
 
 
-ndb_always_inline void send (KvWebSocket * ws, const njson& msg)
-{
-  ws->send(msg.to_string(), WsSendOpCode);
-}
+
 
 
 
@@ -258,7 +255,7 @@ static inline bool setThreadAffinity(const std::thread::native_handle_type handl
 static inline njson createErrorResponse (const std::string_view commandRsp, const RequestStatus status, const std::string_view msg = "")
 {
   njson rsp;
-  rsp[commandRsp]["st"] = static_cast<int>(status);
+  rsp[commandRsp]["st"] = toUnderlying(status);
   rsp[commandRsp]["tkn"] = njson::null();
   rsp[commandRsp]["m"] = msg;
   return rsp;
@@ -268,7 +265,7 @@ static inline njson createErrorResponse (const std::string_view commandRsp, cons
 static inline njson createErrorResponse (const std::string_view commandRsp, const RequestStatus status, const SessionToken tkn)
 {
   njson rsp;
-  rsp[commandRsp]["st"] = static_cast<int>(status);
+  rsp[commandRsp]["st"] = toUnderlying(status);
   rsp[commandRsp]["tkn"] = tkn;
   rsp[commandRsp]["m"] = "";
   return rsp;
@@ -278,7 +275,7 @@ static inline njson createErrorResponse (const std::string_view commandRsp, cons
 static inline njson createErrorResponseNoTkn (const std::string_view commandRsp, const RequestStatus status, const std::string_view msg = "")
 {
   njson rsp;
-  rsp[commandRsp]["st"] = static_cast<int>(status);
+  rsp[commandRsp]["st"] = toUnderlying(status);
   rsp[commandRsp]["m"] = msg;
   return rsp;
 }
@@ -288,7 +285,7 @@ static inline njson createErrorResponseNoTkn (const std::string_view commandRsp,
 static inline njson createErrorResponse (const RequestStatus status, const std::string_view msg = "")
 {
   njson rsp;
-  rsp["ERR"]["st"] = static_cast<int>(status);
+  rsp["ERR"]["st"] = toUnderlying(status);
   rsp["ERR"]["m"] = msg;
   return rsp;
 }

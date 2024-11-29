@@ -29,7 +29,7 @@ inline void kvSigHandle(int param)
 
 int main (int argc, char ** argv)
 {
-  initLogger(consoleAppender); // keep this as first statement of main()
+  initLogger(consoleAppender); // always first statement of main()
   
   PLOGI << "NemesisDB v" << NEMESIS_VERSION << " starting";
   PLOGI << "Registering signals";
@@ -65,41 +65,27 @@ int main (int argc, char ** argv)
   #endif
 
 
-  int error = 0;
-
-  const bool persist = NemesisConfig::persistEnabled(config.cfg);
-  const std::string address = NemesisConfig::wsSettings(config.cfg).ip + ":" + std::to_string(NemesisConfig::wsSettings(config.cfg).port);
-
-  auto runServer = [&config, &error, persist, address]<typename Server> (Server&& server)
-  {
-    if (persist)
-      PLOGI << "Persist: Enabled (" << NemesisConfig::savePath(config.cfg) << ')';
-    else
-      PLOGI << "Persist: Disabled";
-    
-    //PLOGI << "Sessions: " << (server.hasSessions() ? "Enabled" : "Disabled");
-    PLOGI << "Query Interface: " << address;
-    
-
-    auto sessions = std::make_shared<nemesis::core::sh::Sessions>();
-
-    if (server.run(config, sessions))
-      run.wait();
-    else
-    {
-      error = 1;
-      run.count_down();
-    }
+  if (NemesisConfig::persistEnabled(config.cfg))
+    PLOGI << "Persist: Enabled (" << NemesisConfig::savePath(config.cfg) << ')';
+  else
+    PLOGI << "Persist: Disabled";
   
-    server.stop();
-  };
+  PLOGI << "Query Interface: " << NemesisConfig::wsSettingsString(config.cfg);
+  
 
-  runServer(Server{});
+  int error = 0;
+  auto sessions = std::make_shared<nemesis::core::sh::Sessions>();
 
-  // if (NemesisConfig::serverMode(config.cfg) == ServerMode::KV)
-  //   runServer (KvServer{});
-  // else
-  //   runServer (KvSessionServer{});
+  Server server;
+  if (server.run(config, sessions))
+    run.wait();
+  else
+  {
+    error = 1;
+    run.count_down();
+  }
+
+  server.stop();
 
   return error;
 }

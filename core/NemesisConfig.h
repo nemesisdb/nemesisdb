@@ -57,11 +57,6 @@ struct NemesisConfig
     return cfg.at("persist").at("enabled") == true;
   }
 
-  // static bool sessionsEnabled(const njson& cfg)
-  // {
-  //   return cfg.at("sessionsEnabled") == true;
-  // }
-
   static std::size_t preferredCore(const njson& cfg) 
   {
     return cfg["core"].as<std::size_t>();
@@ -72,16 +67,17 @@ struct NemesisConfig
     return cfg.at("maxPayload").as<std::size_t>();
   }
 
-  // static ServerMode serverMode (const njson& cfg)
-  // {
-  //   return sessionsEnabled(cfg) ? ServerMode::KvSessions : ServerMode::KV;
-  // }
-
   static InterfaceSettings wsSettings (const njson& cfg)
   {
     return {.ip = cfg.at("ip").as_string(),
             .port = cfg.at("port").as<int>(),
             .maxPayload = cfg.at("maxPayload").as<std::size_t>() };
+  }
+
+  static std::string wsSettingsString (const njson& cfg)
+  {
+    return NemesisConfig::wsSettings(cfg).ip + ":" +
+           std::to_string(NemesisConfig::wsSettings(cfg).port);
   }
 
 
