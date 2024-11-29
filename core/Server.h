@@ -72,33 +72,33 @@ public:
   }
 
 
-  bool run (NemesisConfig& config, std::shared_ptr<sh::Sessions> sessions)
+  bool run (const Settings& settings, std::shared_ptr<sh::Sessions> sessions)
   {
     m_sessions = sessions;
-    m_config = config.cfg;
+    m_settings = settings;
 
-    if (!init(config.cfg))
+
+    if (!init())
       return false;
 
-    if (config.load())
+    if (m_settings.loadOnStartup)
     {
-      if (auto [ok, msg] = load(config); !ok)
+      if (auto [ok, msg] = startupLoad(); !ok)
       {
         PLOGF << msg;
         return false;
       }
     }
 
-    const auto [ip, port, maxPayload] = NemesisConfig::wsSettings(config.cfg);
-    const std::size_t preferredCore = NemesisConfig::preferredCore(config.cfg); 
+    const auto [ip, port, maxPayload] = m_settings.interface;
     std::size_t core = 0;
     
     if (const auto maxCores = std::thread::hardware_concurrency(); maxCores == 0)
       PLOGE << "Could not acquire available cores";
-    else if (preferredCore > maxCores)
+    else if (m_settings.preferredCore > maxCores)
       PLOGE << "'core' value in config is above maximum available: " << maxCores;
     else
-      core = preferredCore;
+      core = m_settings.preferredCore;
 
 
     if (!startWsServer(ip, port, maxPayload, core))
@@ -115,18 +115,18 @@ public:
   
   private:
 
-    bool init(const njson& config)
+    bool init()
     {
       bool init = true;
 
       try
       {
-        if (NemesisConfig::persistEnabled(config))
+        if (m_settings.persistEnabled)
         {
           // test we can write to the persist path
-          if (std::filesystem::path path {NemesisConfig::savePath(config)}; !std::filesystem::exists(path) || !std::filesystem::is_directory(path))
+          if (std::filesystem::path path {m_settings.persistPath}; !std::filesystem::exists(path) || !std::filesystem::is_directory(path))
           {
-            PLOGF << "save path is not a directory or does not exist";
+            PLOGF << "persist path is not a directory or does not exist";
             return false;
           }
           else
@@ -136,7 +136,7 @@ public:
 
             if (std::ofstream testStream{fullPath}; !testStream.good())
             {
-              PLOGF << "Failed test write to save path: " << path;
+              PLOGF << "Failed test write to persist path: " << path;
               return false;
             }
             else
@@ -144,8 +144,8 @@ public:
           }
         }
         
-        m_kvHandler = std::make_shared<kv::KvHandler> (config);
-        m_shHandler = std::make_shared<sh::ShHandler>(config, m_sessions);
+        m_kvHandler = std::make_shared<kv::KvHandler>(m_settings);
+        m_shHandler = std::make_shared<sh::ShHandler>(m_settings, m_sessions);
       }
       catch(const std::exception& e)
       {
@@ -349,7 +349,7 @@ public:
               static const njson Info {jsoncons::json_object_arg, {
                                                                     {"st", toUnderlying(RequestStatus::Ok)},  // for compatibility with APIs and consistancy
                                                                     {"serverVersion",   NEMESIS_VERSION},
-                                                                    {"persistEnabled",  NemesisConfig::persistEnabled(m_config)}
+                                                                    {"persistEnabled",  m_settings.persistEnabled}
                                                                   }};
 
 
@@ -369,11 +369,14 @@ public:
     }
 
 
-    std::tuple<bool, const std::string_view> load(const NemesisConfig& config)
+    std::tuple<bool, const std::string_view> startupLoad()
     {
       PLOGI << "-- Load --";
 
-      if (PreLoadInfo info = validatePreLoad(config.loadName, config.loadPath); !info.valid)
+      const auto& loadName = m_settings.startupLoadName;
+      const auto& loadPath = m_settings.startupLoadPath;
+
+      if (PreLoadInfo info = validatePreLoad(loadName, loadPath); !info.valid)
       {
         return {false, info.err};
       }
@@ -382,9 +385,9 @@ public:
         LoadResult loadResult;
 
         if (info.dataType == SaveDataType::SessionKv)
-          loadResult = m_shHandler->internalLoad(config.loadName, info.paths.data);
+          loadResult = m_shHandler->internalLoad(loadName, info.paths.data);
         else
-          loadResult = m_kvHandler->internalLoad(config.loadName, info.paths.data);
+          loadResult = m_kvHandler->internalLoad(loadName, info.paths.data);
         
         const auto success = loadResult.status == RequestStatus::LoadComplete;
     
@@ -431,7 +434,7 @@ public:
     std::shared_ptr<kv::KvHandler> m_kvHandler;
     std::shared_ptr<sh::ShHandler> m_shHandler;
     std::shared_ptr<sh::Sessions> m_sessions;
-    njson m_config;
+    Settings m_settings;
 };
 
 }

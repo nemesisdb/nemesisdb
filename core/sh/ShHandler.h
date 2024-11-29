@@ -112,7 +112,7 @@ class ShHandler
 
 
 public:
-  ShHandler(const njson& config, std::shared_ptr<Sessions> sessions) : m_config(config), m_sessions(sessions)
+  ShHandler(const Settings& settings, std::shared_ptr<Sessions> sessions) : m_settings(settings), m_sessions(sessions)
     
   {
   }
@@ -284,7 +284,7 @@ private:
   ndb_always_inline Response sessionSave(njson& req)
   {    
     // TODO  add this check in handle() so the error can be caught earlier
-    if (!NemesisConfig::persistEnabled(m_config))
+    if (!m_settings.persistEnabled)
       return Response{.rsp = createErrorResponseNoTkn(cmds::SaveRsp, RequestStatus::CommandDisabled)};
     else 
     {
@@ -304,7 +304,7 @@ private:
     {
       const auto& loadName = req.at(sh::LoadReq).at("name").as_string();
 
-      if (const PreLoadInfo info = validatePreLoad(loadName, fs::path{NemesisConfig::savePath(m_config)}); !info.valid)
+      if (const PreLoadInfo info = validatePreLoad(loadName, fs::path{m_settings.persistPath}); !info.valid)
       {
         PLOGE << info.err;
 
@@ -316,7 +316,7 @@ private:
       else
       {
         // can ignore pathsValid here because if paths are invalid, validatePreLoad() returns false
-        const auto [root, md, data, pathsValid] = getLoadPaths(fs::path{NemesisConfig::savePath(m_config)} / loadName);
+        const auto [root, md, data, pathsValid] = getLoadPaths(fs::path{m_settings.persistPath} / loadName);
         return Response{.rsp = doLoad(loadName, data)};
       }
     }    
@@ -330,6 +330,7 @@ private:
   {
     return std::invoke(handler, map, cmdRoot);
   }
+  
 
   template<typename F>
   Response executeKvCommand(const std::string_view cmdRspName, const njson& cmd, F&& handler)
@@ -455,7 +456,7 @@ private:
   {
     const auto& name = cmd.at("name").as_string();
     const auto dataSetDir = std::to_string(KvSaveClock::now().time_since_epoch().count());
-    const auto root = fs::path {NemesisConfig::savePath(m_config)} / name / dataSetDir;
+    const auto root = fs::path {m_settings.persistPath} / name / dataSetDir;
     const auto metaPath = root / "md";
     const auto dataPath = root / "data";
     
@@ -507,7 +508,7 @@ private:
 
 
 private:
-  njson m_config;
+  Settings m_settings;
   std::shared_ptr<Sessions> m_sessions;
 };
 

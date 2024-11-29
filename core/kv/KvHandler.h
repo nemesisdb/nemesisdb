@@ -28,7 +28,7 @@ KvHandler receives a command:
 class KvHandler
 {
 public:
-  KvHandler(const njson& config) : m_config(config)
+  KvHandler(const Settings& settings) : m_settings(settings)
     
   {
   }
@@ -322,7 +322,7 @@ private:
   
   Response save(njson& request)
   {
-    if (!NemesisConfig::persistEnabled(m_config))
+    if (!m_settings.persistEnabled)
       return Response{.rsp = createErrorResponseNoTkn(SaveRsp, RequestStatus::CommandDisabled)};
     else
     {
@@ -342,7 +342,7 @@ private:
     {
       const auto& loadName = request.at(LoadReq).at("name").as_string();
 
-      if (const PreLoadInfo info = validatePreLoad(loadName, fs::path{NemesisConfig::savePath(m_config)}); !info.valid)
+      if (const PreLoadInfo info = validatePreLoad(loadName, fs::path{m_settings.persistPath}); !info.valid)
       {
         PLOGE << info.err;
 
@@ -353,7 +353,7 @@ private:
       }
       else
       {
-        const auto [root, md, data, pathsValid] = getLoadPaths(fs::path{NemesisConfig::savePath(m_config)} / loadName);        
+        const auto [root, md, data, pathsValid] = getLoadPaths(fs::path{m_settings.persistPath} / loadName);        
         return Response {.rsp = doLoad(loadName, data)};
       }
     }
@@ -364,7 +364,7 @@ private:
   {
     const auto& name = cmd.at("name").as_string();
     const auto dataSetDir = std::to_string(KvSaveClock::now().time_since_epoch().count());
-    const auto root = fs::path {NemesisConfig::savePath(m_config)} / name / dataSetDir;
+    const auto root = fs::path {m_settings.persistPath} / name / dataSetDir;
     const auto metaPath = root / "md";
     const auto dataPath = root / "data";
     
@@ -416,7 +416,7 @@ private:
 
 
 private:
-  njson m_config;
+  Settings m_settings;
   CacheMap m_map;
 };
 

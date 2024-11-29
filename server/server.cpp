@@ -38,7 +38,7 @@ int main (int argc, char ** argv)
   signal(SIGKILL, kvSigHandle); // docker kill 
 
 
-  NemesisConfig config;
+  Settings settings;
 
   #ifdef NDB_DEBUG
     config.cfg["version"] = 5;
@@ -59,24 +59,24 @@ int main (int argc, char ** argv)
     // config.loadName = "t2";
       
   #else
-    if (config = nemesis::core::readConfig(argc, argv); !config.valid)
+    if (settings = nemesis::readConfig(argc, argv); !settings.valid)
       return 1;
   #endif
 
 
-  if (NemesisConfig::persistEnabled(config.cfg))
-    PLOGI << "Persist: Enabled (" << NemesisConfig::savePath(config.cfg) << ')';
+  if (settings.persistEnabled)
+    PLOGI << "Persist: Enabled (" << settings.persistPath << ')';
   else
     PLOGI << "Persist: Disabled";
   
-  PLOGI << "Query Interface: " << NemesisConfig::wsSettingsString(config.cfg);
+  PLOGI << "Query Interface: " << settings.wsSettingsString();
   
 
   int error = 0;
   auto sessions = std::make_shared<nemesis::sh::Sessions>();
 
   Server server;
-  if (server.run(config, sessions))
+  if (server.run(settings, sessions))
     run.wait();
   else
   {
