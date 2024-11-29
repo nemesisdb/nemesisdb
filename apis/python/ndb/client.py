@@ -32,14 +32,10 @@ class SvCmd:
 
 
 class Client(ABC):
-  """Used by KvClient and SessionClient to query the database.
+  """Inherited by KvClient and SessionClient to query the database.
 
-  Provides a function per database command.
+  Contains functions common to
 
-  Most functions have an optional 'tkn' parameter - this is only relevant when
-  using the SessionClient. When sessions are disabled, leave the 'tkn' as default.
-
-  Note: KV_SETQ and KV_ADDQ are not supported.
   """
 
   def __init__(self, debug = False):
@@ -62,14 +58,9 @@ class Client(ABC):
 
   async def sendCmd(self, cmdReq: str, cmdRsp: str, body: dict, stSuccess = StValues.ST_SUCCESS):
     req = {cmdReq : body}
-    rsp = await self._send_query(cmdReq, req)
+    rsp = await self.api.query(req)
     return (self._is_rsp_valid(rsp, cmdRsp, stSuccess), rsp)
-  
-  
-  async def sendTknCmd(self, cmdReq: str, cmdRsp: str, body: dict, tkn: int):
-    body['tkn'] = tkn   
-    return await self.sendCmd(cmdReq, cmdRsp, body)
-  
+    
 
   async def server_info(self) -> Tuple[bool, dict]:
     rsp = await self._send_query(SvCmd.INFO_REQ, {SvCmd.INFO_REQ : {}})
@@ -83,7 +74,7 @@ class Client(ABC):
 
   async def close(self):
     await self.api.close()
-
+ 
 
   def _is_rsp_valid(self, rsp: dict, cmd: str, expected = StValues.ST_SUCCESS) -> bool:
     valid = rsp[cmd][Fields.STATUS] == expected

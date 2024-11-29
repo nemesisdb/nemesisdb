@@ -66,45 +66,45 @@ class SessionClient(Client):
     
   
   async def set(self, keys: dict, tkn: int) -> bool:
-    return await self.sendTknCmd(ShCmd.SET_REQ, ShCmd.SET_RSP, {'keys':keys}, tkn)
+    return await self._sendTknCmd(ShCmd.SET_REQ, ShCmd.SET_RSP, {'keys':keys}, tkn)
   
 
   async def add(self, keys: dict, tkn: int) -> bool:
-    return await self.sendTknCmd(ShCmd.ADD_REQ, ShCmd.ADD_RSP, {'keys':keys}, tkn)
+    return await self._sendTknCmd(ShCmd.ADD_REQ, ShCmd.ADD_RSP, {'keys':keys}, tkn)
 
 
   async def get(self, keys: tuple, tkn: int) -> Tuple[bool, dict]:
-    ok, rsp = await self.sendTknCmd(ShCmd.GET_REQ, ShCmd.GET_RSP, {'keys':keys}, tkn)
+    ok, rsp = await self._sendTknCmd(ShCmd.GET_REQ, ShCmd.GET_RSP, {'keys':keys}, tkn)
     return (ok, rsp[ShCmd.GET_RSP]['keys'] if ok else dict())
 
 
   async def rmv(self, keys: tuple, tkn: int) -> bool:
-    ok, _ = await self.sendTknCmd(ShCmd.RMV_REQ, ShCmd.RMV_RSP, {'keys':keys}, tkn)
+    ok, _ = await self._sendTknCmd(ShCmd.RMV_REQ, ShCmd.RMV_RSP, {'keys':keys}, tkn)
     return ok
 
 
   async def count(self, tkn: int) -> tuple:
-    ok, rsp = await self.sendTknCmd(ShCmd.COUNT_REQ, ShCmd.COUNT_RSP, {}, tkn)
+    ok, rsp = await self._sendTknCmd(ShCmd.COUNT_REQ, ShCmd.COUNT_RSP, {}, tkn)
     return (ok, rsp[ShCmd.COUNT_RSP]['cnt'] if ok else 0)
 
 
   async def contains(self, keys: tuple, tkn: int) -> Tuple[bool, List]:
-    ok, rsp = await self.sendTknCmd(ShCmd.CONTAINS_REQ, ShCmd.CONTAINS_RSP, {'keys':keys}, tkn)
+    ok, rsp = await self._sendTknCmd(ShCmd.CONTAINS_REQ, ShCmd.CONTAINS_RSP, {'keys':keys}, tkn)
     return (ok, rsp[ShCmd.CONTAINS_RSP]['contains'] if ok else [])
 
   
   async def keys(self, tkn: int) -> tuple:
-    ok, rsp = await self.sendTknCmd(ShCmd.KEYS_REQ, ShCmd.KEYS_RSP, {}, tkn)
+    ok, rsp = await self._sendTknCmd(ShCmd.KEYS_REQ, ShCmd.KEYS_RSP, {}, tkn)
     return (ok, rsp[ShCmd.KEYS_RSP]['keys'] if ok else [])
   
 
   async def clear(self, tkn: int) -> Tuple[bool, int]:
-    ok, rsp = await self.sendTknCmd(ShCmd.CLEAR_REQ, ShCmd.CLEAR_RSP, {}, tkn)
+    ok, rsp = await self._sendTknCmd(ShCmd.CLEAR_REQ, ShCmd.CLEAR_RSP, {}, tkn)
     return (ok, rsp[ShCmd.CLEAR_RSP]['cnt'] if ok else 0)
         
 
   async def clear_set(self, keys: dict, tkn: int) -> Tuple[bool, int]:
-    ok, rsp = await self.sendTknCmd(ShCmd.CLEAR_SET_REQ, ShCmd.CLEAR_SET_RSP, {'keys':keys}, tkn)
+    ok, rsp = await self._sendTknCmd(ShCmd.CLEAR_SET_REQ, ShCmd.CLEAR_SET_RSP, {'keys':keys}, tkn)
     return (ok, rsp[ShCmd.CLEAR_SET_RSP]['cnt'] if ok else 0)
 
 
@@ -135,7 +135,7 @@ class SessionClient(Client):
 
 
   async def end_session(self, tkn: int):
-    ok, _ = await self.sendTknCmd(ShCmd.END_REQ, ShCmd.END_RSP, {}, tkn)
+    ok, _ = await self._sendTknCmd(ShCmd.END_REQ, ShCmd.END_RSP, {}, tkn)
     return ok
 
 
@@ -150,11 +150,10 @@ class SessionClient(Client):
     
 
   async def session_info(self, tkn: int) -> Tuple[bool,dict]:
-    ok, rsp = await self.sendTknCmd(ShCmd.INFO_REQ, ShCmd.INFO_RSP, {}, tkn)
+    ok, rsp = await self._sendTknCmd(ShCmd.INFO_REQ, ShCmd.INFO_RSP, {}, tkn)
     if ok:
       info = dict(rsp[ShCmd.INFO_RSP])
       info.pop('st')
-      print(info)
       return (True, info)
     else:
       return (False, dict())
@@ -195,4 +194,10 @@ class SessionClient(Client):
       return (True, info)
     else:
       return (False, dict())
+      
+
+  async def _sendTknCmd(self, cmdReq: str, cmdRsp: str, body: dict, tkn: int):
+    body['tkn'] = tkn   
+    return await self.sendCmd(cmdReq, cmdRsp, body)
+  
 
