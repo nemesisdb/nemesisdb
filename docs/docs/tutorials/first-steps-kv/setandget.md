@@ -158,7 +158,6 @@ When we want the user's profile data, we just have to get one key:
 That's the basics of setting and getting, other common commands are:
 
 - `KV_ADD` : does not overwrite the key if it already exists
-- `KV_SETQ` and `KV_ADDQ` : "set quiet" and "add quiet" which only send a response on an error. This helps reduce network traffic
 - `KV_COUNT` : Return the number of keys present (either in the entire database or in the session, dependenent on sessions being enabled) 
 - `KV_RMV` : delete key(s)
 - `KV_CLEAR_SET` : similar to `KV_CLEAR` which clears all keys in the database/session (dependent on sessions being enabled), but `KV_CLEAR_SET` sets new keys after the clear in a single command. This is an alternative for sending separate `KV_CLEAR` and `KV_SET` commands

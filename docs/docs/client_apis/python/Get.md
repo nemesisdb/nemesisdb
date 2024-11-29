@@ -10,18 +10,13 @@ Retrieves keys from the database.
 |Param|Type|Description|Required|
 |--|:-:|--|:-:|
 |keys|tuple|Tuple of keys to retrieve|Y|
-|tkn|int|A session token|Only if sessions enabled|
 
 
 ## Returns
-
-`tuple(bool, dict)`
-- `bool` - `True` if command successful
-- `dict` - key/value pairs
+`dict` - key/value pairs
 
 
 ## Examples
-
 
 ```py title='Set various'
 client = KvClient()
@@ -36,10 +31,9 @@ data = {  "server_ip":"123.456.7.8",
           }
         }
 
-if await client.set(data):
-  (getOk, values) = await client.get(('server_users', 'server_port'))
-  if getOk:
-    print(values)
+await client.set(data):
+values = await client.get(('server_users', 'server_port'))
+print(values)
 ```
 
 Output:
@@ -63,16 +57,18 @@ data = {  "server_ip":"123.456.7.8",
           }
         }
 
-if await client.set(data):
-  (getOk, values) = await client.get(('server_users', 'server_port'))
-  if getOk:
-    print(values)
-    # update and call set() to overwrite
-    values['server_port'] = 7891
-    values['server_users']['banned'] = []
-    await client.set(values)
-    (getOk, values) = await client.get(('server_users', 'server_port'))
-    print(values)
+await client.set(data):
+values = await client.get(('server_users', 'server_port'))
+
+print(values)
+
+# update and call set() to overwrite
+values['server_port'] = 7891
+values['server_users']['banned'] = []
+await client.set(values)
+
+values = await client.get(('server_users', 'server_port'))
+print(values)
 ```
 
 Output:

@@ -12,13 +12,10 @@ Existing keys are overwritten, to avoid this use [add](./Add).
 |Param|Type|Description|Required|
 |--|:-:|--|:-:|
 |keys|dict|A dictionary of key/values to store|Y|
-|tkn|int|A session token|Only if sessions enabled|
 
 
 ## Returns
-
-`bool`
-- `True` if command successful, otherwise `False`
+None
 
 
 ## Examples
@@ -28,14 +25,10 @@ Existing keys are overwritten, to avoid this use [add](./Add).
 client = KvClient()
 await client.open('ws://127.0.0.1:1987/')
 
-setSuccess = await client.set({'username':'billy', 'password':'billy_passy'})
-
-if setSuccess:
-  (getOk, values) = await client.get(('username',))
-  if getOk:
-    print(values)
-  else:
-    print('Query failed')
+await client.set({'username':'billy', 'password':'billy_passy'})
+values = await client.get(('username',))
+print(values)
+  
 ```
 
 <br/>
@@ -53,11 +46,9 @@ data = {  "server_ip":"123.456.7.8",
           }
         }
 
-setSuccess = await client.set(data)
-if setSuccess:
-  (getOk, values) = await client.get(('server_users',))
-  if getOk:
-    print(values)
+await client.set(data)
+values = await client.get(('server_users',))
+print(values)
 ```
 
 In this example, `server_users` is the key with the value being an object, so `print(values)` produces:

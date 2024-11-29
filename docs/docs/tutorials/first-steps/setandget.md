@@ -7,7 +7,6 @@ displayed_sidebar: tutorialSidebar
 
 We'll store data of different types. With data types part of the JSON syntax, we don't have to care about types, only that the JSON is valid.
 
-To interact with data, the Key Value API is used. Its commands begin `KV_`.
 
 :::info Token
 Remember to replace the `tkn` with your token.
@@ -20,7 +19,7 @@ Send:
 
 ```json
 {
-  "KV_SET":
+  "SH_SET":
   {
     "tkn":14247375118774737462,
     "keys":
@@ -32,7 +31,7 @@ Send:
 ```
 The stores the key `username` with string value "Spongebob".
 
-- The `KV_SET_RSP` response contains `"username": 20` which is the key and status. This confirms "username" was successfully set
+- The `SH_SET_RSP` response contains `"username": 20` which is the key and status. This confirms "username" was successfully set
 - If you send the command again, the status will change to `21`, which means an existing key has been overwritten (not an error)
 
 
@@ -42,7 +41,7 @@ Send:
 
 ```json
 {
-  "KV_SET":
+  "SH_SET":
   {
     "tkn":14247375118774737462,
     "keys":
@@ -65,7 +64,7 @@ You can store multiple keys per request:
 
 ```json
 {
-  "KV_SET":
+  "SH_SET":
   {
     "tkn":14247375118774737462,
     "keys":
@@ -85,11 +84,11 @@ This stores two keys:
 
 ## Get Data
 
-To get keys use `KV_GET`, which can get multiple keys in one request so we'll get all four:
+To get keys use `SH_GET`, which can get multiple keys in one request so we'll get all four:
 
 ```json
 {
-  "KV_GET":
+  "SH_GET":
   {
     "tkn":14247375118774737462,
     "keys":["username", "email", "age", "friends"]
@@ -101,7 +100,7 @@ The response:
 
 ```json
 {
-  "KV_GET_RSP": {
+  "SH_GET_RSP": {
     "tkn": 14247375118774737462,
     "keys": {
       "username": "Spongebob",
@@ -124,7 +123,7 @@ Let's clear our session data:
 
 ```json
 {
-  "KV_CLEAR":
+  "SH_CLEAR":
   {
     "tkn":14247375118774737462
   }
@@ -140,7 +139,7 @@ We'll store the same data again but in an object:
 
 ```json
 {
-  "KV_SET":
+  "SH_SET":
   {
     "tkn":14247375118774737462,
     "keys":
@@ -165,7 +164,7 @@ Now when we want the user's profile data, we just have to get one key:
 
 ```json
 {
-  "KV_GET":
+  "SH_GET":
   {
     "tkn":14247375118774737462,
     "keys":["profile"]
@@ -180,6 +179,5 @@ That's the basics of setting and getting.
 This guide shows one session for one user. This pattern works for many users, each with their own session. Clients just need to use the appropriate token to switch users.
 
 :::info
-- `KV_SET` overwrites the key if it already exists. If you don't want this, you can use `KV_ADD` which won't overwrite
-- `KV_SET` always returns a response. If you don't need confirmation, you can use `KV_SETQ` ("set quiet") which only responds on an error
+- `SH_SET` overwrites the key if it already exists. If you don't want this, you can use `SH_ADD` which won't overwrite
 :::

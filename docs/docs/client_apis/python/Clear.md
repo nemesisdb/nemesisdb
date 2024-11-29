@@ -12,20 +12,8 @@ Deletes _all_ keys.
 - To delete all keys and set new keys in a single call, use [clear_set](./Clear_Set)
 
 
-|Param|Type|Description|Required|
-|--|:-:|--|:-:|
-|tkn|int|A session token|Only if sessions enabled|
-
-
-:::note
-With sessions enabled, this command only clears keys in the session identified by the `tkn` parameter.
-:::
-
-
 ## Returns
-
-`bool`
-- `True` if command successful, otherwise `False`
+None
 
 
 ## Examples

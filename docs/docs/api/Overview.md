@@ -15,8 +15,8 @@ There are seperate APIs for key-values and sessions, but they all share:
 There is a key value [TLDR](../home/tldr-kv).
 
 
-## Sessions Disabled
-The commands all begin with `KV_`, for example `KV_SET` and `KV_GET`.
+## Key value
+The commands all begin with `KV_`, for example `KV_SET` and `KV_GET`. They store keys that are not in a session (independent keys).
 
 ```json title='Store keys: username, job and age'
 {
@@ -55,11 +55,11 @@ Commonly used commands:
 
 <br/>
 
-## Sessions Enabled
-This is similar to when sessions are disabled, except:
+## Sessions
+The session API contains commands to manage sessions, such as `SH_NEW`, `SH_END`, etc.
 
-- A session must be created with `SH_NEW`
-- The token returned by `SH_NEW` must be used in subsequent `KV_` commands
+- Create a session with `SH_NEW`
+- The token returned by `SH_NEW` can be used in subsequent `SH_` commands that require it
 
 A good place to start is [First Steps](../tutorials/first-steps/setup) which shows how to create a session and store/get data.
 

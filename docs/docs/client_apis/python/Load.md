@@ -14,23 +14,20 @@ Restores keys that were previously saved with `save()`.
 
 :::note
 - Persistance does _not_ have to be enabled for this command
-- This command can only be used with sessions are disabled. With sessions enabled, use `SessionClient.load()`.
+- You can also load at startup, using `--loadName`
+- This command can only be used to load independent keys (those that are not in a session). To load sessions, use [SessionClient.load()](./sessions/Load)
 :::
 
 
 ## Returns
-
-`tuple(bool,int)`:
-- `bool` : `True` if command successful, otherwise `False`
-- `int` : The number of keys loaded
+`int` : The number of keys loaded
 
 
 ## Examples
 
-
 Assuming a previous call to `save('my_data')`:
-```py
-(loaded, count) = await client.load('my_data')
-if loaded:
-  print(f'Loaded {count} keys')
+
+```py title='Load keys'
+count = await client.load('my_data')
+print(f'Loaded {count} keys')
 ```
