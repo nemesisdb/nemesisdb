@@ -9,7 +9,7 @@ import logging
 
 class StValues:
   """
-  There are more but we only check specificy for these.
+  There are more but we only require:
     ST_SUCCESS - command success
     ST_SAVE_COMPLETE - SH_SAVE or KV_SAVE success, data persisted
     ST_SAVE_ERROR - SH_SAVE or KV_SAVE fail
@@ -25,7 +25,6 @@ class Fields:
   STATUS    = 'st'
 
 
-
 class SvCmd:
   INFO_REQ    = 'SV_INFO'
   INFO_RSP    = 'SV_INFO_RSP'
@@ -34,8 +33,7 @@ class SvCmd:
 class Client(ABC):
   """Inherited by KvClient and SessionClient to query the database.
 
-  Contains functions common to
-
+  Contains functions common to session and kv clients. 
   """
 
   def __init__(self, debug = False):
@@ -62,6 +60,7 @@ class Client(ABC):
     return (self._is_rsp_valid(rsp, cmdRsp, stSuccess), rsp)
     
 
+  # server_info is independent from kv and sh
   async def server_info(self) -> Tuple[bool, dict]:
     rsp = await self._send_query(SvCmd.INFO_REQ, {SvCmd.INFO_REQ : {}})
     if self._is_rsp_valid(rsp, SvCmd.INFO_RSP):

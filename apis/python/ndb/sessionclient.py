@@ -58,9 +58,9 @@ class Session:
 
 
 class SessionClient(Client):
-  """A client for when NemesisDB has sessions enabled.
-  Similar to KvClient but key value functions require a token, and
-  session specific functions are supplied.
+  """A client to manage sessions and keys in a session.
+  create_session() creates a session, returning a Session which contains the token.
+  The Session.tkn is used in subsequent commands.
   """
   def __init__(self, debug = False):
     super().__init__(debug)
@@ -100,11 +100,13 @@ class SessionClient(Client):
   
 
   async def clear(self, tkn: int) -> Tuple[bool, int]:
+    """Clear all keys in the session. To delete all sessions, use end_all_sessions()."""
     ok, rsp = await self._sendTknCmd(ShCmd.CLEAR_REQ, ShCmd.CLEAR_RSP, {}, tkn)
     return (ok, rsp[ShCmd.CLEAR_RSP]['cnt'] if ok else 0)
         
 
   async def clear_set(self, keys: dict, tkn: int) -> Tuple[bool, int]:
+    """Clear keys in the session then set new keys."""
     ok, rsp = await self._sendTknCmd(ShCmd.CLEAR_SET_REQ, ShCmd.CLEAR_SET_RSP, {'keys':keys}, tkn)
     return (ok, rsp[ShCmd.CLEAR_SET_RSP]['cnt'] if ok else 0)
 
@@ -171,7 +173,7 @@ class SessionClient(Client):
       return (False, dict())
     
   
-  async def session_save(self, name: str, tkns = list()) -> bool:
+  async def save(self, name: str, tkns = list()) -> bool:
     """Save all sessions or specific sessions.
     name - dataset name
     tkns - if empty, saves all sessions, otherwise only sessions whose token is in 'tkns'
@@ -188,7 +190,7 @@ class SessionClient(Client):
     return ok
 
 
-  async def session_load(self, name: str) -> Tuple[bool, dict]:
+  async def load(self, name: str) -> Tuple[bool, dict]:
     """Loads session data from persistance.
     name - the same name as used with session_save().
     """
