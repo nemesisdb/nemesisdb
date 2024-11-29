@@ -43,9 +43,10 @@ class ShCmd:
 
 
 
-"""Stores the session token session.
-"""
+
 class Session:
+  """Stores the session token session.
+  """
   def __init__(self, tkn: int):
     self.tkn = tkn
 
@@ -55,12 +56,12 @@ class Session:
 
 
 
-"""A client for when NemesisDB has sessions enabled.
-Similar to KvClient but key value functions require a token, and
-session specific functions are supplied.
-"""
+
 class SessionClient(Client):
-  
+  """A client for when NemesisDB has sessions enabled.
+  Similar to KvClient but key value functions require a token, and
+  session specific functions are supplied.
+  """
   def __init__(self, debug = False):
     super().__init__(debug)
     
@@ -108,15 +109,16 @@ class SessionClient(Client):
     return (ok, rsp[ShCmd.CLEAR_SET_RSP]['cnt'] if ok else 0)
 
 
-  """Create a new session, with optional expiry settings.
-  expirySeconds - after this duration (seconds), the session expires. Default 0 - never expires.
-  deleteSessionOnExpire - when True, the sessions is deleted. When false, the session is not deleted. 
-
-  When a session expires, the keys are always deleted, but deleteSessionOnExpire controls if the 
-  actual session is also deleted.
-  """
+  
   async def create_session(self, durationSeconds = 0, deleteSessionOnExpire = False) -> Session:
-    # TODO add SH_NEW_SHARED command 
+    """Create a new session, with optional expiry settings.
+
+    expirySeconds - after this duration (seconds), the session expires. Default 0 - never expires.
+    deleteSessionOnExpire - when True, the sessions is deleted. When false, the session is not deleted. 
+
+    When a session expires, the keys are always deleted, but deleteSessionOnExpire controls if the 
+    actual session is also deleted.
+    """
     body = dict()
 
     if durationSeconds < 0:
@@ -168,12 +170,12 @@ class SessionClient(Client):
     else:
       return (False, dict())
     
-    
-  """Save all sessions or specific sessions.
-  name - dataset name
-  tkns - if empty, saves all sessions, otherwise only sessions whose token is in 'tkns'
-  """
+  
   async def session_save(self, name: str, tkns = list()) -> bool:
+    """Save all sessions or specific sessions.
+    name - dataset name
+    tkns - if empty, saves all sessions, otherwise only sessions whose token is in 'tkns'
+    """
     if name == '':
       raise ValueError('Name cannot be empty')
 
@@ -187,6 +189,9 @@ class SessionClient(Client):
 
 
   async def session_load(self, name: str) -> Tuple[bool, dict]:
+    """Loads session data from persistance.
+    name - the same name as used with session_save().
+    """
     ok, rsp = await self.sendCmd(ShCmd.LOAD_REQ, ShCmd.LOAD_RSP, {'name':name}, StValues.ST_LOAD_COMPLETE)
     if ok:
       info = dict(rsp[ShCmd.LOAD_RSP])
