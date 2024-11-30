@@ -1,4 +1,4 @@
-from ndb.client import Client, StValues
+from ndb.client import Client, StValues, Fields
 from ndb.logging import logger
 from typing import Tuple, List
 
@@ -150,14 +150,14 @@ class SessionClient(Client):
   async def session_info(self, tkn: int) -> dict:
     rsp = await self._sendTknCmd(ShCmd.INFO_REQ, ShCmd.INFO_RSP, {}, tkn)
     info = dict(rsp[ShCmd.INFO_RSP])
-    info.pop('st')
+    info.pop(Fields.STATUS)
     return info
     
     
   async def session_info_all(self) -> dict:
     rsp = await self._sendCmd(ShCmd.INFO_ALL_REQ, ShCmd.INFO_ALL_RSP, {})
     info = dict(rsp[ShCmd.INFO_ALL_RSP])
-    info.pop('st')
+    info.pop(Fields.STATUS)
     return info
     
   
@@ -188,7 +188,7 @@ class SessionClient(Client):
       
 
   async def _sendTknCmd(self, cmdReq: str, cmdRsp: str, body: dict, tkn: int):
-    body['tkn'] = tkn   
+    body[Fields.TOKEN] = tkn   
     return await self._sendCmd(cmdReq, cmdRsp, body)
   
 

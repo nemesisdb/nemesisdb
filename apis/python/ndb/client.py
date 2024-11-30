@@ -23,6 +23,7 @@ class StValues:
 
 class Fields:
   STATUS    = 'st'
+  TOKEN     = 'tkn'
 
 
 class SvCmd:
@@ -31,11 +32,7 @@ class SvCmd:
 
 
 class NdbException(Exception):
-  pass
-
-
-class ConnectError(NdbException):
-   def __init__(self, msg='Connection failed'):
+  def __init__(self, msg):
     super().__init__(msg)
 
 
@@ -44,6 +41,10 @@ class ResponseError(NdbException):
     super().__init__('Response failed')
     self.rsp = rsp
 
+
+# class ConnectError(NdbException):
+#    def __init__(self, msg='Connection failed'):
+#     super().__init__(msg)
 
 
   
