@@ -36,7 +36,7 @@ namespace fs = std::filesystem;
 namespace chrono = std::chrono;
 namespace jsonpath = jsoncons::jsonpath;
 
-static const char * NEMESIS_VERSION = "0.6.6";
+static const char * NEMESIS_VERSION = "0.7";
 static const std::size_t NEMESIS_CONFIG_VERSION = 5U;
 
 static const std::size_t NEMESIS_KV_MINPAYLOAD = 64U;
