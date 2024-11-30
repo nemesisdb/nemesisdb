@@ -11,7 +11,7 @@
 #include <core/kv/KvCommon.h>
 
 
-namespace nemesis { namespace core { namespace sh {
+namespace nemesis { namespace sh {
 
 using namespace nemesis::core;
 
@@ -246,7 +246,6 @@ private:
 };
 
 
-}
 }
 }
 

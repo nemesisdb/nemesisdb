@@ -10,19 +10,10 @@ Given a tuple of keys, returns the keys which exist.
 |Param|Type|Description|Required|
 |--|:-:|--|:-:|
 |keys|tuple|Keys to check|Y|
-|tkn|int|A session token|Only if sessions enabled|
-
-
-:::note
-With sessions enabled, this command only returns keys which exist in the session identified by the `tkn` parameter.
-:::
 
 
 ## Returns
-
-`tuple(bool, list)`
-- `bool`: `True` if command successful, otherwise `False`
-- `list` : the keys which exist
+`list` : the keys which exist
 
 
 ## Examples
@@ -31,5 +22,5 @@ With sessions enabled, this command only returns keys which exist in the session
 ```py
 client = KvClient()
 await client.open('ws://127.0.0.1:1987/')
-(success, exist) = await client.contains(('k1','k2','k3'))
+exist = await client.contains(('k1','k2','k3'))
 ```

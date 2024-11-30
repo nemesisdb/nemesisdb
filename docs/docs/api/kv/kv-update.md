@@ -1,5 +1,5 @@
 ---
-sidebar_position: 57
+sidebar_position: 160
 ---
 
 # KV_UPDATE
@@ -18,9 +18,6 @@ This differs from `KV_SET` because `KV_SET` overwrites the entire key's value.
 
 <br/>
 
-:::info
-The `tkn` must be set when the server mode is "kv_sessions".
-:::
 
 For example, if we store this:
 

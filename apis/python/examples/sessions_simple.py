@@ -20,31 +20,19 @@ async def basics():
   print(f"Session created with session token: {session.tkn}")
 
   # set keys in the session
-  ok = await client.set({'fname':'James', 'sname':'smith'}, session.tkn)
-  if not ok:
-    print('Set failed')
-    return
+  await client.set({'fname':'James', 'sname':'smith'}, session.tkn)
 
 
   # retrieve
-  (ok, values) = await client.get(('fname', 'sname'), session.tkn)
-  if not ok:
-    print('Get failed')
-    return
-
+  values = await client.get(('fname', 'sname'), session.tkn)
   print(values)
   
 
   # overwrite surname ('smith' to 'Smith')
-  ok = await client.set({'sname':'Smith'}, session.tkn)
-  if not ok:
-    print('Set failed')
+  await client.set({'sname':'Smith'}, session.tkn)
 
   # retrieve updated value
-  (ok, values) = await client.get(('fname', 'sname'), session.tkn)
-  if not ok:
-    print('Get failed')
-
+  values = await client.get(('fname', 'sname'), session.tkn)
   print(values)
 
 
@@ -118,9 +106,8 @@ async def updateUsername(client: SessionClient, username: str, tkn: int):
 
 
 async def getUser(client: SessionClient, tkn: int):
-  (ok, values) = await client.get(('username', 'email'), tkn)
-  if ok:
-    print(values)
+  values = await client.get(('username', 'email'), tkn)
+  print(values)
 
 
 async def two_sessions():

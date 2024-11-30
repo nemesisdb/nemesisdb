@@ -2,7 +2,7 @@
 #define NDB_CORE_KVCOMMANDS_H
 
 
-namespace nemesis { namespace core { namespace kv {
+namespace nemesis { namespace kv { namespace cmds {
 
   const char SetReq[]     = "KV_SET";
   const char SetRsp[]     = "KV_SET_RSP";

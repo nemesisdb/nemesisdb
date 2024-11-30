@@ -5,9 +5,81 @@ displayed_sidebar: tutorialSidebar
 
 # Overview
 
-- All sessions or a specific sessions can be saved
-- Data can be restored at startup with a command line argument or at runtime with the `SH_LOAD` command
+- `SH_SAVE` persist all sessions or specific session(s)
+- `KV_SAVE` persists all keys
+- Data can be restored at startup with a command line argument
+- Data can be restored at runtime with the `SH_LOAD` or `KV_LOAD`
 - Data is written as raw JSON, a future release will support a more space efficient format
+
+<br/>
+
+## Saving Key Value
+The `KV_SAVE` command persist key values (i.e. those not in a session).
+
+The command saves all keys, you cannot specify particular keys to persist.
+
+```json
+{
+  "KV_SAVE":
+  {
+    "name":"stats"
+  }
+}
+```
+
+And later load at runtime with:
+```json
+{
+  "KV_LOAD":
+  {
+    "name":"stats"
+  }
+}
+```
+
+
+<br/>
+
+## Saving Sessions
+The `SH_SAVE` command is used to persist session(s).
+
+Save all sessions:
+
+```json title='Save all sessions'
+{
+  "SH_SAVE":
+  {
+    "name":"users"
+  }
+}
+```
+
+Supply tokens (`tkns`) to save particular sessions:
+
+```json title="Save two sessions"
+{
+  "SH_SAVE":
+  {
+    "name":"blocked_users",
+    "tkns":[123456, 654321]
+  }
+}
+```
+
+
+<br/>
+
+## Loading
+
+- Startup
+  - `--loadName` will load data. The name must match a `name` used in either `KV_SAVE` or `SH_SAVE`
+  - `--loadPath` is used to read data from a path that's different from that in the server config
+    - Only applies at startup, not with `KV_LOAD` or `SH_LOAD`
+
+- Runtime
+  - `SH_LOAD` and `KV_LOAD` offer the flexibility to load data at any time
+  - `SH_LOAD` and `KV_LOAD` only read data from the persist path in the server config
+
 
 <br/>
 
@@ -61,56 +133,5 @@ If we send another save command with the same name:
 :::info
 The current version does not allow you to load a specific timestamp, it always selects the most recent. <br/>
 
-If you need to restore specific data, use a different name for each use of `SH_SAVE`.
+If you need to restore specific data, use a different name for each use of `SH_SAVE`/`KV_SAVE`.
 :::
-
-<br/>
-
-## Saving
-The `SH_SAVE` command is used to save data:
-
-```json
-{
-  "SH_SAVE":
-  {
-    "name":"defaults"
-  }
-}
-```
-
-Supply tokens (`tkns`) to save particular sessions:
-
-```json title="Save two sessions"
-{
-  "SH_SAVE":
-  {
-    "name":"defaults",
-    "tkns":[123456, 654321]
-  }
-}
-```
-
-<br/>
-
-## Loading
-Data can be loaded at startup with command line args or at runtime with `SH_LOAD`:
-
-- Startup
-  - `--loadName` can be used with `--loadPath` to read data from a path that's different from that in the server config
-
-- Runtime
-  - `SH_LOAD` offers the flexibility to load data at any time
-  - `SH_LOAD` will only read data from the path in the server config
-
-
-<br/>
-
-## Usage
-The intention is to offer flexibility:
-
-- Save all or specific sessions
-- Load data on startup to work from a known base
-- Load data ad-hoc
-
-The server can be populated with data, cleared, and then loaded with data for a different purpose without restarting.
-

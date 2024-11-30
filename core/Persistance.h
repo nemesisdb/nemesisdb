@@ -2,6 +2,7 @@
 #define NDB_CORE_PERSISTANCE_H
 
 #include <fstream>
+#include <string>
 #include <core/NemesisCommon.h>
 
 
@@ -44,32 +45,13 @@ namespace nemesis { namespace core {
   };
 
 
-  DataLoadPaths getLoadPaths(const std::filesystem::path& loadRoot)
+  struct PreLoadInfo
   {
-    auto countFiles = [](const fs::path& path) -> std::size_t
-    {
-      return (std::size_t)std::distance(fs::directory_iterator{path}, fs::directory_iterator{});
-    };
-
-    if (countFiles(loadRoot) == 0)
-      return {.valid = false};
-    else
-    {
-      std::size_t max = 0;
-
-      // loadRoot may contain several saves (i.e. SH_SAVE/KV_SAVE used multiple times with the same 'name'),
-      // they are named with the timestamp, so find the highest (most recent)
-      for (const auto& dir : fs::directory_iterator(loadRoot))
-      {
-        if (dir.is_directory())
-          max = std::max<std::size_t>(std::stoul(dir.path().filename()), max);
-      }
-
-      const fs::path root {loadRoot / std::to_string(max)};
-      return DataLoadPaths {.root = root, .md = root / "md" / "md.json", .data = root / "data", .valid = true};
-    }
-  }
-
+    DataLoadPaths paths;    
+    std::string err;
+    SaveDataType dataType;
+    bool valid;
+  };
 
 
   njson createInitialSaveMetaData(std::ofstream& stream, const std::string_view name, const bool sessionsEnabled)
@@ -98,18 +80,48 @@ namespace nemesis { namespace core {
   }
 
 
-  std::tuple<bool, const std::string_view> validatePreLoad (const std::string& loadName, const fs::path& persistPath, const bool sessionsEnabled)
+  DataLoadPaths getLoadPaths(const std::filesystem::path& loadRoot)
   {
+    auto countFiles = [](const fs::path& path) -> std::size_t
+    {
+      return (std::size_t)std::distance(fs::directory_iterator{path}, fs::directory_iterator{});
+    };
+
+    if (countFiles(loadRoot) == 0)
+      return {.valid = false};
+    else
+    {
+      std::size_t max = 0;
+
+      // loadRoot may contain several saves (i.e. SH_SAVE/KV_SAVE used multiple times with the same 'name'),
+      // they are named with the timestamp, so find the highest (most recent)
+      for (const auto& dir : fs::directory_iterator(loadRoot))
+      {
+        if (dir.is_directory())
+          max = std::max<std::size_t>(std::stoul(dir.path().filename()), max);
+      }
+
+      const fs::path root {loadRoot / std::to_string(max)};
+      return DataLoadPaths {.root = root, .md = root / "md" / "md.json", .data = root / "data", .valid = true};
+    }
+  }
+
+ 
+  PreLoadInfo validatePreLoad (const std::string& loadName, const fs::path& persistPath)
+  {
+    PreLoadInfo info {.valid = false};
+
+    // TODO create LoadInfo struct, containing saveDataType, success and error msg
     if (!fs::exists(persistPath / loadName))
-      return {false, "Load name does not exist"};
+      info.err = "Load name does not exist";
     else if (const auto [root, mdFile, data, valid] = getLoadPaths(persistPath / loadName); !valid)
-      return {false, "Failed to get load paths"};
+      info.err = "Failed to get load paths";
     else if (!fs::exists(root))
-      return {false, "Load root does not exist"};
+      info.err = "Load root does not exist";
     else if (!fs::exists(mdFile))
-        return {false, "Metadata does not exist"};
+      info.err = "Metadata does not exist";
     else if (!(fs::exists(data) && fs::is_directory(data)))
-      return {false, "Data directory does not exist or is not a directory"}; 
+      info.err = "Data directory does not exist or is not a directory";
     else
     {
       PLOGI << "Reading metadata in " << mdFile;
@@ -118,21 +130,18 @@ namespace nemesis { namespace core {
       const auto mdJson = njson::parse(mdStream);
 
       if (!(mdJson.contains("saveDataType") && mdJson.contains("status") && mdJson.at("status").is_uint64()))
-        return {false, "Metadata file invalid"};
+        info.err = "Metadata file invalid";
+      else if (mdJson["status"] != toUnderlying(KvSaveStatus::Complete))
+        info.err = "Cannot load: save is incomplete";
       else
       {
-        const auto saveType = static_cast<SaveDataType>(mdJson.at("saveDataType").as<unsigned int>()) ;
-        
-        if (mdJson["status"] != toUnderlying(KvSaveStatus::Complete))
-          return {false, "Cannot load: save is incomplete"};
-        else if (!sessionsEnabled && saveType == SaveDataType::SessionKv)
-          return {false, "Cannot load: persisted data is session data but server has sessions disabled"};
-        else if (sessionsEnabled && saveType == SaveDataType::RawKv)
-          return {false, "Cannot load: persisted data is raw KV data but server has sessions enabled"};
-        else
-          return {true, ""};
+        info.dataType = static_cast<SaveDataType>(mdJson.at("saveDataType").as<unsigned int>());
+        info.paths = getLoadPaths(persistPath / loadName);
+        info.valid = info.paths.valid;
       }
     }
+
+    return info;
   }
 
 

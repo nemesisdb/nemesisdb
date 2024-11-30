@@ -6,7 +6,6 @@ sidebar_position: 10
 Stores key-values. If the key already exists, the value is overwritten.
 
 - If you don't want to overwrite an existing key, use `KV_ADD`
-- This command always returns a response. If you don't require a response, use `KV_SETQ` which only sends a response on failure
 
 
 <br/>
@@ -14,12 +13,6 @@ Stores key-values. If the key already exists, the value is overwritten.
 |Param|Type|Meaning|Required|
 |:---|:---|:---|:---:|
 |keys|object|Keys and values to store|Y|
-
-<br/>
-
-:::info
-The `tkn` must be set when the server mode is "kv_sessions".
-:::
 
 <br/>
 
@@ -41,7 +34,9 @@ Contains the keys and their values:
 }
 ```
 
-```json title="The above can be also stored as an object in a single key (profile)"
+Store a key with an object value. This sets a key 'profile':
+
+```json title="Store object"
 {
   "KV_SET":
   {
@@ -56,6 +51,16 @@ Contains the keys and their values:
     }
   }
 }
+```
+
+If we retrieved the 'profile' key the value returned is:
+
+```json
+{
+  "forename":"James",
+  "surname":"Bond",
+  "email":"jb@mi5.com"
+}      
 ```
 
 <br/>

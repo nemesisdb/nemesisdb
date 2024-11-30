@@ -12,7 +12,6 @@ The only required parameter is a `name`:
 {
   "SH_NEW":
   {
-    "name":"session1"
   }
 }
 ```
@@ -25,14 +24,11 @@ The server responds with a `SH_NEW_RSP` containing the `name` and the `tkn` (tok
 {
   "SH_NEW_RSP":
   {
-    "name":"session1",
+    "st":1,
     "tkn":8467384731478681233
   }
 }
 ```
-
-The token is used in subsequent `KV_` commands to access its data or with `SH_END` to end the session.
-
 
 <br/>
 
@@ -45,7 +41,6 @@ We can create a session that expires after a minute by setting duration:
 {
   "SH_NEW":
   {
-    "name":"session2",
     "expiry":
     {
       "duration": 60,
@@ -66,7 +61,6 @@ We create a session that expires after 10 minutes, but the session is not delete
 {
   "SH_NEW":
   {
-    "name":"session3",
     "expiry":
     {
       "duration": 600,
@@ -78,5 +72,5 @@ We create a session that expires after 10 minutes, but the session is not delete
 After this session expires, its token remains valid for further use, but its data is deleted.
 
 :::note
-To clear a session's data it does not need to expire, you can use `KV_CLEAR` any time.
+To clear a session's data it does not need to expire, you can use `SH_CLEAR` at any time.
 :::

@@ -10,13 +10,16 @@
 #include <core/Persistance.h>
 #include <core/sh/ShCommon.h>
 #include <core/sh/ShSessions.h>
+#include <core/sh/ShExecutor.h>
 #include <core/sh/ShCommands.h>
 #include <core/sh/ShCommandValidate.h>
+#include <core/kv/KvExecutor.h>
+#include <core/kv/KvCommandValidate.h>
 
 
-namespace nemesis { namespace core { namespace sh {
+namespace nemesis { namespace sh {
 
-namespace sh = nemesis::core::sh;
+namespace kv = nemesis::kv;
 
 
 class ShHandler
@@ -62,7 +65,16 @@ class ShHandler
       {ShQueryType::ShLoad,    Handler{std::bind_front(&ShHandler::sessionLoad,     std::ref(*this))}},
       {ShQueryType::ShSave,    Handler{std::bind_front(&ShHandler::sessionSave,     std::ref(*this))}},
       //{KvQueryType::ShOpen,    Handler{std::bind_front(&ShHandler::sessionOpen,     std::ref(*this))}}
-      
+      //
+      {ShQueryType::Set,        Handler{std::bind_front(&ShHandler::set,        std::ref(*this))}},
+      {ShQueryType::Get,        Handler{std::bind_front(&ShHandler::get,        std::ref(*this))}},
+      {ShQueryType::Count,      Handler{std::bind_front(&ShHandler::count,      std::ref(*this))}},
+      {ShQueryType::Add,        Handler{std::bind_front(&ShHandler::add,        std::ref(*this))}},
+      {ShQueryType::Rmv,        Handler{std::bind_front(&ShHandler::remove,     std::ref(*this))}},
+      {ShQueryType::Clear,      Handler{std::bind_front(&ShHandler::clear,      std::ref(*this))}},
+      {ShQueryType::Contains,   Handler{std::bind_front(&ShHandler::contains,   std::ref(*this))}},
+      {ShQueryType::Keys,       Handler{std::bind_front(&ShHandler::keys,       std::ref(*this))}},
+      {ShQueryType::ClearSet,   Handler{std::bind_front(&ShHandler::clearSet,   std::ref(*this))}}      
     }, 1, alloc);
 
     return h;
@@ -74,15 +86,24 @@ class ShHandler
   {
     QueryTypePmrMap map ( 
     { 
-      {sh::NewReq,      ShQueryType::ShNew},
-      {sh::EndReq,      ShQueryType::ShEnd},      
-      {sh::InfoReq,     ShQueryType::ShInfo},
-      {sh::InfoAllReq,  ShQueryType::ShInfoAll},
-      {sh::SaveReq,     ShQueryType::ShSave},
-      {sh::LoadReq,     ShQueryType::ShLoad},
-      {sh::EndAllReq,   ShQueryType::ShEndAll},
-      {sh::ExistsReq,   ShQueryType::ShExists},
-      //{"SH_OPEN",     ShQueryType::ShOpen},
+      {cmds::NewReq,        ShQueryType::ShNew},
+      {cmds::EndReq,        ShQueryType::ShEnd},      
+      {cmds::InfoReq,       ShQueryType::ShInfo},
+      {cmds::InfoAllReq,    ShQueryType::ShInfoAll},
+      {cmds::SaveReq,       ShQueryType::ShSave},
+      {cmds::LoadReq,       ShQueryType::ShLoad},
+      {cmds::EndAllReq,     ShQueryType::ShEndAll},
+      {cmds::ExistsReq,     ShQueryType::ShExists},
+      //{"SH_OPEN",       ShQueryType::ShOpen},
+      {cmds::SetReq,        ShQueryType::Set},
+      {cmds::GetReq,        ShQueryType::Get},
+      {cmds::CountReq,      ShQueryType::Count},
+      {cmds::AddReq,        ShQueryType::Add},
+      {cmds::RmvReq,        ShQueryType::Rmv},
+      {cmds::ClearReq,      ShQueryType::Clear},
+      {cmds::ContainsReq,   ShQueryType::Contains},
+      {cmds::KeysReq,       ShQueryType::Keys},
+      {cmds::ClearSetReq,   ShQueryType::ClearSet}
     }, 1, alloc); 
 
     return map;
@@ -91,7 +112,7 @@ class ShHandler
 
 
 public:
-  ShHandler(const njson& config, std::shared_ptr<Sessions> sessions) : m_config(config), m_sessions(sessions)
+  ShHandler(const Settings& settings, std::shared_ptr<Sessions> sessions) : m_settings(settings), m_sessions(sessions)
     
   {
   }
@@ -140,43 +161,15 @@ public:
   }
 
 
+  void monitor ()
+  {
+    SessionExecutor::sessionMonitor(m_sessions);
+  }
+
+
 private:
-  ndb_always_inline Response sessionNew(njson& req)
-  {
-    if (auto [valid, rsp] = validateNew(req); !valid)
-    {
-      return Response{.rsp = std::move(rsp)};
-    }
-    else
-    {
-      bool deleteOnExpire = false;
-      SessionDuration duration{SessionDuration::rep{0}};
 
-      if (req.at(sh::NewReq).contains("expiry"))
-      {
-        const auto& expiry = req.at(sh::NewReq).at("expiry");
-
-        duration = SessionDuration{expiry.at("duration").as<SessionDuration::rep>()};
-        deleteOnExpire = expiry.at("deleteSession").as_bool();
-      }
-      
-      return SessionExecutor::newSession(m_sessions, createSessionToken(), duration, deleteOnExpire);
-    }
-  }
-
-
-  ndb_always_inline Response sessionEnd(njson& req)
-  {
-    SessionToken token;
-    
-    if (getSessionToken(sh::EndRsp, req.at(sh::EndReq), token))
-      return SessionExecutor::endSession(m_sessions, token);
-    else
-      return Response{.rsp = createErrorResponse(sh::EndRsp, RequestStatus::SessionNotExist)};
-  }
-
-  
-  /*
+  /* TODO decide plan for shared sessions
   ndb_always_inline Response sessionOpen(njson& json)
   {
     auto validate = [](const njson& cmd) -> std::tuple<RequestStatus, const std::string_view>
@@ -213,21 +206,56 @@ private:
   }
   */
 
-  
+
+  ndb_always_inline Response sessionNew(njson& req)
+  {
+    if (auto [valid, rsp] = validateNew(req); !valid)
+    {
+      return Response{.rsp = std::move(rsp)};
+    }
+    else
+    {
+      bool deleteOnExpire = false;
+      SessionDuration duration{SessionDuration::rep{0}};
+
+      if (req.at(cmds::NewReq).contains("expiry"))
+      {
+        const auto& expiry = req.at(cmds::NewReq).at("expiry");
+
+        duration = SessionDuration{expiry.at("duration").as<SessionDuration::rep>()};
+        deleteOnExpire = expiry.at("deleteSession").as_bool();
+      }
+      
+      return SessionExecutor::newSession(m_sessions, createSessionToken(), duration, deleteOnExpire);
+    }
+  }
+
+
+  ndb_always_inline Response sessionEnd(njson& req)
+  {
+    SessionToken token;
+    
+    if (getSessionToken(req.at(cmds::EndReq), token))
+      return SessionExecutor::endSession(m_sessions, token);
+    else
+      return Response{.rsp = createErrorResponse(cmds::EndRsp, RequestStatus::SessionNotExist)};
+  }
+
+
   ndb_always_inline Response sessionInfo(njson& req)
   {
-    auto& cmd = req.at(sh::InfoReq);
+    auto& cmd = req.at(cmds::InfoReq);
 
     if (cmd.size() != 1U)
-      return Response{.rsp = createErrorResponse(sh::InfoRsp, RequestStatus::CommandSyntax)};
+      return Response{.rsp = createErrorResponse(cmds::InfoRsp, RequestStatus::CommandSyntax)};
     else
     {
       SessionToken token;
     
-      if (getSessionToken(sh::InfoReq, cmd, token))
+      if (getSessionToken(cmd, token))
         return SessionExecutor::sessionInfo(m_sessions, token);
       else
-        return Response{.rsp = createErrorResponse(sh::InfoRsp, RequestStatus::SessionNotExist)};
+        return Response{.rsp = createErrorResponse(cmds::InfoRsp, RequestStatus::SessionNotExist)};
     }
   }
   
@@ -243,7 +271,7 @@ private:
     if (auto [valid, rsp] = validateExists(req); !valid)
       return Response{.rsp = std::move(rsp)};
     else
-      return SessionExecutor::sessionExists(m_sessions, req.at(sh::ExistsReq).at("tkns"));
+      return SessionExecutor::sessionExists(m_sessions, req.at(cmds::ExistsReq).at("tkns"));
   }
 
 
@@ -256,14 +284,14 @@ private:
   ndb_always_inline Response sessionSave(njson& req)
   {    
     // TODO  add this check in handle() so the error can be caught earlier
-    if (!NemesisConfig::persistEnabled(m_config))
-      return Response{.rsp = createErrorResponseNoTkn(sh::SaveRsp, RequestStatus::CommandDisabled)};
+    if (!m_settings.persistEnabled)
+      return Response{.rsp = createErrorResponseNoTkn(cmds::SaveRsp, RequestStatus::CommandDisabled)};
     else 
     {
       if (auto [valid, rsp] = validateSave(req); !valid)
         return Response{.rsp = std::move(rsp)};
       else
-        return doSave(sh::SaveReq, sh::SaveRsp, req.at(sh::SaveReq));
+        return doSave(cmds::SaveReq, cmds::SaveRsp, req.at(cmds::SaveReq));
     }
   } 
 
@@ -276,9 +304,9 @@ private:
     {
       const auto& loadName = req.at(sh::LoadReq).at("name").as_string();
 
-      if (const auto [preLoadValid, msg] = validatePreLoad(loadName, fs::path{NemesisConfig::savePath(m_config)}, true); !preLoadValid)
+      if (const PreLoadInfo info = validatePreLoad(loadName, fs::path{m_settings.persistPath}); !info.valid)
       {
-        PLOGE << msg;
+        PLOGE << info.err;
 
         Response response;
         response.rsp[sh::LoadRsp]["st"] = toUnderlying(RequestStatus::LoadError);
@@ -288,16 +316,112 @@ private:
       else
       {
         // can ignore pathsValid here because if paths are invalid, validatePreLoad() returns false
-        const auto [root, md, data, pathsValid] = getLoadPaths(fs::path{NemesisConfig::savePath(m_config)} / loadName);
+        const auto [root, md, data, pathsValid] = getLoadPaths(fs::path{m_settings.persistPath} / loadName);
         return Response{.rsp = doLoad(loadName, data)};
       }
     }    
   }
 
+  //
+  template<typename F>
+  Response callKvHandler(CacheMap& map,const njson& cmdRoot, F&& handler)
+    requires( std::is_invocable_v<F, CacheMap&, njson&> &&
+              std::is_same_v<Response, std::invoke_result_t<F, CacheMap&, njson&>>)
+  {
+    return std::invoke(handler, map, cmdRoot);
+  }
   
+
+  template<typename F>
+  Response executeKvCommand(const std::string_view cmdRspName, const njson& cmd, F&& handler)
+    requires(std::is_invocable_v<F, CacheMap&, njson&>)
+  {
+    const auto& cmdRoot = cmd.object_range().cbegin()->value();
+
+    SessionToken token;
+
+    if (auto sessionOpt = getSession(cmdRoot, token); sessionOpt)
+      return callKvHandler(sessionOpt->get().map, cmdRoot, std::forward<F>(handler));
+    else
+      return Response{.rsp = createErrorResponse(cmdRspName, RequestStatus::SessionNotExist)};
+  }
+
+
+  ndb_always_inline Response set(njson& request)
+  {
+    if (auto [valid, rsp] = kv::validateSet(cmds::SetReq, cmds::SetRsp, request); !valid)
+      return Response{.rsp = std::move(rsp)};
+    else
+      return executeKvCommand(cmds::SetRsp, request, kv::KvExecutor<true>::set);
+  }
+
+
+  ndb_always_inline Response get(njson& request)
+  {
+    if (auto [valid, rsp] = kv::validateGet(cmds::GetReq, cmds::GetRsp, request); !valid)
+      return Response{.rsp = std::move(rsp)};
+    else
+      return executeKvCommand(cmds::GetRsp, request, kv::KvExecutor<true>::get);
+  }
+
+
+  ndb_always_inline Response count(njson& request)
+  {
+    return executeKvCommand(cmds::CountRsp, request, kv::KvExecutor<true>::count);
+  }
+
+
+  ndb_always_inline Response add(njson& request)
+  {
+    if (auto [valid, rsp] = kv::validateAdd(cmds::AddReq, cmds::AddRsp, request); !valid)
+      return Response{.rsp = std::move(rsp)};
+    else
+      return executeKvCommand(cmds::AddRsp, request, kv::KvExecutor<true>::add);
+  }
+
+
+  ndb_always_inline Response remove(njson& request)
+  {
+    if (auto [valid, rsp] = kv::validateRemove(cmds::RmvReq, cmds::RmvRsp, request); !valid)
+      return Response{.rsp = std::move(rsp)};
+    else
+      return executeKvCommand(cmds::RmvRsp, request, kv::KvExecutor<true>::remove);
+  }
+
+
+  ndb_always_inline Response clear(njson& request)
+  {
+    return executeKvCommand(cmds::ClearRsp, request, kv::KvExecutor<true>::clear);
+  }
+
+
+  ndb_always_inline Response contains(njson& request)
+  {
+    if (auto [valid, rsp] = kv::validateContains(cmds::ContainsReq, cmds::ContainsRsp, request) ; !valid)
+      return Response{.rsp = std::move(rsp)};
+    else
+      return executeKvCommand(cmds::ContainsRsp, request, kv::KvExecutor<true>::contains);
+  }
+
+
+  ndb_always_inline Response keys(njson& request)
+  {
+    return executeKvCommand(cmds::KeysRsp, request, kv::KvExecutor<true>::keys);
+  }
+
+
+  ndb_always_inline Response clearSet(njson& request)
+  {
+    if (auto [valid, rsp] = kv::validateClearSet(cmds::ClearSetReq, cmds::ClearSetRsp, request) ; !valid)
+      return Response{.rsp = std::move(rsp)};
+    else
+      return executeKvCommand(cmds::ClearSetRsp, request, kv::KvExecutor<true>::clearSet);
+  }
+
+
 private:
-  // move to NemesisCommon
-  bool getSessionToken(const std::string_view queryRspName, const njson& cmdRoot, SessionToken& tkn)
+    
+  bool getSessionToken(const njson& cmdRoot, SessionToken& tkn)
   {
     if (cmdRoot.contains("tkn") && cmdRoot.at("tkn").is<SessionToken>())
     {
@@ -311,11 +435,28 @@ private:
   }
 
 
+  std::optional<std::reference_wrapper<Sessions::Session>> getSession (const njson& cmd, SessionToken& token)
+  {
+    if (getSessionToken(cmd, token))
+    {
+      if (auto sessionOpt = m_sessions->get(token); sessionOpt)
+      {
+        if (sessionOpt->get().expires)
+          m_sessions->updateExpiry(sessionOpt->get());
+
+        return sessionOpt;
+      }
+    }
+
+    return {};
+  }
+
+
   Response doSave (const std::string_view queryName, const std::string_view queryRspName, njson& cmd)
   {
     const auto& name = cmd.at("name").as_string();
     const auto dataSetDir = std::to_string(KvSaveClock::now().time_since_epoch().count());
-    const auto root = fs::path {NemesisConfig::savePath(m_config)} / name / dataSetDir;
+    const auto root = fs::path {m_settings.persistPath} / name / dataSetDir;
     const auto metaPath = root / "md";
     const auto dataPath = root / "data";
     
@@ -365,15 +506,14 @@ private:
     return response.rsp;
   }
 
+
 private:
-  njson m_config;
+  Settings m_settings;
   std::shared_ptr<Sessions> m_sessions;
 };
 
 
 }
 }
-}
-
 
 #endif

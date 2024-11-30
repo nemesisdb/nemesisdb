@@ -1,5 +1,5 @@
 ---
-sidebar_position: 58
+sidebar_position: 170
 ---
 
 # KV_ARR_APPEND
@@ -18,12 +18,6 @@ This command does not check for duplicate items.
 |key|string|Key containing the value to update|Y|
 |items|array|Items to append|Y|
 |name|string|If the key's value is an array, the `name` must be omitted.<br/>If the key's value is an object, `name` is the array's name.|N|
-
-<br/>
-
-:::info
-The `tkn` must be set when the server mode is "kv_sessions".
-:::
 
 
 <br/>

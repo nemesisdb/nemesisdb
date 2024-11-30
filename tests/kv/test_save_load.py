@@ -15,21 +15,17 @@ class SaveLoad(NDBTest):
   async def test_save_load(self):
     input = {'a':0, 'b':'str', 'c':True, 'd':1.5}
 
-    valid = await self.client.set(input)
-    self.assertTrue(valid)
+    await self.client.set(input)
 
     datasetName = 'kv_'+ str(random.randint(1000,999999))
     
-    saved = await self.client.save(datasetName)
-    self.assertTrue(saved)
+    await self.client.save(datasetName)
 
-    (cleared, clearedCount) = await self.client.clear()
-    self.assertTrue(cleared)
+    clearedCount = await self.client.clear()
     self.assertEqual(clearedCount, len(input))
 
     # load
-    (loaded, loadedCount) = await self.client.load(datasetName)
-    self.assertTrue(loaded)
+    loadedCount = await self.client.load(datasetName)
     self.assertEqual(loadedCount, len(input))
 
 

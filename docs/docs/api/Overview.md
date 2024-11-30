@@ -15,8 +15,8 @@ There are seperate APIs for key-values and sessions, but they all share:
 There is a key value [TLDR](../home/tldr-kv).
 
 
-## Sessions Disabled
-The commands all begin with `KV_`, for example `KV_SET` and `KV_GET`.
+## Key value
+The commands all begin with `KV_`, for example `KV_SET` and `KV_GET`. They store keys that are not in a session (independent keys).
 
 ```json title='Store keys: username, job and age'
 {
@@ -47,21 +47,19 @@ Commonly used commands:
 
 |Command|Purpose|
 |---|---|
-|KV_SETQ|Same as `KV_SET` but a response is only sent on an error|
 |KV_ADD|Stores keys, but unlike `KV_SET`, does not overwrite if a already exists|
-|KV_ADDQ|As `KV_ADD` but a response is only sent on an error|
 |KV_CONTAINS|Checks if keys exist|
 |KV_RMV|Remove/delete keys|
 
 <br/>
 
-## Sessions Enabled
-This is similar to when sessions are disabled, except:
+## Sessions
+The session API contains commands to manage sessions, such as `SH_NEW`, `SH_END`, etc.
 
-- A session must be created with `SH_NEW`
-- The token returned by `SH_NEW` must be used in subsequent `KV_` commands
+- Create a session with `SH_NEW`
+- The token returned by `SH_NEW` can be used in subsequent `SH_` commands that require it
+- Use `SH_SET`, `SH_GET` etc to set and get keys. These are the same as their `KV_` counterparts but require a token (`tkn`)
 
-A good place to start is [First Steps](../tutorials/first-steps/setup) which shows how to create a session and store/get data.
 
 ```json title='Create Session'
 {
@@ -73,7 +71,7 @@ A good place to start is [First Steps](../tutorials/first-steps/setup) which sho
 {
   "SH_NEW_RSP":
   {
-    "tkn":12345678910
+    "tkn":16351792548006066062
   }
 }
 ```
@@ -82,9 +80,9 @@ After this, you can store data in that session:
 
 ```json
 {
-  "KV_SET":
+  "SH_SET":
   {
-    "tkn":12345678910,
+    "tkn":16351792548006066062,
     "keys":
     {
       "username":"user1",

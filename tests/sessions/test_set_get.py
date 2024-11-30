@@ -2,9 +2,9 @@ import unittest
 from base import NDBSessionTest
 
 
-class Info(NDBSessionTest):
+class SetGet(NDBSessionTest):
 
-  async def test_info(self):
+  async def test_set(self):
     session = await self.client.create_session()
     self.assertTrue(session.isValid)
     

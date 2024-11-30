@@ -7,25 +7,20 @@ class Clear(NDBTest):
   async def test_clear(self):
     input = {'i':0, 's':'str', 'b':True, 'd':1.5}
 
-    valid = await self.client.set(input)
-    self.assertTrue(valid)
+    await self.client.set(input)
 
-    (valid, output) = await self.client.get(tuple(input.keys()))
-    self.assertTrue(valid)
+    output = await self.client.get(tuple(input.keys()))
     self.assertDictEqual(output, input)
 
-    (valid, clearedCount) = await self.client.clear()
-    self.assertTrue(valid)
+    clearedCount = await self.client.clear()
     self.assertEqual(clearedCount, len(input))
 
-    (valid, output) = await self.client.get(tuple(input.keys()))
-    self.assertTrue(valid)
+    output = await self.client.get(tuple(input.keys()))
     self.assertDictEqual(output, {})
 
 
   async def test_clear_nokeys(self):
-    (valid, clearedCount) = await self.client.clear()
-    self.assertTrue(valid)
+    clearedCount = await self.client.clear()
     self.assertEqual(clearedCount, 0)
 
 

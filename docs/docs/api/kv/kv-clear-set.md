@@ -1,5 +1,5 @@
 ---
-sidebar_position: 85
+sidebar_position: 70
 ---
 
 # KV_CLEAR_SET
@@ -23,12 +23,6 @@ This command is an alternative to sending separate `KV_CLEAR` and `KV_SET` reque
 |:---|:---|:---|
 |st|unsigned int|Status of the clear operation|
 |cnt|unsigned int|Number of keys deleted during clear. <br/>If there was an error during the clear, `cnt` is 0.|
-
-<br/>
-
-:::info
-The `tkn` must be set when the server mode is "kv_sessions".
-:::
 
 <br/>
 

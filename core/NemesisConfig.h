@@ -9,14 +9,9 @@
 #include <core/NemesisCommon.h>
 
 
-namespace nemesis { namespace core {
+namespace nemesis { 
 
 
-//
-// TODO NemesisConfig is a confusing mess, sort it
-//  
-struct NemesisConfig
-{
   struct InterfaceSettings
   {
     std::string ip;
@@ -25,205 +20,185 @@ struct NemesisConfig
   };
 
 
-  NemesisConfig() : valid(false)
+  struct Settings
   {
+    Settings() : valid(false)
+    {
 
-  }
-
-  NemesisConfig(njson config) : cfg(std::move(config)), valid(true)
-  {
-
-  }
-
-  NemesisConfig(const std::string_view config) : valid(true)
-  {
-    cfg = njson::parse(config);
-  }
-
-  // loadName set by readConfig() during cmd line args parsing, not really
-  // config. This is quite lazy 
-  bool load() const
-  {
-    return !loadName.empty();
-  }
-  
-  static std::string savePath (const njson& cfg)
-  {
-    return cfg.at("persist").at("path").as_string();
-  }
-
-  static bool persistEnabled (const njson& cfg)
-  {
-    return cfg.at("persist").at("enabled") == true;
-  }
-
-  static bool sessionsEnabled(const njson& cfg)
-  {
-    return cfg.at("sessionsEnabled") == true;
-  }
-
-  static std::size_t preferredCore(const njson& cfg) 
-  {
-    return cfg["core"].as<std::size_t>();
-  }
-
-  static std::size_t maxPayload(const njson& cfg) 
-  {
-    return cfg.at("maxPayload").as<std::size_t>();
-  }
-
-  static ServerMode serverMode (const njson& cfg)
-  {
-    return sessionsEnabled(cfg) ? ServerMode::KvSessions : ServerMode::KV;
-  }
-
-  static InterfaceSettings wsSettings (const njson& cfg)
-  {
-    return {.ip = cfg.at("ip").as_string(),
-            .port = cfg.at("port").as<int>(),
-            .maxPayload = cfg.at("maxPayload").as<std::size_t>() };
-  }
-
-
-  njson cfg;
-  std::filesystem::path loadPath; // only used if started with --loadName
-  std::string loadName; // set when started with --loadName
-  bool valid;
-};
-
-
-inline bool isValid (std::function<bool()> isValidCheck, const std::string_view msg)
-{
-  const auto valid = isValidCheck();
-  if (!valid)
-  {
-    PLOGF << "\n** Config Error **\n" << msg << "\n****\n";
-  }
+    }
     
-  return valid;
-};
+    Settings(const njson& cfg)
+    {
+      interface.ip = cfg.at("ip").as_string();
+      interface.port = cfg.at("port").as<int>(),
+      interface.maxPayload = cfg.at("maxPayload").as<std::size_t>();
+
+      loadOnStartup = false;
+      maxPayload = cfg.at("maxPayload").as<std::size_t>();
+      preferredCore = cfg["core"].as<std::size_t>();
+      persistEnabled = cfg.at("persist").at("enabled") == true;
+      persistPath = cfg.at("persist").at("path").as_string();
+
+      valid = true;
+    }
+
+    Settings(const njson& cfg, const fs::path startupLoadPath, const std::string_view startupLoadName) : Settings(cfg)
+    {
+      this->startupLoadName = startupLoadName;
+      this->startupLoadPath = startupLoadPath;
+      loadOnStartup = true;
+      valid = true;
+    }
 
 
-bool validatePersist (const njson& saveCfg)
-{
-  return  isValid([&saveCfg]{ return saveCfg.contains("path") && saveCfg.at("path").is_string(); }, "persist::path must be a string") &&
-          isValid([&saveCfg]{ return saveCfg.contains("enabled") && saveCfg.at("enabled").is_bool(); }, "persist::enabled must be a bool") && 
-          isValid([&saveCfg]{ return !saveCfg.at("enabled").as_bool() || (saveCfg.at("enabled").as_bool() && !saveCfg.at("path").as_string().empty()); }, "persist enabled but path is empty");
-}
+    std::string wsSettingsString ()
+    {
+      return interface.ip + ":" + std::to_string(interface.port);
+    }
 
+    bool valid{false};
+    InterfaceSettings interface;
+    std::string startupLoadName;
+    fs::path startupLoadPath;
+    std::size_t maxPayload;
+    std::size_t preferredCore;
+    bool loadOnStartup;
+    bool persistEnabled;
+    fs::path persistPath;
+  };
 
-NemesisConfig parse(std::filesystem::path path)
-{
-  NemesisConfig config; // default is an invalid state
-
-  try
-  {
-    std::ifstream configStream{path};
-    njson cfg = njson::parse(configStream);
-
-    bool valid =  isValid([&cfg]{ return cfg.contains("version") && cfg.at("version").is_uint64(); },   "Require version as an unsigned int") &&
-                  isValid([&cfg]{ return cfg.at("version") == nemesis::core::NEMESIS_CONFIG_VERSION; }, "Config version must be " + std::to_string(nemesis::core::NEMESIS_CONFIG_VERSION)) &&
-                  isValid([&cfg]{ return cfg.contains("sessionsEnabled") && cfg.at("sessionsEnabled").is_bool(); },         "'sessionsEnabled' must be bool") &&
-                  isValid([&cfg]{ return !cfg.contains("core") || (cfg.contains("core") && cfg.at("core").is_uint64()); },  "'core' must be an unsigned integer") &&
-                  isValid([&cfg]{ return cfg.contains("ip") && cfg.contains("port") && cfg.contains("maxPayload"); },       "Require ip, port, maxPayload and save") &&
-                  isValid([&cfg]{ return cfg.at("ip").is_string() && cfg.at("port").is_uint64() && cfg.at("maxPayload").is_uint64(); }, "ip must string, port and maxPayload must be unsigned integer") &&
-                  isValid([&cfg]{ return cfg.at("maxPayload") >= nemesis::core::NEMESIS_KV_MINPAYLOAD; }, "maxPayload below minimum") &&
-                  isValid([&cfg]{ return cfg.at("maxPayload") <= nemesis::core::NEMESIS_KV_MAXPAYLOAD; }, "maxPayload exceeds maximum") ;
-
-    if (valid && validatePersist(cfg.at("persist")))
-      config = NemesisConfig{std::move(cfg)};
-  }
-  catch(const std::exception& e)
-  {
-    PLOGF << "Config file not valid JSON";
-  }
-
-  return config;
-}
-
-
-NemesisConfig readConfig (const int argc, char ** argv)
-{
-  namespace po = boost::program_options;
-
-  std::filesystem::path cfgPath;
-  std::string loadName, loadPath;
-
-  po::options_description common("");
-  common.add_options()("help, h",    "Show help");
-
-  po::options_description configFile("Config file");
-  configFile.add_options()("config",  po::value<std::filesystem::path>(&cfgPath), "Path to json config file");
-
-  po::options_description load("Load data");
-  load.add_options()("loadPath",  po::value<std::string>(&loadPath), "Path to where to find loadName. If not set, will use kv::save::path from config");
-  load.add_options()("loadName",  po::value<std::string>(&loadName), "Name of the save point to load");
   
-  
-  po::options_description all;
-  all.add(common);
-  all.add(configFile);
-  all.add(load);
-  
-  po::variables_map vm;
-  bool parsedArgs = false;
-
-  try
+  inline bool isValid (std::function<bool()> isValidCheck, const std::string_view msg)
   {
-    po::store(po::parse_command_line(argc, argv, all), vm);
-    po::notify(vm);
-    parsedArgs = true;
+    const auto valid = isValidCheck();
+    if (!valid)
+    {
+      PLOGF << "\n** Config Error **\n" << msg << "\n****\n";
+    }
+      
+    return valid;
+  };
+
+
+  bool validatePersist (const njson& saveCfg)
+  {
+    return  isValid([&saveCfg]{ return saveCfg.contains("path") && saveCfg.at("path").is_string(); }, "persist::path must be a string") &&
+            isValid([&saveCfg]{ return saveCfg.contains("enabled") && saveCfg.at("enabled").is_bool(); }, "persist::enabled must be a bool") && 
+            isValid([&saveCfg]{ return !saveCfg.at("enabled").as_bool() || (saveCfg.at("enabled").as_bool() && !saveCfg.at("path").as_string().empty()); }, "persist enabled but path is empty");
   }
-  catch(const po::error_with_option_name& pex)
+
+
+  std::tuple<bool, njson> parse(const fs::path& path)
   {
-    PLOGF << pex.what();
+    try
+    {
+      std::ifstream configStream{path};
+      njson cfg = njson::parse(configStream);
+
+      bool valid =  isValid([&cfg]{ return cfg.contains("version") && cfg.at("version").is_uint64(); },   "Require version as an unsigned int") &&
+                    isValid([&cfg]{ return cfg.at("version") == nemesis::NEMESIS_CONFIG_VERSION; }, "Config version must be " + std::to_string(nemesis::NEMESIS_CONFIG_VERSION)) &&
+                    isValid([&cfg]{ return !cfg.contains("core") || (cfg.contains("core") && cfg.at("core").is_uint64()); },  "'core' must be an unsigned integer") &&
+                    isValid([&cfg]{ return cfg.contains("ip") && cfg.contains("port") && cfg.contains("maxPayload"); },       "Require ip, port, maxPayload and save") &&
+                    isValid([&cfg]{ return cfg.at("ip").is_string() && cfg.at("port").is_uint64() && cfg.at("maxPayload").is_uint64(); }, "ip must string, port and maxPayload must be unsigned integer") &&
+                    isValid([&cfg]{ return cfg.at("maxPayload") >= nemesis::NEMESIS_KV_MINPAYLOAD; }, "maxPayload below minimum") &&
+                    isValid([&cfg]{ return cfg.at("maxPayload") <= nemesis::NEMESIS_KV_MAXPAYLOAD; }, "maxPayload exceeds maximum") ;
+
+      if (valid && validatePersist(cfg.at("persist")))
+        return {true, cfg};
+    }
+    catch(const std::exception& e)
+    {
+      PLOGF << "Config file not valid JSON";
+    }
+
+    return {false, njson{}};
   }
-  catch(...)
+
+
+  Settings readConfig (const int argc, char ** argv)
   {
-    PLOGF << "Unknown error reading program options";
-  }
-  
+    namespace po = boost::program_options;
 
-  NemesisConfig config;
+    std::filesystem::path cfgPath;
+    std::string loadName, cmdLoadPath;
 
-  if (parsedArgs)
-  {
-    if (vm.contains("help"))
-      std::cout << all << '\n'; // intentional cout
-    else
-    { 
-      PLOGI << "Reading config";
+    po::options_description common("");
+    common.add_options()("help, h",    "Show help");
 
-      if (vm.count("config") != 1U)
-        std::cout << "Must set one --config option, with path to the JSON config file\n";
+    po::options_description configFile("Config file");
+    configFile.add_options()("config",  po::value<std::filesystem::path>(&cfgPath), "Path to json config file");
+
+    po::options_description load("Load data");
+    load.add_options()("loadPath",  po::value<std::string>(&cmdLoadPath), "Path to where to find loadName. If not set, will use persist::path from config");
+    load.add_options()("loadName",  po::value<std::string>(&loadName), "Name of the save point to load");
+    
+    
+    po::options_description all;
+    all.add(common);
+    all.add(configFile);
+    all.add(load);
+    
+    po::variables_map vm;
+    bool parsedArgs = false;
+
+    try
+    {
+      po::store(po::parse_command_line(argc, argv, all), vm);
+      po::notify(vm);
+      parsedArgs = true;
+    }
+    catch(const po::error_with_option_name& pex)
+    {
+      PLOGF << pex.what();
+    }
+    catch(...)
+    {
+      PLOGF << "Unknown error reading program options";
+    }
+    
+
+    Settings settings;  // invalid by default
+
+    if (parsedArgs)
+    {
+      if (vm.contains("help"))
+        std::cout << all << '\n'; // intentional cout
       else
-      {
-        if (!std::filesystem::exists(cfgPath))
-          PLOGF << "Config file path not found";
-        else if (config = parse(cfgPath); config.valid)
-        {
-          if (vm.count("loadPath") || vm.count("loadName"))
-          {            
-            config.loadName = loadName;
-            config.loadPath = vm.count("loadPath") ? loadPath : NemesisConfig::savePath(config.cfg);
+      { 
+        PLOGI << "Reading config";
 
-            if (!std::filesystem::exists(config.loadPath))
-            {
-              PLOGF << "Load path does not exist: " << config.loadPath ;
-              config = NemesisConfig{};
-            }
+        if (vm.count("config") != 1U)
+          std::cout << "Must set one --config option, with path to the JSON config file\n";
+        else
+        {
+          if (!std::filesystem::exists(cfgPath))
+          {
+            PLOGF << "Config file path not found";
           }
-        } 
+          else if (const auto& [valid, cfg] = parse(cfgPath); valid)
+          {
+            if (vm.count("loadPath") || vm.count("loadName"))
+            {            
+              const fs::path loadPath = vm.count("loadPath") ? cmdLoadPath : cfg["persist"]["path"].as_string();
+
+              if (!std::filesystem::exists(loadPath))
+              {
+                PLOGF << "Load path does not exist: " << loadPath ;
+              }
+              else
+                settings = Settings{cfg, loadPath, loadName};
+            }
+            else
+              settings = Settings{cfg};
+          } 
+        }
       }
     }
+
+    return settings;
   }
 
-  return config;
-}
 
-
-
-} // namespace core
 } // namespace nemesis
 
 #endif
