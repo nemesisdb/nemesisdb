@@ -19,24 +19,16 @@ using namespace nemesis::core;
 class Sessions
 {
 
-private:
+public:
   struct ExpireInfo
-  {
-    SessionExpireTime time;
-    SessionDuration duration;
-    bool deleteOnExpire;
-  };
-
-  struct ExpiryTracking
   {
     SessionExpireTime time{};
     SessionDuration duration{};
-    SessionToken token;
-    bool deleteOnExpire{true};
+    bool deleteOnExpire{false};
+    bool extendOnSetAdd{false};
+    bool extendOnGet{false};
   };
 
-
-public:
   struct Session
   {
     CacheMap map;
@@ -44,31 +36,37 @@ public:
     SessionToken token;    
 
     bool shared{false};
-    bool expires{false};    
+    bool expires{false}; 
   };
 
   using SessionType = Session;
   using SessionsMap = ankerl::unordered_dense::segmented_map<SessionToken, Session>;
 
 
+private:
+  struct ExpiryTracking
+  {
+    ExpireInfo expiry;
+    SessionToken token;
+  };
+
+
 public:
 
-  std::optional<std::reference_wrapper<CacheMap>> start (const SessionToken& token, const bool shared, const SessionDuration duration, const bool deleteOnExpire)
+  std::optional<std::reference_wrapper<CacheMap>> start (const SessionToken& token, const bool shared, const ExpireInfo expiry)
   {
     if (m_sessions.contains(token))
       return {};  // TODO check this, if shared:true and a session with this name already exists
     else
     {
-      if (duration == SessionDuration::zero())  // never expires
+      if (expiry.duration == SessionDuration::zero())  // never expires
         m_sessions.emplace(token, Session{.token = token, .shared = shared, .expires = false});
       else
       {
-        const auto expireTime = SessionClock::now() + duration;
+        const auto expireTime = SessionClock::now() + expiry.duration;
 
-        ExpireInfo expire {.time = expireTime, .duration = duration, .deleteOnExpire = deleteOnExpire};
-
-        m_sessions.emplace(token, Session{.expireInfo = expire, .token = token, .shared = shared, .expires = true});
-        m_expiry.emplace(expireTime, ExpiryTracking{.time = expireTime, .duration = duration, .token = token, .deleteOnExpire = deleteOnExpire});
+        m_sessions.emplace(token, Session{.expireInfo = expiry, .token = token, .shared = shared, .expires = true});
+        m_expiry.emplace(expireTime, ExpiryTracking{.expiry = expiry, .token = token});
       }
 
       return m_sessions.at(token).map;
@@ -193,7 +191,7 @@ public:
 
     for (const auto& itExpired : expired)
     {
-      if (itExpired->second.deleteOnExpire)
+      if (itExpired->second.expiry.deleteOnExpire)
       {
         m_sessions.erase(itExpired->second.token);
         m_expiry.erase(itExpired);
@@ -201,7 +199,7 @@ public:
       else
       {
         auto expiredNode = m_expiry.extract(itExpired);      
-        const SessionExpireTime expireTime = now + expiredNode.mapped().duration;
+        const SessionExpireTime expireTime = now + expiredNode.mapped().expiry.duration;
         
         expiredNode.key() = expireTime;
         
@@ -225,11 +223,11 @@ public:
         // m_expiry uses the expire time as a key so we need to extract, update time and insert with new time
         auto node = m_expiry.extract(expireEntry);
 
-        const auto expireTime = SessionClock::now() + node.mapped().duration;
+        const auto expireTime = SessionClock::now() + node.mapped().expiry.duration;
 
         sesh.expireInfo.time = expireTime;
         
-        node.mapped().time = expireTime;
+        node.mapped().expiry.time = expireTime;
         node.key() = expireTime;
 
         m_expiry.insert(std::move(node));

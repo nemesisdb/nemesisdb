@@ -44,7 +44,6 @@ namespace nemesis { namespace sh {
     Keys,
     ClearSet,
     Rmv,
-    MAX,
     InternalSessionMonitor,
     InternalLoad,
     Unknown,

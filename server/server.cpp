@@ -41,22 +41,23 @@ int main (int argc, char ** argv)
   Settings settings;
 
   #ifdef NDB_DEBUG
-    config.cfg["version"] = 5;
-    //config.cfg["sessionsEnabled"] = true;
-    config.cfg["core"] = 0;
+    const auto s = R"({
+                        "version":5,                
+                        "core":0,                   
+                        "ip":"127.0.0.1",           
+                        "port":1987,
+                        "maxPayload":1024,          
+                        "persist":
+                        {
+                          "enabled":true,          
+                          "path":"./data"
+                        }
+                      })";
 
-    config.cfg["ip"] = "127.0.0.1";
-    config.cfg["port"] = 1987;
-    config.cfg["maxPayload"] = 2048;
+    settings = Settings{njson::parse(s)};
 
-    config.cfg["persist"]["enabled"] = true;
-    config.cfg["persist"]["path"] = "./data";
-
-    if (config.cfg["persist"]["enabled"] == true && !fs::exists(config.cfg["persist"]["path"].as_string()))
-      fs::create_directories(config.cfg["persist"]["path"].as_string());
-
-    // config.loadPath = NemesisConfig::savePath(config.cfg);
-    // config.loadName = "t2";
+    if (settings.persistEnabled && !fs::exists(settings.persistPath))
+      fs::create_directories(settings.persistPath);
       
   #else
     if (settings = nemesis::readConfig(argc, argv); !settings.valid)
