@@ -60,6 +60,8 @@ int main (int argc, char ** argv)
       fs::create_directories(settings.persistPath);
       
   #else
+    PLOGI << "Reading config";
+
     if (settings = nemesis::readConfig(argc, argv); !settings.valid)
       return 1;
   #endif

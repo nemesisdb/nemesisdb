@@ -165,8 +165,6 @@ namespace nemesis {
         std::cout << all << '\n'; // intentional cout
       else
       { 
-        PLOGI << "Reading config";
-
         if (vm.count("config") != 1U)
           std::cout << "Must set one --config option, with path to the JSON config file\n";
         else
