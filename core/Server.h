@@ -191,7 +191,7 @@ public:
             //
             //  a) ws->getBufferedAmount() is the bytes that have not been sent (i.e. are buffered)
             //  b) keep sending until ws->getBufferedAmount() >= maxBackpressure (perhaps check current message can be sent within the backpressure)
-            //  c) at which we either drop the messages or queue            
+            //  c) either drop or queue messages
           },
           .close = [this](KvWebSocket * ws, int /*code*/, std::string_view /*message*/)
           {
@@ -295,14 +295,16 @@ public:
           if (reader.read(); !decoder.is_valid())
             send(ws, createErrorResponse(RequestStatus::JsonInvalid));
           else
-          {
             handleMessage(ws, decoder.get_result());
-          }
         }
         catch (const jsoncons::ser_error& jsonEx)
         {
           send(ws, createErrorResponse(RequestStatus::JsonInvalid));
-        }              
+        }
+        catch (const std::exception& ex)
+        {
+          send(ws, createErrorResponse(RequestStatus::Unknown));
+        }          
       }
     }
 
