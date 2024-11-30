@@ -34,7 +34,9 @@ Contains the keys and their values:
 }
 ```
 
-```json title="The above can be also stored as an object in a single key (profile)"
+Store a key with an object value. This sets a key 'profile':
+
+```json title="Store object"
 {
   "KV_SET":
   {
@@ -49,6 +51,16 @@ Contains the keys and their values:
     }
   }
 }
+```
+
+If we retrieved the 'profile' key the value returned is:
+
+```json
+{
+  "forename":"James",
+  "surname":"Bond",
+  "email":"jb@mi5.com"
+}      
 ```
 
 <br/>
