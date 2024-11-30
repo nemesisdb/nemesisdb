@@ -20,6 +20,14 @@ namespace shcmds = nemesis::sh::cmds;
 namespace kvcmds = nemesis::kv::cmds;
 
 
+// Manages store, retrieving, etc keys.
+// The class is used for top level/independent keys which use the same map,
+// but also sessions.
+// Each function has a CacheMap param, which is either the top level map
+// or the map from a session.
+//
+// RspMeta and KvOnlyMeta structs are used to build the response object,
+// with the correct response name, either a KV or SH response.
 template<bool WithSessions>
 class KvExecutor
 {
@@ -86,6 +94,7 @@ public:
   }
 
 
+  /*
   static Response setQ (CacheMap& map,  const njson& cmd)
   {
     using Rsp = KvOnlyMeta<kvcmds::GetRsp>;
@@ -106,6 +115,7 @@ public:
 
     return response;
   }
+  */
 
 
   static Response get (CacheMap& map,  const njson& cmd)
@@ -167,6 +177,7 @@ public:
   }
 
 
+  /*
   static Response addQ (CacheMap& map,  const njson& cmd)
   {
     using Rsp = KvOnlyMeta<kvcmds::AddQRsp>;
@@ -187,6 +198,7 @@ public:
 
     return response;
   }
+  */
 
 
   static Response remove (CacheMap& map,  const njson& cmd)

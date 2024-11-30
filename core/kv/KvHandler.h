@@ -68,11 +68,9 @@ private:
     // initialise with 1 bucket and pmr allocator
     HandlerPmrMap h (
     {
-      {KvQueryType::KvSet,          Handler{std::bind_front(&KvHandler::set,        std::ref(*this))}},
-      {KvQueryType::KvSetQ,         Handler{std::bind_front(&KvHandler::setQ,       std::ref(*this))}},
+      {KvQueryType::KvSet,          Handler{std::bind_front(&KvHandler::set,        std::ref(*this))}},      
       {KvQueryType::KvGet,          Handler{std::bind_front(&KvHandler::get,        std::ref(*this))}},
-      {KvQueryType::KvAdd,          Handler{std::bind_front(&KvHandler::add,        std::ref(*this))}},
-      {KvQueryType::KvAddQ,         Handler{std::bind_front(&KvHandler::addQ,       std::ref(*this))}},
+      {KvQueryType::KvAdd,          Handler{std::bind_front(&KvHandler::add,        std::ref(*this))}},      
       {KvQueryType::KvRemove,       Handler{std::bind_front(&KvHandler::remove,     std::ref(*this))}},
       {KvQueryType::KvClear,        Handler{std::bind_front(&KvHandler::clear,      std::ref(*this))}},
       {KvQueryType::KvCount,        Handler{std::bind_front(&KvHandler::count,      std::ref(*this))}},
@@ -84,8 +82,8 @@ private:
       {KvQueryType::KvArrayAppend,  Handler{std::bind_front(&KvHandler::arrayAppend,  std::ref(*this))}},
       {KvQueryType::KvSave,         Handler{std::bind_front(&KvHandler::save,         std::ref(*this))}},
       {KvQueryType::KvLoad,         Handler{std::bind_front(&KvHandler::load,         std::ref(*this))}},
-
-      
+      //{KvQueryType::KvSetQ,         Handler{std::bind_front(&KvHandler::setQ,       std::ref(*this))}},
+      //{KvQueryType::KvAddQ,         Handler{std::bind_front(&KvHandler::addQ,       std::ref(*this))}}      
     }, 1, alloc);
     
     return h;
@@ -98,10 +96,8 @@ private:
     QueryTypePmrMap map ( 
     {  
       {SetReq,          KvQueryType::KvSet},
-      {SetQReq,         KvQueryType::KvSetQ},
       {GetReq,          KvQueryType::KvGet},
-      {AddReq,          KvQueryType::KvAdd},
-      {AddQReq,         KvQueryType::KvAddQ},
+      {AddReq,          KvQueryType::KvAdd},      
       {RmvReq,          KvQueryType::KvRemove},
       {ClearReq,        KvQueryType::KvClear},
       {CountReq,        KvQueryType::KvCount},
@@ -113,6 +109,8 @@ private:
       {ArrAppendReq,    KvQueryType::KvArrayAppend},
       {SaveReq,         KvQueryType::KvSave},
       {LoadReq,         KvQueryType::KvLoad}
+      //{SetQReq,         KvQueryType::KvSetQ},
+      //{AddQReq,         KvQueryType::KvAddQ}
     }, 1, alloc); 
 
     return map;
@@ -207,6 +205,7 @@ private:
   }
 
   
+  /*
   ndb_always_inline Response setQ(njson& request)
   {
     if (auto [valid, rsp] = validateSetQ(SetQReq, SetQRsp, request); !valid)
@@ -214,7 +213,7 @@ private:
     else
       return executeKvCommand(SetQRsp, request, KvExecutor<false>::setQ);
   }
-
+  */
   
   ndb_always_inline Response get(njson& request)
   {
@@ -234,6 +233,7 @@ private:
   }
 
 
+  /*
   ndb_always_inline Response addQ(njson& request)
   {
     if (auto [valid, rsp] = validateAddQ(AddQReq, AddQRsp, request) ; !valid)
@@ -241,6 +241,7 @@ private:
     else
       return executeKvCommand(AddQRsp, request, KvExecutor<false>::addQ);
   }
+  */
 
 
   ndb_always_inline Response remove(njson& request)
