@@ -9,7 +9,7 @@ There is a [Docker](./docker/windows) image if you are running on Windows (note:
 
 ## Download
 
-Download the latest version [here](https://releases.nemesisdb.io/package/nemesisdb_0.6.6_amd64.deb).
+Download the latest version [here](https://releases.nemesisdb.io/package/nemesisdb_0.7_amd64.deb).
 
 
 ## Install
@@ -35,4 +35,4 @@ cd /usr/local/bin/nemesisdb/0.6.5
 ./nemesisdb --config=default.jsonc
 ```
 
-This starts the server with sessions disabled, persistance disabled and the WebSocket API listening on `127.0.0.1:1987`.
+This starts the server with persistance disabled and the WebSocket API listening on `127.0.0.1:1987`.
