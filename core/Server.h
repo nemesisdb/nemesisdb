@@ -325,21 +325,16 @@ public:
           else
           {
             const auto type = command.substr(0, pos);
-
-            // TODO Q: remind myself why/if an empty response can be returned
-            //      A: because of AddQ and SetQ - if no error, Response is empty. 
-            //         considering remove these commands anyway
+            
             if (type == "KV")
             {
               const Response response = m_kvHandler->handle(command, request);
-              if (!response.rsp.empty())
-                send(ws, response.rsp);
+              send(ws, response.rsp);
             }
             else if (type == "SH")
             {
               const Response response = m_shHandler->handle(command, request);
-              if (!response.rsp.empty())
-                send(ws, response.rsp);
+              send(ws, response.rsp);
             }
             else if (command == sv::cmds::InfoReq)
             {
