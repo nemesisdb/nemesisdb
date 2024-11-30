@@ -18,6 +18,7 @@ Retrieves keys from the database.
 
 ## Examples
 
+### KV
 ```py title='Set various'
 client = KvClient()
 await client.open('ws://127.0.0.1:1987/')
@@ -75,4 +76,26 @@ Output:
 ```
 Initial: {'server_users': {'admins': ['user1', 'user2'], 'banned': ['user3']}, 'server_port': 1987}
 Updated: {'server_users': {'admins': ['user1', 'user2'], 'banned': []}, 'server_port': 7891}
+```
+
+### Session
+
+```py
+from ndb.sessionclient import SessionClient, Session
+
+
+client = SessionClient()
+await client.open('ws://127.0.0.1:1987/')
+
+# create session, which returns a Session, containing the token (tkn)
+session = await client.create_session()
+# set keys, username and password
+await client.set({'username':'billy', 'password':'billy_passy'}, session.tkn)
+# retrieve the keys
+values = await client.get(('username','password'), session.tkn)
+print(values)
+
+# delete the session when finished
+# if the session was created with expiry settings, it will delete when it expires
+await client.end_session(session.tkn)
 ```
