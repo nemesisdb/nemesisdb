@@ -5,7 +5,7 @@ sidebar_position: 110
 # KV_SAVE
 
 :::info
-This command is only available when sessions are disabled. When sessions are enabled use [`SH_SAVE`](../sessions/sh-save).
+This command is only available when persistence is enabled.
 :::
 
 Saves the data to the filesystem so it can be loaded on startup or at runtime with [`KV_LOAD`](./kv-load).

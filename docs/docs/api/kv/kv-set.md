@@ -6,7 +6,6 @@ sidebar_position: 10
 Stores key-values. If the key already exists, the value is overwritten.
 
 - If you don't want to overwrite an existing key, use `KV_ADD`
-- This command always returns a response. If you don't require a response, use `KV_SETQ` which only sends a response on failure
 
 
 <br/>
@@ -14,12 +13,6 @@ Stores key-values. If the key already exists, the value is overwritten.
 |Param|Type|Meaning|Required|
 |:---|:---|:---|:---:|
 |keys|object|Keys and values to store|Y|
-
-<br/>
-
-:::info
-The `tkn` must be set when the server mode is "kv_sessions".
-:::
 
 <br/>
 

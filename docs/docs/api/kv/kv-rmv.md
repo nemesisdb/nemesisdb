@@ -12,12 +12,6 @@ Removes one or multiple keys. If you want to remove all keys, use `KV_CLEAR`.
 
 <br/>
 
-:::info
-The `tkn` must be set when the server mode is "kv_sessions".
-:::
-
-<br/>
-
 ## Response
 
 `KV_RMV_RSP`

@@ -7,7 +7,7 @@ Stores key-values if the key does not already exist.
 
 This command is the same as `KV_SET` but it will not overwrite an existing key.
 
-If `keys` contains a key that already exists it is not considered an error. The key's existing value is not changed.
+If `keys` contains a key that already exists, it is ignored and the existing value is not changed.
 
 ## Response
 

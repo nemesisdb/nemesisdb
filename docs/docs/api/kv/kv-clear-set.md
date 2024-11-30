@@ -26,12 +26,6 @@ This command is an alternative to sending separate `KV_CLEAR` and `KV_SET` reque
 
 <br/>
 
-:::info
-The `tkn` must be set when the server mode is "kv_sessions".
-:::
-
-<br/>
-
 The status (`st`) can be either:
 
 - Ok
