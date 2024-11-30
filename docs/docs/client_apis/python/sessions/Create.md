@@ -35,10 +35,6 @@ client.get(('k1','k2'), session.tkn)
 
 Gets keys from that session. This applies to all command functions when using a token.
 
-:::info
-Ensure the database has sessions enabled via the [configuration](../../../home/config) file.
-:::
-
 
 ## Returns
 

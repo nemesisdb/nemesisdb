@@ -16,13 +16,12 @@ The `name` is used to load data at runtime with `KV_LOAD` and at startup:
 
 :::note
 - Persistance must be enabled in the server config
-- With sessions enabled, use [session_save()](./sessions/Save)
+- To persist sessions, use [session_save()](./sessions/Save)
 :::
 
 
 ## Returns
-
-`bool`: `True` if command successful, otherwise `False`
+None
 
 
 ## Examples
@@ -33,15 +32,14 @@ client = KvClient()
 await client.open('ws://127.0.0.1:1987/')
 
 # set keys, etc
-saved = await client.save('my_data')
-if saved:
-  print('Save success')  
+
+await client.save('my_data')
+print('Save success')  
 ```
 
-If the server is shutdown, we can restore the keys:
+If the server is shutdown, we can restore the keys at runtime:
 
 ```py
-(loaded, count) = await client.load('my_data')
-if loaded:
-  print(f'Loaded {count} keys')
+count = await client.load('my_data')
+print(f'Loaded {count} keys')
 ```

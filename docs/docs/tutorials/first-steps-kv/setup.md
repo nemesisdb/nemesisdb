@@ -5,15 +5,6 @@ displayed_sidebar: tutorialSidebar
 
 # Setup
 
-:::info
-This tutorial is for when the server is in "kv" mode (key value with sessions are disabled).
-
-The commands are the same except:
-
-- Loading and saving data use different commands
-- When sessions are enabled the session token must be set in all `KV_` commands
-:::
-
 
 ## Install Postman
 The tutorial uses the Postman tool as a WebSocket client. The free version is suitable and can be [downloaded](https://www.postman.com/downloads/) for Windows, Linux and Mac.
@@ -23,8 +14,7 @@ The tutorial uses the Postman tool as a WebSocket client. The free version is su
 Start the server with the default config:
 
 1. Change to the install directory, default is `/usr/local/bin/nemesisdb`
-2. In `default.jsonc` ensure `sessionsEnabled` is `false`.
-3. In a terminal:
+2. In a terminal:
 
 ```bash title="Start server"
 ./nemesisdb --config=default.jsonc

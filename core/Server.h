@@ -6,7 +6,6 @@
 #include <tuple>
 #include <latch>
 #include <thread>
-#include <chrono>
 #include <iostream>
 #include <uwebsockets/App.h>
 #include <core/Persistance.h>
@@ -20,15 +19,15 @@
 
 
 
-namespace nemesis { namespace core {
+namespace nemesis { 
 
 
-namespace kv = nemesis::core::kv;
-namespace sh = nemesis::core::sh;
-namespace sv = nemesis::core::sv;
+using namespace nemesis::kv;
+using namespace nemesis::sh;
+using namespace nemesis::sv;
 
 
-template<bool HaveSessions>
+
 class Server
 {
 
@@ -44,14 +43,6 @@ public:
     stop();
   }
 
-
-  constexpr bool hasSessions () const
-  {
-    if constexpr (HaveSessions) 
-      return true;
-    else
-      return false;
-  }
 
 
   void stop()
@@ -81,33 +72,33 @@ public:
   }
 
 
-  bool run (NemesisConfig& config, std::shared_ptr<sh::Sessions> sessions)
+  bool run (const Settings& settings, std::shared_ptr<sh::Sessions> sessions)
   {
     m_sessions = sessions;
-    m_config = config.cfg;
+    m_settings = settings;
 
-    if (!init(config.cfg))
+
+    if (!init())
       return false;
 
-    if (config.load())
+    if (m_settings.loadOnStartup)
     {
-      if (auto [ok, msg] = load(config); !ok)
+      if (auto [ok, msg] = startupLoad(); !ok)
       {
         PLOGF << msg;
         return false;
       }
     }
 
-    const auto [ip, port, maxPayload] = NemesisConfig::wsSettings(config.cfg);
-    const std::size_t preferredCore = NemesisConfig::preferredCore(config.cfg); 
+    const auto [ip, port, maxPayload] = m_settings.interface;
     std::size_t core = 0;
     
     if (const auto maxCores = std::thread::hardware_concurrency(); maxCores == 0)
       PLOGE << "Could not acquire available cores";
-    else if (preferredCore > maxCores)
+    else if (m_settings.preferredCore > maxCores)
       PLOGE << "'core' value in config is above maximum available: " << maxCores;
     else
-      core = preferredCore;
+      core = m_settings.preferredCore;
 
 
     if (!startWsServer(ip, port, maxPayload, core))
@@ -124,18 +115,18 @@ public:
   
   private:
 
-    bool init(const njson& config)
+    bool init()
     {
       bool init = true;
 
       try
       {
-        if (NemesisConfig::persistEnabled(config))
+        if (m_settings.persistEnabled)
         {
           // test we can write to the persist path
-          if (std::filesystem::path path {NemesisConfig::savePath(config)}; !std::filesystem::exists(path) || !std::filesystem::is_directory(path))
+          if (std::filesystem::path path {m_settings.persistPath}; !std::filesystem::exists(path) || !std::filesystem::is_directory(path))
           {
-            PLOGF << "save path is not a directory or does not exist";
+            PLOGF << "persist path is not a directory or does not exist";
             return false;
           }
           else
@@ -145,7 +136,7 @@ public:
 
             if (std::ofstream testStream{fullPath}; !testStream.good())
             {
-              PLOGF << "Failed test write to save path: " << path;
+              PLOGF << "Failed test write to persist path: " << path;
               return false;
             }
             else
@@ -153,8 +144,8 @@ public:
           }
         }
         
-        m_kvHandler = std::make_shared<kv::KvHandler<HaveSessions>> (config, m_sessions);
-        m_shHandler = std::make_shared<sh::ShHandler>(config, m_sessions);
+        m_kvHandler = std::make_shared<kv::KvHandler>(m_settings);
+        m_shHandler = std::make_shared<sh::ShHandler>(m_settings, m_sessions);
       }
       catch(const std::exception& e)
       {
@@ -200,7 +191,7 @@ public:
             //
             //  a) ws->getBufferedAmount() is the bytes that have not been sent (i.e. are buffered)
             //  b) keep sending until ws->getBufferedAmount() >= maxBackpressure (perhaps check current message can be sent within the backpressure)
-            //  c) at which we either drop the messages or queue            
+            //  c) either drop or queue messages
           },
           .close = [this](KvWebSocket * ws, int /*code*/, std::string_view /*message*/)
           {
@@ -229,11 +220,8 @@ public:
         if (!wsApp.constructorFailed())
         {
           bool timerSet = true;
-
-          if constexpr (HaveSessions)
-          {
-            #ifndef NDB_UNIT_TEST
-
+          
+          #ifndef NDB_UNIT_TEST
             const auto periodMs = chrono::milliseconds{5'000};
 
             PLOGD << "Creating monitor timer for " << periodMs.count() << "ms";
@@ -241,21 +229,20 @@ public:
             if (m_monitorTimer = us_create_timer((struct us_loop_t *) uWS::Loop::get(), 0, sizeof(TimerData)); m_monitorTimer)
             {
               auto * timerData = reinterpret_cast<TimerData *> (us_timer_ext(m_monitorTimer));
-              timerData->kvHandler = m_kvHandler;
+              timerData->shHandler = m_shHandler;
 
               us_timer_set(m_monitorTimer, [](struct us_timer_t * timer)
               {
                 if (auto * timerData = reinterpret_cast<TimerData *> (us_timer_ext(timer)); timerData)
-                  timerData->kvHandler->monitor();
+                  timerData->shHandler->monitor();
               },
               periodMs.count(),
               periodMs.count());
             }
             else
               timerSet = false;
-
-            #endif
-          }
+          #endif
+          
 
           if (timerSet)
             wsApp.run();
@@ -297,7 +284,7 @@ public:
     void onMessage(KvWebSocket * ws, std::string_view message, uWS::OpCode opCode)
     { 
       if (opCode != uWS::OpCode::TEXT)
-        ws->send(createErrorResponse(RequestStatus::OpCodeInvalid).to_string(), kv::WsSendOpCode);
+        send(ws, createErrorResponse(RequestStatus::OpCodeInvalid));
       else
       {
         jsoncons::json_decoder<njson> decoder;
@@ -306,16 +293,18 @@ public:
         try
         {
           if (reader.read(); !decoder.is_valid())
-            ws->send(createErrorResponse(RequestStatus::JsonInvalid).to_string(), kv::WsSendOpCode);
+            send(ws, createErrorResponse(RequestStatus::JsonInvalid));
           else
-          {
             handleMessage(ws, decoder.get_result());
-          }
         }
         catch (const jsoncons::ser_error& jsonEx)
         {
-          ws->send(createErrorResponse(RequestStatus::JsonInvalid).to_string(), kv::WsSendOpCode);
-        }              
+          send(ws, createErrorResponse(RequestStatus::JsonInvalid));
+        }
+        catch (const std::exception& ex)
+        {
+          send(ws, createErrorResponse(RequestStatus::Unknown));
+        }          
       }
     }
 
@@ -338,21 +327,18 @@ public:
           else
           {
             const auto type = command.substr(0, pos);
-
-            // TODO remind myself why/if an empty response can be returned
+            
             if (type == "KV")
             {
               const Response response = m_kvHandler->handle(command, request);
-              if (!response.rsp.empty())
-                send(ws, response.rsp);
+              send(ws, response.rsp);
             }
-            else if (HaveSessions && type == "SH")
+            else if (type == "SH")
             {
               const Response response = m_shHandler->handle(command, request);
-              if (!response.rsp.empty())
-                send(ws, response.rsp);
+              send(ws, response.rsp);
             }
-            else if (command == sv::InfoReq)
+            else if (command == sv::cmds::InfoReq)
             {
               // vomit, but this is how jsoncons initialises json objects
               // the json_object_arg is a tag, followed by initializer_list<pair<string, njson>>
@@ -360,12 +346,12 @@ public:
               static const njson Info {jsoncons::json_object_arg, {
                                                                     {"st", toUnderlying(RequestStatus::Ok)},  // for compatibility with APIs and consistancy
                                                                     {"serverVersion",   NEMESIS_VERSION},
-                                                                    {"sessionsEnabled", NemesisConfig::sessionsEnabled(m_config)},
-                                                                    {"persistEnabled",  NemesisConfig::persistEnabled(m_config)}
+                                                                    {"persistEnabled",  m_settings.persistEnabled}
                                                                   }};
 
-              static const njson Prepared {jsoncons::json_object_arg, {{sv::InfoRsp, {jsoncons::json_object_arg,  Info.object_range().cbegin(),
-                                                                                                                  Info.object_range().cend()}}}}; 
+
+              static const njson Prepared {jsoncons::json_object_arg, {{sv::cmds::InfoRsp, {jsoncons::json_object_arg,  Info.object_range().cbegin(),
+                                                                                                                        Info.object_range().cend()}}}}; 
               
               send(ws, Prepared);
             }
@@ -380,55 +366,60 @@ public:
     }
 
 
-    std::tuple<bool, const std::string_view> load(const NemesisConfig& config)
+    std::tuple<bool, const std::string_view> startupLoad()
     {
-      if (const auto [valid, msg] = validatePreLoad(config.loadName, config.loadPath, HaveSessions); !valid)
+      PLOGI << "-- Load --";
+
+      const auto& loadName = m_settings.startupLoadName;
+      const auto& loadPath = m_settings.startupLoadPath;
+
+      if (PreLoadInfo info = validatePreLoad(loadName, loadPath); !info.valid)
       {
-        return {false, msg};
+        return {false, info.err};
       }
       else
       {
-        PLOGI << "-- Load --";
-
-        const auto [root, md, data, pathsValid] = getLoadPaths(config.loadPath / config.loadName);
         LoadResult loadResult;
 
-        if constexpr (HaveSessions)
-        {
-          loadResult = m_shHandler->internalLoad(config.loadName, data);
-        }
+        if (info.dataType == SaveDataType::SessionKv)
+          loadResult = m_shHandler->internalLoad(loadName, info.paths.data);
         else
-        {
-          loadResult = m_kvHandler->internalLoad(config.loadName, data);
-        }
+          loadResult = m_kvHandler->internalLoad(loadName, info.paths.data);
         
         const auto success = loadResult.status == RequestStatus::LoadComplete;
     
-        if (success)
+        if (!success)
+          PLOGI << "Status: Fail";
+        else
         {
           PLOGI << "Status: Success";
-          if constexpr (HaveSessions)
+
+          if (info.dataType == SaveDataType::SessionKv)
           {
             PLOGI << "Sessions: " << loadResult.nSessions ;
-          }
+          }              
             
           PLOGI << "Keys: " << loadResult.nKeys ;
           PLOGI << "Duration: " << chrono::duration_cast<std::chrono::milliseconds>(loadResult.duration).count() << "ms";
         }
-        else
-          PLOGI << "Status: Fail";
 
         PLOGI << "----------";
         
         return {success, ""};
-      }     
+      }    
     }
     
+
+    ndb_always_inline void send (KvWebSocket * ws, const njson& msg)
+    {
+      ws->send(msg.to_string(), WsSendOpCode);
+    }
+
 
   private:
     struct TimerData
     {
-      std::shared_ptr<kv::KvHandler<HaveSessions>> kvHandler;
+      std::shared_ptr<sh::ShHandler> shHandler;
     };
 
     std::unique_ptr<std::jthread> m_thread;
@@ -437,18 +428,13 @@ public:
     std::atomic_bool m_run;
     us_timer_t * m_monitorTimer{};
     // TODO profile runtime cost of shared_ptr vs raw ptr
-    std::shared_ptr<kv::KvHandler<HaveSessions>> m_kvHandler;
+    std::shared_ptr<kv::KvHandler> m_kvHandler;
     std::shared_ptr<sh::ShHandler> m_shHandler;
     std::shared_ptr<sh::Sessions> m_sessions;
-    njson m_config;
+    Settings m_settings;
 };
 
-
-using KvServer = Server<false>;
-using KvSessionServer = Server<true>;
-
-
 }
-}
+
 
 #endif

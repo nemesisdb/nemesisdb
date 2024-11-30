@@ -12,15 +12,14 @@ To overwrite an existing key, use [set](./Set).
 |Param|Type|Description|Required|
 |--|:-:|--|:-:|
 |keys|tuple|Tuple of keys to retrieve|Y|
-|tkn|int|A session token|Only if sessions enabled|
+
+
+If a key already exists it is not considered an error.
 
 
 ## Returns
+None
 
-`bool`
-- `True` if command successful, otherwise `False`
-
-If a key already exists it is not considered an error.
 
 
 ## Examples
@@ -30,15 +29,15 @@ client = KvClient()
 await client.open('ws://127.0.0.1:1987/')
 
 await client.set({'LinuxDistro':'Arch'})
-(getOk, values) = await client.get(('LinuxDistro',))
+values = await client.get(('LinuxDistro',))
 print(f'Before add(): {values}')
 
 await client.add({'LinuxDistro':'Arch btw'})
-(getOk, values) = await client.get(('LinuxDistro',))
+values = await client.get(('LinuxDistro',))
 print(f'After add(): {values}')
 
 await client.set({'LinuxDistro':'Arch btw'})
-(getOk, values) = await client.get(('LinuxDistro',))
+values = await client.get(('LinuxDistro',))
 print(f'After set(): {values}')
 ```
 

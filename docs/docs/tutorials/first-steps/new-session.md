@@ -38,7 +38,6 @@ The response confirms we have no sessions or keys.
 {
   "SH_NEW":
   {
-    "name":"user1"
   }
 }
 ```
@@ -49,14 +48,12 @@ The response will be similar to the following:
 {
   "SH_NEW_RSP": {
     "st": 1,
-    "name": "user1",
     "tkn": 14247375118774737462
   }
 }
 ```
 
 - `st` is the status. 1 means Ok/Success
-- `name` is the same name as in the request
 - `tkn` is the session token (you'll have a different value)
 
 
@@ -87,8 +84,9 @@ The response will be:
     "tkn": 14247375118774737462,
     "shared": false,
     "keyCnt": 0,
-    "expiry": {
-      "expires": false,
+    "expires":false,
+    "expiry":
+    {
       "duration": 0,
       "time": 0,
       "deleteSession": false
@@ -101,7 +99,7 @@ The response will be:
 - `tkn` the token
 - `shared` is false because this is not a shared session
 - `keyCnt` is the key count
-- `expiry` contains expiry information. `expires` is false so other params can be ignored
+- `expires` is `false` because this session never expires
 
 
 :::info Status not Ok

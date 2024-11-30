@@ -3,15 +3,9 @@ sidebar_position: 120
 ---
 
 # KV_LOAD
-
-:::info
-This command is only available when the server mode is `"kv"`. If the server mode is `"kv_sessions"`, use [`SH_LOAD`](../sessions/sh-load).
-:::
-
 Loads data from the filesystem at runtime.
 
-- This command is available even if `kv::save::enabled` is `false`
-- The data is read from the `kv::save::path` set in the config file
+- The data is read from the `persist::path` set in the config file
 
 
 <br/>
@@ -19,6 +13,11 @@ Loads data from the filesystem at runtime.
 |Param|Type|Meaning|Required|
 |:---|:---|:---|:---:|
 |name|string|Data set name, previously used in `KV_SAVE`|Y|
+
+:::info
+This command is available even if persistence is disabled.
+:::
+
 
 <br/>
 

@@ -1,5 +1,5 @@
 ---
-sidebar_position: 55
+sidebar_position: 150
 ---
 
 # KV_FIND
@@ -11,12 +11,6 @@ Searches the values and returns keys, data or paths.
 |rsp|string|Must be one of: `keys`, `kv`, or `paths`|Y|
 |path|string|A JSON Path applied to each key's value|Y|
 |keys|array|An array of keys. If present, only these keys are searched|N|
-
-<br/>
-
-:::info
-The `tkn` must be set when the server mode is "kv_sessions".
-:::
 
 <br/>
 

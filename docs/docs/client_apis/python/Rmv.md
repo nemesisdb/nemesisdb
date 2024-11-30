@@ -14,13 +14,10 @@ Delete key(s).
 |Param|Type|Description|Required|
 |--|:-:|--|:-:|
 |keys|tuple|Keys to delete|Y|
-|tkn|int|A session token|Only if sessions enabled|
 
 
 ## Returns
-
-`bool`
-- `True` if command successful, otherwise `False`
+None
 
 
 ## Examples
@@ -29,7 +26,7 @@ Delete key(s).
 ```py title='Delete one key'
 client = KvClient()
 await client.open('ws://127.0.0.1:1987/')
-# assume keys have been stored
+# ...
 await client.rmv(('username',))
 ```
 
@@ -38,6 +35,6 @@ await client.rmv(('username',))
 ```py title='Delete multiple keys'
 client = KvClient()
 await client.open('ws://127.0.0.1:1987/')
-# assume keys have been stored
+# ...
 await client.rmv(('key1','key2','key3'))
 ```

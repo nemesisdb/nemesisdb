@@ -47,7 +47,7 @@ async def multiple_clients():
 
     await client1.close()
 
-    (ok, values) = await client2.get(('c1_k', 'c2_k'))
+    values = await client2.get(('c1_k', 'c2_k'))
     assert 'c1_k' in values and 'c2_k' in values
 
 

@@ -1,5 +1,5 @@
 ---
-sidebar_position: 70
+sidebar_position: 50
 ---
 
 # KV_RMV
@@ -9,12 +9,6 @@ Removes one or multiple keys. If you want to remove all keys, use `KV_CLEAR`.
 |Param|Type|Meaning|Required|
 |:---|:---|:---|:---:|
 |keys|array|Keys to remove|Y|
-
-<br/>
-
-:::info
-The `tkn` must be set when the server mode is "kv_sessions".
-:::
 
 <br/>
 

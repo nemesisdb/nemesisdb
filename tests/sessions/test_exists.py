@@ -16,14 +16,12 @@ class Exists(NDBSessionTest):
 
     # individually
     for tkn in tokens:
-      (valid, exists) = await self.client.session_exists([tkn])
-      self.assertTrue(valid)
+      exists = await self.client.session_exists([tkn])
       self.assertListEqual([tkn], exists)
 
 
     # all
-    (valid, exists) = await self.client.session_exists(tokens)
-    self.assertTrue(valid)
+    exists = await self.client.session_exists(tokens)
     self.assertListEqual(tokens, exists)
     
 

@@ -1,5 +1,5 @@
 ---
-sidebar_position: 60
+sidebar_position: 40
 ---
 
 # KV_CONTAINS
@@ -33,10 +33,6 @@ Check if a key exists.
 If a key does not exist, it is not present in `contains`.
 
 <br/>
-
-:::info
-The `tkn` must be set when the server mode is "kv_sessions".
-:::
 
 Possible status values:
 

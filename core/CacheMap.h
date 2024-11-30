@@ -5,10 +5,9 @@
 #include <core/NemesisCommon.h>
 
 
-namespace nemesis { namespace core {
+namespace nemesis { 
 
 
-//template<bool HaveSessions>
 class CacheMap
 {
   using Map = ankerl::unordered_dense::segmented_map<cachedkey, cachedvalue>;
@@ -212,7 +211,6 @@ private:
   Map m_map;
 };
 
-} // ns core
 } // ns nemesis
 
 #endif

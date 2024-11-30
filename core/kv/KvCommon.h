@@ -10,16 +10,16 @@
 #include <core/NemesisCommon.h>
 
 
-namespace nemesis { namespace core { namespace kv {
+namespace nemesis {  namespace kv {
 
 
   enum class KvQueryType : std::uint8_t
   { 
     KvSet,
-    KvSetQ,
+    //KvSetQ,
     KvGet,
     KvAdd,
-    KvAddQ,
+    //KvAddQ,
     KvRemove,
     KvClear,
     KvCount,
@@ -37,9 +37,6 @@ namespace nemesis { namespace core { namespace kv {
     Unknown,
   };
 
-  
-  
-}
 }
 }
 

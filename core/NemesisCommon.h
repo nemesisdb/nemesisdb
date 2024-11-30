@@ -22,6 +22,7 @@
 
 #define ndb_always_inline inline __attribute__((always_inline))
 
+
 #ifndef NDEBUG
   #define NDB_DEBUG
 #else
@@ -29,13 +30,13 @@
 #endif
 
 
-namespace nemesis { namespace core {
+namespace nemesis { 
 
 namespace fs = std::filesystem;
 namespace chrono = std::chrono;
 namespace jsonpath = jsoncons::jsonpath;
 
-static const char * NEMESIS_VERSION = "0.6.6";
+static const char * NEMESIS_VERSION = "0.7";
 static const std::size_t NEMESIS_CONFIG_VERSION = 5U;
 
 static const std::size_t NEMESIS_KV_MINPAYLOAD = 64U;
@@ -106,13 +107,6 @@ using cachedvalue = njson;
 using KvSaveClock = chrono::system_clock;
 using KvSaveMetaDataUnit = chrono::milliseconds;
 
-// session
-using SessionToken = std::uint64_t;
-using SessionName = std::string;
-using SessionClock = chrono::steady_clock;
-using SessionExpireTime = SessionClock::time_point;
-using SessionDuration = chrono::seconds;
-using SessionExpireTimePoint = chrono::time_point<SessionClock, std::chrono::seconds>;
 
 
 template <typename E>
@@ -221,10 +215,7 @@ struct Response
 };
 
 
-ndb_always_inline void send (KvWebSocket * ws, const njson& msg)
-{
-  ws->send(msg.to_string(), WsSendOpCode);
-}
+
 
 
 
@@ -258,19 +249,9 @@ static inline bool setThreadAffinity(const std::thread::native_handle_type handl
 static inline njson createErrorResponse (const std::string_view commandRsp, const RequestStatus status, const std::string_view msg = "")
 {
   njson rsp;
-  rsp[commandRsp]["st"] = static_cast<int>(status);
+  rsp[commandRsp]["st"] = toUnderlying(status);
   rsp[commandRsp]["tkn"] = njson::null();
   rsp[commandRsp]["m"] = msg;
-  return rsp;
-}
-
-
-static inline njson createErrorResponse (const std::string_view commandRsp, const RequestStatus status, const SessionToken tkn)
-{
-  njson rsp;
-  rsp[commandRsp]["st"] = static_cast<int>(status);
-  rsp[commandRsp]["tkn"] = tkn;
-  rsp[commandRsp]["m"] = "";
   return rsp;
 }
 
@@ -278,7 +259,7 @@ static inline njson createErrorResponse (const std::string_view commandRsp, cons
 static inline njson createErrorResponseNoTkn (const std::string_view commandRsp, const RequestStatus status, const std::string_view msg = "")
 {
   njson rsp;
-  rsp[commandRsp]["st"] = static_cast<int>(status);
+  rsp[commandRsp]["st"] = toUnderlying(status);
   rsp[commandRsp]["m"] = msg;
   return rsp;
 }
@@ -288,7 +269,7 @@ static inline njson createErrorResponseNoTkn (const std::string_view commandRsp,
 static inline njson createErrorResponse (const RequestStatus status, const std::string_view msg = "")
 {
   njson rsp;
-  rsp["ERR"]["st"] = static_cast<int>(status);
+  rsp["ERR"]["st"] = toUnderlying(status);
   rsp["ERR"]["m"] = msg;
   return rsp;
 }
@@ -298,10 +279,10 @@ std::tuple<bool, njson> doIsValid (const std::string_view queryRspName,
                 const njson& cmd, const std::map<const std::string_view, const Param>& params,
                 std::function<std::tuple<RequestStatus, const std::string_view>(const njson&)> onPostValidate = nullptr)
 {
-  const auto [stat, msg] = isCmdValid<njson, RequestStatus,
-                                            RequestStatus::Ok,
-                                            RequestStatus::ParamMissing,
-                                            RequestStatus::ValueTypeInvalid>(cmd, params, onPostValidate);
+  const auto [stat, msg] = isCmdValid<njson,  RequestStatus,
+                                              RequestStatus::Ok,
+                                              RequestStatus::ParamMissing,
+                                              RequestStatus::ValueTypeInvalid>(cmd, params, onPostValidate);
   
   if (stat != RequestStatus::Ok) [[unlikely]]
   {
@@ -322,7 +303,6 @@ std::tuple<bool, njson> isValid ( const std::string_view queryRspName,
 }
 
 
-} // namespace core
 } // namespace nemesis
 
 
