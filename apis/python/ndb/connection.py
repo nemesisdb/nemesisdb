@@ -10,9 +10,6 @@ from websockets import ConnectionClosed
 class Connection:
   """
   The Api class runs the websockets library, handling asyncio coroutines.
-  
-  This class is not intended to be used directly, instead use KvClient or 
-  SessionClient.
   """
 
   def __init__(self):
@@ -22,15 +19,14 @@ class Connection:
   async def start(self, uri: str):    
     self.uri = uri
     self.userClosed = False
-    self.opened = False 
+    self.opened = False     
+    self.rcvTask = None
+    self.ws = None
     self.rspEvt = asio.Event()
     self.connectedSem = asio.Semaphore(0)
-    self.rcvTask = None
     self.listen_task = asio.create_task(self.open())
-    self.ws = None
-
+    
     # the listen_task will release this semaphore
-    # when it fails/succeeds to connect
     await self.connectedSem.acquire()
     return self.opened
   

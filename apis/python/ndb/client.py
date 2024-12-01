@@ -37,7 +37,7 @@ class Session:
 class NdbClient:
   def __init__(self, debug = False):
     self.uri = ''
-    self.api = Connection()
+    self.ws = Connection()
     if debug:
       logger.setLevel(logging.DEBUG)
       logger.addHandler(logging.StreamHandler())
@@ -47,13 +47,13 @@ class NdbClient:
     if uri == '':
       raise ValueError('URI empty')
         
-    connected = await self.api.start(uri)
+    connected = await self.ws.start(uri)
     logger.debug('Client: connected' if connected else 'Client: failed to connect')
     return connected
 
     
   async def close(self):
-    await self.api.close()
+    await self.ws.close()
  
 
   ## SV
@@ -259,7 +259,7 @@ class NdbClient:
 
   async def _sendCmd(self, cmdReq: str, cmdRsp: str, body: dict, stSuccess = StValues.ST_SUCCESS):
     req = {cmdReq : body}
-    rsp = await self.api.query(req)
+    rsp = await self.ws.query(req)
     self._raise_if_invalid(rsp, cmdRsp, stSuccess)
     return rsp
   
