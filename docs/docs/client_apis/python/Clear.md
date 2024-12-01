@@ -4,7 +4,7 @@ displayed_sidebar: clientApisSidebar
 sidebar_label: clear
 ---
 
-# clear
+# kv_clear
 Deletes _all_ keys.
 
 
@@ -13,14 +13,16 @@ Deletes _all_ keys.
 
 
 ## Returns
-None
+`int` : the number of keys cleared
 
 
 ## Examples
 
 
 ```py
-client = KvClient()
+client = NdbClient()
 await client.open('ws://127.0.0.1:1987/')
-await client.clear()
+# store some keys
+count = await client.kv_clear()
+print(f'Cleared {count} keys')
 ```

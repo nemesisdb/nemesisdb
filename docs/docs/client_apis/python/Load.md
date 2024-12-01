@@ -4,7 +4,7 @@ displayed_sidebar: clientApisSidebar
 sidebar_label: load
 ---
 
-# load
+# kv_load
 Restores keys that were previously saved with `save()`.
 
 |Param|Type|Description|Required|
@@ -15,7 +15,7 @@ Restores keys that were previously saved with `save()`.
 :::note
 - Persistance does _not_ have to be enabled for this command
 - You can also load at startup, using `--loadName`
-- This command can only be used to load independent keys (those that are not in a session). To load sessions, use [SessionClient.load()](./sessions/Load)
+- This command can only be used to load independent keys (those that are not in a session). To load sessions, use [SessionClient.sh_load()](./sessions/Load)
 :::
 
 
@@ -25,9 +25,9 @@ Restores keys that were previously saved with `save()`.
 
 ## Examples
 
-Assuming a previous call to `save('my_data')`:
+Assuming a previous call to `kv_save('my_data')`:
 
 ```py title='Load keys'
-count = await client.load('my_data')
+count = await client.kv_load('my_data')
 print(f'Loaded {count} keys')
 ```

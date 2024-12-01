@@ -4,7 +4,7 @@ displayed_sidebar: clientApisSidebar
 sidebar_label: rmv
 ---
 
-# rmv
+# kv_rmv
 Delete key(s).
 
 - To delete all keys, use [clear](./Clear)
@@ -24,17 +24,17 @@ None
 
 
 ```py title='Delete one key'
-client = KvClient()
+client = NdbClient()
 await client.open('ws://127.0.0.1:1987/')
 # ...
-await client.rmv(('username',))
+await client.kv_rmv(('username',))
 ```
 
 <br/>
 
 ```py title='Delete multiple keys'
-client = KvClient()
+client = NdbClient()
 await client.open('ws://127.0.0.1:1987/')
 # ...
-await client.rmv(('key1','key2','key3'))
+await client.kv_rmv(('key1','key2','key3'))
 ```

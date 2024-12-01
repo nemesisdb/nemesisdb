@@ -4,7 +4,7 @@ displayed_sidebar: clientApisSidebar
 sidebar_label: clear_set
 ---
 
-# clear_set
+# kv_clear_set
 Deletes _all_ keys and sets new keys in a single call.
 
 |Param|Type|Description|Required|
@@ -21,10 +21,10 @@ Deletes _all_ keys and sets new keys in a single call.
 
 
 ```py
-client = KvClient()
+client = NdbClient()
 await client.open('ws://127.0.0.1:1987/')
 # using the db to store stats, after a period of time we want to reset counters
 # we could use set() on these three keys, but if the db only stores these
 # stat keys, we can clear_set()
-nKeysDeleted = await client.clear_set({'stats_total':0, 'stats_visitors':0, 'stats_blocked':0})
+nKeysDeleted = await client.kv_clear_set({'stats_total':0, 'stats_visitors':0, 'stats_blocked':0})
 ```

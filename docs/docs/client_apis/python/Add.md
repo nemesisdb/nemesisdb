@@ -4,7 +4,7 @@ displayed_sidebar: clientApisSidebar
 sidebar_label: add
 ---
 
-# add
+# kv_add
 Stores keys but does not overwrite a key if it already exists.
 
 To overwrite an existing key, use [set](./Set).
@@ -25,24 +25,24 @@ None
 ## Examples
 
 ```py title='Avoid overwriting'
-client = KvClient()
+client = NdbClient()
 await client.open('ws://127.0.0.1:1987/')
 
-await client.set({'LinuxDistro':'Arch'})
-values = await client.get(('LinuxDistro',))
+await client.kv_set({'LinuxDistro':'Arch'})
+values = await client.kv_get(('LinuxDistro',))
 print(f'Before add(): {values}')
 
-await client.add({'LinuxDistro':'Arch btw'})
-values = await client.get(('LinuxDistro',))
+await client.kv_add({'LinuxDistro':'Arch btw'})
+values = await client.kv_get(('LinuxDistro',))
 print(f'After add(): {values}')
 
-await client.set({'LinuxDistro':'Arch btw'})
-values = await client.get(('LinuxDistro',))
+await client.kv_set({'LinuxDistro':'Arch btw'})
+values = await client.kv_get(('LinuxDistro',))
 print(f'After set(): {values}')
 ```
 
-- calling `add()` does not overwrite the key
-- use `set()` to replace the value
+- calling `kv_add()` does not overwrite the key
+- use `kv_set()` to replace the value
 
 Output:
 ```

@@ -4,7 +4,7 @@ displayed_sidebar: clientApisSidebar
 sidebar_label: count
 ---
 
-# count
+# kv_count
 Returns the number of keys. 
 
 |Param|Type|Description|Required|
@@ -18,9 +18,3 @@ Returns the number of keys.
 
 ## Examples
 
-
-```py
-client = KvClient()
-await client.open('ws://127.0.0.1:1987/')
-count = await client.count()
-```

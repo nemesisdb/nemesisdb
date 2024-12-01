@@ -5,48 +5,47 @@ displayed_sidebar: clientApisSidebar
 
 # Quick Start
 
-Keys can be stored independently with a `KvClient` or in a session with `SessionClient`.
+The `NdbClient` is the entry point:
+- `from ndb.client import NdbClient`
+- `open()` and `close()` for the connection
+- Commands are sent with functions beginning:
+  - `kv_` for keys not in a session, i.e. `kv_set()`
+  - `sh_` for keys in a session, i.e. `sh_get()`, `sh_create_session()`, etc
+- If a command returns an failure, an `ndb.ResponseError` is raised
+  - The exception message contains the error code
+  - The exception contains `rsp` which is the full response
 
-`SessionClient` supports less commands, but both are similar:
-
-- import either:
-  - `from ndb.kvclient import KvClient`
-  - `from ndb.sessionclient import SessionClient`
-- Call `open()` to connect to the server
-- Use functions such as `set()` and `get()`
-- Functions raise an exception if the query fails
-
+<br/>
 
 ```py
-client = KvClient()
+client = NdbClient()
 await client.open('ws://127.0.0.1:1987/')
 
-await client.set({'username':'billy', 'password':'billy_passy'})
+await client.kv_set({'username':'billy', 'password':'billy_passy'})
 
-values = await client.get(('username','password'))
+values = await client.kv_get(('username','password'))
 print(values)
 ```
 
+<br/>
+
 ## Sessions
 
-- Create a session with `SessionClient.create_session()`
-- This returns a `Session` containing the token, which uniquely identifies the session
-- The `SessionClient` commands functions require a token (`tkn`).
-
+Use the `sh_` functions:
 
 ```py
-client = SessionClient()
+client = NdbClient()
 await client.open('ws://127.0.0.1:1987/')
 
-session = await client.create_session()
+session = await client.sh_create_session()
 assert session.isValid
 
 print(f"Session created with token: {session.tkn}")
 
 # set keys in the session
-await client.set({'fname':'James', 'sname':'smith'}, session.tkn)
+await client.sh_set({'fname':'James', 'sname':'smith'}, session.tkn)
 
 # retrieve
-values = await client.get(('fname', 'sname'), session.tkn)
+values = await client.sh_get(('fname', 'sname'), session.tkn)
 print(values)
 ```
