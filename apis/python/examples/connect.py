@@ -1,15 +1,15 @@
 import asyncio as asio
 import sys
 sys.path.append('../')
-from ndb.kvclient import KvClient
+from ndb.client import NdbClient
 
 
 async def connect_close():
-  client = KvClient()
+  client = NdbClient()
   if await client.open('ws://127.0.0.1:1987/'):
     print('Connected')
 
-    # call query functions
+    # call command functions
 
     await client.close()  
 
@@ -17,7 +17,7 @@ async def connect_close():
 
 
 async def reconnect():
-  client = KvClient()
+  client = NdbClient()
   if await client.open('ws://127.0.0.1:1987/'):
     print('Connected')
     await client.close()
@@ -29,11 +29,10 @@ async def reconnect():
       print('Disconnected')
 
 
-
 async def multiple_clients():
 
-  async def create() -> KvClient:
-    client = KvClient()
+  async def create() -> NdbClient:
+    client = NdbClient()
     opened = await client.open('ws://127.0.0.1:1987/')
     return None if opened == False else client
 
@@ -42,12 +41,12 @@ async def multiple_clients():
   client2 = await create()
 
   if client1 and client2:
-    await client1.set({'c1_k':'c1_v'})
-    await client2.set({'c2_k':'c2_v'})
+    await client1.kv_set({'c1_k':'c1_v'})
+    await client2.kv_set({'c2_k':'c2_v'})
 
     await client1.close()
 
-    values = await client2.get(('c1_k', 'c2_k'))
+    values = await client2.kv_get(('c1_k', 'c2_k'))
     assert 'c1_k' in values and 'c2_k' in values
 
 

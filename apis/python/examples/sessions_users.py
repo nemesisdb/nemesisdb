@@ -1,33 +1,33 @@
+import asyncio as asio
 import sys
 sys.path.append('../')
 
-from ndb.sessionclient import SessionClient, Session
+from ndb.client import NdbClient, Session
 
-import asyncio as asio
 
 # code below used in the API README
 
-async def newUser(client: SessionClient, username: str, email: str) -> Session:
-  session = await client.create_session()
-  await client.set({'username':username, 'email':email}, session.tkn)
+async def newUser(client: NdbClient, username: str, email: str) -> Session:
+  session = await client.sh_create_session()
+  await client.sh_set({'username':username, 'email':email}, session.tkn)
   return session
 
 
-async def updateEmail(client: SessionClient, email: str, tkn: int):
-  await client.set({'email':email}, tkn)
+async def updateEmail(client: NdbClient, email: str, tkn: int):
+  await client.sh_set({'email':email}, tkn)
 
 
-async def updateUsername(client: SessionClient, username: str, tkn: int):
-  await client.set({'username':username}, tkn)
+async def updateUsername(client: NdbClient, username: str, tkn: int):
+  await client.sh_set({'username':username}, tkn)
 
 
-async def getUser(client: SessionClient, tkn: int):
-  values = await client.get(('username', 'email'), tkn)
+async def getUser(client: NdbClient, tkn: int):
+  values = await client.sh_get(('username', 'email'), tkn)
   print(values)
 
 
 async def two_sessions():
-  client = SessionClient()
+  client = NdbClient()
   if not (await client.open('ws://127.0.0.1:1987/')):
     print('Failed to connect')
     return

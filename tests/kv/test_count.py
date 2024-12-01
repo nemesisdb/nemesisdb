@@ -7,9 +7,9 @@ class Count(NDBTest):
   async def test_count(self):
     input = {'a':0, 'b':'str', 'c':True, 'd':1.5}
 
-    await self.client.set(input)
+    await self.client.kv_set(input)
 
-    count = await self.client.count()
+    count = await self.client.kv_count()
     self.assertEqual(count, len(input))
     
 

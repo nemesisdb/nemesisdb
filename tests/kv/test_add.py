@@ -10,24 +10,24 @@ class Add(NDBTest):
   async def test_new_key(self):
     input = {'i':100}
 
-    await self.client.add(input)
+    await self.client.kv_add(input)
 
-    output = await self.client.get(('i',))    
+    output = await self.client.kv_get(('i',))    
     self.assertDictEqual(output, input)
 
 
   async def test_no_overwrite(self):
     input = {'i':100}
 
-    await self.client.add(input)
+    await self.client.kv_add(input)
 
-    output = await self.client.get(('i',))
+    output = await self.client.kv_get(('i',))
     self.assertDictEqual(output, input)
 
     # call add again, confirm value does not change
-    await self.client.add({'i':200})
+    await self.client.kv_add({'i':200})
 
-    output = await self.client.get(('i',))
+    output = await self.client.kv_get(('i',))
     self.assertDictEqual(output, input)
 
 

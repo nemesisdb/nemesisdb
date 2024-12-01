@@ -5,7 +5,7 @@ from base import NDBSessionTest
 class NewEnd(NDBSessionTest):
 
   async def test_create_single(self):
-    session = await self.client.create_session()
+    session = await self.client.sh_create_session()
     self.assertTrue(session.isValid)
 
   
@@ -13,15 +13,15 @@ class NewEnd(NDBSessionTest):
     nSessions = 10
 
     for _ in range(0, nSessions):
-      session = await self.client.create_session()
+      session = await self.client.sh_create_session()
       self.assertTrue(session.isValid)
 
 
   async def test_end_single(self):
-    session = await self.client.create_session()
+    session = await self.client.sh_create_session()
     self.assertTrue(session.isValid)
 
-    await self.client.end_session(session.tkn)
+    await self.client.sh_end(session.tkn)
 
   
   async def test_end_multiple(self):
@@ -29,24 +29,24 @@ class NewEnd(NDBSessionTest):
     sessions = []
 
     for _ in range(0, nSessions):
-      session = await self.client.create_session()
+      session = await self.client.sh_create_session()
       self.assertTrue(session.isValid)
       sessions.append(session)
 
     for session in sessions:
-      await self.client.end_session(session.tkn)
+      await self.client.sh_end(session.tkn)
 
 
   # expiry
   async def test_create_expires(self):
-    session = await self.client.create_session(durationSeconds=5)
+    session = await self.client.sh_create_session(durationSeconds=5)
     self.assertTrue(session.isValid)
 
 
   # error conditions
   async def test_err_duration(self):
     with self.assertRaises(ValueError):
-      await self.client.create_session(durationSeconds=-1)
+      await self.client.sh_create_session(durationSeconds=-1)
 
 
   async def test_err_incorrect_params(self):
@@ -54,7 +54,7 @@ class NewEnd(NDBSessionTest):
         so extendOnGet, extendOnSetAdd and deleteSession have no affect
     """
     with self.assertRaises(ValueError):
-      await self.client.create_session(durationSeconds=0, extendOnGet=True)
+      await self.client.sh_create_session(durationSeconds=0, extendOnGet=True)
       
 
 

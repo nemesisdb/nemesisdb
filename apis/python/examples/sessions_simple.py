@@ -1,38 +1,39 @@
+import asyncio as asio
 import sys
 sys.path.append('../')
 
-from ndb.sessionclient import SessionClient, Session
+from ndb.client import NdbClient, Session
 
-import asyncio as asio
+
 
 
 
 async def basics():
-  client = SessionClient(debug=False) # toggle for debug logs
+  client = NdbClient(debug=False) # toggle for debug logs
   if not (await client.open('ws://127.0.0.1:1987/')):
     print('Failed to connect')
     return
 
-  session = await client.create_session()
+  session = await client.sh_create_session()
   if session == None:
     return
 
   print(f"Session created with session token: {session.tkn}")
 
   # set keys in the session
-  await client.set({'fname':'James', 'sname':'smith'}, session.tkn)
+  await client.sh_set({'fname':'James', 'sname':'smith'}, session.tkn)
 
 
   # retrieve
-  values = await client.get(('fname', 'sname'), session.tkn)
+  values = await client.sh_get(('fname', 'sname'), session.tkn)
   print(values)
   
 
   # overwrite surname ('smith' to 'Smith')
-  await client.set({'sname':'Smith'}, session.tkn)
+  await client.sh_set({'sname':'Smith'}, session.tkn)
 
   # retrieve updated value
-  values = await client.get(('fname', 'sname'), session.tkn)
+  values = await client.sh_get(('fname', 'sname'), session.tkn)
   print(values)
 
 
@@ -49,30 +50,30 @@ async def multiple_sessions():
             'blocked':False,
             'roles':['NewUser', 'ReadOnly']}    
     
-    await client.set(user, tkn)
+    await client.sh_set(user, tkn)
   
 
   async def updatePassword(tkn: int):
     # we don't need username, because the session token uniquely identifies this user's data
-    await client.set({'reset_password':False}, tkn)
+    await client.sh_set({'reset_password':False}, tkn)
 
 
   async def failedAuth(tkn: int):
-    await client.set({'reset_password':True, 'blocked':True}, tkn)
+    await client.sh_set({'reset_password':True, 'blocked':True}, tkn)
 
 
   async def updateRoles(tkn: int):
     # overwrite 'roles'
-    await client.set({'roles':['StandardUser']}, tkn)
+    await client.sh_set({'roles':['StandardUser']}, tkn)
 
 
-  client = SessionClient()
+  client = NdbClient()
   if not (await client.open('ws://127.0.0.1:1987/')):
     print('Failed to connect')
     return
 
-  session_user1 = await client.create_session()
-  session_user2 = await client.create_session()
+  session_user1 = await client.sh_create_session()
+  session_user2 = await client.sh_create_session()
 
   print(f'User1 Session: {session_user1.tkn}\nUser2 Session: {session_user2.tkn}\n')
 
@@ -91,27 +92,27 @@ async def multiple_sessions():
 
 # code below used in the API README
 
-async def newUser(client: SessionClient, username: str, email: str) -> Session:
-  session = await client.create_session()
-  await client.set({'username':username, 'email':email}, session.tkn)
+async def newUser(client: NdbClient, username: str, email: str) -> Session:
+  session = await client.sh_create_session()
+  await client.sh_set({'username':username, 'email':email}, session.tkn)
   return session
 
 
-async def updateEmail(client: SessionClient, email: str, tkn: int):
-  await client.set({'email':email}, tkn)
+async def updateEmail(client: NdbClient, email: str, tkn: int):
+  await client.sh_set({'email':email}, tkn)
 
 
-async def updateUsername(client: SessionClient, username: str, tkn: int):
-  await client.set({'username':username}, tkn)
+async def updateUsername(client: NdbClient, username: str, tkn: int):
+  await client.sh_set({'username':username}, tkn)
 
 
-async def getUser(client: SessionClient, tkn: int):
-  values = await client.get(('username', 'email'), tkn)
+async def getUser(client: NdbClient, tkn: int):
+  values = await client.sh_get(('username', 'email'), tkn)
   print(values)
 
 
 async def two_sessions():
-  client = SessionClient()
+  client = NdbClient()
   if not (await client.open('ws://127.0.0.1:1987/')):
     print('Failed to connect')
     return
