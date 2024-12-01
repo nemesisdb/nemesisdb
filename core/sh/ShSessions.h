@@ -39,7 +39,6 @@ public:
     bool expires{false}; 
   };
 
-  using SessionType = Session;
   using SessionsMap = ankerl::unordered_dense::segmented_map<SessionToken, Session>;
 
 
@@ -53,7 +52,7 @@ private:
 
 public:
 
-  std::optional<std::reference_wrapper<CacheMap>> start (const SessionToken& token, const bool shared, const ExpireInfo expiry)
+  std::optional<std::reference_wrapper<CacheMap>> start (const SessionToken& token, const bool shared, ExpireInfo expiry)
   {
     if (m_sessions.contains(token))
       return {};  // TODO check this, if shared:true and a session with this name already exists
@@ -64,6 +63,8 @@ public:
       else
       {
         const auto expireTime = SessionClock::now() + expiry.duration;
+        
+        expiry.time = expireTime;
 
         m_sessions.emplace(token, Session{.expireInfo = expiry, .token = token, .shared = shared, .expires = true});
         m_expiry.emplace(expireTime, ExpiryTracking{.expiry = expiry, .token = token});

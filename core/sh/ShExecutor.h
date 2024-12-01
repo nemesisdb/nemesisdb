@@ -68,22 +68,22 @@ public:
     body["shared"] = njson::null();
     body["keyCnt"] = njson::null();
 
-    if (const auto session = sessions->get(tkn); !session)
+    if (const auto sessionOpt = sessions->get(tkn); !sessionOpt)
       body["st"] = toUnderlying(RequestStatus::SessionNotExist);
     else
     {
-      const auto& sesh = session->get();
-      const auto& expireInfo = sesh.expireInfo;
-      const auto keyCount = sesh.map.count();
-      const auto remaining = sesh.expires ? std::chrono::duration_cast<std::chrono::seconds>(expireInfo.time - SessionClock::now()) :
+      const auto& session = sessionOpt->get();
+      const auto& expireInfo = session.expireInfo;
+      const auto keyCount = session.map.count();
+      const auto remaining = session.expires ? std::chrono::duration_cast<std::chrono::seconds>(expireInfo.time - SessionClock::now()) :
                                             std::chrono::seconds{0};
 
       body["st"] = toUnderlying(RequestStatus::Ok);
-      body["shared"] = sesh.shared;
+      body["shared"] = session.shared;
       body["keyCnt"] = keyCount;
-      body["expires"] = sesh.expires;
+      body["expires"] = session.expires;
 
-      if (sesh.expires)
+      if (session.expires)
       {
         body["expiry"]["duration"] = expireInfo.duration.count();
         body["expiry"]["remaining"] = remaining.count();
@@ -303,7 +303,7 @@ private:
   }
 
   
-  static void writeSession (const bool first, const Sessions::SessionType& sesh, const SessionToken token, std::stringstream& buffer)
+  static void writeSession (const bool first, const Sessions::Session& sesh, const SessionToken token, std::stringstream& buffer)
   {
     njson seshData;
     seshData["sh"]["tkn"] = token;
