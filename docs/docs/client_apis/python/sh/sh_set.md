@@ -70,6 +70,6 @@ print(values)
 'server_users':{'admins':['user1', 'user2'],'banned':['user3']}
 ```
 
-See [sh_get](./Get).
+See [sh_get](./sh_get).
 
 

@@ -6,7 +6,7 @@ displayed_sidebar: tutorialSidebar
 # Setup
 
 :::info
-This uses Postman, but if you know Python it is more useful to use the [Python API](../../client_apis/python/Overview).
+This uses Postman, but if you know Python it is more useful to use the [Python API](../../client_apis/Overview).
 :::
 
 ## Install Postman

@@ -16,7 +16,7 @@ The `name` is used to load data at runtime with `kv_load()` and at startup.
 
 :::note
 - Persistance must be enabled in the server config
-- To persist sessions, use [sh_save()](./sessions/Save)
+- To persist sessions, use [sh_save()](../sh/Save)
 :::
 
 

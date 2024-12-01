@@ -15,7 +15,7 @@ Restores keys that were previously saved with `save()`.
 :::note
 - Persistance does _not_ have to be enabled for this command
 - You can also load at startup, using `--loadName`
-- This command can only be used to load independent keys (those that are not in a session). To load sessions, use [SessionClient.sh_load()](./sessions/Load)
+- This command can only be used to load independent keys (those that are not in a session). To load sessions, use [sh_load()](../sh/Load)
 :::
 
 
