@@ -10,9 +10,7 @@ Ends a session.
 The session is ended immediately, with all keys being deleted.
 
 ## Returns
-
-`bool`
-- `True` is the command was successful, otherwise `False`
+None
 
 
 ## Examples

@@ -21,10 +21,7 @@ Restore sessions that were saved with [session_save()](./Save).
 
 
 ## Returns
-
-`Tuple(bool, dict)`:
-- `bool` : `True` is the command was successful, otherwise `False`
-- `dict` : See table below.
+`dict` : See table below.
 
 
 

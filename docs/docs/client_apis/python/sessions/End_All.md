@@ -11,11 +11,7 @@ The sessions end immediately, with all keys being deleted, effectively clearing 
 
 
 ## Returns
-
-`tuple(bool, int)`
-- `bool` : `True` is the command was successful, otherwise `False`
-- `int` : the number of sessions ended
-
+None
 
 ## Examples
 

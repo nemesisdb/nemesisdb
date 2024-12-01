@@ -36,5 +36,40 @@ class SaveLoad(NDBSessionTest):
     self.assertDictEqual(loadedInfo, {'sessions':nSessions, 'keys':nSessions*2, 'name':datasetName})  # we set 2 keys per sessions
 
 
+  async def test_save_load_selected(self):
+    dataSetName = f'session_{random.randint(0, 10000)}'
+    nSessions = 10
+    nKeysPerSession = 4
+    
+    await self.client.open('ws://127.0.0.1:1987/')
+
+    # clear before start
+    await self.client.end_all_sessions()
+
+    tokensToSave = list()
+
+    # create sessions
+    for s in range(0, nSessions):
+      session = await self.client.create_session()
+      assert session.isValid
+      for k in range(0,nKeysPerSession):
+        await self.client.set({f'key{k}':'some_value'}, session.tkn)
+      
+      # store every second token to save
+      if s % 2 == 0:
+        tokensToSave.append(session.tkn)
+
+
+    await self.client.save(dataSetName, tokensToSave)
+
+    # clear and then load
+    count = await self.client.end_all_sessions()
+    assert count == nSessions
+
+    rsp = await self.client.load(dataSetName)
+    assert rsp['sessions'] == len(tokensToSave) and rsp['keys'] == len(tokensToSave)*nKeysPerSession
+
+
+
 if __name__ == "__main__":
   unittest.main()

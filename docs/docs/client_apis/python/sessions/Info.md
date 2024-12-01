@@ -8,11 +8,12 @@ sidebar_label: session_info
 Returns information for a session.
 
 
+|Param|Type|Description|Required|
+|--|:-:|--|:-:|
+|tkn|int|The token|Y|
+
+
 ## Returns
-
-
-`tuple(bool, dict)`
-- `bool` : `True` is the command was successful, otherwise `False`
 - `dict` : information. See table below
 
 
@@ -33,5 +34,7 @@ Returns information for a session.
 |:---|:---|:---|
 |duration|unsigned int|Duration, in seconds, before expiring|
 |remaining|int|Duration, in seconds, remaining until the session expires. Note, this can be negative because the session can expire before the session monitor has checked|
-|deleteSession|bool|If true, the session is deleted when the session expires. If false, only the data is deleted|
+|deleteSession| bool|`true`: session is deleted when it expires<br/>`false`: only the keys are deleted (default)|
+|extendOnSetAdd|bool|`true`: on each set or add, the expire time is extended by `duration`<br/>`false`: default|
+|extendOnGet|bool|`true`: on each get, the expire time is extended by `duration`<br/>`false`: default|
 

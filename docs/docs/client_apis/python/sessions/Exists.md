@@ -13,10 +13,7 @@ Given an array of tokens, returns those that exist.
 
 
 ## Returns
-
-`tuple(bool, List[int])`
-- `bool` : `True` is the command was successful, otherwise `False`
-- `List[int]` : the tokens that exist - each token in the `tkns` parameter that exist will be returned
+`List[int]` : the tokens that exist - each token in the `tkns` parameter that exist will be returned
 
 
 ## Examples
