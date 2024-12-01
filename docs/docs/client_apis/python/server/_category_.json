@@ -1,0 +1,8 @@
+{
+  "label": "Server Info",
+  "position": 120,
+  "link": {
+    "type": "generated-index",
+    "description": "Python API for Server Information"
+  }
+}
