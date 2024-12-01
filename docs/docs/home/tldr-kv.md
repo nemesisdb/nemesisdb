@@ -7,23 +7,20 @@ displayed_sidebar: homeSidebar
 
 NemesisDB is a JSON in-memory database:
 
-- Key-value can be with or without sessions enabled
-- Session and key value data can be saved to disk, then loaded at startup or at runtime with a command
+- The server maps a JSON key to its value
+- Keys can be stored inside or outside of a session
 
 
-## Sessions Disabled
+## Independent/Top Level Keys
 
-- A single map stores all key-values
-- Keys must be named uniquely over the entire database
-- No session token required
-- Lower memory usage and latency
+- A single map stores all top level keys
+- Keys must be named unique to avoid overwriting
+- Lower latency
 
 
-## Sessions Enabled
+## Session
 
-- You can create as many sessions as required (within memory limitations)
-- A session groups related data (similar to hash sets in Redis)
-- A session is just a data container. They are called sessions because data is intended to be stored for a period of time before being deleted
+- A session groups related keys
 - A session ends when either:
   1. It is commanded with `SH_END` or `SH_END_ALL`
   2. It expires
@@ -39,8 +36,3 @@ NemesisDB is a JSON in-memory database:
 - When access keys, only the session's map is accessed
 - Operations on a session does not affect another session's keys
 
-<br/>
-
-:::note
-You can have just one session that never expires, in which case you should consider disabling sessions.
-:::
