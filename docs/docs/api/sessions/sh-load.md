@@ -4,16 +4,12 @@ sidebar_position: 30
 
 # SH_LOAD
 
-:::info
-This command is only available when the server mode is `"kv_sessions"`. If the server mode is `"kv"`, use [`KV_LOAD`](../kv/kv-load).
-:::
+Loads data from the filesystem at runtime.
 
-Loads data from the filesystem at runtime as an alternative to loading data at startup.
+- The data is read from the `persist::path` set in the config file
+- This command is available even if persistence is disabled
 
-- The data is read from the `session::save::path` set in the config file
-- This command is available even if `session::save::enabled` is `false`
-
-Restored sessions retain their shared and expiry settings. If a session has expiry settings, the expiry time is set to `now + duration`.
+Restored sessions retain their shared and expiry settings. If a session has expiry settings, the initial expiry time is set to `now + duration`.
 
 <br/>
 
