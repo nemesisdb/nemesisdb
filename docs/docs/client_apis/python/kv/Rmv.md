@@ -7,8 +7,8 @@ sidebar_label: kv_rmv
 # kv_rmv
 Delete key(s).
 
-- To delete all keys, use [clear](./Clear)
-- You can use [clear_set](./Clear_Set.md) which clears all keys then sets new keys in a single command.
+- To delete all keys, use [kv_clear](./Clear)
+- You can use [kv_clear_set](./Clear_Set.md) which clears all keys then sets new keys in a single command.
 
 
 |Param|Type|Description|Required|

@@ -1,5 +1,5 @@
 ---
-sidebar_position: 8
+sidebar_position: 120
 displayed_sidebar: clientApisSidebar
 sidebar_label: sh_load
 ---
@@ -11,7 +11,6 @@ Restore sessions that were saved with [session_save()](./Save).
 |Param|Type|Description|Required|
 |--|:-:|--|:-:|
 |name|str|The name of the dataset|Y|
-
 
 
 :::note

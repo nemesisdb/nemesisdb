@@ -8,8 +8,8 @@ sidebar_label: kv_clear
 Deletes _all_ keys.
 
 
-- To delete select key(s) use [rmv](./Rmv)
-- To delete all keys and set new keys in a single call, use [clear_set](./Clear_Set)
+- To delete select key(s) use [kv_rmv](./Rmv)
+- To delete all keys and set new keys in a single call, use [kv_clear_set](./Clear_Set)
 
 
 ## Returns

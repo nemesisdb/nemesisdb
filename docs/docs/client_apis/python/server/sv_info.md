@@ -1,10 +1,9 @@
 ---
 sidebar_position: 1
 displayed_sidebar: clientApisSidebar
-sidebar_label: server_info
 ---
 
-# server_info
+# sv_info
 Returns minimal server information.
 
 

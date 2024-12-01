@@ -51,24 +51,10 @@ class NdbClient:
     logger.debug('Client: connected' if connected else 'Client: failed to connect')
     return connected
 
-
-  async def _sendCmd(self, cmdReq: str, cmdRsp: str, body: dict, stSuccess = StValues.ST_SUCCESS):
-    req = {cmdReq : body}
-    rsp = await self.api.query(req)
-    self._raise_if_invalid(rsp, cmdRsp, stSuccess)
-    return rsp
     
-
   async def close(self):
     await self.api.close()
  
-
-  def _raise_if_invalid(self, rsp: dict, cmdRsp: str, expected = StValues.ST_SUCCESS):
-    if rsp[cmdRsp][Fields.STATUS] != expected:
-      raise ResponseError(rsp[cmdRsp])
-    
-    logger.debug(cmdRsp + ' ' + ('Response Ok'))
-
 
   ## SV
   async def sv_info(self) -> dict:
@@ -153,7 +139,7 @@ class NdbClient:
     return rsp[ShCmd.COUNT_RSP]['cnt'] 
 
 
-  async def sh_contains(self, keys: tuple, tkn: int) -> Tuple[bool, List]:
+  async def sh_contains(self, keys: tuple, tkn: int) -> List:
     rsp = await self._sendTknCmd(ShCmd.CONTAINS_REQ, ShCmd.CONTAINS_RSP, {'keys':keys}, tkn)
     return rsp[ShCmd.CONTAINS_RSP]['contains']
 
@@ -245,6 +231,7 @@ class NdbClient:
   
   async def sh_save(self, name: str, tkns = list()):
     """Save all sessions or specific sessions.
+
     name - dataset name
     tkns - if empty, saves all sessions, otherwise only sessions whose token is in 'tkns'
     """
@@ -261,14 +248,31 @@ class NdbClient:
 
   async def sh_load(self, name: str) -> dict:
     """Loads session data from persistance.
-    name - the same name as used with session_save().
+
+    name - a name previously used with sh_save().
     """
     rsp = await self._sendCmd(ShCmd.LOAD_REQ, ShCmd.LOAD_RSP, {'name':name}, StValues.ST_LOAD_COMPLETE)
     info = dict(rsp[ShCmd.LOAD_RSP])
     info.pop('st')
     return info
-      
+
+
+  async def _sendCmd(self, cmdReq: str, cmdRsp: str, body: dict, stSuccess = StValues.ST_SUCCESS):
+    req = {cmdReq : body}
+    rsp = await self.api.query(req)
+    self._raise_if_invalid(rsp, cmdRsp, stSuccess)
+    return rsp
+  
 
   async def _sendTknCmd(self, cmdReq: str, cmdRsp: str, body: dict, tkn: int):
     body[Fields.TOKEN] = tkn   
     return await self._sendCmd(cmdReq, cmdRsp, body)
+  
+
+  def _raise_if_invalid(self, rsp: dict, cmdRsp: str, expected = StValues.ST_SUCCESS):
+    if rsp[cmdRsp][Fields.STATUS] != expected:
+      raise ResponseError(rsp[cmdRsp])
+    
+    logger.debug(cmdRsp + ' ' + ('Response Ok'))
+
+  
