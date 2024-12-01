@@ -1,10 +1,10 @@
 ---
 sidebar_position: 2
 displayed_sidebar: clientApisSidebar
-sidebar_label: set
+sidebar_label: kv_set
 ---
 
-# set
+# kv_set
 Store keys to the database.
 
 Existing keys are overwritten, to avoid this use [kv_add](./Add).

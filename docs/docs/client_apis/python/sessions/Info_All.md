@@ -1,10 +1,10 @@
 ---
 sidebar_position: 6
 displayed_sidebar: clientApisSidebar
-sidebar_label: session_info_all
+sidebar_label: sh_info_all
 ---
 
-# session_info_all
+# sh_info_all
 Returns minimal information for all sessions.
 
 

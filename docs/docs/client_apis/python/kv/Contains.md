@@ -1,7 +1,7 @@
 ---
 sidebar_position: 9
 displayed_sidebar: clientApisSidebar
-sidebar_label: contains
+sidebar_label: kv_contains
 ---
 
 # kv_contains

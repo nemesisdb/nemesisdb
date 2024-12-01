@@ -1,7 +1,7 @@
 ---
 sidebar_position: 6
 displayed_sidebar: clientApisSidebar
-sidebar_label: clear
+sidebar_label: kv_clear
 ---
 
 # kv_clear

@@ -1,10 +1,10 @@
 ---
 sidebar_position: 5
 displayed_sidebar: clientApisSidebar
-sidebar_label: session_info
+sidebar_label: sh_info
 ---
 
-# session_info
+# sh_info
 Returns information for a session.
 
 

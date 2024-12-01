@@ -1,7 +1,7 @@
 ---
 sidebar_position: 3
 displayed_sidebar: clientApisSidebar
-sidebar_label: get
+sidebar_label: kv_get
 ---
 
 # kv_get

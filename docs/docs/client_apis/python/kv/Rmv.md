@@ -1,7 +1,7 @@
 ---
 sidebar_position: 5
 displayed_sidebar: clientApisSidebar
-sidebar_label: rmv
+sidebar_label: kv_rmv
 ---
 
 # kv_rmv

@@ -1,7 +1,7 @@
 ---
 sidebar_position: 11
 displayed_sidebar: clientApisSidebar
-sidebar_label: save
+sidebar_label: kv_save
 ---
 
 # kv_save

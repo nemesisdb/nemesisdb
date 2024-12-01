@@ -1,10 +1,10 @@
 ---
 sidebar_position: 8
 displayed_sidebar: clientApisSidebar
-sidebar_label: session_load
+sidebar_label: sh_load
 ---
 
-# session_load
+# sh_load
 Restore sessions that were saved with [session_save()](./Save).
 
 
@@ -34,27 +34,26 @@ Restore sessions that were saved with [session_save()](./Save).
 ## Examples
 
 ```py title='Save and load one session'
-client = SessionClient()
+client = NdbClient()
 await client.open('ws://127.0.0.1:1987/')
 
-# clear before start
-(cleared, count) = await client.end_all_sessions()
-assert cleared
-
-session = await client.create_session()
+session = await client.sh_create_session()
 if session.isValid:
   dataSetName = 'my_data'
   
-  await client.set({'fname':'james', 'sname':'smith'}, session.tkn)
+  await client.sh_set({'fname':'james', 'sname':'smith'}, session.tkn)
   
   # save to filesystem
-  await client.session_save(dataSetName, [session.tkn])
+  await client.sh_save(dataSetName, [session.tkn])
 
-  # clear and restore
-  count = await client.end_all_sessions()
-  assert cleared and count == 1
-
+  # end all sessions
+  await client.sh_end_all()
+  
   # restore keys
-  rsp = await client.session_load(dataSetName)
-  assert loaded and rsp['sessions'] == 1 and rsp['keys'] == 2
+  rsp = await client.sh_load(dataSetName)
+  print(rsp)
+
+  # get keys we loaded
+  values = await client.sh_get(('fname', 'sname'), session.tkn)
+  print(values)
 ```

@@ -1,10 +1,10 @@
 ---
 sidebar_position: 7
 displayed_sidebar: clientApisSidebar
-sidebar_label: session_save
+sidebar_label: sh_save
 ---
 
-# session_save
+# sh_save
 Save one or multiple sessions.
 
 The saved sessions can be restored with [session_load()](./Load).
@@ -30,13 +30,13 @@ None
 ## Examples
 
 ```py title='Save all'
-client = SessionClient()
+client = NdbClient()
 await client.open('ws://127.0.0.1:1987/')
 
-session = await client.create_session()
+session = await client.sh_create_session()
 if session.isValid:
-  await client.set({'fname':'james', 'sname':'smith'}, session.tkn)
-  await client.session_save('my_data')
+  await client.sh_set({'fname':'james', 'sname':'smith'}, session.tkn)
+  await client.sh_save('my_data')
 ```
 
 <br/>
@@ -45,23 +45,24 @@ if session.isValid:
 dataSetName = 'my_data'
 nSessions = 10
 
-client = SessionClient()
+client = NdbClient()
 await client.open('ws://127.0.0.1:1987/')
 
-# create sessions
+# create sessions, setting a key in each session
 tokensToSave = list()
 for s in range(0, nSessions):
-  session = await client.create_session()
-  tokensToSave.append(session.tkn)
-  await client.set({f'session{s}_key':'some_value'}, session.tkn)
+  session = await client.sh_create_session()
+  if session.isValid:
+    tokensToSave.append(session.tkn)
+    await client.sh_set({f'session{s}_key':'some_value'}, session.tkn)
 
 
 print(tokensToSave)
-await client.save(dataSetName, tokensToSave)
+await client.sh_save(dataSetName, tokensToSave)
 
 # clear and then load
-await client.end_all_sessions()
+await client.sh_end_all()
 
-rsp = await client.load(dataSetName)
+rsp = await client.sh_load(dataSetName)
 print(rsp)
 ```

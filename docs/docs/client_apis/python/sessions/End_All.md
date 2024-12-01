@@ -1,10 +1,10 @@
 ---
 sidebar_position: 3
 displayed_sidebar: clientApisSidebar
-sidebar_label: end_all_sessions
+sidebar_label: sh_end_all
 ---
 
-# end_all_sessions
+# sh_end_all
 Ends all sessions.
 
 The sessions end immediately, with all keys being deleted, effectively clearing the database.

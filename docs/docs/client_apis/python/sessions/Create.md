@@ -1,10 +1,10 @@
 ---
 sidebar_position: 1
 displayed_sidebar: clientApisSidebar
-sidebar_label: create_session
+sidebar_label: sh_create_session
 ---
 
-# create_session
+# sh_create_session
 
 package: `ndb.sessionclient`
 

@@ -1,7 +1,7 @@
 ---
 sidebar_position: 10
 displayed_sidebar: clientApisSidebar
-sidebar_label: keys
+sidebar_label: kv_keys
 ---
 
 # kv_keys

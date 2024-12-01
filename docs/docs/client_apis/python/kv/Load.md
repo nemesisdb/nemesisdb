@@ -1,7 +1,7 @@
 ---
 sidebar_position: 12
 displayed_sidebar: clientApisSidebar
-sidebar_label: load
+sidebar_label: kv_load
 ---
 
 # kv_load

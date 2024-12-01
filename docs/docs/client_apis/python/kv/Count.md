@@ -1,7 +1,7 @@
 ---
 sidebar_position: 8
 displayed_sidebar: clientApisSidebar
-sidebar_label: count
+sidebar_label: kv_count
 ---
 
 # kv_count

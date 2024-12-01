@@ -1,13 +1,13 @@
 ---
 sidebar_position: 4
 displayed_sidebar: clientApisSidebar
-sidebar_label: add
+sidebar_label: kv_add
 ---
 
 # kv_add
 Stores keys but does not overwrite a key if it already exists.
 
-To overwrite an existing key, use [set](./Set).
+To overwrite an existing key, use [kv_set](./Set).
 
 |Param|Type|Description|Required|
 |--|:-:|--|:-:|
@@ -41,8 +41,8 @@ values = await client.kv_get(('LinuxDistro',))
 print(f'After set(): {values}')
 ```
 
-- calling `kv_add()` does not overwrite the key
-- use `kv_set()` to replace the value
+- `kv_add()` does not overwrite keys
+- `kv_set()` does overwrite keys
 
 Output:
 ```

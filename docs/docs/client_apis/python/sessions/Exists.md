@@ -1,10 +1,10 @@
 ---
 sidebar_position: 4
 displayed_sidebar: clientApisSidebar
-sidebar_label: session_exists
+sidebar_label: sh_session_exists
 ---
 
-# session_exists
+# sh_session_exists
 Given an array of tokens, returns those that exist.
 
 |Param|Type|Description|Required|
@@ -13,7 +13,7 @@ Given an array of tokens, returns those that exist.
 
 
 ## Returns
-`List[int]` : the tokens that exist - each token in the `tkns` parameter that exist will be returned
+`List[int]` : the tokens that exist. Each token in the `tkns` parameter that exist will be returned
 
 
 ## Examples
@@ -21,7 +21,7 @@ Given an array of tokens, returns those that exist.
 
 ```py
 tokens = [123,456,789]
-(ok, exist) = await client.exists(tokens)
+exist = await client.exists(tokens)
 ```
 
 - Illustrative purposes only, a token won't have such a small value
