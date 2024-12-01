@@ -18,9 +18,11 @@ class SessionExecutor
 {
   using enum RequestStatus;
 
+  
+
 public:
   
-  static Response newSession (std::shared_ptr<Sessions> sessions, const SessionToken tkn, const SessionDuration duration, const bool deleteOnExpire)
+  static Response newSession (std::shared_ptr<Sessions> sessions, const SessionToken tkn, const Sessions::ExpireInfo& expiry)
   {    
     Response response;
     response.rsp = njson {jsoncons::json_object_arg, {{cmds::NewRsp, njson::object()}}};
@@ -30,7 +32,7 @@ public:
     body["tkn"] = tkn; 
     body["st"] = toUnderlying(Ok);
 
-    if (const auto cache = sessions->start(tkn, false, duration, deleteOnExpire); !cache) [[unlikely]]
+    if (const auto cache = sessions->start(tkn, false, expiry); !cache) [[unlikely]]
       body["st"] = toUnderlying(SessionNewFail);
 
     return response;
@@ -66,26 +68,28 @@ public:
     body["shared"] = njson::null();
     body["keyCnt"] = njson::null();
 
-    if (const auto session = sessions->get(tkn); !session)
+    if (const auto sessionOpt = sessions->get(tkn); !sessionOpt)
       body["st"] = toUnderlying(RequestStatus::SessionNotExist);
     else
     {
-      const auto& sesh = session->get();
-      const auto& expiryInfo = sesh.expireInfo;
-      const auto keyCount = sesh.map.count();
-      const auto remaining = sesh.expires ? std::chrono::duration_cast<std::chrono::seconds>(expiryInfo.time - SessionClock::now()) :
+      const auto& session = sessionOpt->get();
+      const auto& expireInfo = session.expireInfo;
+      const auto keyCount = session.map.count();
+      const auto remaining = session.expires ? std::chrono::duration_cast<std::chrono::seconds>(expireInfo.time - SessionClock::now()) :
                                             std::chrono::seconds{0};
 
       body["st"] = toUnderlying(RequestStatus::Ok);
-      body["shared"] = sesh.shared;
+      body["shared"] = session.shared;
       body["keyCnt"] = keyCount;
-      body["expires"] = sesh.expires;
+      body["expires"] = session.expires;
 
-      if (sesh.expires)
+      if (session.expires)
       {
-        body["expiry"]["duration"] = expiryInfo.duration.count();
+        body["expiry"]["duration"] = expireInfo.duration.count();
         body["expiry"]["remaining"] = remaining.count();
-        body["expiry"]["deleteSession"] = expiryInfo.deleteOnExpire;
+        body["expiry"]["deleteSession"] = expireInfo.deleteOnExpire;
+        body["expiry"]["extendOnSetAdd"] = expireInfo.extendOnSetAdd;
+        body["expiry"]["extendOnGet"] = expireInfo.extendOnGet;
       }
     }
 
@@ -299,13 +303,15 @@ private:
   }
 
   
-  static void writeSession (const bool first, const Sessions::SessionType& sesh, const SessionToken token, std::stringstream& buffer)
+  static void writeSession (const bool first, const Sessions::Session& sesh, const SessionToken token, std::stringstream& buffer)
   {
     njson seshData;
     seshData["sh"]["tkn"] = token;
     seshData["sh"]["shared"] = sesh.shared;
     seshData["sh"]["expiry"]["duration"] = chrono::duration_cast<SessionDuration>(sesh.expireInfo.duration).count();
     seshData["sh"]["expiry"]["deleteSession"] = sesh.expireInfo.deleteOnExpire;
+    seshData["sh"]["expiry"]["extendOnSetAdd"] = sesh.expireInfo.extendOnSetAdd;
+    seshData["sh"]["expiry"]["extendOnGet"] = sesh.expireInfo.extendOnGet;
     
     seshData["keys"] = njson::object();
 
@@ -352,10 +358,14 @@ private:
     {
       const auto token = seshData["sh"]["tkn"].as<SessionToken>();
       const auto isShared = seshData["sh"]["shared"].as_bool();
-      const auto deleteOnExpire = seshData["sh"]["expiry"]["deleteSession"].as_bool();
-      const auto duration = SessionDuration{seshData["sh"]["expiry"]["duration"].as<std::size_t>()};
 
-      if (auto session = sessions->start(token, isShared, duration, deleteOnExpire); session)
+      Sessions::ExpireInfo expireInfo;
+      expireInfo.duration = SessionDuration{seshData["sh"]["expiry"]["duration"].as<std::size_t>()};
+      expireInfo.deleteOnExpire = seshData["sh"]["expiry"]["deleteSession"].as_bool();
+      expireInfo.extendOnSetAdd = seshData["sh"]["expiry"]["extendOnSetAdd"].as_bool();
+      expireInfo.extendOnGet = seshData["sh"]["expiry"]["extendOnGet"].as_bool();
+      
+      if (auto session = sessions->start(token, isShared, expireInfo); session)
       {
         if (seshData.contains("keys") && seshData.at("keys").is_object())
         {

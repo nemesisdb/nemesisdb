@@ -340,19 +340,14 @@ public:
             }
             else if (command == sv::cmds::InfoReq)
             {
-              // vomit, but this is how jsoncons initialises json objects
               // the json_object_arg is a tag, followed by initializer_list<pair<string, njson>>
-              // Can create Prepared in one go, but split for [relative] readability. Copy children from Info into Prepared
-              static const njson Info {jsoncons::json_object_arg, {
-                                                                    {"st", toUnderlying(RequestStatus::Ok)},  // for compatibility with APIs and consistancy
-                                                                    {"serverVersion",   NEMESIS_VERSION},
-                                                                    {"persistEnabled",  m_settings.persistEnabled}
-                                                                  }};
+              static const njson Info = {jsoncons::json_object_arg, {
+                                                                      {"st", toUnderlying(RequestStatus::Ok)},  // for compatibility with APIs and consistency
+                                                                      {"serverVersion",   NEMESIS_VERSION},
+                                                                      {"persistEnabled",  m_settings.persistEnabled}
+                                                                    }};
+              static const njson Prepared {jsoncons::json_object_arg, {{sv::cmds::InfoRsp, Info}}}; 
 
-
-              static const njson Prepared {jsoncons::json_object_arg, {{sv::cmds::InfoRsp, {jsoncons::json_object_arg,  Info.object_range().cbegin(),
-                                                                                                                        Info.object_range().cend()}}}}; 
-              
               send(ws, Prepared);
             }
             else

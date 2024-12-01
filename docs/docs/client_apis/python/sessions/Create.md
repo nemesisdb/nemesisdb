@@ -10,11 +10,15 @@ package: `ndb.sessionclient`
 
 Creates a new session.
 
-A session is uniquely identified by a session token (typically passed around the code as `tkn`), which is a 64-bit unsigned integer.
+|Param|Type|Description|Required|
+|---|---|---|---|
+|durationSeconds|unsigned int|Time in seconds until the session expires. Default `0` (never expires) |N|
+|deleteSession|bool|`true`: session is deleted when it expires<br/>`false`: only the keys are deleted (default)|N|
+|extendOnSetAdd|bool|`true`: on each set or add, the expire time is extended by `duration`<br/>`false`: default|N|
+|extendOnGet|bool|`true`: on each get, the expire time is extended by `duration`<br/>`false`: default|N|
 
-Sessions are managed by an instance of `SessionClient` from the `ndb.sessionclient` package. A `SessionClient` is not coupled to a particular session, so the token must be passed to the command functions (`set()`, `get()`, etc).
+A session is uniquely identified by a session token (typically referred to in the API as `tkn`), which is a 64-bit unsigned integer.
 
-Calling: 
 
 ```py
 client = SessionClient()
@@ -35,6 +39,7 @@ client.get(('k1','k2'), session.tkn)
 
 Gets keys from that session. This applies to all command functions when using a token.
 
+<br/>
 
 ## Returns
 
@@ -42,8 +47,11 @@ Gets keys from that session. This applies to all command functions when using a 
 - If the command was success `Session.isValid` is `True`, otherwise `False`
 - If successful, the token is set in `Session.tkn`
 
+<br/>
 
 ## Examples
+
+Sessions are managed by an instance of `SessionClient` from the `ndb.sessionclient` package. A `SessionClient` is not coupled to a particular session, so the token must be passed to the command functions (`set()`, `get()`, etc).
 
 
 ```py title='Create a session'

@@ -9,7 +9,7 @@ displayed_sidebar: homeSidebar
 These instruction are for the Debian package. See [here](/category/docker) for Docker instructions.
 :::
 
-The bulk of the server config are set in a JSON [config](./config) file, which is in preference to endless command line arguments.
+The bulk of the server config are set in a JSON [config](./config) file.
 
 The server includes a default config which starts the server on `127.0.0.1:1987`.
 
@@ -27,7 +27,7 @@ The command line arguments are preceeded with `--`:
 <br/>
 
 :::note
-- When save is enabled the `path` must exist and be a directory
+- When persist is enabled the `path` must exist and be a directory
 - You can disable save but still restore data
 :::
 
@@ -43,8 +43,8 @@ See [Persist Data](./persist) for more information on restoring.
 
 ### Restore
 
-```bash title="Start and restore, using path in config"
-./nemesisdb --config=default.json --loadName=10k_10000
+``` title="Start and restore, using path in config"
+./nemesisdb --config=default.jsonc --loadName=10k_10000
 
 NemesisDB v0.3.5 starting
 Registering signals
@@ -64,8 +64,8 @@ Ready
 
 <br/>
 
-```bash title="Start and restore with alternative path"
-./nemesisdb --config=default.json --loadName=mydata --loadPath=/some/other/path
+``` title="Start and restore with alternative path"
+./nemesisdb --config=default.jsonc --loadName=mydata --loadPath=/some/other/path
 
 NemesisDB v0.3.5 starting
 Registering signals
@@ -86,22 +86,8 @@ Ready
 <br/>
 
 
-```bash title="Load name does not exist"
-./nemesisdb --config=default.json --loadName=dontexist
-
-NemesisDB v0.3.5 starting
-Registering signals
-Reading config
-Load Path: "./data"
-Load Name: dontexist
-Load name does not exist
-```
-
-<br/>
-
-
-```bash title="Load name exists but contains no data (not an error)"
-./nemesisdb --config=default.json --loadName=empty
+``` title="Load name exists but contains no data (not an error)"
+./nemesisdb --config=default.jsonc --loadName=empty
 
 NemesisDB v0.3.7 starting
 Registering signals

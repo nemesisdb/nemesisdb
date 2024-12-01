@@ -37,7 +37,7 @@ class ShHandler
     Handler(Handler&&) = default;
     Handler& operator= (Handler&&) = default;
 
-    Response operator()(njson& request)
+    Response operator()(njson& request) const
     {
       return handler(request);
     }
@@ -118,12 +118,12 @@ public:
   }
 
 
-  Response handle(const std::string& command, njson& request)
+  ndb_always_inline Response handle(const std::string& command, njson& request)
   {
     static PmrResource<typename HandlerPmrMap::value_type, 1024U> handlerPmrResource; // TODO buffer size
     static PmrResource<typename HandlerPmrMap::value_type, 1024U> queryTypeNamePmrResource; // TODO buffer size
-    static HandlerPmrMap MsgHandlers{createHandlers(handlerPmrResource.getAlloc())}; 
-    static QueryTypePmrMap QueryNameToType{createQueryTypeNameMap(queryTypeNamePmrResource.getAlloc())};
+    static const HandlerPmrMap MsgHandlers{createHandlers(handlerPmrResource.getAlloc())}; 
+    static const QueryTypePmrMap QueryNameToType{createQueryTypeNameMap(queryTypeNamePmrResource.getAlloc())};
     
     if (const auto itType = QueryNameToType.find(command) ; itType == QueryNameToType.cend())
       return Response{.rsp = createErrorResponse(command+"_RSP", RequestStatus::CommandNotExist)};
@@ -215,18 +215,19 @@ private:
     }
     else
     {
-      bool deleteOnExpire = false;
-      SessionDuration duration{SessionDuration::rep{0}};
+      Sessions::ExpireInfo expiryInfo{};  // defaults all 0
 
       if (req.at(cmds::NewReq).contains("expiry"))
       {
         const auto& expiry = req.at(cmds::NewReq).at("expiry");
 
-        duration = SessionDuration{expiry.at("duration").as<SessionDuration::rep>()};
-        deleteOnExpire = expiry.at("deleteSession").as_bool();
+        expiryInfo.duration = SessionDuration{expiry.at("duration").as<SessionDuration::rep>()};
+        expiryInfo.deleteOnExpire = expiry.get_value_or<bool>("deleteSession", false);
+        expiryInfo.extendOnSetAdd = expiry.get_value_or<bool>("extendOnSetAdd", false);
+        expiryInfo.extendOnGet = expiry.get_value_or<bool>("extendOnGet", false);
       }
       
-      return SessionExecutor::newSession(m_sessions, createSessionToken(), duration, deleteOnExpire);
+      return SessionExecutor::newSession(m_sessions, createSessionToken(), expiryInfo);
     }
   }
 
@@ -322,16 +323,7 @@ private:
     }    
   }
 
-  //
-  template<typename F>
-  Response callKvHandler(CacheMap& map,const njson& cmdRoot, F&& handler)
-    requires( std::is_invocable_v<F, CacheMap&, njson&> &&
-              std::is_same_v<Response, std::invoke_result_t<F, CacheMap&, njson&>>)
-  {
-    return std::invoke(handler, map, cmdRoot);
-  }
-  
-
+ 
   template<typename F>
   Response executeKvCommand(const std::string_view cmdRspName, const njson& cmd, F&& handler)
     requires(std::is_invocable_v<F, CacheMap&, njson&>)
@@ -341,7 +333,22 @@ private:
     SessionToken token;
 
     if (auto sessionOpt = getSession(cmdRoot, token); sessionOpt)
-      return callKvHandler(sessionOpt->get().map, cmdRoot, std::forward<F>(handler));
+      return std::invoke(handler, sessionOpt->get().map, cmdRoot);
+    else
+      return Response{.rsp = createErrorResponse(cmdRspName, RequestStatus::SessionNotExist)};
+  }
+
+
+  template<typename F>
+  Response executeExtendableKvCommand(const std::string_view cmdRspName, const njson& request, const ShQueryType queryType, F&& handler)
+    requires(std::is_invocable_v<F, CacheMap&, njson&>)
+  {
+    const auto& cmdRoot = request.object_range().cbegin()->value();
+
+    SessionToken token;
+
+    if (auto sessionOpt = getExtendableSession(cmdRoot, token, queryType); sessionOpt)
+      return std::invoke(handler, sessionOpt->get().map, cmdRoot);
     else
       return Response{.rsp = createErrorResponse(cmdRspName, RequestStatus::SessionNotExist)};
   }
@@ -352,7 +359,7 @@ private:
     if (auto [valid, rsp] = kv::validateSet(cmds::SetReq, cmds::SetRsp, request); !valid)
       return Response{.rsp = std::move(rsp)};
     else
-      return executeKvCommand(cmds::SetRsp, request, kv::KvExecutor<true>::set);
+      return executeExtendableKvCommand(cmds::SetRsp, request, ShQueryType::Set, kv::KvExecutor<true>::set);
   }
 
 
@@ -361,7 +368,7 @@ private:
     if (auto [valid, rsp] = kv::validateGet(cmds::GetReq, cmds::GetRsp, request); !valid)
       return Response{.rsp = std::move(rsp)};
     else
-      return executeKvCommand(cmds::GetRsp, request, kv::KvExecutor<true>::get);
+      return executeExtendableKvCommand(cmds::GetRsp, request, ShQueryType::Get, kv::KvExecutor<true>::get);
   }
 
 
@@ -376,7 +383,7 @@ private:
     if (auto [valid, rsp] = kv::validateAdd(cmds::AddReq, cmds::AddRsp, request); !valid)
       return Response{.rsp = std::move(rsp)};
     else
-      return executeKvCommand(cmds::AddRsp, request, kv::KvExecutor<true>::add);
+      return executeExtendableKvCommand(cmds::AddRsp, request, ShQueryType::Add, kv::KvExecutor<true>::add);
   }
 
 
@@ -435,21 +442,48 @@ private:
   }
 
 
-  std::optional<std::reference_wrapper<Sessions::Session>> getSession (const njson& cmd, SessionToken& token)
+  ndb_always_inline std::optional<std::reference_wrapper<Sessions::Session>> getExtendableSession (const njson& cmd, SessionToken& token, const ShQueryType extendableQuery)
   {
-    if (getSessionToken(cmd, token))
+    if (auto sessionOpt = getSession(cmd, token); sessionOpt)
     {
-      if (auto sessionOpt = m_sessions->get(token); sessionOpt)
+      bool extend = false;
+      switch (extendableQuery)
       {
-        if (sessionOpt->get().expires)
-          m_sessions->updateExpiry(sessionOpt->get());
+        case ShQueryType::Add:
+        case ShQueryType::Set:
+          extend = sessionOpt->get().expireInfo.extendOnSetAdd;
+        break;
 
-        return sessionOpt;
+        case ShQueryType::Get:
+          extend = sessionOpt->get().expireInfo.extendOnGet;
+        break;
+
+        default:
+          // ignore
+        break;
       }
+
+      if (extend)
+        m_sessions->updateExpiry(sessionOpt->get());
+
+      return sessionOpt;
     }
 
     return {};
   }
+
+
+  ndb_always_inline std::optional<std::reference_wrapper<Sessions::Session>> getSession (const njson& cmd, SessionToken& token)
+  {
+    if (getSessionToken(cmd, token))
+    {
+      if (auto sessionOpt = m_sessions->get(token); sessionOpt) [[likely]]
+        return sessionOpt;
+    }
+
+    return {};
+  }
+
 
 
   Response doSave (const std::string_view queryName, const std::string_view queryRspName, njson& cmd)

@@ -36,7 +36,7 @@ namespace fs = std::filesystem;
 namespace chrono = std::chrono;
 namespace jsonpath = jsoncons::jsonpath;
 
-static const char * NEMESIS_VERSION = "0.7";
+static const char * NEMESIS_VERSION = "0.7.1";
 static const std::size_t NEMESIS_CONFIG_VERSION = 5U;
 
 static const std::size_t NEMESIS_KV_MINPAYLOAD = 64U;
@@ -87,7 +87,7 @@ enum class RequestStatus
 // general
 const uWS::OpCode WsSendOpCode = uWS::OpCode::TEXT;
 
-using njson = jsoncons::ojson;
+using njson = jsoncons::json;
 using NemesisClock = chrono::steady_clock;
 using NemesisTimePoint = NemesisClock::time_point;
 

@@ -37,5 +37,26 @@ class NewEnd(NDBSessionTest):
       await self.client.end_session(session.tkn)
 
 
+  # expiry
+  async def test_create_expires(self):
+    session = await self.client.create_session(durationSeconds=5)
+    self.assertTrue(session.isValid)
+
+
+  # error conditions
+  async def test_err_duration(self):
+    with self.assertRaises(ValueError):
+      await self.client.create_session(durationSeconds=-1)
+
+
+  async def test_err_incorrect_params(self):
+    """ error because durationSeconds=0 means never expire,
+        so extendOnGet, extendOnSetAdd and deleteSession have no affect
+    """
+    with self.assertRaises(ValueError):
+      await self.client.create_session(durationSeconds=0, extendOnGet=True)
+      
+
+
 if __name__ == "__main__":
   unittest.main()

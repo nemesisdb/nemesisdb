@@ -9,11 +9,7 @@ Returns minimal information for all sessions.
 
 
 ## Returns
-
-
-`tuple(bool, dict)`
-- `bool` : `True` is the command was successful, otherwise `False`
-- `dict` : information. See table below
+`dict` : information. See table below
 
 
 |Param|Type|Meaning|

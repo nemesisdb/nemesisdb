@@ -27,7 +27,8 @@ namespace nemesis { namespace sh {
 
   Validity validateNew (const njson& req)
   {
-    if (auto [topLevelValid, rsp] = isValid(NewRsp, req.at(NewReq), {{Param::optional("expiry", JsonObject)}}); !topLevelValid)
+    auto [topLevelValid, rsp] = isValid(NewRsp, req.at(NewReq), {{Param::optional("expiry", JsonObject)}});
+    if (!topLevelValid)
       return Validity{false, std::move(rsp)};
     else
     {
@@ -41,9 +42,11 @@ namespace nemesis { namespace sh {
             return {RequestStatus::Ok, ""};
         };
 
-        
         auto [expiryValid, rsp] = isValid(NewRsp, req.at(NewReq).at("expiry"), {{Param::required("duration", JsonUInt)},
-                                                                                        {Param::required("deleteSession", JsonBool)}}, validate);
+                                                                                {Param::optional("deleteSession", JsonBool)},
+                                                                                {Param::optional("extendOnSetAdd", JsonBool)},
+                                                                                {Param::optional("extendOnGet", JsonBool)}
+                                                                               }, validate);
 
         if (!expiryValid)
           return makeInvalid(std::move(rsp));

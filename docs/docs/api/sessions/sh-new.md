@@ -5,7 +5,12 @@ sidebar_position: 2
 # SH_NEW
 Creates a new session.
 
-The response includes a session token which is a 64-bit unsigned integer. The session token is used in the `KV_` commands to set, update, find, etc session data.
+Each session has a dedicate map so changes to a session's keys does not affect another session.
+
+A session exist forever or expire (see [options](#session-expiry)).
+
+
+The response includes a session token which is a 64-bit unsigned integer. The session token is used in the `SH_` commands to set, update, find, etc session data.
 
 To create a session that never expires:
 
@@ -29,11 +34,11 @@ which produces a response:
 
 <br/>
 
-The session token (`tkn`) is used in subsequent `KV_` commands, for example:
+The session token (`tkn`) is used in subsequent `SH_` commands, for example:
 
 ```json
 {
-  "KV_SET":
+  "SH_SET":
   {
     "tkn":260071646955705531,
     "keys":
@@ -46,16 +51,19 @@ The session token (`tkn`) is used in subsequent `KV_` commands, for example:
 ```
 <br/>
 
-A session can have optional `expiry` settings:
+## Session Expiry
+
+A session can have `expiry` settings:
 
 - a session can be given a duration, which when reached, the session's keys are deleted
 - the session can also be deleted
+- the session's expire time can be extend on each call to `set/add` or `get`
 
 <br/>
 
 |Param|Type|Meaning|Required|
 |:---|:---|:---|:---:|
-|expiry|object|Default: never expires <br/>Defines session expiry settings. See below.|N|
+|expiry|object|Default: if not present, session never expires <br/>Defines session expiry settings. See below.|N|
 
 <br/>
 <br/>
@@ -65,33 +73,9 @@ A session can have optional `expiry` settings:
 |Param|Type|Meaning|Required|
 |:---|:---|:---|:---:|
 |duration| unsigned int|Time in seconds until the session expires |Y|
-|deleteSession| bool|Flag indicating if the session should be deleted. If `false`, only the data is deleted|Y|
-
-<br/>
-
-## Session Expiry
-A session's expiry time is extended by its `duration` when it is accessed by any `KV_` command - if a session is not accessed for `duration` seconds, it will expire. 
-
-<!-- 
-## Session Name
-For a session that is not shared (`"shared":false`) the name has no meaning to the server other than it can't be empty. The name is returned in the response so clients can match the name to a session token when working asynchronously.
-
-If the session is shared the name can be used in [`SH_OPEN`](./sh-open.md) to get the session token from its name. This allows services/apps to access the same session without having to exchange the token.
-
-<br/> -->
-
-
-
-<!-- 
-<br/>
-## Shared Sessions
-A session can be accessed by any client using the session token but it may be cumbersome to distribute a session token between clients.
-
-A shared session helps by using the `name` to generate the session token. Other clients use `SH_OPEN` with the same name and receive the same session token.
-
-:::note
-This only applies when a session is shared. If a session is not shared the `name` does not take part in token generation.
-::: -->
+|deleteSession| bool|`true`: session is deleted when it expires<br/>`false`: only the keys are deleted (default)|N|
+|extendOnSetAdd|bool|`true`: on each set or add, the expire time is extended by `duration`<br/>`false`: default|N|
+|extendOnGet|bool|`true`: on each get, the expire time is extended by `duration`<br/>`false`: default|N|
 
 <br/>
 
@@ -111,9 +95,7 @@ Possible status values:
 
 - Ok
 - CommandSyntax
-- ValueMissing (no `name`)
-- ValueTypeInvalid (`name` is wrong type)
-- ValueSize (`name` is empty)
+
 
 <br/>
 
@@ -126,7 +108,7 @@ Possible status values:
 ```
 <br/>
 
-```json title='Expires after 1 minute, session not deleted'
+```json title='Expires every 60 seconds, session not deleted'
 {
   "SH_NEW":
   {
@@ -149,6 +131,21 @@ Possible status values:
     {
       "duration": 60,
       "deleteSession":true
+    }
+  }
+}
+```
+
+<br/>
+
+```json title='Expires every after 60 seconds, each call to get extends by 60 seconds'
+{
+  "SH_NEW":
+  {
+    "expiry":
+    {
+      "duration": 60,
+      "extendOnGet":true
     }
   }
 }
