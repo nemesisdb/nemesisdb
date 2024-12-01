@@ -110,23 +110,40 @@ class SessionClient(Client):
     return rsp[ShCmd.CLEAR_SET_RSP]['cnt']
 
   
-  async def create_session(self, durationSeconds = 0, deleteSessionOnExpire = False) -> Session:
+  async def create_session(self,  durationSeconds = 0,
+                                  deleteSessionOnExpire = False,
+                                  extendOnSetAdd = False,
+                                  extendOnGet = False) -> Session:
     """Create a new session, with optional expiry settings.
 
-    expirySeconds - after this duration (seconds), the session expires. Default 0 - never expires.
-    deleteSessionOnExpire - when True, the sessions is deleted. When false, the session is not deleted. 
+    durationSeconds: After this duration (seconds), all keys in the session are deleted. Default 0 - never expires.
 
-    When a session expires, the keys are always deleted, but deleteSessionOnExpire controls if the 
-    actual session is also deleted.
+    if durationSeconds > 0
+      deleteSessionOnExpire - when True, the session is deleted. When false, the session is not deleted. 
+      extendOnSetAdd - if True, extend the expire time by durationSeconds on each set or add operation
+      extendOnGet - if True, extend the expire time by durationSeconds on each get operation
+    
+    Returns: Session object containing the isValid property and the session token.
     """
     body = dict()
-
+    
     if durationSeconds < 0:
-      raise ValueError('expirySeconds must be >= 0')
+      raise ValueError('durationSeconds must be < 0')
+    elif durationSeconds == 0 and (deleteSessionOnExpire or extendOnSetAdd or extendOnGet):
+      # having these set with duration of 0 does not cause a problem on the server, but implies
+      # a misunderstanding or unintentional value
+      raise ValueError('durationSeconds is 0 so deleteSessionOnExpire, extendOnSetAdd and extendOnGet have no affect')
+    
     
     if durationSeconds > 0:
-      body['expiry'] = {'duration':durationSeconds, 'deleteSession':deleteSessionOnExpire}
-      
+      body['expiry'] = {
+                        'duration':durationSeconds,
+                        'deleteSession':deleteSessionOnExpire,
+                        'extendOnSetAdd':extendOnSetAdd,
+                        'extendOnGet':extendOnGet
+                       }
+    
+
     rsp = await self._sendCmd(ShCmd.NEW_REQ, ShCmd.NEW_RSP, body)
     token = rsp[ShCmd.NEW_RSP]['tkn']
     logger.debug(f'Created session: {token}')
