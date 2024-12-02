@@ -145,7 +145,7 @@ class NdbClient:
 
   
   async def sh_keys(self, tkn: int) -> List:
-    ok, rsp = await self._sendTknCmd(ShCmd.KEYS_REQ, ShCmd.KEYS_RSP, {}, tkn)
+    rsp = await self._sendTknCmd(ShCmd.KEYS_REQ, ShCmd.KEYS_RSP, {}, tkn)
     return rsp[ShCmd.KEYS_RSP]['keys'] 
   
 
