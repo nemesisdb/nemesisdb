@@ -12,11 +12,9 @@ async def setget_basics():
     print('Failed to connect')
     return
 
-  setSuccess = await client.kv_set({'username':'billy', 'password':'billy_passy'})
-
-  if setSuccess:
-    values = await client.kv_get(('username',))
-    print (values)
+  await client.kv_set({'username':'billy', 'password':'billy_passy'})
+  values = await client.kv_get(('username',))
+  print (values)
 
 
 async def setget_objects():
@@ -35,9 +33,9 @@ async def setget_objects():
             }
           }
 
-  if await client.kv_set(data):
-    values = await client.kv_get(('server_users',))
-    print(values)
+  await client.kv_set(data)
+  values = await client.kv_get(('server_users',))
+  print(values)
 
 
 async def setget_multiple():
@@ -56,9 +54,9 @@ async def setget_multiple():
             }
           }
 
-  if await client.kv_set(data):
-    values = await client.kv_get(('server_users', 'server_port'))
-    print(values)
+  await client.kv_set(data)
+  values = await client.kv_get(('server_users', 'server_port'))
+  print(values)
 
 
 async def setget_overwrite():
