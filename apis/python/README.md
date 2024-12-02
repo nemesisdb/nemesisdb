@@ -7,18 +7,11 @@
 
 The API is implemented with the [websockets](https://websockets.readthedocs.io/en/stable/) library which uses asyncio.
 
-See the NemesisDB [docs](https://docs.nemesisdb.io/client_apis/python/Overview).
+See the NemesisDB [docs](https://docs.nemesisdb.io/client_apis/Overview).
 
-Functions for all **common** commands are provided, except:
+Functions for all **common** commands are provided.
 
-Coming Soon
-- KV_UPDATE
-- KV_FIND
-- KV_ARR_APPEND
-- SH_NEW_SHARED
-- SH_OPEN
-
-Unsupported
+Unsupported:
 - KV_SETQ
 - KV_ADDQ
 
@@ -27,26 +20,22 @@ Unsupported
 
 # Quick Start
 
-The `Client` class handles the connection and contains a function per NemesisDB command.
+The `NdbClient` class handles the connection and commands.
 
 
 ## Set/Get Scalar
 Set then get `username` and `password` keys:
 
-```python
-from ndb import Client
+```py
+from ndb.client import NdbClient
 
-client = Client()
-await client.listen('ws://127.0.0.1:1987/')
+client = NdbClient()
+await client.open('ws://127.0.0.1:1987/')
 
-setSuccess = await client.set({'username':'billy', 'password':'billy_passy'})
+setSuccess = await client.kv_set({'username':'billy', 'password':'billy_passy'})
 
-if setSuccess:
-  (getOk, values) = await client.get(('username',))
-  if getOk:
-    print(values)
-  else:
-    print('Query failed')
+values = await client.kv_get(('username',))
+print(values)
 ```
 
 Output:
@@ -56,15 +45,13 @@ Output:
 
 - `set()` accepts a `dict` of key:value
 - `get()` accepts a tuple of keys
-  - Returns a tuple: `(bool, dict)`
-  - `bool`: `True` if command was successful
-  - `dict`: keys with values
+  - Returns: `dict`: keys with values
 
 
 You can retrieve multiple keys:
 
 ```python
-(getOk, values) = await client.get(('username', 'password'))
+values = await client.kv_get(('username', 'password'))
 ```
 
 <br/>
@@ -86,9 +73,11 @@ A key's value can be an object, as here with `server_users`:
 
 Set the data then get `server_users`:
 
-```py3
-client = Client()
-await client.listen('ws://127.0.0.1:1987/')
+```py
+from ndb.client import NdbClient
+
+client = NdbClient()
+await client.open('ws://127.0.0.1:1987/')
 
 data = {  "server_ip":"123.456.7.8",
           "server_port":1987,
@@ -99,11 +88,9 @@ data = {  "server_ip":"123.456.7.8",
           }
         }
 
-setSuccess = await client.set(data)
-if setSuccess:
-  (getOk, values) = await client.get(('server_users',))
-  if getOk:
-    print(values)
+await client.kv_set(data)
+values = await client.kv_get(('server_users',))
+print(values)
 ```
 
 Output:
@@ -114,47 +101,17 @@ Output:
 
 <br/>
 
-## Overwrite
-`KV_SET` will overwrite a key if it already exists. To avoid this use `KV_ADD` which does not overwrite an existing key.
-
-```py3
-client = Client()
-await client.listen('ws://127.0.0.1:1987/')
-
-await client.set({'LinuxDistro':'Arch'})
-(getOk, values) = await client.get(('LinuxDistro',))
-print(f'Before add(): {values}')
-
-await client.add({'LinuxDistro':'Arch btw'})
-(getOk, values) = await client.get(('LinuxDistro',))
-print(f'After add(): {values}')
-
-
-await client.set({'LinuxDistro':'Arch btw'})
-(getOk, values) = await client.get(('LinuxDistro',))
-print(f'After set(): {values}')
-```
-
-Output:
-```
-Before add(): {'LinuxDistro': 'Arch'}
-After add(): {'LinuxDistro': 'Arch'}
-After set(): {'LinuxDistro': 'Arch btw'}
-```
-
-<br/>
-
 ## Commands
 Common commands:
 
 |Command|Purpose|
 |---|---|
-|`rmv()`|Deletes keys|
-|`clear()`|Deletes all keys|
-|`clear_set()`|Deletes all keys then sets new keys in a single command|
-|`count()`|Returns the number of keys|
-|`contains()`|Given an array of keys, returns those that exist|
-|`keys`|Returns all key names (i.e. no values)|
+|`kv_rmv()`|Deletes keys|
+|`kv_clear()`|Deletes all keys|
+|`kv_clear_set()`|Deletes all keys then sets new keys in a single command|
+|`kv_count()`|Returns the number of keys|
+|`kv_contains()`|Given an array of keys, returns those that exist|
+|`kv_keys`|Returns all key names (i.e. no values)|
 
 
 <br/>
@@ -166,28 +123,23 @@ A session is similar to a Redis hashset. Each session:
 - has a dedicated map
 - can expire, deleting keys, and optionally also deleting the session
 
-The session API is implemented so that the same key-value functions (i.e. `set()`, `get()`, etc) can be used, rather than a separate group of functions.
+There are functions to manage sessions and keys, beginning with `sh_`, such as `sh_create_session()` `sh_set()`, `sh_get()`. 
 
 <br/>
-
-## Basics
 
 A session is identified by a unique session token (64-bit integer).
 
 ```py3
-client = SessionClient()
-await client.listen('ws://127.0.0.1:1987/')
+client = NdbClient()
+await client.open('ws://127.0.0.1:1987/')
 
-session = await ndb.create_session(client)
-if session == None:
+session = await client.sh_create_session()
+if not session.isValid:
   return
 
 print(f"Session created with session token: {session.tkn}")
 
-ok = await client.set({'fname':'James', 'sname':'smith'}, session.tkn)
-if not ok:
-  print('Set failed')
-  return
+await client.sh_set({'fname':'James', 'sname':'smith'}, session.tkn)
 ```
 
 Output
@@ -197,62 +149,7 @@ Session created with session token: 16204359010587816757
 {'fname': 'James', 'sname': 'smith'}
 ```
 
-- Create a `SessionClient`, rather than a `Client`
-- `create_session()` creates the session
-- The `Session` object stores the session token and client (command functions and websocket connection)
-- There after we use the same functions, such as `set()`, but we pass the token
+- `create_session()` creates the session, returning a `Session` object
+- The `Session` object contains the session token (`tkn`)
+- Then use `sh_set()`, passing the token
 
-
-<br/>
-
-## Multiple Sessions
-Because each session has a dedicated map, it's trivial to store and handle data that represents different entities. 
-If we have a session per user to store username and email:
-
-```py3
-async def newUser(client: SessionClient, username: str, email: str) -> Session:
-  session = await ndb.create_session(client)
-  await client.set({'username':username, 'email':email}, session.tkn)
-  return session
-
-
-async def updateEmail(session: Session, email: str):
-  await session.client.set({'email':email}, session.tkn)
-
-
-async def updateUsername(session: Session, username: str):
-  await session.client.set({'username':username}, session.tkn)
-
-
-async def getUser(session: Session):
-  (ok, values) = await session.client.get(('username', 'email'), session.tkn)
-  if ok:
-    print(values)
-
-
-client = SessionClient()
-await client.listen('ws://127.0.0.1:1987/')
-
-user1_session = await newUser(client, 'user1', 'u1@mailg.com')
-user2_session = await newUser(client, 'user2', 'u2@yoohaa.com')
-
-await getUser(user1_session)
-await getUser(user2_session)
-
-print("Updating")
-await updateEmail(user1_session, 'u1@chimpmail.com')
-await updateUsername(user2_session, 'user2_updated')
-
-await getUser(user1_session)
-await getUser(user2_session)
-```
-
-Output:
-
-```
-{'username': 'user1', 'email': 'u1@mailg.com'}
-{'username': 'user2', 'email': 'u2@yoohaa.com'}
-Updating
-{'username': 'user1', 'email': 'u1@chimpmail.com'}
-{'username': 'user2_updated', 'email': 'u2@yoohaa.com'}
-```
