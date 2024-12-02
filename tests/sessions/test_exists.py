@@ -9,19 +9,19 @@ class Exists(NDBSessionTest):
     tokens = []
 
     for _ in range(0, nSessions):
-      session = await self.client.create_session()
+      session = await self.client.sh_create_session()
       self.assertTrue(session.isValid)
       tokens.append(session.tkn)
 
 
     # individually
     for tkn in tokens:
-      exists = await self.client.session_exists([tkn])
+      exists = await self.client.sh_session_exists([tkn])
       self.assertListEqual([tkn], exists)
 
 
     # all
-    exists = await self.client.session_exists(tokens)
+    exists = await self.client.sh_session_exists(tokens)
     self.assertListEqual(tokens, exists)
     
 

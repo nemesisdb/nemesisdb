@@ -1,7 +1,7 @@
 from typing import Tuple
 import sys
 sys.path.append('../')
-from ndb.sessionclient import SessionClient, Session
+from ndb.client import NdbClient, Session
 
 import asyncio as asio
 import random
@@ -16,25 +16,25 @@ The session is deleted by the server when it expires, avoiding
 client code having to do so manually.
 """
 
-async def create_otp(client: SessionClient) -> Tuple[Session, int]:
+async def create_otp(client: NdbClient) -> Tuple[Session, int]:
   # create a session with expiry and session delete  
-  session = await client.create_session(durationSeconds=2, deleteSessionOnExpire=True)
+  session = await client.sh_create_session(durationSeconds=2, deleteSessionOnExpire=True)
   
   # set the passcode, have expiry short for this example
   code = random.randint(1000, 9999)  
-  await client.set({'code':code}, session.tkn)
+  await client.sh_set({'code':code}, session.tkn)
   return (session, code)
 
 
-async def validate_otp(client: SessionClient, tkn: int, userCode: int) -> bool:
+async def validate_otp(client: NdbClient, tkn: int, userCode: int) -> bool:
   # if session doesn't exist, get() returns (False, dict()), otherwise check code
   print(f'Attempting {userCode}')
-  result = await client.get(('code',), tkn)
+  result = await client.sh_get(('code',), tkn)
   return result['code'] == userCode
   
 
 async def otp():
-  client = SessionClient()
+  client = NdbClient()
   if not (await client.open('ws://127.0.0.1:1987/')):
     print('Failed to connect')
     return

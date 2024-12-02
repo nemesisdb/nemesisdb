@@ -9,5 +9,5 @@ If you have an API or plan to do so, feel free to contact via [Twitter](https://
 
 
 ## Python
-There is a [Python API](../client_apis/python/Overview).
+There is a [Python API](../client_apis/Overview).
 

@@ -7,9 +7,9 @@ class Keys(NDBTest):
   async def test_keys(self):
     input = {'a':0, 'b':'str', 'c':True, 'd':1.5}
 
-    await self.client.set(input)
+    await self.client.kv_set(input)
 
-    keys = await self.client.keys()
+    keys = await self.client.kv_keys()
     self.assertListEqual(keys, list(input.keys()))
     
     

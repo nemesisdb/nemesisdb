@@ -1,26 +1,26 @@
 import asyncio as asio
 import sys
 sys.path.append('../')
-from ndb.kvclient import KvClient
+from ndb.client import NdbClient
 
 
 
 async def setget_basics():
-  client = KvClient(debug=True) # toggle for debug
+  client = NdbClient(debug=False) # toggle for debug
 
   if not (await client.open('ws://127.0.0.1:1987/')):
     print('Failed to connect')
     return
 
-  setSuccess = await client.set({'username':'billy', 'password':'billy_passy'})
+  setSuccess = await client.kv_set({'username':'billy', 'password':'billy_passy'})
 
   if setSuccess:
-    (getOk, values) = await client.get(('username',))
+    (getOk, values) = await client.kv_get(('username',))
     print (values if getOk else 'Query failed')
 
 
 async def setget_objects():
-  client = KvClient()
+  client = NdbClient()
 
   if not (await client.open('ws://127.0.0.1:1987/')):
     print('Failed to connect')
@@ -35,14 +35,14 @@ async def setget_objects():
             }
           }
 
-  if await client.set(data):
-    (getOk, values) = await client.get(('server_users',))
+  if await client.kv_set(data):
+    (getOk, values) = await client.kv_get(('server_users',))
     if getOk:
       print(values)
 
 
 async def setget_multiple():
-  client = KvClient()
+  client = NdbClient()
 
   if not (await client.open('ws://127.0.0.1:1987/')):
     print('Failed to connect')
@@ -57,14 +57,13 @@ async def setget_multiple():
             }
           }
 
-  if await client.set(data):
-    (getOk, values) = await client.get(('server_users', 'server_port'))
-  if getOk:
+  if await client.kv_set(data):
+    values = await client.kv_get(('server_users', 'server_port'))
     print(values)
 
 
 async def setget_overwrite():
-  client = KvClient()
+  client = NdbClient()
 
   if not (await client.open('ws://127.0.0.1:1987/')):
     print('Failed to connect')
@@ -79,35 +78,35 @@ async def setget_overwrite():
             }
           }
 
-  if await client.set(data):
-    (getOk, values) = await client.get(('server_users', 'server_port'))
+  if await client.kv_set(data):
+    (getOk, values) = await client.kv_get(('server_users', 'server_port'))
     if getOk:
       print(f'Initial: {values}')
       # update and call set() to overwrite
       values['server_port'] = 7891
       values['server_users']['banned'] = []
-      await client.set(values)
-      (getOk, values) = await client.get(('server_users', 'server_port'))
+      await client.kv_set(values)
+      values = await client.kv_get(('server_users', 'server_port'))
       print(f'Updated: {values}')
 
 
 async def add():
-  client = KvClient()
+  client = NdbClient()
 
   if not (await client.open('ws://127.0.0.1:1987/')):
     print('Failed to connect')
     return
 
-  await client.set({'LinuxDistro':'Arch'})
-  (getOk, values) = await client.get(('LinuxDistro',))
+  await client.kv_set({'LinuxDistro':'Arch'})
+  values = await client.kv_get(('LinuxDistro',))
   print(f'Before add(): {values}')
 
-  await client.add({'LinuxDistro':'Arch btw'})
-  (getOk, values) = await client.get(('LinuxDistro',))
+  await client.kv_add({'LinuxDistro':'Arch btw'})
+  values = await client.kv_get(('LinuxDistro',))
   print(f'After add(): {values}')
 
-  await client.set({'LinuxDistro':'Arch btw'})
-  (getOk, values) = await client.get(('LinuxDistro',))
+  await client.kv_set({'LinuxDistro':'Arch btw'})
+  values = await client.kv_get(('LinuxDistro',))
   print(f'After set(): {values}')
 
 

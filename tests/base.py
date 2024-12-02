@@ -1,25 +1,24 @@
 from unittest import IsolatedAsyncioTestCase
-from ndb.kvclient import KvClient
-from ndb.sessionclient import SessionClient
+from ndb.client import NdbClient
 
 
 class NDBTest(IsolatedAsyncioTestCase):
   async def asyncSetUp(self):
-    self.client = KvClient()
+    self.client = NdbClient()
     
     connected = await self.client.open('ws://127.0.0.1:1987')
     self.assertTrue(connected, 'Connection failed')
     
     # clear before each test
-    await self.client.clear()
+    await self.client.kv_clear()
 
 
 class NDBSessionTest(IsolatedAsyncioTestCase):
   async def asyncSetUp(self):
-    self.client = SessionClient()
+    self.client = NdbClient()
     
     connected = await self.client.open('ws://127.0.0.1:1987')
     self.assertTrue(connected, 'Connection failed')
     
     # clear before each test
-    await self.client.end_all_sessions()
+    await self.client.sh_end_all()

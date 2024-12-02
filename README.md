@@ -26,43 +26,38 @@ There is an early version of a [Python API](https://github.com/nemesisdb/nemesis
 Set then retrieve two keys, `username` and `password`:
 
 ```py
-from ndb.kvclient import KvClient
+from ndb.client import NdbClient
 
-client = KvClient()
+client = NdbClient()
 
 await client.open('ws://127.0.0.1:1987/')
-await client.set({'username':'billy', 'password':'billy_passy'})
+await client.kv_set({'username':'billy', 'password':'billy_passy'})
 
-values = await client.get(('username','password'))
+values = await client.kv_get(('username','password'))
 print (values)
 ```
 
 To create keys in a session:
 
 ```py
-from ndb.sessionclient import SessionClient, Session
+from ndb.client import NdbClient, Session
 
 
-client = SessionClient()
+client = NdbClient()
 await client.open('ws://127.0.0.1:1987/')
 
 # create session() returns a Session object, containing the token (tkn)
 # sessions can expire but we create a session that never expires
-session = await client.create_session()
+session = await client.sh_create_session()
 
-await client.set({'username':'billy', 'password':'billy_password'}, session.tkn)
-values = await client.get(('username','password'), session.tkn)
+await client.sh_set({'username':'billy', 'password':'billy_password'}, session.tkn)
+values = await client.sh_get(('username','password'), session.tkn)
 print(values)
 
 # delete the session when finished
 # if the session was created with expiry settings, it would delete automatically on expiry
-await client.end_session(session.tkn)
+await client.sh_end(session.tkn)
 ```
-
-SessionClient and KvClient are similar:
-- KvClient supports a few more commands
-- SessionClient functions require a token to specify the token
-- SessionClient contains functions to manage sessions (create, end, etc)
 
 <br/>
 <br/>
@@ -283,11 +278,11 @@ Sessions disabled:
 <br/>
 
 ## Run
-Start listening on `127.0.0.1:1987` with sessions disabled (default in `default.jsonc`):
+Start listening on `127.0.0.1:1987` with persistence disabled:
 
 `./nemesisdb --config=default.jsonc`
 
-Use `ctrl+c` to exit.
+`ctrl+c` to exit.
 
 
 <br/>

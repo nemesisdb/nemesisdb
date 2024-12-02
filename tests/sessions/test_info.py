@@ -5,12 +5,12 @@ from base import NDBSessionTest
 class Info(NDBSessionTest):
 
   async def test_info(self):
-    session = await self.client.create_session()
+    session = await self.client.sh_create_session()
     self.assertTrue(session.isValid)
     
-    await self.client.set({'a':10, 'b':'x'}, session.tkn)
+    await self.client.sh_set({'a':10, 'b':'x'}, session.tkn)
     
-    info = await self.client.session_info(session.tkn)
+    info = await self.client.sh_info(session.tkn)
     self.assertEqual(info['tkn'], session.tkn)
     self.assertEqual(info['keyCnt'], 2)
     # session does not expire, so 'expires' is False and no 'expiry' info
@@ -23,24 +23,24 @@ class Info(NDBSessionTest):
     tokens = []
 
     for _ in range(0, nSessions):
-      session = await self.client.create_session()
+      session = await self.client.sh_create_session()
       self.assertTrue(session.isValid)
       
-      await self.client.set({'a':10, 'b':'x'}, session.tkn)
+      await self.client.sh_set({'a':10, 'b':'x'}, session.tkn)
 
       tokens.append(session.tkn)
 
 
-    info = await self.client.session_info_all()    
+    info = await self.client.sh_info_all()    
     self.assertEqual(info['totalSessions'], nSessions)
     self.assertEqual(info['totalKeys'], nSessions*2)  # we set 2 keys per session
     
 
   async def test_info_expiry_1(self):
-    session = await self.client.create_session(durationSeconds=10, extendOnGet=True)
+    session = await self.client.sh_create_session(durationSeconds=10, extendOnGet=True)
     self.assertTrue(session.isValid)
 
-    info = await self.client.session_info(session.tkn)
+    info = await self.client.sh_info(session.tkn)
 
     self.assertTrue(info['expires'])
     self.assertTrue('expiry' in info)
@@ -50,10 +50,10 @@ class Info(NDBSessionTest):
 
 
   async def test_info_expiry_2(self):
-    session = await self.client.create_session(durationSeconds=10, extendOnSetAdd=True)
+    session = await self.client.sh_create_session(durationSeconds=10, extendOnSetAdd=True)
     self.assertTrue(session.isValid)
 
-    info = await self.client.session_info(session.tkn)
+    info = await self.client.sh_info(session.tkn)
     
     self.assertTrue(info['expires'])
     self.assertTrue('expiry' in info)

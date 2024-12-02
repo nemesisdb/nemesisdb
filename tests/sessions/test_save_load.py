@@ -16,23 +16,23 @@ class SaveLoad(NDBSessionTest):
     tokens = []
 
     for _ in range(0, nSessions):
-      session = await self.client.create_session()
+      session = await self.client.sh_create_session()
       self.assertTrue(session.isValid)
       
-      await self.client.set({'a':10, 'b':'x'}, session.tkn)
+      await self.client.sh_set({'a':10, 'b':'x'}, session.tkn)
       tokens.append(session.tkn)
     
 
     # save
     datasetName = 'session_'+ str(random.randint(1000,999999))
-    await self.client.save(datasetName)
+    await self.client.sh_save(datasetName)
 
     # end all
-    clearedCount = await self.client.end_all_sessions()
+    clearedCount = await self.client.sh_end_all()
     self.assertEqual(clearedCount, nSessions)
 
     # load
-    loadedInfo = await self.client.load(datasetName)
+    loadedInfo = await self.client.sh_load(datasetName)
     self.assertDictEqual(loadedInfo, {'sessions':nSessions, 'keys':nSessions*2, 'name':datasetName})  # we set 2 keys per sessions
 
 
@@ -41,32 +41,31 @@ class SaveLoad(NDBSessionTest):
     nSessions = 10
     nKeysPerSession = 4
     
-    await self.client.open('ws://127.0.0.1:1987/')
 
     # clear before start
-    await self.client.end_all_sessions()
+    await self.client.sh_end_all()
 
     tokensToSave = list()
 
     # create sessions
     for s in range(0, nSessions):
-      session = await self.client.create_session()
+      session = await self.client.sh_create_session()
       assert session.isValid
       for k in range(0,nKeysPerSession):
-        await self.client.set({f'key{k}':'some_value'}, session.tkn)
+        await self.client.sh_set({f'key{k}':'some_value'}, session.tkn)
       
       # store every second token to save
       if s % 2 == 0:
         tokensToSave.append(session.tkn)
 
 
-    await self.client.save(dataSetName, tokensToSave)
+    await self.client.sh_save(dataSetName, tokensToSave)
 
     # clear and then load
-    count = await self.client.end_all_sessions()
+    count = await self.client.sh_end_all()
     assert count == nSessions
 
-    rsp = await self.client.load(dataSetName)
+    rsp = await self.client.sh_load(dataSetName)
     assert rsp['sessions'] == len(tokensToSave) and rsp['keys'] == len(tokensToSave)*nKeysPerSession
 
 
