@@ -15,8 +15,8 @@ async def setget_basics():
   setSuccess = await client.kv_set({'username':'billy', 'password':'billy_passy'})
 
   if setSuccess:
-    (getOk, values) = await client.kv_get(('username',))
-    print (values if getOk else 'Query failed')
+    values = await client.kv_get(('username',))
+    print (values)
 
 
 async def setget_objects():
@@ -36,9 +36,8 @@ async def setget_objects():
           }
 
   if await client.kv_set(data):
-    (getOk, values) = await client.kv_get(('server_users',))
-    if getOk:
-      print(values)
+    values = await client.kv_get(('server_users',))
+    print(values)
 
 
 async def setget_multiple():
@@ -78,16 +77,19 @@ async def setget_overwrite():
             }
           }
 
-  if await client.kv_set(data):
-    (getOk, values) = await client.kv_get(('server_users', 'server_port'))
-    if getOk:
-      print(f'Initial: {values}')
-      # update and call set() to overwrite
-      values['server_port'] = 7891
-      values['server_users']['banned'] = []
-      await client.kv_set(values)
-      values = await client.kv_get(('server_users', 'server_port'))
-      print(f'Updated: {values}')
+  await client.kv_set(data)
+  values = await client.kv_get(('server_users', 'server_port'))
+  
+  print(f'Initial: {values}')
+  
+  # update and call set() to overwrite
+  values['server_port'] = 7891
+  values['server_users']['banned'] = []
+  
+  await client.kv_set(values)
+  
+  values = await client.kv_get(('server_users', 'server_port'))
+  print(f'Updated: {values}')
 
 
 async def add():
