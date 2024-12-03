@@ -6,7 +6,7 @@ displayed_sidebar: clientApisSidebar
 # sh_set
 Store keys in a session.
 
-Existing keys are overwritten, to avoid this use [sh_add](./sh.add).
+Existing keys are overwritten, to avoid this use [sh_add](./sh_add).
 
 ```py
 sh_set(tkn: int, keys: dict) -> None
