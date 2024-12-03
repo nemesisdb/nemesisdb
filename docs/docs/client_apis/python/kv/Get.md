@@ -11,10 +11,15 @@ Retrieves keys from the database.
 kv_get(keys = tuple(), key = None)
 ```
 
-|Param|Description|Returns|
-|--|--|--|
-|key|Key to return|Any (type of value)
-|keys|Keys to retrieve|dict|
+|Param|Description|
+|--|--|
+|key|Key to retrieve|
+|keys|Keys to retrieve|
+
+
+## Returns
+- If `keys` set, a `dict` is returned
+- Otherwise, the value of the `key` is returned
 
 
 ## Raises
@@ -24,17 +29,18 @@ kv_get(keys = tuple(), key = None)
 
 ## Examples
 
-```py title='Connect'
+```py title='Connect and Set'
 from ndb.client import NdbClient
 
 client = NdbClient(debug=False) # toggle for debug
+
 await client.open('ws://127.0.0.1:1987/')
+await client.kv_set({'username':'billy', 'password':'billy_passy'})
 ```
 
 
-```py title='Set various'
+```py title='Get various'
 # get single key
-await client.kv_set({'username':'billy', 'password':'billy_passy'})
 value = await client.kv_get(key='username')
 print (value)
 

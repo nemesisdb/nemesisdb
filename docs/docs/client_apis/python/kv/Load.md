@@ -9,7 +9,7 @@ Restores keys that were previously saved with `kv_save()`.
 
 
 ```py
-kv_load(name: str)
+kv_load(name: str) -> int
 ```
 
 |Param|Description|
@@ -25,7 +25,7 @@ kv_load(name: str)
 
 
 ## Returns
-`int` : The number of keys loaded
+The number of keys loaded
 
 
 ## Raises

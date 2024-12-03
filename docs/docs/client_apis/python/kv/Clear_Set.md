@@ -9,16 +9,12 @@ Deletes _all_ keys then sets new keys in a single call.
 
 
 ```py
-kv_clear_set(keys: dict)
+kv_clear_set(keys: dict) -> None
 ```
 
 |Param|Description|
 |--|--|
 |keys|The new keys stored after the existing keys have been deleted|
-
-
-## Returns
-`None`
 
 
 ## Raises

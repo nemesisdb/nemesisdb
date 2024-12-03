@@ -12,7 +12,7 @@ async def basics():
     return
 
   session = await client.sh_create_session()
-  if session == None:
+  if not session.isValid:
     return
 
   print(f"Session created with session token: {session.tkn}")

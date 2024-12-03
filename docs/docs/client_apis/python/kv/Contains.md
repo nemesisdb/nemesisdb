@@ -8,7 +8,7 @@ sidebar_label: kv_contains
 Given a tuple of keys, returns the keys which exist.
 
 ```py
-kv_contains(keys: tuple)
+kv_contains(keys: tuple) -> List[str]
 ```
 
 |Param|Description|
@@ -17,7 +17,7 @@ kv_contains(keys: tuple)
 
 
 ## Returns
-`list` : the keys that exist
+The keys that exist
 
 
 ## Raises

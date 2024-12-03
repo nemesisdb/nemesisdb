@@ -11,7 +11,7 @@ To overwrite an existing key, use [kv_set](./Set).
 
 
 ```py
-kv_add(keys: dict)
+kv_add(keys: dict) -> None
 ```
 
 |Param|Description|Returns|

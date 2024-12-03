@@ -13,11 +13,11 @@ Deletes _all_ keys.
 
 
 ```py
-kv_clear()
+kv_clear() -> int
 ```
 
 # Returns
-`int` - the number of keys deleted
+The number of keys deleted
 
 
 ## Raises

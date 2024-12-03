@@ -74,11 +74,11 @@ class NdbClient:
   
 
   ## KV
-  async def kv_set(self, keys: dict):
+  async def kv_set(self, keys: dict) -> None:
     await self._sendCmd(KvCmd.SET_REQ, KvCmd.SET_RSP, {'keys':keys})
   
 
-  async def kv_add(self, keys: dict):
+  async def kv_add(self, keys: dict) -> None:
     await self._sendCmd(KvCmd.ADD_REQ, KvCmd.ADD_RSP, {'keys':keys})
 
 
@@ -104,7 +104,7 @@ class NdbClient:
     return rsp[KvCmd.GET_RSP]['keys']
   
 
-  async def kv_rmv(self, keys: tuple):
+  async def kv_rmv(self, keys: tuple) -> None:
     if len(keys) == 0:
       raise ValueError('Keys empty')
     await self._sendCmd(KvCmd.RMV_REQ, KvCmd.RMV_RSP, {'keys':keys})
@@ -115,12 +115,12 @@ class NdbClient:
     return rsp[KvCmd.COUNT_RSP]['cnt']
 
 
-  async def kv_contains(self, keys: tuple) -> List:
+  async def kv_contains(self, keys: tuple) -> List[str]:
     rsp = await self._sendCmd(KvCmd.CONTAINS_REQ, KvCmd.CONTAINS_RSP, {'keys':keys})
     return rsp[KvCmd.CONTAINS_RSP]['contains']
 
   
-  async def kv_keys(self) -> int:
+  async def kv_keys(self) -> List[str]:
     rsp = await self._sendCmd(KvCmd.KEYS_REQ, KvCmd.KEYS_RSP, {})
     return rsp[KvCmd.KEYS_RSP]['keys']
   
@@ -135,7 +135,7 @@ class NdbClient:
     return rsp[KvCmd.CLEAR_SET_RSP]['cnt'] 
 
 
-  async def kv_save(self, name: str):
+  async def kv_save(self, name: str) -> None:
     if len(name) == 0:
       raise ValueError('Name empty')
     await self._sendCmd(KvCmd.SAVE_REQ, KvCmd.SAVE_RSP, {'name':name}, StValues.ST_SAVE_COMPLETE)
@@ -153,7 +153,7 @@ class NdbClient:
     await self._sendTknCmd(ShCmd.SET_REQ, ShCmd.SET_RSP, {'keys':keys}, tkn)
   
 
-  async def sh_add(self, keys: dict, tkn: int):
+  async def sh_add(self, tkn: int, keys: dict):
     await self._sendTknCmd(ShCmd.ADD_REQ, ShCmd.ADD_RSP, {'keys':keys}, tkn)
 
   
@@ -166,20 +166,7 @@ class NdbClient:
       return await self._sh_get_multiple(keys, tkn)
     
 
-  async def _sh_get_single(self, key: str, tkn: int):
-    rsp = await self._sendTknCmd(ShCmd.GET_REQ, ShCmd.GET_RSP, {'keys':[key]}, tkn)
-    if key in rsp[ShCmd.GET_RSP]['keys']:
-      return rsp[ShCmd.GET_RSP]['keys'][key]
-    else:
-      return None
-    
-  
-  async def _sh_get_multiple(self, keys: tuple, tkn: int) -> dict:
-    rsp = await self._sendTknCmd(ShCmd.GET_REQ, ShCmd.GET_RSP, {'keys':keys}, tkn)
-    return rsp[ShCmd.GET_RSP]['keys']
-
-
-  async def sh_rmv(self, keys: tuple, tkn: int) -> None:
+  async def sh_rmv(self, tkn: int, keys: tuple) -> None:
     await self._sendTknCmd(ShCmd.RMV_REQ, ShCmd.RMV_RSP, {'keys':keys}, tkn)
 
 
@@ -188,12 +175,12 @@ class NdbClient:
     return rsp[ShCmd.COUNT_RSP]['cnt'] 
 
 
-  async def sh_contains(self, keys: tuple, tkn: int) -> List:
+  async def sh_contains(self, tkn: int, keys: tuple) -> List[str]:
     rsp = await self._sendTknCmd(ShCmd.CONTAINS_REQ, ShCmd.CONTAINS_RSP, {'keys':keys}, tkn)
     return rsp[ShCmd.CONTAINS_RSP]['contains']
 
   
-  async def sh_keys(self, tkn: int) -> List:
+  async def sh_keys(self, tkn: int) -> List[str]:
     rsp = await self._sendTknCmd(ShCmd.KEYS_REQ, ShCmd.KEYS_RSP, {}, tkn)
     return rsp[ShCmd.KEYS_RSP]['keys'] 
   
@@ -204,16 +191,16 @@ class NdbClient:
     return rsp[ShCmd.CLEAR_RSP]['cnt']
         
 
-  async def sh_clear_set(self, keys: dict, tkn: int) -> int:
+  async def sh_clear_set(self, tkn: int, keys: dict) -> int:
     """Clear keys in the session then set new keys."""
     rsp = await self._sendTknCmd(ShCmd.CLEAR_SET_REQ, ShCmd.CLEAR_SET_RSP, {'keys':keys}, tkn)
     return rsp[ShCmd.CLEAR_SET_RSP]['cnt']
 
   
-  async def sh_create_session(self,  durationSeconds = 0,
-                                  deleteSessionOnExpire = False,
-                                  extendOnSetAdd = False,
-                                  extendOnGet = False) -> Session:
+  async def sh_create_session(self, durationSeconds = 0,
+                                    deleteSessionOnExpire = False,
+                                    extendOnSetAdd = False,
+                                    extendOnGet = False) -> Session:
     """Create a new session, with optional expiry settings.
 
     durationSeconds: After this duration (seconds), all keys in the session are deleted. Default 0 - never expires.
@@ -259,7 +246,7 @@ class NdbClient:
     return rsp[ShCmd.END_ALL_RSP]['cnt']
 
 
-  async def sh_session_exists(self, tkns: List[int]) ->  List:
+  async def sh_session_exists(self, tkns: List[int]) ->  List[int]:
     rsp = await self._sendCmd(ShCmd.EXISTS_REQ, ShCmd.EXISTS_RSP, {'tkns':tkns})
     return rsp[ShCmd.EXISTS_RSP]['exist'] 
     
@@ -278,7 +265,7 @@ class NdbClient:
     return info
     
   
-  async def sh_save(self, name: str, tkns = list()):
+  async def sh_save(self, name: str, tkns = list()) -> None:
     """Save all sessions or specific sessions.
 
     name - dataset name
@@ -305,7 +292,20 @@ class NdbClient:
     info.pop('st')
     return info
 
-
+  
+  
+  async def _sh_get_single(self, key: str, tkn: int):
+    rsp = await self._sendTknCmd(ShCmd.GET_REQ, ShCmd.GET_RSP, {'keys':[key]}, tkn)
+    if key in rsp[ShCmd.GET_RSP]['keys']:
+      return rsp[ShCmd.GET_RSP]['keys'][key]
+    else:
+      return None
+    
+  
+  async def _sh_get_multiple(self, keys: tuple, tkn: int) -> dict:
+    rsp = await self._sendTknCmd(ShCmd.GET_REQ, ShCmd.GET_RSP, {'keys':keys}, tkn)
+    return rsp[ShCmd.GET_RSP]['keys']
+  
   async def _sendCmd(self, cmdReq: str, cmdRsp: str, body: dict, stSuccess = StValues.ST_SUCCESS):
     req = {cmdReq : body}
     rsp = await self.ws.query(req)

@@ -10,7 +10,7 @@ Store keys to the database.
 Existing keys are overwritten, to avoid this use [kv_add](./Add).
 
 ```py
-kv_set(keys: dict)
+kv_set(keys: dict) -> None
 ```
 
 |Param|Description|
@@ -18,8 +18,6 @@ kv_set(keys: dict)
 |keys|Key/values to store|
 
 
-## Returns
-`None`
 
 ## Raises
 - `ResponseError` if query fails

@@ -7,30 +7,18 @@ displayed_sidebar: clientApisSidebar
 Returns minimal server information.
 
 
-## Returns
-`dict`
+```py
+sv_info() -> dict:
+```
 
+## Returns
 |Key|Type|Meaning|
 |---|---|---|
 |persistEnabled|bool|Indicates if persistence is enabled|
-|serverVersion|string|The server version in format `major.minor[.revision]`. If `revision` is 0, it is not included.|
+|serverVersion|string|The server version|
 
 
 
-## Examples
+## Raises
+- `ResponseError` if query fails
 
-```py
-client = KvClient()
-await client.open('ws://127.0.0.1:1987/')
-
-info = await client.server_info()
-print(info)
-```
-
-```py
-client = SessionClient()
-await client.open('ws://127.0.0.1:1987/')
-
-info = await client.server_info()
-print(info)
-```

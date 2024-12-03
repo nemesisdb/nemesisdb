@@ -9,7 +9,7 @@ Saves all keys to the filesystem so they can be restored later.
 
 
 ```py
-kv_save(name: str)
+kv_save(name: str) -> None
 ```
 
 |Param|Description|

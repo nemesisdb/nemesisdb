@@ -8,10 +8,12 @@ sidebar_label: sh_info_all
 Returns minimal information for all sessions.
 
 
+```py
+sh_info_all() -> dict:
+```
+
+
 ## Returns
-`dict` : information. See table below
-
-
 |Param|Type|Meaning|
 |:---|:---|:---|
 |totalSessions|unsigned int|Number of sessions|

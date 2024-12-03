@@ -9,11 +9,11 @@ Returns the number of keys.
 
 
 ```py
-kv_count()
+kv_count() -> int
 ```
 
 # Returns
-`int` - the number of keys
+The number of keys
 
 
 ## Raises

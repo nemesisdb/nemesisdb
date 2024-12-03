@@ -9,9 +9,26 @@ Ends a session.
 
 The session is ended immediately, with all keys being deleted.
 
-## Returns
-None
+
+```py
+sh_end(tkn: int)() -> None
+```
+
 
 
 ## Examples
 
+
+```py
+client = NdbClient()
+await client.open('ws://127.0.0.1:1987/')
+
+session = await client.sh_create_session()
+
+await client.set(session.tkn, {'key1':'value1'})
+
+# ... use session ...
+
+# end session
+await client.end(session.tkn)
+```

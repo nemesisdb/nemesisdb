@@ -12,7 +12,7 @@ Delete particular key(s).
 
 
 ```py
-kv_rmv(keys: tuple)
+kv_rmv(keys: tuple) -> None
 ```
 
 |Param|Description|Returns|
@@ -28,11 +28,12 @@ kv_rmv(keys: tuple)
 
 ## Examples
 
-
 ```py title='Delete one key'
 client = NdbClient()
 await client.open('ws://127.0.0.1:1987/')
-# set keys ...
+
+# ... set keys ...
+
 await client.kv_rmv(('username',))
 ```
 
@@ -41,6 +42,8 @@ await client.kv_rmv(('username',))
 ```py title='Delete multiple keys'
 client = NdbClient()
 await client.open('ws://127.0.0.1:1987/')
-# set keys ...
+
+# ... set keys ...
+
 await client.kv_rmv(('key1','key2','key3'))
 ```

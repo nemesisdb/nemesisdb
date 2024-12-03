@@ -8,7 +8,7 @@ sidebar_label: kv_keys
 Returns all keys, excluding values.
 
 ```py
-kv_keys()
+kv_keys() -> List[str]
 ```
 
 
