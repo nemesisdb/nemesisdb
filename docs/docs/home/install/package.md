@@ -9,7 +9,7 @@ There is a [Docker](./docker/windows) image if you are running on Windows (note:
 
 ## Download
 
-Download the latest version [here](https://releases.nemesisdb.io/package/nemesisdb_0.7.2_amd64.deb).
+Download the latest version [here](https://releases.nemesisdb.io/package/nemesisdb_0.7.3_amd64.deb).
 
 
 ## Install
