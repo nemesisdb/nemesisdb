@@ -44,7 +44,6 @@ To get key(s) from a session use `sh_get()`:
 client.get(session.tkn, keys=('k1','k2'))
 ```
 
-<br/>
 
 ## Returns
 

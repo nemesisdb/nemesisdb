@@ -10,19 +10,20 @@ Retrieves keys from a session.
 ```py
 sh_get(self, tkn: int, keys = (), key = None)
 ```
+|Param|Description|
+|--|--|
+|key|Key to retrieve|
+|keys|Keys to retrieve|
 
-|Param|Description|Returns|
-|--|--|--|
-|key|Key to return|Any (type of value)
-|keys|Keys to retrieve|dict|
 
+## Returns
+- If `keys` set, a `dict` is returned
+- Otherwise, the value of `key` is returned
 
 
 ## Raises
 - `ResponseError` if query fails
 - `ValueError` if both `keys` and `key` are set
-
-
 
 
 ## Examples

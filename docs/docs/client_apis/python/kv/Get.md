@@ -19,7 +19,7 @@ kv_get(keys = tuple(), key = None)
 
 ## Returns
 - If `keys` set, a `dict` is returned
-- Otherwise, the value of the `key` is returned
+- Otherwise, the value of `key` is returned
 
 
 ## Raises

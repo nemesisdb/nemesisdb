@@ -29,9 +29,6 @@ if not (await client.open('ws://127.0.0.1:1987/')):
 
 ```py title='Single session'
 session = await client.sh_create_session()
-if not session.isValid:
-  return
-
 print(f"Session created with session token: {session.tkn}")
 
 # set keys in the session
@@ -45,8 +42,8 @@ print(values)
 await client.sh_set(session.tkn, {'sname':'Smith'})
 
 # retrieve updated value
-values = await client.sh_get(session.tkn, keys=('fname', 'sname'))
-print(values)
+updatedSurname = await client.sh_get(session.tkn, key='sname')
+print(updatedSurname)
 ```
 
 See [sh_get](./sh_get).
