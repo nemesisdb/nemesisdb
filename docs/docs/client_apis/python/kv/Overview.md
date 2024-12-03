@@ -24,6 +24,6 @@ await client.open('ws://127.0.0.1:1987/')
 
 await client.kv_set({'username':'billy', 'password':'billy_passy'})
 
-values = await client.kv_get(('username','password'))
+values = await client.kv_get(keys=('username','password'))
 print(values)
 ```

@@ -8,9 +8,15 @@ sidebar_label: kv_count
 Returns the number of keys. 
 
 
-## Returns
-`int` : the number of keys
+```py
+kv_count()
+```
+
+# Returns
+`int` - the number of keys
 
 
-## Examples
+## Raises
+- `ResponseError` if query fails
+
 

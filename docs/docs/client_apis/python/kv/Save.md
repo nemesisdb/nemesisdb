@@ -7,11 +7,14 @@ sidebar_label: kv_save
 # kv_save
 Saves all keys to the filesystem so they can be restored later.
 
-|Param|Type|Description|Required|
-|--|:-:|--|:-:|
-|name|str|The name of the dataset|Y|
 
-The `name` is used to load data at runtime with `kv_load()` and at startup.
+```py
+kv_save(name: str)
+```
+
+|Param|Description|
+|--|--|
+|name|The name of the dataset.<br/>The `name` is used to load data at runtime with `kv_load()` or at startup.|
 
 
 :::note
@@ -21,11 +24,17 @@ The `name` is used to load data at runtime with `kv_load()` and at startup.
 
 
 ## Returns
-None
+`None`
+
+
+## Raises
+- `ValueError` if name is empty
+- `ResponseError` if query fails
+
+
 
 
 ## Examples
-
 
 ```py
 client = NdbClient()

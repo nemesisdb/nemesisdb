@@ -33,7 +33,10 @@ client = NdbClient()
 await client.open('ws://127.0.0.1:1987/')
 await client.kv_set({'username':'billy', 'password':'billy_passy'})
 
-values = await client.kv_get(('username','password'))
+value = await client.kv_get(key='username')
+print (value)
+
+values = await client.kv_get(keys=('username','password'))
 print (values)
 ```
 
@@ -50,8 +53,8 @@ await client.open('ws://127.0.0.1:1987/')
 # sessions can expire but we create a session that never expires
 session = await client.sh_create_session()
 
-await client.sh_set({'username':'billy', 'password':'billy_password'}, session.tkn)
-values = await client.sh_get(('username','password'), session.tkn)
+await client.sh_set(session.tkn, {'username':'billy', 'password':'billy_password'})
+values = await client.sh_get(session.tkn, keys=('username','password'))
 print(values)
 
 # delete the session when finished

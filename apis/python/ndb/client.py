@@ -78,14 +78,14 @@ class NdbClient:
     await self._sendCmd(KvCmd.SET_REQ, KvCmd.SET_RSP, {'keys':keys})
   
 
-  async def kv_add(self, keys: dict) -> bool:
+  async def kv_add(self, keys: dict):
     await self._sendCmd(KvCmd.ADD_REQ, KvCmd.ADD_RSP, {'keys':keys})
 
 
-  async def kv_get(self, keys = tuple(), key=''):
-    if key != '' and len(keys):
+  async def kv_get(self, keys = tuple(), key=None):
+    if key != None and len(keys):
       raise ValueError('Both keys and key are set')
-    elif key != '':
+    elif key != None:
       return await self._kv_get_single(key)
     else:
       return await self._kv_get_multiple(keys)
@@ -105,6 +105,8 @@ class NdbClient:
   
 
   async def kv_rmv(self, keys: tuple):
+    if len(keys) == 0:
+      raise ValueError('Keys empty')
     await self._sendCmd(KvCmd.RMV_REQ, KvCmd.RMV_RSP, {'keys':keys})
 
 
@@ -134,10 +136,14 @@ class NdbClient:
 
 
   async def kv_save(self, name: str):
+    if len(name) == 0:
+      raise ValueError('Name empty')
     await self._sendCmd(KvCmd.SAVE_REQ, KvCmd.SAVE_RSP, {'name':name}, StValues.ST_SAVE_COMPLETE)
     
 
   async def kv_load(self, name: str) -> int:
+    if len(name) == 0:
+      raise ValueError('Name empty')
     rsp = await self._sendCmd(KvCmd.LOAD_REQ, KvCmd.LOAD_RSP, {'name':name}, StValues.ST_LOAD_COMPLETE)
     return rsp[KvCmd.LOAD_RSP]['keys']
 
@@ -151,10 +157,10 @@ class NdbClient:
     await self._sendTknCmd(ShCmd.ADD_REQ, ShCmd.ADD_RSP, {'keys':keys}, tkn)
 
   
-  async def sh_get(self, tkn: int, keys = (), key = ''):
-    if key != '' and len(keys):
+  async def sh_get(self, tkn: int, keys = (), key = None):
+    if key != None and len(keys):
       raise ValueError('keys and key are both set')
-    elif key != '':
+    elif key != None:
       return await self._sh_get_single(key, tkn)
     else:
       return await self._sh_get_multiple(keys, tkn)

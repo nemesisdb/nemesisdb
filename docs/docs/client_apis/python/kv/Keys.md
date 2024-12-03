@@ -7,10 +7,16 @@ sidebar_label: kv_keys
 # kv_keys
 Returns all keys, excluding values.
 
+```py
+kv_keys()
+```
+
 
 ## Returns
-`list` : the keys
+`list` : all keys
 
 
-## Examples
+## Raises
+- `ResponseError` if query fails
+
 

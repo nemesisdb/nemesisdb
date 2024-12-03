@@ -9,41 +9,47 @@ Store keys to the database.
 
 Existing keys are overwritten, to avoid this use [kv_add](./Add).
 
-|Param|Type|Description|Required|
-|--|:-:|--|:-:|
-|keys|dict|A dictionary of key/values to store|Y|
+```py
+kv_set(keys: dict)
+```
+
+|Param|Description|
+|--|--|
+|keys|Key/values to store|
 
 
 ## Returns
-None
+`None`
+
+## Raises
+- `ResponseError` if query fails
 
 
 ## Examples
 
-
-__KV__
-```py title='Set scalar'
+```py title='Connect'
 from ndb.client import NdbClient
 
-
-client = NdbClient()
+client = NdbClient(debug=False) # toggle for debug
 await client.open('ws://127.0.0.1:1987/')
+```
+
+
+```py title='Set scalar'
 
 await client.kv_set({'username':'billy', 'password':'billy_passy'})
-values = await client.kv_get(('username',))
-print(values)
-  
+
+value = await client.kv_get(key='username')
+print (value)
+
+# get multiple keys, returns a dict of key:value
+values = await client.kv_get(keys=('username', 'password'))
+print (values)
 ```
 
 <br/>
 
 ```py title='Set object'
-from ndb.client import NdbClient
-
-
-client = NdbClient()
-await client.open('ws://127.0.0.1:1987/')
-
 data = {  "server_ip":"123.456.7.8",
           "server_port":1987,
           "server_users":
@@ -54,15 +60,53 @@ data = {  "server_ip":"123.456.7.8",
         }
 
 await client.kv_set(data)
-values = await client.kv_get(('server_users',))
+value = await client.kv_get(key='server_users')
+print(value)
+
+values = await client.kv_get(keys=('server_ip', 'server_port'))
 print(values)
 ```
 
-In this example, `server_users` is the key with the value being an object, so `print(values)` produces:
+Output:
+```
+{'admins': ['user1', 'user2'], 'banned': ['user3']}
+{'server_ip': '123.456.7.8', 'server_port': 1987}
+```
 
+<br/>
+
+```py title='Overwrite'
+data = {
+          "server_ip":"123.456.7.8",
+          "server_port":1987,
+          "server_users":
+          {
+            "admins":["user1", "user2"],
+            "banned":["user3"]
+          }
+       }
+
+await client.kv_set(data)
+values = await client.kv_get(keys=('server_users', 'server_port'))
+
+print(f'Initial: {values}')
+
+# update and call set() to overwrite
+values['server_port'] = 7891
+values['server_users']['banned'] = []
+
+await client.kv_set(values)
+
+values = await client.kv_get(keys=('server_users', 'server_port'))
+print(f'Updated: {values}')
 ```
-'server_users':{'admins':['user1', 'user2'],'banned':['user3']}
+
+Output:
 ```
+Initial: {'server_port': 1987, 'server_users': {'admins': ['user1', 'user2'], 'banned': ['user3']}}
+Updated: {'server_port': 7891, 'server_users': {'admins': ['user1', 'user2'], 'banned': []}}
+```
+
 
 See [kv_get](./Get).
 

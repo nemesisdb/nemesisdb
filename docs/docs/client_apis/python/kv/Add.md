@@ -9,36 +9,37 @@ Stores keys but does not overwrite a key if it already exists.
 
 To overwrite an existing key, use [kv_set](./Set).
 
-|Param|Type|Description|Required|
-|--|:-:|--|:-:|
-|keys|tuple|Tuple of keys to retrieve|Y|
+
+```py
+kv_add(keys: dict)
+```
+
+|Param|Description|Returns|
+|--|--|:--:|
+|keys|The key/values to store|None|
 
 
-If a key already exists it is not considered an error.
 
-
-## Returns
-None
-
+## Raises
+- `ResponseError` if query fails
 
 
 ## Examples
 
 ```py title='Avoid overwriting'
-client = NdbClient()
-await client.open('ws://127.0.0.1:1987/')
-
 await client.kv_set({'LinuxDistro':'Arch'})
-values = await client.kv_get(('LinuxDistro',))
-print(f'Before add(): {values}')
+value = await client.kv_get(key='LinuxDistro')
+print(f'Before add(): {value}')
 
+# kv_add() does not overwrite
 await client.kv_add({'LinuxDistro':'Arch btw'})
-values = await client.kv_get(('LinuxDistro',))
-print(f'After add(): {values}')
+value = await client.kv_get(key='LinuxDistro')
+print(f'After add(): {value}')
 
+# kv_set() does overwrite
 await client.kv_set({'LinuxDistro':'Arch btw'})
-values = await client.kv_get(('LinuxDistro',))
-print(f'After set(): {values}')
+value = await client.kv_get(key='LinuxDistro')
+print(f'After set(): {value}')
 ```
 
 - `kv_add()` does not overwrite keys

@@ -12,17 +12,23 @@ Deletes _all_ keys.
 - To delete all keys and set new keys in a single call, use [kv_clear_set](./Clear_Set)
 
 
-## Returns
-`int` : the number of keys cleared
+```py
+kv_clear()
+```
+
+# Returns
+`int` - the number of keys deleted
+
+
+## Raises
+- `ResponseError` if query fails
+- `ValueError` if keys is empty
+
 
 
 ## Examples
 
-
 ```py
-client = NdbClient()
-await client.open('ws://127.0.0.1:1987/')
-# store some keys
 count = await client.kv_clear()
 print(f'Cleared {count} keys')
 ```

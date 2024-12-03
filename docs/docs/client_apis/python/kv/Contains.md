@@ -7,17 +7,25 @@ sidebar_label: kv_contains
 # kv_contains
 Given a tuple of keys, returns the keys which exist.
 
-|Param|Type|Description|Required|
-|--|:-:|--|:-:|
-|keys|tuple|Keys to check|Y|
+```py
+kv_contains(keys: tuple)
+```
+
+|Param|Description|
+|--|--|
+|keys|Keys to check|
 
 
 ## Returns
-`list` : the keys which exist
+`list` : the keys that exist
+
+
+## Raises
+- `ResponseError` if query fails
+
 
 
 ## Examples
-
 
 ```py
 client = NdbClient()

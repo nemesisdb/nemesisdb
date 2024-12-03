@@ -5,22 +5,32 @@ sidebar_label: kv_load
 ---
 
 # kv_load
-Restores keys that were previously saved with `save()`.
+Restores keys that were previously saved with `kv_save()`.
 
-|Param|Type|Description|Required|
-|--|:-:|--|:-:|
-|name|str|The name of the dataset|Y|
+
+```py
+kv_load(name: str)
+```
+
+|Param|Description|
+|--|--|
+|name|The name of the dataset.<br/>The `name` was used previously with `kv_save()`|
 
 
 :::note
 - Persistance does _not_ have to be enabled for this command
 - You can also load at startup, using `--loadName`
-- This command can only be used to load independent keys (those that are not in a session). To load sessions, use [sh_load()](../sh/Load)
+- To load sessions, use [sh_load()](../sh/Load)
 :::
 
 
 ## Returns
 `int` : The number of keys loaded
+
+
+## Raises
+- `ValueError` if name is empty
+- `ResponseError` if query fails
 
 
 ## Examples

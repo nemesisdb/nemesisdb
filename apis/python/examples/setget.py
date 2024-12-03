@@ -40,11 +40,11 @@ async def setget_objects():
           }
 
   await client.kv_set(data)
+
   value = await client.kv_get(key='server_users')
   print(value)
 
-  await client.kv_set(data)
-  values = await client.kv_get(keys=('server_users', 'server_port'))
+  values = await client.kv_get(keys=('server_ip', 'server_port'))
   print(values)
 
 
