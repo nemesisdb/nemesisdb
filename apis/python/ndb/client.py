@@ -43,6 +43,15 @@ class NdbClient:
       logger.addHandler(logging.StreamHandler())
 
 
+  # def __str__(self):
+  #   if self.ws.opened != None and self.ws.opened:
+  #     connected = 'Connected' 
+  #   else:
+  #     connected = 'Disconnected' 
+
+  #   return f'NDB - {self.uri} - {connected}'
+
+
   async def open(self, uri: str) -> bool:
     if uri == '':
       raise ValueError('URI empty')
@@ -73,10 +82,27 @@ class NdbClient:
     await self._sendCmd(KvCmd.ADD_REQ, KvCmd.ADD_RSP, {'keys':keys})
 
 
-  async def kv_get(self, keys: tuple) -> dict:
+  async def kv_get(self, keys = tuple(), key=''):
+    if key != '' and len(keys):
+      raise ValueError('Both keys and key are set')
+    elif key != '':
+      return await self._kv_get_single(key)
+    else:
+      return await self._kv_get_multiple(keys)
+
+  
+  async def _kv_get_single(self, key: str):
+    rsp = await self._sendCmd(KvCmd.GET_REQ, KvCmd.GET_RSP, {'keys':[key]})
+    if key in rsp[KvCmd.GET_RSP]['keys']:
+      return rsp[KvCmd.GET_RSP]['keys'][key]
+    else:
+      return None
+  
+
+  async def _kv_get_multiple(self, keys: tuple) -> dict:
     rsp = await self._sendCmd(KvCmd.GET_REQ, KvCmd.GET_RSP, {'keys':keys})
     return rsp[KvCmd.GET_RSP]['keys']
-
+  
 
   async def kv_rmv(self, keys: tuple):
     await self._sendCmd(KvCmd.RMV_REQ, KvCmd.RMV_RSP, {'keys':keys})
@@ -117,15 +143,32 @@ class NdbClient:
 
 
   ## SH
-  async def sh_set(self, keys: dict, tkn: int):
+  async def sh_set(self, tkn: int, keys: dict):
     await self._sendTknCmd(ShCmd.SET_REQ, ShCmd.SET_RSP, {'keys':keys}, tkn)
   
 
   async def sh_add(self, keys: dict, tkn: int):
     await self._sendTknCmd(ShCmd.ADD_REQ, ShCmd.ADD_RSP, {'keys':keys}, tkn)
 
+  
+  async def sh_get(self, tkn: int, keys = (), key = ''):
+    if key != '' and len(keys):
+      raise ValueError('keys and key are both set')
+    elif key != '':
+      return await self._sh_get_single(key, tkn)
+    else:
+      return await self._sh_get_multiple(keys, tkn)
+    
 
-  async def sh_get(self, keys: tuple, tkn: int) -> dict:
+  async def _sh_get_single(self, key: str, tkn: int):
+    rsp = await self._sendTknCmd(ShCmd.GET_REQ, ShCmd.GET_RSP, {'keys':[key]}, tkn)
+    if key in rsp[ShCmd.GET_RSP]['keys']:
+      return rsp[ShCmd.GET_RSP]['keys'][key]
+    else:
+      return None
+    
+  
+  async def _sh_get_multiple(self, keys: tuple, tkn: int) -> dict:
     rsp = await self._sendTknCmd(ShCmd.GET_REQ, ShCmd.GET_RSP, {'keys':keys}, tkn)
     return rsp[ShCmd.GET_RSP]['keys']
 

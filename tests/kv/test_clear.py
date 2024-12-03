@@ -9,13 +9,13 @@ class Clear(NDBTest):
 
     await self.client.kv_set(input)
 
-    output = await self.client.kv_get(tuple(input.keys()))
+    output = await self.client.kv_get(keys=tuple(input.keys()))
     self.assertDictEqual(output, input)
 
     clearedCount = await self.client.kv_clear()
     self.assertEqual(clearedCount, len(input))
 
-    output = await self.client.kv_get(tuple(input.keys()))
+    output = await self.client.kv_get(keys=tuple(input.keys()))
     self.assertDictEqual(output, {})
 
 

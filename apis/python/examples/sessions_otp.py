@@ -22,15 +22,15 @@ async def create_otp(client: NdbClient) -> Tuple[Session, int]:
   
   # set the passcode, have expiry short for this example
   code = random.randint(1000, 9999)  
-  await client.sh_set({'code':code}, session.tkn)
+  await client.sh_set(session.tkn, {'code':code})
   return (session, code)
 
 
 async def validate_otp(client: NdbClient, tkn: int, userCode: int) -> bool:
   # if session doesn't exist, get() returns (False, dict()), otherwise check code
   print(f'Attempting {userCode}')
-  result = await client.sh_get(('code',), tkn)
-  return result['code'] == userCode
+  code = await client.sh_get(tkn, key='code')
+  return code == userCode
   
 
 async def otp():

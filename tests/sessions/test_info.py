@@ -8,7 +8,7 @@ class Info(NDBSessionTest):
     session = await self.client.sh_create_session()
     self.assertTrue(session.isValid)
     
-    await self.client.sh_set({'a':10, 'b':'x'}, session.tkn)
+    await self.client.sh_set(session.tkn, {'a':10, 'b':'x'})
     
     info = await self.client.sh_info(session.tkn)
     self.assertEqual(info['tkn'], session.tkn)
@@ -26,7 +26,7 @@ class Info(NDBSessionTest):
       session = await self.client.sh_create_session()
       self.assertTrue(session.isValid)
       
-      await self.client.sh_set({'a':10, 'b':'x'}, session.tkn)
+      await self.client.sh_set(session.tkn, {'a':10, 'b':'x'})
 
       tokens.append(session.tkn)
 

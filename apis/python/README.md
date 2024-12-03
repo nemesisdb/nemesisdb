@@ -29,30 +29,34 @@ Set then get `username` and `password` keys:
 ```py
 from ndb.client import NdbClient
 
-client = NdbClient()
-await client.open('ws://127.0.0.1:1987/')
+client = NdbClient(debug=False) # toggle for debug
 
-setSuccess = await client.kv_set({'username':'billy', 'password':'billy_passy'})
+if not (await client.open('ws://127.0.0.1:1987/')):
+  print('Failed to connect')
+  return
 
-values = await client.kv_get(('username',))
-print(values)
+# get single key
+await client.kv_set({'username':'billy', 'password':'billy_passy'})
+value = await client.kv_get(key='username')
+print (value)
+
+# get multiple keys
+await client.kv_set({'username':'billy', 'password':'billy_passy'})
+values = await client.kv_get(keys=('username', 'password'))
+print (values)
 ```
 
 Output:
 ```python
-{'username': 'billy'}
+billy
+{'password': 'billy_passy', 'username': 'billy'}
 ```
 
 - `set()` accepts a `dict` of key:value
-- `get()` accepts a tuple of keys
-  - Returns: `dict`: keys with values
+- `get()` accepts a `keys` tuple or `key` string, returning
+  - With `keys`: `dict` of keys/values
+  - With `key`: the value
 
-
-You can retrieve multiple keys:
-
-```python
-values = await client.kv_get(('username', 'password'))
-```
 
 <br/>
 
@@ -77,7 +81,10 @@ Set the data then get `server_users`:
 from ndb.client import NdbClient
 
 client = NdbClient()
-await client.open('ws://127.0.0.1:1987/')
+
+if not (await client.open('ws://127.0.0.1:1987/')):
+  print('Failed to connect')
+  return
 
 data = {  "server_ip":"123.456.7.8",
           "server_port":1987,
@@ -89,14 +96,19 @@ data = {  "server_ip":"123.456.7.8",
         }
 
 await client.kv_set(data)
-values = await client.kv_get(('server_users',))
+value = await client.kv_get(key='server_users')
+print(value)
+
+await client.kv_set(data)
+values = await client.kv_get(keys=('server_users', 'server_port'))
 print(values)
 ```
 
 Output:
 
 ```python
-{'server_users': {'admins': ['user1', 'user2'], 'banned': ['user3']}}
+{'admins': ['user1', 'user2'], 'banned': ['user3']}
+{'server_port': 1987, 'server_users': {'admins': ['user1', 'user2'], 'banned': ['user3']}}
 ```
 
 <br/>
@@ -117,7 +129,7 @@ Common commands:
 <br/>
 
 # Sessions
-A session is similar to a Redis hashset. Each session:
+A session is used to group related keys (like a Redis hashset or a class object in an OO programming):
 
 - contains a group of keys
 - has a dedicated map
@@ -127,7 +139,7 @@ There are functions to manage sessions and keys, beginning with `sh_`, such as `
 
 <br/>
 
-A session is identified by a unique session token (64-bit integer).
+A session is identified by a unique session token (64-bit integer), created by `sh_create_session()`:
 
 ```py3
 client = NdbClient()
@@ -137,16 +149,15 @@ session = await client.sh_create_session()
 if not session.isValid:
   return
 
-print(f"Session created with session token: {session.tkn}")
+print(f"Session created with token: {session.tkn}")
 
-await client.sh_set({'fname':'James', 'sname':'smith'}, session.tkn)
+await client.sh_set(session.tkn, {'fname':'James', 'sname':'smith'})
 ```
 
 Output
 
 ```
 Session created with session token: 16204359010587816757
-{'fname': 'James', 'sname': 'smith'}
 ```
 
 - `create_session()` creates the session, returning a `Session` object
