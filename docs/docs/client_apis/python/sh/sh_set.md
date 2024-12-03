@@ -8,66 +8,42 @@ Store keys in a session.
 
 Existing keys are overwritten, to avoid this use [sh_add](./sh_add).
 
-|Param|Type|Description|Required|
-|--|:-:|--|:-:|
-|keys|dict|A dictionary of key/values to store|Y|
-|tkn|int|Session token|Y|
+```py
+sh_set(tkn: int, keys: dict) -> None
+```
 
 
-## Returns
-None
+## Raises
+- `ResponseError` if query fails
 
 
 ## Examples
 
-
-```py title='Set scalar'
-from ndb.client import NdbClient
-
-
-client = NdbClient()
-await client.open('ws://127.0.0.1:1987/')
-
-# create session, which returns a Session, containing the token (tkn)
-session = await client.sh_create_session()
-# set username and password in the session
-await client.sh_set({'username':'billy', 'password':'billy_passy'}, session.tkn)
-# retieve keys from the session
-values = await client.sh_get(('username','password'), session.tkn)
-print(values)
+```py title='Connect'
+client = NdbClient(debug=False) # toggle for debug logs
+if not (await client.open('ws://127.0.0.1:1987/')):
+  print('Failed to connect')
+  return
 ```
-
 <br/>
 
-```py title='Set object'
-from ndb.client import NdbClient
-
-data = {  "server_ip":"123.456.7.8",
-          "server_port":1987,
-          "server_users":
-          {
-            "admins":["user1", "user2"],
-            "banned":["user3"]
-          }
-        }
-
-
-client = NdbClient()
-await client.open('ws://127.0.0.1:1987/')
-
+```py title='Single session'
 session = await client.sh_create_session()
+print(f"Session created with session token: {session.tkn}")
 
-await client.sh_set(data, session.tkn)
+# set keys in the session
+await client.sh_set(session.tkn, {'fname':'James', 'sname':'smith'})
 
-# retrieve the server_users key
-values = await client.sh_get(('server_users',), session.tkn)
+# retrieve
+values = await client.sh_get(session.tkn, keys=('fname', 'sname'))
 print(values)
-```
 
-`server_users` is the key with the value being an object:
+# overwrite surname ('smith' to 'Smith')
+await client.sh_set(session.tkn, {'sname':'Smith'})
 
-```
-'server_users':{'admins':['user1', 'user2'],'banned':['user3']}
+# retrieve updated value
+updatedSurname = await client.sh_get(session.tkn, key='sname')
+print(updatedSurname)
 ```
 
 See [sh_get](./sh_get).

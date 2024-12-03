@@ -5,12 +5,17 @@ sidebar_label: sh_load
 ---
 
 # sh_load
-Restore sessions that were saved with [session_save()](./Save).
+Restore sessions that were saved with [sh_save()](./Save).
+
+
+```py
+sh_load(name: str) -> dict
+```
 
 
 |Param|Type|Description|Required|
 |--|:-:|--|:-:|
-|name|str|The name of the dataset|Y|
+|name|str|The name of the dataset, previously used with `sh_save()`|Y|
 
 
 :::note
@@ -19,11 +24,7 @@ Restore sessions that were saved with [session_save()](./Save).
 
 
 ## Returns
-`dict` : See table below.
-
-
-
-|Param|Type|Meaning|
+|Key|Type|Meaning|
 |:---|:---|:---|
 |sessions|unsigned int|Number of sessions loaded|
 |keys|unsigned int|Number of keys loaded|
@@ -33,26 +34,25 @@ Restore sessions that were saved with [session_save()](./Save).
 ## Examples
 
 ```py title='Save and load one session'
+dataSetName = 'my_data'
+
 client = NdbClient()
 await client.open('ws://127.0.0.1:1987/')
 
 session = await client.sh_create_session()
-if session.isValid:
-  dataSetName = 'my_data'
-  
-  await client.sh_set({'fname':'james', 'sname':'smith'}, session.tkn)
-  
-  # save to filesystem
-  await client.sh_save(dataSetName, [session.tkn])
 
-  # end all sessions
-  await client.sh_end_all()
-  
-  # restore keys
-  rsp = await client.sh_load(dataSetName)
-  print(rsp)
+await client.sh_set(session.tkn, {'fname':'james', 'sname':'smith'})
 
-  # get keys we loaded
-  values = await client.sh_get(('fname', 'sname'), session.tkn)
-  print(values)
+# save to filesystem
+await client.sh_save(dataSetName, [session.tkn])
+# delete all sessions
+await client.sh_end_all()
+
+# restore keys
+rsp = await client.sh_load(dataSetName)
+print(rsp) #  {'sessions':1, 'keys':2}
+
+# get keys we loaded
+values = await client.sh_get(session.tkn, keys=('fname', 'sname'))
+print(values)
 ```

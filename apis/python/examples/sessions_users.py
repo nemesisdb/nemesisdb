@@ -9,20 +9,20 @@ from ndb.client import NdbClient, Session
 
 async def newUser(client: NdbClient, username: str, email: str) -> Session:
   session = await client.sh_create_session()
-  await client.sh_set({'username':username, 'email':email}, session.tkn)
+  await client.sh_set(session.tkn, {'username':username, 'email':email})
   return session
 
 
 async def updateEmail(client: NdbClient, email: str, tkn: int):
-  await client.sh_set({'email':email}, tkn)
+  await client.sh_set(tkn, {'email':email})
 
 
 async def updateUsername(client: NdbClient, username: str, tkn: int):
-  await client.sh_set({'username':username}, tkn)
+  await client.sh_set(tkn, {'username':username})
 
 
 async def getUser(client: NdbClient, tkn: int):
-  values = await client.sh_get(('username', 'email'), tkn)
+  values = await client.sh_get(tkn, keys=('username', 'email'))
   print(values)
 
 
@@ -40,7 +40,7 @@ async def two_sessions():
 
   print("Updating")
   await updateEmail(client, 'u1@chimpmail.com', user1_session.tkn)
-  await updateUsername(client, 'user2_updated', user1_session.tkn)
+  await updateUsername(client, 'user2_updated', user2_session.tkn)
 
   await getUser(client, user1_session.tkn)
   await getUser(client, user2_session.tkn)

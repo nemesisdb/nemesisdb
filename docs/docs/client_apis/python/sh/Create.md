@@ -6,40 +6,44 @@ sidebar_label: sh_create_session
 
 # sh_create_session
 
-package: `ndb.sessionclient`
-
 Creates a new session.
 
-|Param|Type|Description|Required|
-|---|---|---|---|
-|durationSeconds|unsigned int|Time in seconds until the session expires. Default `0` (never expires) |N|
-|deleteSession|bool|`true`: session is deleted when it expires<br/>`false`: only the keys are deleted (default)|N|
-|extendOnSetAdd|bool|`true`: on each set or add, the expire time is extended by `duration`<br/>`false`: default|N|
-|extendOnGet|bool|`true`: on each get, the expire time is extended by `duration`<br/>`false`: default|N|
+
+```py
+sh_create_session(durationSeconds = 0,
+                  deleteSessionOnExpire = False,
+                  extendOnSetAdd = False,
+                  extendOnGet = False) -> Session
+```
+
+
+|Param|Description|
+|---|---|
+|durationSeconds|Time in seconds until the session expires. Default `0` (never expires)|
+|deleteSession|`true`: session is deleted when it expires<br/>`false`: only the keys are deleted (default)|
+|extendOnSetAdd|`true`: on each set or add, the expire time is extended by `duration`<br/>`false`: default|
+|extendOnGet|`true`: on each get, the expire time is extended by `duration`<br/>`false`: default|
 
 A session is uniquely identified by a session token (typically referred to in the API as `tkn`), which is a 64-bit unsigned integer.
 
 
 ```py
-client = SessionClient()
+client = NdbClient()
 await client.open('ws://127.0.0.1:1987/')
 
-session = await client.create_session()
+session = await client.sh_create_session()
 
-await client.set({'key1':'value1'}, session.tkn)
+await client.set(session.tkn, {'key1':'value1'})
 ```
 
 Sets the key in that session.
 
-Similarly:
+To get key(s) from a session use `sh_get()`:
 
 ```py
-client.get(('k1','k2'), session.tkn)
+client.get(session.tkn, keys=('k1','k2'))
 ```
 
-Gets keys from that session. This applies to all command functions when using a token.
-
-<br/>
 
 ## Returns
 
@@ -49,9 +53,19 @@ Gets keys from that session. This applies to all command functions when using a 
 
 <br/>
 
+# Raises
+
+- `ResponseError` if the query fails
+- `ValueError` if:
+  1. `durationSeconds` is less than 0
+  2. `durationSeconds` is 0 but `deleteSessionOnExpire`, `extendOnSetAdd` or `extendGet` are `true`.
+      This is because when `durationSeconds` is 0, the session cannot expire, so these have no effect 
+
+
+
 ## Examples
 
-Sessions are managed by an instance of `SessionClient` from the `ndb.sessionclient` package. A `SessionClient` is not coupled to a particular session, so the token must be passed to the command functions (`set()`, `get()`, etc).
+The `NdbClient` is not coupled to a particular session, so the token(s) must be supplied where required.
 
 
 ```py title='Create a session'
@@ -61,7 +75,7 @@ from ndb.sessionclient import SessionClient
 client = SessionClient()
 await client.open('ws://127.0.0.1:1987/')
 
-session = await client.create_session()
+session = await client.sh_create_session()
 if session.isValid:
   print(f'Session created with token {session.tkn}')
 else
@@ -76,8 +90,8 @@ from ndb.sessionclient import SessionClient
 client = SessionClient()
 await client.open('ws://127.0.0.1:1987/')
 
-session1 = await client.create_session()
-session2 = await client.create_session()
+session1 = await client.sh_create_session()
+session2 = await client.sh_create_session()
 
 if session1.isValid and session2.isValid:
   print(f'Session 1 token {session1.token}')

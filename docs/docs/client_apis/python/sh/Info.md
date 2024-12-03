@@ -8,24 +8,24 @@ sidebar_label: sh_info
 Returns information for a session.
 
 
-|Param|Type|Description|Required|
-|--|:-:|--|:-:|
-|tkn|int|The token|Y|
+```py
+sh_info(tkn: int) -> dict:
+```
+
+|Param|Description|
+|--|---|
+|tkn|Get information for this session|
 
 
 ## Returns
-- `dict` : information. See table below
-
-
-
 
 |Param|Type|Meaning|
 |:---|:---|:---|
 |tkn|unsigned int|Session token|
 |keyCnt|unsigned int|Number of keys in the session|
 |shared|bool|Indicates if the session is shared|
-|expires|bool|true if the session expires, false if it never expires|
-|expiry|object|Expiry information, only present if `expires` is `true`|
+|expires|bool|true if the session expires, false if it never expires. If `true`, the `expiry` key is present (see below)|
+|expiry|object|Expiry information|
 
 
 `expiry`:

@@ -7,14 +7,23 @@ sidebar_label: sh_get
 # sh_get
 Retrieves keys from a session.
 
-|Param|Type|Description|Required|
-|--|:-:|--|:-:|
-|keys|tuple|Tuple of keys to retrieve|Y|
-|tkn|int|Session token|Y|
+```py
+sh_get(self, tkn: int, keys = (), key = None)
+```
+|Param|Description|
+|--|--|
+|key|Key to retrieve|
+|keys|Keys to retrieve|
 
 
 ## Returns
-`dict` - key/value pairs
+- If `keys` set, a `dict` is returned
+- Otherwise, the value of `key` is returned
+
+
+## Raises
+- `ResponseError` if query fails
+- `ValueError` if both `keys` and `key` are set
 
 
 ## Examples
@@ -26,12 +35,15 @@ await client.open('ws://127.0.0.1:1987/')
 # create session, which returns a Session, containing the token (tkn)
 session = await client.sh_create_session()
 # set keys, username and password
-await client.sh_set({'username':'billy', 'password':'billy_passy'}, session.tkn)
-# retrieve the keys
-values = await client.sh_get(('username','password'), session.tkn)
+await client.sh_set(session.tkn, {'username':'billy', 'password':'billy_passy'})
+
+# retrieve one key
+username = await client.sh_get(session.tkn, key='username')
+print(username)
+
+# retrieve several keys
+values = await client.sh_get(session.tkn, keys=('username','password'))
 print(values)
 
-# delete the session when finished
-# if the session was created with expiry settings, it will delete when it expires
 await client.sh_end(session.tkn)
 ```

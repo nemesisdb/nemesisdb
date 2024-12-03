@@ -9,13 +9,13 @@ class ClearSet(NDBTest):
 
     await self.client.kv_set(input)
 
-    output = await self.client.kv_get(tuple(input.keys()))
+    output = await self.client.kv_get(keys=tuple(input.keys()))
     self.assertDictEqual(output, input)
 
     clearedCount = await self.client.kv_clear_set({'e':'asda', 'f':False})
     self.assertEqual(clearedCount, len(input))
 
-    output = await self.client.kv_get(('i','s','b','d', 'e', 'f'))
+    output = await self.client.kv_get(keys=('i','s','b','d', 'e', 'f'))
     self.assertDictEqual(output, {'e':'asda', 'f':False})
 
 
@@ -24,14 +24,14 @@ class ClearSet(NDBTest):
 
     await self.client.kv_set(input)
 
-    output = await self.client.kv_get(tuple(input.keys()))
+    output = await self.client.kv_get(keys=tuple(input.keys()))
     self.assertDictEqual(output, input)
 
     clearedCount = await self.client.kv_clear_set({})
     self.assertEqual(clearedCount, len(input))
 
     # the original keys are cleared but we don't set new keys in clear_set()
-    output = await self.client.kv_get(('i','s','b','d'))
+    output = await self.client.kv_get(keys=('i','s','b','d'))
     self.assertDictEqual(output, {})
 
 

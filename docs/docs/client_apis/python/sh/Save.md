@@ -7,24 +7,25 @@ sidebar_label: sh_save
 # sh_save
 Save one or multiple sessions.
 
-The saved sessions can be restored with [session_load()](./Load).
+The saved sessions can be restored with [sh_load()](./Load).
 
 
-|Param|Type|Description|Required|
-|--|:-:|--|:-:|
-|name|str|The name of the dataset|Y|
-|tkns|List[int]|A list of tokens to persist. Default is empty to persist all tokens|N|
+```py
+sh_save(name: str, tkns = list()) -> None
+```
 
+|Param|Description|
+|--|--|
+|name|The name of the dataset.<br/>The `name` is used to load data at runtime with `kv_load()` or at startup.|
+|tkns|Only persist these sessions. If empty, all sessions are persisted|
 
-The `name` is used with `session_load()` to restore at runtime or with `--loadName` to load at startup.
 
 :::note
 - Persistance must be enabled in the server config
+- To persist sessions, use [sh_save()](../sh/Save)
 :::
 
 
-## Returns
-None
 
 
 ## Examples
@@ -54,7 +55,7 @@ for s in range(0, nSessions):
   session = await client.sh_create_session()
   if session.isValid:
     tokensToSave.append(session.tkn)
-    await client.sh_set({f'session{s}_key':'some_value'}, session.tkn)
+    await client.sh_set(session.tkn, {f'session{s}_key':'some_value'})
 
 
 print(tokensToSave)

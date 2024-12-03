@@ -19,7 +19,7 @@ class SaveLoad(NDBSessionTest):
       session = await self.client.sh_create_session()
       self.assertTrue(session.isValid)
       
-      await self.client.sh_set({'a':10, 'b':'x'}, session.tkn)
+      await self.client.sh_set(session.tkn, {'a':10, 'b':'x'})
       tokens.append(session.tkn)
     
 
@@ -52,7 +52,7 @@ class SaveLoad(NDBSessionTest):
       session = await self.client.sh_create_session()
       assert session.isValid
       for k in range(0,nKeysPerSession):
-        await self.client.sh_set({f'key{k}':'some_value'}, session.tkn)
+        await self.client.sh_set(session.tkn, {f'key{k}':'some_value'})
       
       # store every second token to save
       if s % 2 == 0:
