@@ -21,7 +21,7 @@ Contents:
 
 
 # Python API
-There is an early version of a [Python API](https://github.com/nemesisdb/nemesisdb/tree/main/apis/python) with docs [here](https://docs.nemesisdb.io/client_apis/python/Overview).
+There is an early version of a [Python API](https://github.com/nemesisdb/nemesisdb/tree/main/apis/python) with docs [here](https://docs.nemesisdb.io/client_apis/Overview).
 
 Set then retrieve two keys, `username` and `password`:
 
