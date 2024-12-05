@@ -33,7 +33,7 @@ client = SessionClient()
 await client.open('ws://127.0.0.1:1987/')
 
 # create session, which returns a Session, containing the token (tkn)
-session = await client.sh_create_session()
+session = await client.sh_create()
 # set keys, username and password
 await client.sh_set(session.tkn, {'username':'billy', 'password':'billy_passy'})
 

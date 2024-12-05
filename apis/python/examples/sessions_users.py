@@ -8,7 +8,7 @@ from ndb.client import NdbClient, Session
 # code below used in the API README
 
 async def newUser(client: NdbClient, username: str, email: str) -> Session:
-  session = await client.sh_create_session()
+  session = await client.sh_create()
   await client.sh_set(session.tkn, {'username':username, 'email':email})
   return session
 

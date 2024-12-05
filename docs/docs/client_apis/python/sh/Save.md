@@ -34,8 +34,8 @@ sh_save(name: str, tkns = list()) -> None
 client = NdbClient()
 await client.open('ws://127.0.0.1:1987/')
 
-session = await client.sh_create_session()
-if session.isValid:
+session = await client.sh_create()
+if session.tknValid:
   await client.sh_set({'fname':'james', 'sname':'smith'}, session.tkn)
   await client.sh_save('my_data')
 ```
@@ -52,8 +52,8 @@ await client.open('ws://127.0.0.1:1987/')
 # create sessions, setting a key in each session
 tokensToSave = list()
 for s in range(0, nSessions):
-  session = await client.sh_create_session()
-  if session.isValid:
+  session = await client.sh_create()
+  if session.tknValid:
     tokensToSave.append(session.tkn)
     await client.sh_set(session.tkn, {f'session{s}_key':'some_value'})
 

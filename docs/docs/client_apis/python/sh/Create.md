@@ -1,16 +1,16 @@
 ---
 sidebar_position: 1
 displayed_sidebar: clientApisSidebar
-sidebar_label: sh_create_session
+sidebar_label: sh_create
 ---
 
-# sh_create_session
+# sh_create
 
 Creates a new session.
 
 
 ```py
-sh_create_session(durationSeconds = 0,
+sh_create(durationSeconds = 0,
                   deleteSessionOnExpire = False,
                   extendOnSetAdd = False,
                   extendOnGet = False) -> Session
@@ -31,7 +31,7 @@ A session is uniquely identified by a session token (typically referred to in th
 client = NdbClient()
 await client.open('ws://127.0.0.1:1987/')
 
-session = await client.sh_create_session()
+session = await client.sh_create()
 
 await client.set(session.tkn, {'key1':'value1'})
 ```
@@ -48,7 +48,7 @@ client.get(session.tkn, keys=('k1','k2'))
 ## Returns
 
 `Session`
-- If the command was success `Session.isValid` is `True`, otherwise `False`
+- If the command was success `session.tknValid` is `True`, otherwise `False`
 - If successful, the token is set in `Session.tkn`
 
 <br/>
@@ -75,8 +75,8 @@ from ndb.sessionclient import SessionClient
 client = SessionClient()
 await client.open('ws://127.0.0.1:1987/')
 
-session = await client.sh_create_session()
-if session.isValid:
+session = await client.sh_create()
+if session.tknValid:
   print(f'Session created with token {session.tkn}')
 else
   print('Fail')
@@ -90,8 +90,8 @@ from ndb.sessionclient import SessionClient
 client = SessionClient()
 await client.open('ws://127.0.0.1:1987/')
 
-session1 = await client.sh_create_session()
-session2 = await client.sh_create_session()
+session1 = await client.sh_create()
+session2 = await client.sh_create()
 
 if session1.isValid and session2.isValid:
   print(f'Session 1 token {session1.token}')

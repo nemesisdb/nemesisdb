@@ -135,18 +135,18 @@ A session is used to group related keys (like a Redis hashset or a class object 
 - has a dedicated map
 - can expire, deleting keys, and optionally also deleting the session
 
-There are functions to manage sessions and keys, beginning with `sh_`, such as `sh_create_session()` `sh_set()`, `sh_get()`. 
+There are functions to manage sessions and keys, beginning with `sh_`, such as `sh_create()` `sh_set()`, `sh_get()`. 
 
 <br/>
 
-A session is identified by a unique session token (64-bit integer), created by `sh_create_session()`:
+A session is identified by a unique session token (64-bit integer), created by `sh_create()`:
 
 ```py3
 client = NdbClient()
 await client.open('ws://127.0.0.1:1987/')
 
-session = await client.sh_create_session()
-if not session.isValid:
+session = await client.sh_create()
+if not session.tknValid:
   return
 
 print(f"Session created with token: {session.tkn}")

@@ -28,7 +28,7 @@ if not (await client.open('ws://127.0.0.1:1987/')):
 <br/>
 
 ```py title='Single session'
-session = await client.sh_create_session()
+session = await client.sh_create()
 print(f"Session created with session token: {session.tkn}")
 
 # set keys in the session

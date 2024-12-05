@@ -22,8 +22,8 @@ sh_end_all() -> int
 client = NdbClient()
 await client.open('ws://127.0.0.1:1987/')
 
-session1 = await client.sh_create_session()
-session2 = await client.sh_create_session()
+session1 = await client.sh_create()
+session2 = await client.sh_create()
 
 if session1.isValid and session2.isValid:
   print(f'Session 1 token {session1.tkn}')

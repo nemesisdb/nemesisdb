@@ -5,8 +5,8 @@ from base import NDBSessionTest
 class Info(NDBSessionTest):
 
   async def test_info(self):
-    session = await self.client.sh_create_session()
-    self.assertTrue(session.isValid)
+    session = await self.client.sh_create()
+    self.assertTrue(session.tknValid)
     
     await self.client.sh_set(session.tkn, {'a':10, 'b':'x'})
     
@@ -23,8 +23,8 @@ class Info(NDBSessionTest):
     tokens = []
 
     for _ in range(0, nSessions):
-      session = await self.client.sh_create_session()
-      self.assertTrue(session.isValid)
+      session = await self.client.sh_create()
+      self.assertTrue(session.tknValid)
       
       await self.client.sh_set(session.tkn, {'a':10, 'b':'x'})
 
@@ -37,8 +37,8 @@ class Info(NDBSessionTest):
     
 
   async def test_info_expiry_1(self):
-    session = await self.client.sh_create_session(durationSeconds=10, extendOnGet=True)
-    self.assertTrue(session.isValid)
+    session = await self.client.sh_create(durationSeconds=10, extendOnGet=True)
+    self.assertTrue(session.tknValid)
 
     info = await self.client.sh_info(session.tkn)
 
@@ -50,8 +50,8 @@ class Info(NDBSessionTest):
 
 
   async def test_info_expiry_2(self):
-    session = await self.client.sh_create_session(durationSeconds=10, extendOnSetAdd=True)
-    self.assertTrue(session.isValid)
+    session = await self.client.sh_create(durationSeconds=10, extendOnSetAdd=True)
+    self.assertTrue(session.tknValid)
 
     info = await self.client.sh_info(session.tkn)
     

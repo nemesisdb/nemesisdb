@@ -90,7 +90,7 @@ user delete:
 
 
 # async def create_user_session(sessionData: dict) -> int:
-#   session = await ndb.sh_create_session(durationSeconds=1800, extendOnSetAdd=True, extendOnGet=True)
+#   session = await ndb.sh_create(durationSeconds=1800, extendOnSetAdd=True, extendOnGet=True)
 #   await ndb.sh_set(sessionData, session.tkn)
 #   return session.tkn
     

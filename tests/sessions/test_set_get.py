@@ -5,13 +5,13 @@ from base import NDBSessionTest
 class SetGet(NDBSessionTest):
 
   async def test_set(self):
-    session = await self.client.sh_create_session()
-    self.assertTrue(session.isValid)
+    session = await self.client.sh_create()
+    self.assertTrue(session.tknValid)
     
     await self.client.sh_set(session.tkn, {'a':10, 'b':'x'},)
     
     info = await self.client.sh_info(session.tkn)
-    self.assertTrue(session.isValid)
+    self.assertTrue(session.tknValid)
     self.assertEqual(info['tkn'], session.tkn)
     self.assertEqual(info['keyCnt'], 2)
     # session does not expire, so 'expires' is False and no 'expiry' info
@@ -24,8 +24,8 @@ class SetGet(NDBSessionTest):
     tokens = []
 
     for _ in range(0, nSessions):
-      session = await self.client.sh_create_session()
-      self.assertTrue(session.isValid)
+      session = await self.client.sh_create()
+      self.assertTrue(session.tknValid)
       
       await self.client.sh_set(session.tkn, {'a':10, 'b':'x'})
 

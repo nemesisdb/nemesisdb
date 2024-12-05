@@ -9,8 +9,8 @@ class Exists(NDBSessionTest):
     tokens = []
 
     for _ in range(0, nSessions):
-      session = await self.client.sh_create_session()
-      self.assertTrue(session.isValid)
+      session = await self.client.sh_create()
+      self.assertTrue(session.tknValid)
       tokens.append(session.tkn)
 
 

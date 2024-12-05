@@ -29,8 +29,8 @@ class Session:
     self.tkn = tkn
 
   @property
-  def isValid(self) -> bool:
-    return self.tkn != 0
+  def tknValid(self) -> bool:
+    return self.tkn > 0
 
 
 
@@ -197,7 +197,7 @@ class NdbClient:
     return rsp[ShCmd.CLEAR_SET_RSP]['cnt']
 
   
-  async def sh_create_session(self, durationSeconds = 0,
+  async def sh_create(self, durationSeconds = 0,
                                     deleteSessionOnExpire = False,
                                     extendOnSetAdd = False,
                                     extendOnGet = False) -> Session:

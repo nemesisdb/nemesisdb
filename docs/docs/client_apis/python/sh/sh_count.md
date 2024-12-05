@@ -27,7 +27,7 @@ The number of keys
 client = NdbClient()
 await client.open('ws://127.0.0.1:1987/')
 
-session = await client.sh_create_session()
+session = await client.sh_create()
 
 await client.sh_set(session.tkn, {'stats_read':0, 'stats_received':0, 'stats_sent':0})
 count = client.sh_count(session.tkn)

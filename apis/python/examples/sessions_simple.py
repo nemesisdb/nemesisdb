@@ -11,8 +11,8 @@ async def basics():
     print('Failed to connect')
     return
 
-  session = await client.sh_create_session()
-  if not session.isValid:
+  session = await client.sh_create()
+  if not session.tknValid:
     return
 
   print(f"Session created with session token: {session.tkn}")
@@ -69,8 +69,8 @@ async def multiple_sessions():
     print('Failed to connect')
     return
 
-  session_user1 = await client.sh_create_session()
-  session_user2 = await client.sh_create_session()
+  session_user1 = await client.sh_create()
+  session_user2 = await client.sh_create()
 
   print(f'User1 Session: {session_user1.tkn}\nUser2 Session: {session_user2.tkn}')
 
@@ -79,12 +79,12 @@ async def multiple_sessions():
 
   # user1 resets their password
   await updatePassword(session_user1.tkn)
-  
-  # user2 fails auth so must be blocked
-  await failedAuth(session_user2.tkn)
-
+    
   # user1 account changed, update their roles
   await updateRoles(session_user1.tkn)
+
+  # user2 fails auth so must be blocked
+  await failedAuth(session_user2.tkn)
 
 
 if __name__ == "__main__":

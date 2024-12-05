@@ -39,7 +39,7 @@ dataSetName = 'my_data'
 client = NdbClient()
 await client.open('ws://127.0.0.1:1987/')
 
-session = await client.sh_create_session()
+session = await client.sh_create()
 
 await client.sh_set(session.tkn, {'fname':'james', 'sname':'smith'})
 

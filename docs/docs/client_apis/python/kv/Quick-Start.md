@@ -18,7 +18,7 @@ The `NdbClient` is the entry point:
 ```py
 from ndb.client import NdbClient
 
-client = NdbClient()
+client = NdbClient(debug=False) # toggle for debug logging
 await client.open('ws://127.0.0.1:1987/')
 
 await client.kv_set({'username':'billy', 'password':'billy_passy'})

@@ -23,7 +23,7 @@ sh_end(tkn: int)() -> None
 client = NdbClient()
 await client.open('ws://127.0.0.1:1987/')
 
-session = await client.sh_create_session()
+session = await client.sh_create()
 
 await client.set(session.tkn, {'key1':'value1'})
 
