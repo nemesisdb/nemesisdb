@@ -31,13 +31,13 @@ from ndb.client import NdbClient
 client = NdbClient()
 
 await client.open('ws://127.0.0.1:1987/')
-await client.kv_set({'username':'billy', 'password':'billy_passy'})
+await client.kv_set({'username':'billy', 'password':'billy_password'})
 
-value = await client.kv_get(key='username')
-print (value)
+username = await client.kv_get(key='username')
+print (username) # billy
 
 values = await client.kv_get(keys=('username','password'))
-print (values)
+print (values) # {'password':'billy_password', 'username':'billy'}
 ```
 
 To create keys in a session:
@@ -57,8 +57,7 @@ await client.sh_set(session.tkn, {'username':'billy', 'password':'billy_password
 values = await client.sh_get(session.tkn, keys=('username','password'))
 print(values)
 
-# delete the session when finished
-# if the session was created with expiry settings, it would delete automatically on expiry
+# session has no expiry settings so end manually
 await client.sh_end(session.tkn)
 ```
 
