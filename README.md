@@ -51,7 +51,7 @@ await client.open('ws://127.0.0.1:1987/')
 
 # create session() returns a Session object, containing the token (tkn)
 # sessions can expire but we create a session that never expires
-session = await client.sh_create_session()
+session = await client.sh_create()
 
 await client.sh_set(session.tkn, {'username':'billy', 'password':'billy_password'})
 values = await client.sh_get(session.tkn, keys=('username','password'))
