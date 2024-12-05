@@ -81,7 +81,7 @@ The server uses a JSON API over websockets. There are three APIs:
 <br/>
 
 ## Independent/Top Level Keys
-Keys are not in a session, and are managed by the  `KV_` API.
+Keys that are not in a session, and are managed by the  `KV_` API.
 
 - There is one map for all independent keys
 - Keys cannot expire, they must be deleted by command
@@ -90,20 +90,15 @@ Keys are not in a session, and are managed by the  `KV_` API.
 <br/>
 
 ## Sessions
-Sessions can be disabled or enabled. Each session has a dedicated map for its keys and the session can exist forever or expire:
-
-- Each session only contains data stored in that session
-- When accessing (get, set, etc) data, only the data for a particular session is accessed
-- With sessions disabled, keys cannot expire, they must be deleted manually
-- With sessions enabled, a session can expire, deleting all keys in the session
-
-You can create as many sessions as required (within memory limitations). When a session is created, a session token is returned (a 64-bit unsigned integer), so switching between sessions only requires using the appropriate token.
+Sessions are managed by the `SH_` API.
 
 - Each session has a dedicated map
 - A session can live forever or expire after a defined duration
 - When a session expires:
   - The keys are deleted
   - Optionally the session can be deleted
+
+When a session is created, a session token is returned (a 64-bit unsigned integer), so switching between sessions only requires using the appropriate token.
 
 Examples of sessions:
 
