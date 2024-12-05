@@ -15,6 +15,13 @@ From the root directory:
 
 # Tasks
 
+<br/>
+
+## Version
+- Version in `core/NemesisCommon.h`
+
+<br/>
+
 ## Package
 
 ```bash
@@ -31,6 +38,7 @@ cd package
 ```bash
 ./docker_build.sh <version>
 ```
+<br/>
 
 ## Docs
 

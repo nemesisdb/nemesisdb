@@ -30,7 +30,7 @@ int main (int argc, char ** argv)
 {
   initLogger(consoleAppender); // always first statement of main()
   
-  PLOGI << "NemesisDB v" << NEMESIS_VERSION << " starting";
+  PLOGI << "NemesisDB v" << NEMESIS_VERSION;
   PLOGI << "Registering signals";
 
   signal(SIGINT,  kvSigHandle);
