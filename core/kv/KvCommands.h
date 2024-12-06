@@ -4,6 +4,8 @@
 
 namespace nemesis { namespace kv { namespace cmds {
 
+  const char KvIdent[] = "KV";
+
   const char SetReq[]     = "KV_SET";
   const char SetRsp[]     = "KV_SET_RSP";
   const char SetQReq[]    = "KV_SETQ";

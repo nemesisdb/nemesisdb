@@ -13,7 +13,6 @@
 
 namespace nemesis { namespace sh {
 
-using namespace nemesis::core;
 
 
 class Sessions

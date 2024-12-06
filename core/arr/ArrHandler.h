@@ -1,0 +1,230 @@
+#ifndef NDB_CORE_ARRHANDLERS_H
+#define NDB_CORE_ARRHANDLERS_H
+
+
+#include <functional>
+#include <tuple>
+#include <ankerl/unordered_dense.h>
+#include <core/NemesisCommon.h>
+#include <core/Persistance.h>
+#include <core/NemesisConfig.h>
+#include <core/arr/ArrCommon.h>
+#include <core/arr/ArrCommandValidate.h>
+#include <core/arr/ArrExecutor.h>
+#include <core/arr/ArrArray.h>
+
+
+
+namespace nemesis { namespace arr {
+
+
+using namespace nemesis::arr::cmds;
+
+
+/*
+
+*/
+class ArrHandler
+{
+  using Arrays = ankerl::unordered_dense::map<std::string, Array>;
+
+
+public:
+  ArrHandler(const Settings& settings) : m_settings(settings)
+  {
+
+  }
+
+
+  using HandlerPmrMap = ankerl::unordered_dense::pmr::map<ArrQueryType, Handler>;
+  using QueryTypePmrMap = ankerl::unordered_dense::pmr::map<std::string_view, ArrQueryType>;
+
+
+  template<class Alloc>
+  auto createHandlers (Alloc& alloc)
+  {
+    // initialise with 1 bucket and pmr allocator
+    HandlerPmrMap h (
+    {
+      {ArrQueryType::Create,          Handler{std::bind_front(&ArrHandler::createArray,        std::ref(*this))}},      
+      {ArrQueryType::Delete,          Handler{std::bind_front(&ArrHandler::deleteArray,        std::ref(*this))}},
+      {ArrQueryType::Set,             Handler{std::bind_front(&ArrHandler::set,                std::ref(*this))}},
+      {ArrQueryType::Get,             Handler{std::bind_front(&ArrHandler::get,                std::ref(*this))}},
+      {ArrQueryType::GetRng,          Handler{std::bind_front(&ArrHandler::getRange,           std::ref(*this))}},
+    }, 1, alloc);
+    
+    return h;
+  }
+
+
+  template<class Alloc>
+  auto createQueryTypeNameMap (Alloc& alloc)
+  {
+    QueryTypePmrMap map ( 
+    {  
+      {CreateReq,           ArrQueryType::Create},
+      {DeleteReq,           ArrQueryType::Delete},
+      {SetReq,              ArrQueryType::Set},
+      {GetReq,              ArrQueryType::Get},
+      {GetRngReq,           ArrQueryType::GetRng},
+    }, 1, alloc); 
+
+    return map;
+  }
+
+
+public:
+   
+
+  Response handle(const std::string_view& command, njson& request)
+  {      
+    static PmrResource<typename HandlerPmrMap::value_type, 1024U> handlerPmrResource; // TODO buffer size
+    static PmrResource<typename HandlerPmrMap::value_type, 1024U> queryTypeNamePmrResource; // TODO buffer size
+    static const HandlerPmrMap MsgHandlers{createHandlers(handlerPmrResource.getAlloc())}; 
+    static const QueryTypePmrMap QueryNameToType{createQueryTypeNameMap(queryTypeNamePmrResource.getAlloc())};
+    
+
+    if (const auto itType = QueryNameToType.find(command) ; itType == QueryNameToType.cend())
+      return Response {.rsp = createErrorResponse(RequestStatus::CommandNotExist)};
+    else if (const auto handlerIt = MsgHandlers.find(itType->second) ; handlerIt == MsgHandlers.cend())
+      return Response {.rsp = createErrorResponse(RequestStatus::CommandDisabled)};
+    else
+    {
+      try
+      {
+        auto& handler = handlerIt->second;
+        return handler(request);
+      }
+      catch (const std::exception& kex)
+      {
+        PLOGF << kex.what() ;
+      }
+
+      return Response {.rsp = createErrorResponse(RequestStatus::Unknown)};
+    }
+  }
+
+
+private:
+  ndb_always_inline Response createArray(njson& request)
+  {
+    if (auto [valid, rsp] = validateCreate(request) ; !valid)
+      return Response{.rsp = std::move(rsp)};
+    else
+    {
+      Response response;
+      response.rsp = njson{jsoncons::json_object_arg, {{CreateRsp, njson::object()}}};
+      response.rsp[CreateRsp]["st"] = toUnderlying(RequestStatus::Ok);
+
+      try
+      {
+        const auto reqBody = request.at(CreateReq);
+        const std::size_t sizeHint = reqBody.get_value_or<std::size_t>("len", 0U);  // default 0, let Array decide
+
+        m_arrays.try_emplace(reqBody.at("name").as_string(), Array{sizeHint});
+      }
+      catch(const std::exception& e)
+      {
+        PLOGE << e.what();
+        response.rsp[CreateRsp]["st"] = toUnderlying(RequestStatus::Unknown);
+      }
+
+      return response;
+    }
+  }
+
+
+  ndb_always_inline Response deleteArray(njson& request)
+  {
+    if (auto [valid, rsp] = validateDelete(request) ; !valid)
+      return Response{.rsp = std::move(rsp)};
+    else
+    {
+      Response response;
+      response.rsp = njson{jsoncons::json_object_arg, {{DeleteRsp, njson::object()}}};
+      response.rsp[DeleteRsp]["st"] = toUnderlying(RequestStatus::Ok);
+
+      try
+      {
+        m_arrays.erase(request.at(DeleteReq).at("name").as_string());
+      }
+      catch(const std::exception& e)
+      {
+        PLOGE << e.what();
+        response.rsp[DeleteRsp]["st"] = toUnderlying(RequestStatus::Unknown);
+      }
+
+      return response;
+    }
+  }
+
+
+  ndb_always_inline Response set(njson& request)
+  {
+    if (auto [valid, rsp] = validateSet(request) ; !valid)
+      return Response{.rsp = std::move(rsp)};
+    else
+    {
+      const auto& body = request.at(SetReq);
+      if (auto [exist, it] = getArray(body.at("name").as_string(), body) ; !exist)
+        return Response{.rsp = createErrorResponseNoTkn(SetRsp, RequestStatus::NotExist)};
+      else
+        return ArrayExecutor::set(it->second, body);
+    }
+  }
+
+
+  ndb_always_inline Response get(njson& request)
+  {
+    if (auto [valid, rsp] = validateGet(request) ; !valid)
+      return Response{.rsp = std::move(rsp)};
+    else
+    {
+      const auto& body = request.at(GetReq);
+      if (auto [exist, it] = getArray(body) ; !exist)
+        return Response{.rsp = createErrorResponseNoTkn(GetRsp, RequestStatus::NotExist)};
+      else
+        return ArrayExecutor::get(it->second, body);
+    }
+  }
+
+
+  ndb_always_inline Response getRange(njson& request)
+  {
+    if (auto [valid, rsp] = validateGetRange(request) ; !valid)
+      return Response{.rsp = std::move(rsp)};
+    else
+    {
+      const auto& body = request.at(GetRngReq);
+      if (auto [exist, it] = getArray(body) ; !exist)
+        return Response{.rsp = createErrorResponseNoTkn(GetRngRsp, RequestStatus::NotExist)};
+      else
+        return ArrayExecutor::getRange(it->second, body);
+    }
+  }
+
+
+private:
+  
+  std::tuple<bool, Arrays::iterator> getArray (const std::string& name, const njson& cmd)
+  {
+    const auto it = m_arrays.find(name);
+    return {it != m_arrays.cend(), it};
+  }
+
+  std::tuple<bool, Arrays::iterator> getArray (const njson& cmd)
+  {
+    const auto& name = cmd.at("name").as_string();
+    return getArray(name, cmd);
+  }
+
+
+private:
+  Settings m_settings;
+  Arrays m_arrays;
+};
+
+}
+}
+
+#endif

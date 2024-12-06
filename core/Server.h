@@ -16,15 +16,18 @@
 #include <core/sh/ShHandler.h>
 #include <core/sh/ShSessions.h>
 #include <core/sv/SvCommands.h>
+#include <core/arr/ArrHandler.h>
+#include <core/arr/ArrCommands.h>
 
 
 
 namespace nemesis { 
 
 
-using namespace nemesis::kv;
-using namespace nemesis::sh;
-using namespace nemesis::sv;
+namespace kvCmds = nemesis::kv::cmds;
+namespace shCmds = nemesis::sh;
+namespace svCmds = nemesis::sv;
+namespace arrCmds = nemesis::arr::cmds;
 
 
 
@@ -146,6 +149,7 @@ public:
         
         m_kvHandler = std::make_shared<kv::KvHandler>(m_settings);
         m_shHandler = std::make_shared<sh::ShHandler>(m_settings, m_sessions);
+        m_arrHandler = std::make_shared<arr::ArrHandler>(m_settings);
       }
       catch(const std::exception& e)
       {
@@ -328,17 +332,22 @@ public:
           {
             const auto type = command.substr(0, pos);
             
-            if (type == "KV")
+            if (type == kvCmds::KvIdent)
             {
               const Response response = m_kvHandler->handle(command, request);
               send(ws, response.rsp);
             }
-            else if (type == "SH")
+            else if (type == arrCmds::ArrIdent)
+            {
+              const Response response = m_arrHandler->handle(command, request);
+              send(ws, response.rsp);
+            }
+            else if (type == shCmds::ShIdent)
             {
               const Response response = m_shHandler->handle(command, request);
               send(ws, response.rsp);
             }
-            else if (command == sv::cmds::InfoReq)
+            else if (command == sv::cmds::InfoReq)  [[unlikely]]  // only one SV command at the moment
             {
               // the json_object_arg is a tag, followed by initializer_list<pair<string, njson>>
               static const njson Info = {jsoncons::json_object_arg, {
@@ -425,6 +434,7 @@ public:
     // TODO profile runtime cost of shared_ptr vs raw ptr
     std::shared_ptr<kv::KvHandler> m_kvHandler;
     std::shared_ptr<sh::ShHandler> m_shHandler;
+    std::shared_ptr<arr::ArrHandler> m_arrHandler;
     std::shared_ptr<sh::Sessions> m_sessions;
     Settings m_settings;
 };

@@ -4,7 +4,7 @@
 
 |Container|Cpp Type|API Ident|Notes|
 |---|---|---|---|
-|Array|std::vector|ARR_|Resizeable|
+|Array|std::vector|ARR_|Fixed size|
 |List|std::list/std::forward_list|LST_|Use forward_list unless we need bidirection|
 |Queue|std::queue|QUE_|Use std::vector as underlying container|
 |Set|ankerl|SET_|set or segmented_set, also check `std::unordered_set`|
@@ -14,24 +14,30 @@
 - How to persist
 
 
-## Array
-Offers spacial locality benefits compared to List. May offer benefits over a Set, depending on commands available.
 
-- Note: all commands require a `name`
+## Containers
+
+- Note: most commands require a `name`, even if not shown
+
+### Array
+
+A fixed size vector.
+
+- Offers special commands compared to creating a key with array value (set/get items by position, swapping, union, etc)
+- Offers spacial locality benefits compared to List. May offer benefits over a Set, depending on commands available.
 
 |Command|Purpose|Args|Notes|
 |---|---|---|---|
-|ARR_CREATE|Creates array|`name`,`lenHint`|Call `reserve()` with a clamped `lenHint`|
+|ARR_CREATE|Creates array|`name`,`len`|Call `reserve()` with a clamped `len`|
 |ARR_DELETE|Deletes entire list|||
 |ARR_LEN|Returns `size()`|||
 |ARR_GET|Returns a single item|`pos`||
 |ARR_GET_RNG|Returns multiple, based on range|`rng:[a,b]`|Decide if `[a,b]` or `[a,b)`|
 |ARR_SET|Overwrites existing item|`pos`,`item`||
-|ARR_APPEND|Calls `emplace_back()`|||
 |ARR_SWAP_ITEM|Swaps two items|`pos1`, `pos2`||
 
 
-## List
+### List
 Suitable for inserts at random positions at the expensive of spacial locality.
 
 TODO
@@ -55,7 +61,7 @@ TODO
 |LST_RMV|Delete by position|`pos`, `len`|Removes from `pos` to `pos+len`. `pos` must be in range, but if `pos+len > size()` remove from `pos` to end. Returns `size()`|
 
 
-## Queue
+### Queue
 Standard queue backed by `std::vector`.
 
 |Command|Purpose|Args|Notes|
@@ -71,7 +77,7 @@ Standard queue backed by `std::vector`.
 |QUE_LAST|Returns last item, does not pop|||
 
 
-## Set
+### Set
 |Command|Purpose|Args|Notes|
 |---|---|---|---|
 |SET_CREATE|Create|`name`||

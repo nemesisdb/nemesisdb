@@ -13,7 +13,6 @@
 
 namespace nemesis { namespace sh {
 
-  using namespace nemesis::core;
   
   using SessionToken = std::uint64_t;
   using SessionName = std::string;

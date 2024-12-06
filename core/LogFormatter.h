@@ -6,7 +6,7 @@
 #include <iomanip>
 
 
-namespace nemesis { namespace core {
+namespace nemesis {
 
   template<bool useUtcTime>
   class NdbFormatterImpl
@@ -35,7 +35,6 @@ namespace nemesis { namespace core {
   class NdbFormatter : public NdbFormatterImpl<false> {};
   class NdbFormatterUtcTime : public NdbFormatterImpl<true> {};
 
-}
 }
 
 #endif

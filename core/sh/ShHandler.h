@@ -23,29 +23,7 @@ namespace kv = nemesis::kv;
 
 
 class ShHandler
-{
-  struct Handler
-  {
-    using HandleFunc = std::function<Response(njson&)>;
-
-    Handler(HandleFunc&& h) : handler(std::move(h))
-    {
-
-    }
-
-    Handler(const Handler&) = default;
-    Handler(Handler&&) = default;
-    Handler& operator= (Handler&&) = default;
-
-    Response operator()(njson& request) const
-    {
-      return handler(request);
-    }
-
-    HandleFunc handler;
-  };
-
-  
+{  
   using QueryTypePmrMap = ankerl::unordered_dense::pmr::map<std::string_view, ShQueryType>;
   using HandlerPmrMap = ankerl::unordered_dense::pmr::map<ShQueryType, Handler>;
 
