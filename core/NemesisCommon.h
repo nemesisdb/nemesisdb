@@ -82,6 +82,8 @@ namespace nemesis {
     Loading = 140,
     LoadComplete,
     LoadError,
+    Duplicate = 160,
+    Bounds = 161,
     Unknown = 1000
   };
 

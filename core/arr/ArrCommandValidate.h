@@ -104,6 +104,16 @@ namespace nemesis { namespace arr {
     else
       return makeValid();
   }
+
+
+  Validity validateLength (const njson& req)
+  {
+    if (auto [valid, rsp] = isValid(LenRsp, req.at(LenReq), { {Param::required("name", JsonString)}}); !valid)
+      return makeInvalid(std::move(rsp));
+    else
+      return makeValid();
+  }
+
 }
 }
 

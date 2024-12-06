@@ -28,7 +28,7 @@ public:
     m_array.resize(m_size);
   }
 
-  bool isInbounds(const std::size_t pos)
+  bool isInbounds(const std::size_t pos) const noexcept
   {
     return pos <= m_size-1;
   }
@@ -39,12 +39,12 @@ public:
     PLOGD << m_array[pos].to_string();
   }
 
-  njson get(const std::size_t pos)
+  njson get(const std::size_t pos) const
   {
     return m_array[pos];
   }
 
-  njson getRange(const std::size_t start, const std::size_t stop)
+  njson getRange(const std::size_t start, const std::size_t stop) const
   {
     const auto rangeSize = stop-start+1;
 
@@ -59,6 +59,11 @@ public:
     });
 
     return rsp;
+  }
+
+  std::size_t size() const noexcept
+  {
+    return m_size;
   }
 
 private:

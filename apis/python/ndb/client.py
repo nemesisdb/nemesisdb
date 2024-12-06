@@ -1,4 +1,4 @@
-from ndb.commands import StValues, Fields, SvCmd, KvCmd, ShCmd
+from ndb.commands import StValues, Fields, SvCmd, KvCmd, ShCmd, ArrCmd
 from ndb.connection import Connection
 from ndb.logging import logger
 from typing import Tuple, List
@@ -73,7 +73,7 @@ class NdbClient:
     return info
   
 
-  ## KV
+  #region KV
   async def kv_set(self, keys: dict) -> None:
     await self._sendCmd(KvCmd.SET_REQ, KvCmd.SET_RSP, {'keys':keys})
   
@@ -147,8 +147,10 @@ class NdbClient:
     rsp = await self._sendCmd(KvCmd.LOAD_REQ, KvCmd.LOAD_RSP, {'name':name}, StValues.ST_LOAD_COMPLETE)
     return rsp[KvCmd.LOAD_RSP]['keys']
 
+  #endregion
 
-  ## SH
+
+  #region SH
   async def sh_set(self, tkn: int, keys: dict):
     await self._sendTknCmd(ShCmd.SET_REQ, ShCmd.SET_RSP, {'keys':keys}, tkn)
   
@@ -306,6 +308,55 @@ class NdbClient:
     rsp = await self._sendTknCmd(ShCmd.GET_REQ, ShCmd.GET_RSP, {'keys':keys}, tkn)
     return rsp[ShCmd.GET_RSP]['keys']
   
+  #endregion
+
+  
+  #region ARR
+
+  async def arr_create(self, name: str, len = 0) -> None:
+    self._raise_if_empty(name)
+    await self._sendCmd(ArrCmd.CREATE_REQ, ArrCmd.CREATE_RSP, {'name':name, 'len':len})
+
+
+  async def arr_delete(self, name: str) -> None:
+    self._raise_if_empty(name)
+    await self._sendCmd(ArrCmd.DELETE_REQ, ArrCmd.DELETE_RSP, {'name':name})
+
+  
+  async def arr_delete_all(self) -> None:
+    await self._sendCmd(ArrCmd.DELETE_ALL_REQ, ArrCmd.DELETE_ALL_RSP, {})
+
+
+  async def arr_set(self, name: str, pos: int, item: dict) -> None:
+    self._raise_if_empty(name)
+    await self._sendCmd(ArrCmd.SET_REQ, ArrCmd.SET_RSP, {'name':name, 'pos': pos, 'item':item})
+
+
+  async def arr_get(self, name: str, pos: int) -> dict:
+    self._raise_if_empty(name)
+    rsp = await self._sendCmd(ArrCmd.GET_REQ, ArrCmd.GET_RSP, {'name':name, 'pos':pos})
+    return rsp[ArrCmd.GET_RSP]['item']
+
+
+  async def arr_get_rng(self, name: str, start: int, stop: int) -> List[dict]:
+    self._raise_if_empty(name)
+
+    if start > stop:
+      raise ValueError('start > stop')
+        
+    rsp = await self._sendCmd(ArrCmd.GET_RNG_REQ, ArrCmd.GET_RNG_RSP, {'name':name, 'rng':[start, stop]})
+    return rsp[ArrCmd.GET_RNG_RSP]['items']
+  
+  
+  async def arr_len(self, name: str) -> int:
+    self._raise_if_empty(name)
+    rsp = await self._sendCmd(ArrCmd.LEN_REQ, ArrCmd.LEN_RSP, {'name':name})
+    return rsp[ArrCmd.LEN_RSP]['len']
+
+  #endregion
+  
+
+
   async def _sendCmd(self, cmdReq: str, cmdRsp: str, body: dict, stSuccess = StValues.ST_SUCCESS):
     req = {cmdReq : body}
     rsp = await self.ws.query(req)
@@ -324,4 +375,13 @@ class NdbClient:
     
     logger.debug(cmdRsp + ' ' + ('Response Ok'))
 
+
+  def _raise_if_empty (self, value: str):
+    self._raise_if(value, 'empty', lambda v: v == '')
+    #if value == '':
+     # raise ValueError('value empty')
   
+
+  def _raise_if (self, value: str, msg: str, f):
+    if f(value):
+      raise ValueError(f'value is {msg}')

@@ -14,11 +14,15 @@ else
 
   source ./useful.sh  
 
-  # kv
   run_server
-    
-  cd sv > /dev/null
-  python3 -m unittest -f test_server_info
+  
+  if [ "$1" = "skip" ]; then
+    export NDB_SKIP_SAVELOAD=1
+  fi
+
+  
+  cd arr > /dev/null
+  python3 -m unittest -f
   cd - > /dev/null
 
   kill_server

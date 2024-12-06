@@ -30,7 +30,7 @@ public:
       auto item = reqBody.at("item");
 
       if (!array.isInbounds(pos))
-        response.rsp[SetRsp]["st"] = toUnderlying(RequestStatus::ValueSize);  // TODO Bounds
+        response.rsp[SetRsp]["st"] = toUnderlying(RequestStatus::Bounds);
       else
         array.set(pos, item);
     }
@@ -54,12 +54,13 @@ public:
     const auto pos = reqBody.at("pos").as<std::size_t>();
 
     if (!array.isInbounds(pos))
-      response.rsp[GetRsp]["st"] = toUnderlying(RequestStatus::ValueSize);
+      response.rsp[GetRsp]["st"] = toUnderlying(RequestStatus::Bounds);
     else
       response.rsp[GetRsp]["item"] = array.get(pos);
 
     return response;
   }
+
 
   static Response getRange (Array& array, const njson& reqBody)
   {
@@ -75,12 +76,23 @@ public:
     PLOGD << "getRange(): " << start << " to " << stop;
 
     if (!(array.isInbounds(start) && array.isInbounds(stop)))
-      response.rsp[GetRngRsp]["st"] = toUnderlying(RequestStatus::ValueSize);
+      response.rsp[GetRngRsp]["st"] = toUnderlying(RequestStatus::Bounds);
     else
       response.rsp[GetRngRsp].try_emplace("items", array.getRange(start, stop));
 
       //response.rsp[GetRngRsp]["items"] = array.getRange(start, stop);
 
+    return response;
+  }
+
+
+  static Response length (Array& array, const njson& reqBody)
+  {
+    static const njson Prepared = njson{jsoncons::json_object_arg, {{LenRsp, njson::object()}}};
+    
+    Response response{.rsp = Prepared};
+    response.rsp[LenRsp]["st"] = toUnderlying(RequestStatus::Ok);
+    response.rsp[LenRsp]["len"] = array.size();
     return response;
   }
 

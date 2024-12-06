@@ -14,7 +14,7 @@ else
 
   source ./useful.sh  
 
-  run_kv_server
+  run_server
   
   if [ "$1" = "skip" ]; then
     export NDB_SKIP_SAVELOAD=1

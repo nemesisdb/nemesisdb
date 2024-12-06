@@ -48,9 +48,11 @@ public:
     {
       {ArrQueryType::Create,          Handler{std::bind_front(&ArrHandler::createArray,        std::ref(*this))}},      
       {ArrQueryType::Delete,          Handler{std::bind_front(&ArrHandler::deleteArray,        std::ref(*this))}},
+      {ArrQueryType::DeleteAll,       Handler{std::bind_front(&ArrHandler::deleteAll,          std::ref(*this))}},
       {ArrQueryType::Set,             Handler{std::bind_front(&ArrHandler::set,                std::ref(*this))}},
       {ArrQueryType::Get,             Handler{std::bind_front(&ArrHandler::get,                std::ref(*this))}},
       {ArrQueryType::GetRng,          Handler{std::bind_front(&ArrHandler::getRange,           std::ref(*this))}},
+      {ArrQueryType::Len,             Handler{std::bind_front(&ArrHandler::length,             std::ref(*this))}},
     }, 1, alloc);
     
     return h;
@@ -64,9 +66,11 @@ public:
     {  
       {CreateReq,           ArrQueryType::Create},
       {DeleteReq,           ArrQueryType::Delete},
+      {DeleteAllReq,        ArrQueryType::DeleteAll},
       {SetReq,              ArrQueryType::Set},
       {GetReq,              ArrQueryType::Get},
       {GetRngReq,           ArrQueryType::GetRng},
+      {LenReq,              ArrQueryType::Len},
     }, 1, alloc); 
 
     return map;
@@ -110,6 +114,8 @@ private:
   {
     if (auto [valid, rsp] = validateCreate(request) ; !valid)
       return Response{.rsp = std::move(rsp)};
+    else if (const auto& name = request.at(CreateReq).at("name").as_string(); arrayExist(name))
+      return Response{.rsp = createErrorResponseNoTkn(CreateRsp, RequestStatus::Duplicate)};
     else
     {
       Response response;
@@ -118,10 +124,9 @@ private:
 
       try
       {
-        const auto reqBody = request.at(CreateReq);
-        const std::size_t sizeHint = reqBody.get_value_or<std::size_t>("len", 0U);  // default 0, let Array decide
-
-        m_arrays.try_emplace(reqBody.at("name").as_string(), Array{sizeHint});
+        // default 0, let Array decide
+        const std::size_t sizeHint = request.at(CreateReq).get_value_or<std::size_t>("len", 0U);
+        m_arrays.try_emplace(name, Array{sizeHint});
       }
       catch(const std::exception& e)
       {
@@ -156,6 +161,27 @@ private:
 
       return response;
     }
+  }
+
+  
+  ndb_always_inline Response deleteAll(njson& request)
+  {
+    Response response;
+    response.rsp = njson{jsoncons::json_object_arg, {{DeleteAllRsp, njson::object()}}};
+    response.rsp[DeleteAllRsp]["st"] = toUnderlying(RequestStatus::Ok);
+
+    try
+    {
+      m_arrays.clear();
+      //m_arrays.replace() // TODO look at replace()
+    }
+    catch(const std::exception& e)
+    {
+      PLOGE << e.what();
+      response.rsp[DeleteAllRsp]["st"] = toUnderlying(RequestStatus::Unknown);
+    }
+
+    return response;
   }
 
 
@@ -204,6 +230,20 @@ private:
   }
 
 
+  ndb_always_inline Response length(njson& request)
+  {
+    if (auto [valid, rsp] = validateLength(request) ; !valid)
+      return Response{.rsp = std::move(rsp)};
+    else
+    {
+      const auto& body = request.at(LenReq);
+      if (auto [exist, it] = getArray(body.at("name").as_string(), body) ; !exist)
+        return Response{.rsp = createErrorResponseNoTkn(LenRsp, RequestStatus::NotExist)};
+      else
+        return ArrayExecutor::length(it->second, body);
+    }
+  }
+
 private:
   
   std::tuple<bool, Arrays::iterator> getArray (const std::string& name, const njson& cmd)
@@ -216,6 +256,11 @@ private:
   {
     const auto& name = cmd.at("name").as_string();
     return getArray(name, cmd);
+  }
+
+  bool arrayExist (const std::string& name)
+  {
+    return m_arrays.contains(name);
   }
 
 

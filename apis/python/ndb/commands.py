@@ -48,6 +48,7 @@ class KvCmd:
   LOAD_REQ      = "KV_LOAD"
   LOAD_RSP      = "KV_LOAD_RSP"
 
+
 class ShCmd:
   NEW_REQ       = 'SH_NEW'
   NEW_RSP       = 'SH_NEW_RSP'
@@ -86,3 +87,19 @@ class ShCmd:
   KEYS_RSP      = 'SH_KEYS_RSP'
 
 
+class ArrCmd:
+  CREATE_REQ    =    "ARR_CREATE"
+  CREATE_RSP    =    "ARR_CREATE_RSP"
+  DELETE_REQ    =    "ARR_DELETE"
+  DELETE_RSP    =    "ARR_DELETE_RSP"
+  DELETE_ALL_REQ    =    "ARR_DELETE_ALL"
+  DELETE_ALL_RSP    =    "ARR_DELETE_ALL_RSP"
+  SET_REQ       =    "ARR_SET"
+  SET_RSP       =    "ARR_SET_RSP"
+  GET_REQ       =    "ARR_GET"
+  GET_RSP       =    "ARR_GET_RSP"
+  GET_RNG_REQ   =    "ARR_GET_RNG"
+  GET_RNG_RSP   =    "ARR_GET_RNG_RSP"
+  LEN_REQ       =    "ARR_LEN"
+  LEN_RSP       =    "ARR_LEN_RSP"
+  
