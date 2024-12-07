@@ -50,9 +50,11 @@ public:
       {ArrQueryType::Delete,          Handler{std::bind_front(&ArrHandler::deleteArray,        std::ref(*this))}},
       {ArrQueryType::DeleteAll,       Handler{std::bind_front(&ArrHandler::deleteAll,          std::ref(*this))}},
       {ArrQueryType::Set,             Handler{std::bind_front(&ArrHandler::set,                std::ref(*this))}},
+      {ArrQueryType::SetRng,          Handler{std::bind_front(&ArrHandler::setRange,           std::ref(*this))}},
       {ArrQueryType::Get,             Handler{std::bind_front(&ArrHandler::get,                std::ref(*this))}},
       {ArrQueryType::GetRng,          Handler{std::bind_front(&ArrHandler::getRange,           std::ref(*this))}},
       {ArrQueryType::Len,             Handler{std::bind_front(&ArrHandler::length,             std::ref(*this))}},
+      {ArrQueryType::Swap,            Handler{std::bind_front(&ArrHandler::swap,               std::ref(*this))}},
     }, 1, alloc);
     
     return h;
@@ -68,9 +70,11 @@ public:
       {DeleteReq,           ArrQueryType::Delete},
       {DeleteAllReq,        ArrQueryType::DeleteAll},
       {SetReq,              ArrQueryType::Set},
+      {SetRngReq,           ArrQueryType::SetRng},
       {GetReq,              ArrQueryType::Get},
       {GetRngReq,           ArrQueryType::GetRng},
       {LenReq,              ArrQueryType::Len},
+      {SwapReq,             ArrQueryType::Swap},
     }, 1, alloc); 
 
     return map;
@@ -124,13 +128,13 @@ private:
 
       try
       {
-        // default 0, let Array decide
-        const std::size_t sizeHint = request.at(CreateReq).get_value_or<std::size_t>("len", 0U);
-        m_arrays.try_emplace(name, Array{sizeHint});
+        const std::size_t size = request.at(CreateReq).at("len").as<std::size_t>();
+        [[maybe_unused]] const auto [it, emplaced] = m_arrays.try_emplace(name, Array{size});
+        // already checked the array name does not exist, so can ignore try_emplace() return val
       }
       catch(const std::exception& e)
       {
-        PLOGE << e.what();
+        PLOGE << __PRETTY_FUNCTION__ << e.what();
         response.rsp[CreateRsp]["st"] = toUnderlying(RequestStatus::Unknown);
       }
 
@@ -155,7 +159,7 @@ private:
       }
       catch(const std::exception& e)
       {
-        PLOGE << e.what();
+        PLOGE << __PRETTY_FUNCTION__ << e.what();
         response.rsp[DeleteRsp]["st"] = toUnderlying(RequestStatus::Unknown);
       }
 
@@ -177,7 +181,7 @@ private:
     }
     catch(const std::exception& e)
     {
-      PLOGE << e.what();
+      PLOGE << __PRETTY_FUNCTION__ << e.what();
       response.rsp[DeleteAllRsp]["st"] = toUnderlying(RequestStatus::Unknown);
     }
 
@@ -196,6 +200,21 @@ private:
         return Response{.rsp = createErrorResponseNoTkn(SetRsp, RequestStatus::NotExist)};
       else
         return ArrayExecutor::set(it->second, body);
+    }
+  }
+
+
+  ndb_always_inline Response setRange(njson& request)
+  {
+    if (auto [valid, rsp] = validateSetRange(request) ; !valid)
+      return Response{.rsp = std::move(rsp)};
+    else
+    {
+      const auto& body = request.at(SetRngReq);
+      if (auto [exist, it] = getArray(body.at("name").as_string(), body) ; !exist)
+        return Response{.rsp = createErrorResponseNoTkn(SetRngRsp, RequestStatus::NotExist)};
+      else
+        return ArrayExecutor::setRange(it->second, body);
     }
   }
 
@@ -241,6 +260,21 @@ private:
         return Response{.rsp = createErrorResponseNoTkn(LenRsp, RequestStatus::NotExist)};
       else
         return ArrayExecutor::length(it->second, body);
+    }
+  }
+
+
+  ndb_always_inline Response swap(njson& request)
+  {
+    if (auto [valid, rsp] = validateSwap(request) ; !valid)
+      return Response{.rsp = std::move(rsp)};
+    else
+    {
+      const auto& body = request.at(SwapReq);
+      if (auto [exist, it] = getArray(body.at("name").as_string(), body) ; !exist)
+        return Response{.rsp = createErrorResponseNoTkn(SwapRsp, RequestStatus::NotExist)};
+      else
+        return ArrayExecutor::swap(it->second, body);
     }
   }
 

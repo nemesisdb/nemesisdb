@@ -28,13 +28,15 @@ A fixed size vector.
 
 |Command|Purpose|Args|Notes|
 |---|---|---|---|
-|ARR_CREATE|Creates array|`name`,`len`|Call `reserve()` with a clamped `len`|
-|ARR_DELETE|Deletes entire list|||
+|ARR_CREATE|Creates array|`name`,`len`|Call `resize()`|
+|ARR_DELETE|Deletes array|||
+|ARR_DELETE_ALL|Deletes all arrays||Useful for testing, maybe not production|
 |ARR_LEN|Returns `size()`|||
 |ARR_GET|Returns a single item|`pos`||
 |ARR_GET_RNG|Returns multiple, based on range|`rng:[a,b]`|Decide if `[a,b]` or `[a,b)`|
 |ARR_SET|Overwrites existing item|`pos`,`item`||
-|ARR_SWAP_ITEM|Swaps two items|`pos1`, `pos2`||
+|ARR_SET_RANGE|Overwrites existing items|`pos`,`items`|Sets items array, starting at `pos`|
+|ARR_SWAP_ITEMS|Swaps two items|`pos1`, `pos2`||
 
 
 ### List

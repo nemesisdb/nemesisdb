@@ -27,17 +27,45 @@ public:
     try
     {
       const auto pos = reqBody.at("pos").as<std::size_t>();
-      auto item = reqBody.at("item");
-
+      
       if (!array.isInbounds(pos))
         response.rsp[SetRsp]["st"] = toUnderlying(RequestStatus::Bounds);
       else
-        array.set(pos, item);
+      {
+        array.set(pos, reqBody.at("item"));
+      }        
     }
     catch(const std::exception& e)
     {
       PLOGE << e.what();
       response.rsp[SetRsp]["st"] = toUnderlying(RequestStatus::Unknown);
+    }
+
+    return response;
+  }
+
+
+  static Response setRange (Array& array, const njson& reqBody)
+  {
+    static const njson Prepared = njson{jsoncons::json_object_arg, {{SetRngRsp, njson::object()}}};
+    
+    Response response{.rsp = Prepared};
+    response.rsp[SetRngRsp]["st"] = toUnderlying(RequestStatus::Ok);
+
+    try
+    {
+      const auto pos = reqBody.at("pos").as<std::size_t>();
+      const auto& items = reqBody.at("items");
+
+      if (!array.isInbounds(pos+items.size()-1))
+        response.rsp[SetRngRsp]["st"] = toUnderlying(RequestStatus::Bounds);
+      else
+        array.setRange(pos, items);
+    }
+    catch(const std::exception& e)
+    {
+      PLOGE << e.what();
+      response.rsp[SetRngRsp]["st"] = toUnderlying(RequestStatus::Unknown);
     }
 
     return response;
@@ -96,6 +124,32 @@ public:
     return response;
   }
 
+
+  static Response swap (Array& array, const njson& reqBody)
+  {
+    static const njson Prepared = njson{jsoncons::json_object_arg, {{SwapRsp, njson::object()}}};
+    
+    Response response{.rsp = Prepared};
+    response.rsp[SwapRsp]["st"] = toUnderlying(RequestStatus::Ok);
+
+    try
+    {
+      const auto posA = reqBody.at("posA").as<std::size_t>();
+      const auto posB = reqBody.at("posB").as<std::size_t>();
+      
+      if (!(array.isInbounds(posA) && array.isInbounds(posB)))
+        response.rsp[SwapRsp]["st"] = toUnderlying(RequestStatus::Bounds);
+      else
+        array.swap(posA, posB);
+    }
+    catch(const std::exception& e)
+    {
+      PLOGE << e.what();
+      response.rsp[SwapRsp]["st"] = toUnderlying(RequestStatus::Unknown);
+    }
+
+    return response;
+  }
 };
 
 }

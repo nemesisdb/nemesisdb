@@ -28,7 +28,7 @@ namespace nemesis { namespace arr {
   Validity validateCreate (const njson& req)
   {
     auto [valid, rsp] = isValid(CreateRsp, req.at(CreateReq), { {Param::required("name", JsonString)},
-                                                                {Param::optional("len", JsonUInt)}});
+                                                                {Param::required("len", JsonUInt)}});
 
     if (!valid)
       return makeInvalid(std::move(rsp));
@@ -51,6 +51,27 @@ namespace nemesis { namespace arr {
     auto [valid, rsp] = isValid(SetRsp, req.at(SetReq), { {Param::required("name", JsonString)},
                                                           {Param::required("pos",  JsonUInt)},
                                                           {Param::required("item", JsonObject)}});
+    if (!valid)
+      return makeInvalid(std::move(rsp));
+    else
+      return makeValid();
+  }
+
+
+  Validity validateSetRange (const njson& req)
+  {
+    auto validate = [](const njson& body) -> std::tuple<RequestStatus, const std::string_view>
+    {
+      for(const auto& item : body.at("items").array_range())
+        if (!item.is_object())
+          return {RequestStatus::ValueTypeInvalid, "items"};
+      
+      return {RequestStatus::Ok, ""};
+    };
+
+    auto [valid, rsp] = isValid(SetRngRsp, req.at(SetRngReq), { {Param::required("name", JsonString)},
+                                                                {Param::required("pos",  JsonUInt)},
+                                                                {Param::required("items", JsonArray)}}, validate);
     if (!valid)
       return makeInvalid(std::move(rsp));
     else
@@ -114,6 +135,17 @@ namespace nemesis { namespace arr {
       return makeValid();
   }
 
+
+  Validity validateSwap (const njson& req)
+  {
+    auto [valid, rsp] = isValid(SwapRsp, req.at(SwapReq), { {Param::required("name", JsonString)},
+                                                            {Param::required("posA", JsonUInt)},
+                                                            {Param::required("posB", JsonUInt)}});
+    if (!valid)
+      return makeInvalid(std::move(rsp));
+    else
+      return makeValid();
+  }
 }
 }
 

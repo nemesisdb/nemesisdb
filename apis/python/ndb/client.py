@@ -313,7 +313,7 @@ class NdbClient:
   
   #region ARR
 
-  async def arr_create(self, name: str, len = 0) -> None:
+  async def arr_create(self, name: str, len = 0) -> int:
     self._raise_if_empty(name)
     await self._sendCmd(ArrCmd.CREATE_REQ, ArrCmd.CREATE_RSP, {'name':name, 'len':len})
 
@@ -330,6 +330,11 @@ class NdbClient:
   async def arr_set(self, name: str, pos: int, item: dict) -> None:
     self._raise_if_empty(name)
     await self._sendCmd(ArrCmd.SET_REQ, ArrCmd.SET_RSP, {'name':name, 'pos': pos, 'item':item})
+
+
+  async def arr_set_rng(self, name: str, pos: int, items: List[dict]) -> None:
+    self._raise_if_empty(name)
+    await self._sendCmd(ArrCmd.SET_RNG_REQ, ArrCmd.SET_RNG_RSP, {'name':name, 'pos': pos, 'items':items})
 
 
   async def arr_get(self, name: str, pos: int) -> dict:
@@ -353,6 +358,11 @@ class NdbClient:
     rsp = await self._sendCmd(ArrCmd.LEN_REQ, ArrCmd.LEN_RSP, {'name':name})
     return rsp[ArrCmd.LEN_RSP]['len']
 
+
+  async def arr_swap(self, name: str, posA: int, posB: int) -> int:
+    self._raise_if_empty(name)
+    await self._sendCmd(ArrCmd.SWAP_REQ, ArrCmd.SWAP_RSP, {'name':name, 'posA':posA, 'posB':posB})
+  
   #endregion
   
 

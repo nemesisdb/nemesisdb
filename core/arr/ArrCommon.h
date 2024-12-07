@@ -19,9 +19,11 @@ namespace nemesis {  namespace arr {
     Delete,
     DeleteAll,
     Set,
+    SetRng,
     Get,
     GetRng,
-    Len
+    Len,
+    Swap
   };
 
 }
