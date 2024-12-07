@@ -55,6 +55,7 @@ public:
       {ArrQueryType::GetRng,          Handler{std::bind_front(&ArrHandler::getRange,           std::ref(*this))}},
       {ArrQueryType::Len,             Handler{std::bind_front(&ArrHandler::length,             std::ref(*this))}},
       {ArrQueryType::Swap,            Handler{std::bind_front(&ArrHandler::swap,               std::ref(*this))}},
+      {ArrQueryType::Exist,           Handler{std::bind_front(&ArrHandler::exist,              std::ref(*this))}},
     }, 1, alloc);
     
     return h;
@@ -75,6 +76,7 @@ public:
       {GetRngReq,           ArrQueryType::GetRng},
       {LenReq,              ArrQueryType::Len},
       {SwapReq,             ArrQueryType::Swap},
+      {ExistReq,            ArrQueryType::Exist},
     }, 1, alloc); 
 
     return map;
@@ -281,6 +283,28 @@ private:
         return ArrayExecutor::swap(it->second, body);
     }
   }
+
+
+  ndb_always_inline Response exist(njson& request)
+  {
+    if (auto [valid, err] = validateExist(request) ; !valid)
+      return Response{.rsp = std::move(err)};
+    else
+    {
+      static const njson Prepared = njson{jsoncons::json_object_arg, {{ExistRsp, njson::object()}}};
+
+      const auto& name = request.at(ExistReq).at("name").as_string();
+      const auto status = toUnderlying(arrayExist(name) ? RequestStatus::Ok : RequestStatus::NotExist);
+
+      njson rsp {Prepared};
+      rsp[ExistRsp]["st"] = status;
+
+      return Response { .rsp = std::move(rsp)};
+    }
+  }
+
+
+  
 
 private:
   

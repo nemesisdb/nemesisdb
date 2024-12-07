@@ -106,4 +106,6 @@ class ArrCmd:
   LEN_RSP           =    "ARR_LEN_RSP"
   SWAP_REQ          =    "ARR_SWAP"
   SWAP_RSP          =    "ARR_SWAP_RSP"
+  EXIST_REQ         =    "ARR_EXIST"
+  EXIST_RSP         =    "ARR_EXIST_RSP"
   

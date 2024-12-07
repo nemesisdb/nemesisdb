@@ -12,8 +12,10 @@ namespace nemesis { namespace arr { namespace cmds {
   const char DeleteRsp[]      = "ARR_DELETE_RSP";
   const char DeleteAllReq[]   = "ARR_DELETE_ALL";
   const char DeleteAllRsp[]   = "ARR_DELETE_ALL_RSP";
-  const char LenReq[]           = "ARR_LEN";
-  const char LenRsp[]           = "ARR_LEN_RSP";
+  const char ExistReq[]       = "ARR_EXIST";
+  const char ExistRsp[]       = "ARR_EXIST_RSP";
+  const char LenReq[]         = "ARR_LEN";
+  const char LenRsp[]         = "ARR_LEN_RSP";
   const char SwapReq[]    = "ARR_SWAP";
   const char SwapRsp[]    = "ARR_SWAP_RSP";
   const char SetReq[]     = "ARR_SET";  

@@ -15,31 +15,46 @@
 
 
 
-## Containers
-
-- Note: most commands require a `name`, even if not shown
-
-### Array
+## Array
 
 A fixed size vector.
 
 - Offers special commands compared to creating a key with array value (set/get items by position, swapping, union, etc)
 - Offers spacial locality benefits compared to List. May offer benefits over a Set, depending on commands available.
 
+<br/>
+
+### Initial
+
+Note: all commands require a `name`, even if not shown, except `ARR_DELETE_ALL`
+
 |Command|Purpose|Args|Notes|
 |---|---|---|---|
-|ARR_CREATE|Creates array|`name`,`len`|Call `resize()`|
+|ARR_CREATE|Creates array|`name`,`len`|Call `resize()`. Items are empty json object|
 |ARR_DELETE|Deletes array|||
 |ARR_DELETE_ALL|Deletes all arrays||Useful for testing, maybe not production|
+|ARR_EXISTS|Checks array name|`name`||
 |ARR_LEN|Returns `size()`|||
 |ARR_GET|Returns a single item|`pos`||
-|ARR_GET_RNG|Returns multiple, based on range|`rng:[a,b]` or `rng:[a]`|Range is inclusive: `[a,b)`. If `b` not set, assume `end()`. Allow negative indices?|
+|ARR_GET_RNG|Returns multiple, based on range|`rng:[a,b]` or `rng:[a]`|Range is: `[a,b)`. If `b` not set or past end, assume `end()`. Allow negative indices?|
 |ARR_SET|Overwrites existing item|`pos`,`item`||
 |ARR_SET_RANGE|Overwrites existing items|`pos`,`items`|Sets items array, starting at `pos`|
-|ARR_SWAP_ITEMS|Swaps two items|`posA`, `posB`||
+|ARR_SWAP|Swaps two items|`posA`, `posB`||
 
 
-### List
+<br/>
+
+### Next
+|Command|Purpose|Args|Notes|
+|---|---|---|---|
+|ARR_COPY|Copy array to new array|`src_name`,`dst_name`, `src_start`, `src_stop`|Creates `dst_name` array of size `src_stop - src_start` then copies from `[src_start, src_stop)`|
+|ARR_MOVE|Move to a different array|`src_name`, `dst_name`|Create `dst_name` if required. No items copied. Does `std::move()`. `dst_name` array is cleared if it has items.|
+|ARR_CLEAR|Resets items to initial value (empty object)|`start`, `stop`||
+
+
+<br/>
+
+## List
 Suitable for inserts at random positions at the expensive of spacial locality.
 
 TODO
@@ -63,7 +78,9 @@ TODO
 |LST_RMV|Delete by position|`pos`, `len`|Removes from `pos` to `pos+len`. `pos` must be in range, but if `pos+len > size()` remove from `pos` to end. Returns `size()`|
 
 
-### Queue
+<br/>
+
+## Queue
 Standard queue backed by `std::vector`.
 
 |Command|Purpose|Args|Notes|
@@ -79,7 +96,9 @@ Standard queue backed by `std::vector`.
 |QUE_LAST|Returns last item, does not pop|||
 
 
-### Set
+<br/>
+
+## Set
 |Command|Purpose|Args|Notes|
 |---|---|---|---|
 |SET_CREATE|Create|`name`||

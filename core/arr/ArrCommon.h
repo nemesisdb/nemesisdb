@@ -23,7 +23,8 @@ namespace nemesis {  namespace arr {
     Get,
     GetRng,
     Len,
-    Swap
+    Swap,
+    Exist
   };
 
 }

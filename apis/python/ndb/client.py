@@ -1,3 +1,5 @@
+
+
 from ndb.commands import StValues, Fields, SvCmd, KvCmd, ShCmd, ArrCmd
 from ndb.connection import Connection
 from ndb.logging import logger
@@ -363,15 +365,24 @@ class NdbClient:
   async def arr_swap(self, name: str, posA: int, posB: int) -> int:
     self._raise_if_empty(name)
     await self._sendCmd(ArrCmd.SWAP_REQ, ArrCmd.SWAP_RSP, {'name':name, 'posA':posA, 'posB':posB})
+
   
+  async def arr_exist(self, name: str) -> bool:
+    # this query uses the status to indicate result: StValue.ST_SUCCESS means the array exists
+    self._raise_if_empty(name)
+    # checkStatus=False because 'status' not being success is not an error
+    rsp = await self._sendCmd(ArrCmd.EXIST_REQ, ArrCmd.EXIST_RSP, {'name':name}, checkStatus=False)    
+    return rsp[ArrCmd.EXIST_RSP]['st'] == StValues.ST_SUCCESS
+  
+
   #endregion
-  
 
 
-  async def _sendCmd(self, cmdReq: str, cmdRsp: str, body: dict, stSuccess = StValues.ST_SUCCESS):
+  async def _sendCmd(self, cmdReq: str, cmdRsp: str, body: dict, stSuccess = StValues.ST_SUCCESS, checkStatus = True):
     req = {cmdReq : body}
     rsp = await self.ws.query(req)
-    self._raise_if_invalid(rsp, cmdRsp, stSuccess)
+    if checkStatus:
+      self._raise_if_invalid(rsp, cmdRsp, stSuccess)
     return rsp
   
 

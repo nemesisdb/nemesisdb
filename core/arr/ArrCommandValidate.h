@@ -134,10 +134,8 @@ namespace nemesis { namespace arr {
 
   Validity validateLength (const njson& req)
   {
-    if (auto [valid, rsp] = isValid(LenRsp, req.at(LenReq), { {Param::required("name", JsonString)}}); !valid)
-      return makeInvalid(std::move(rsp));
-    else
-      return makeValid();
+    auto [valid, rsp] = isValid(LenRsp, req.at(LenReq), { {Param::required("name", JsonString)}});
+    return valid ? makeValid() : makeInvalid(std::move(rsp));
   }
 
 
@@ -146,10 +144,14 @@ namespace nemesis { namespace arr {
     auto [valid, rsp] = isValid(SwapRsp, req.at(SwapReq), { {Param::required("name", JsonString)},
                                                             {Param::required("posA", JsonUInt)},
                                                             {Param::required("posB", JsonUInt)}});
-    if (!valid)
-      return makeInvalid(std::move(rsp));
-    else
-      return makeValid();
+    return valid ? makeValid() : makeInvalid(std::move(rsp));
+  }
+
+
+  Validity validateExist (const njson& req)
+  {
+    auto [valid, rsp] = isValid(ExistRsp, req.at(ExistReq), { {Param::required("name", JsonString)}});
+    return valid ? makeValid() : makeInvalid(std::move(rsp));
   }
 }
 }
