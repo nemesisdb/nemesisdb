@@ -120,6 +120,8 @@ private:
       return Response{.rsp = std::move(rsp)};
     else if (const auto& name = request.at(CreateReq).at("name").as_string(); arrayExist(name))
       return Response{.rsp = createErrorResponseNoTkn(CreateRsp, RequestStatus::Duplicate)};
+    else if (const auto size = request.at(CreateReq).at("len").as<std::size_t>(); !Array::isRequestedSizeValid(size))
+      return Response{.rsp = createErrorResponseNoTkn(CreateRsp, RequestStatus::ValueSize)};
     else
     {
       Response response;

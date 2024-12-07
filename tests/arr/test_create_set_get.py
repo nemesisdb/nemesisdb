@@ -4,16 +4,19 @@ from base import NDBArrayTest, ResponseError
 
 class Array(NDBArrayTest):
 
-  async def test_create_default_size(self):
-    await self.client.arr_create('arr1')
-    len = await self.client.arr_len('arr1')
-    self.assertGreater(len, 0)
-
-
   async def test_create_custom_size(self):
     await self.client.arr_create('arr2', 30)
     len = await self.client.arr_len('arr2')
     self.assertEqual(len, 30)
+
+  
+  async def test_create_invalid_size(self):
+    # caught by PyAPI
+    with self.assertRaises(ValueError):
+      await self.client.arr_create('arr_', 0)
+
+    with self.assertRaises(ValueError): 
+      await self.client.arr_create('arr_', -1)
 
 
   async def test_set_get(self):

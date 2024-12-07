@@ -313,8 +313,9 @@ class NdbClient:
   
   #region ARR
 
-  async def arr_create(self, name: str, len = 0) -> int:
+  async def arr_create(self, name: str, len: int) -> int:
     self._raise_if_empty(name)
+    self._raise_if(len, 'zero', lambda v: v <= 0)
     await self._sendCmd(ArrCmd.CREATE_REQ, ArrCmd.CREATE_RSP, {'name':name, 'len':len})
 
 

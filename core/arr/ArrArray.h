@@ -19,13 +19,17 @@ does provide isInbounds() for users.
 */
 class Array
 {
-  
-
 public:
   
-  Array(const std::size_t sizeHint = 10) : m_size(std::clamp<std::size_t>(sizeHint, 1, 1'000))
+  Array(const std::size_t size) : m_size(size)
   {
     m_array.resize(m_size); // initialised as empty json object: {}
+  }
+
+
+  static bool isRequestedSizeValid(const std::size_t size)
+  {
+    return size == std::clamp<std::size_t>(size, 1, 1'000); // TODO quite arbitrary
   }
 
 
