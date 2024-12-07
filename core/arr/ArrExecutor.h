@@ -57,7 +57,7 @@ public:
       const auto pos = reqBody.at("pos").as<std::size_t>();
       const auto& items = reqBody.at("items");
 
-      if (!array.isInbounds(pos+items.size()-1))
+      if (!array.isSetInBounds(pos, items.size()))
         response.rsp[SetRngRsp]["st"] = toUnderlying(RequestStatus::Bounds);
       else
         array.setRange(pos, items);
@@ -103,12 +103,10 @@ public:
 
     PLOGD << "getRange(): " << start << " to " << stop;
 
-    if (!(array.isInbounds(start) && array.isInbounds(stop)))
+    if (!array.isGetInBounds(start, stop))  [[unlikely]]
       response.rsp[GetRngRsp]["st"] = toUnderlying(RequestStatus::Bounds);
     else
       response.rsp[GetRngRsp].try_emplace("items", array.getRange(start, stop));
-
-      //response.rsp[GetRngRsp]["items"] = array.getRange(start, stop);
 
     return response;
   }

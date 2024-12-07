@@ -33,10 +33,10 @@ A fixed size vector.
 |ARR_DELETE_ALL|Deletes all arrays||Useful for testing, maybe not production|
 |ARR_LEN|Returns `size()`|||
 |ARR_GET|Returns a single item|`pos`||
-|ARR_GET_RNG|Returns multiple, based on range|`rng:[a,b]`|Decide if `[a,b]` or `[a,b)`|
+|ARR_GET_RNG|Returns multiple, based on range|`rng:[a,b]` or `rng:[a]`|Range is inclusive: `[a,b)`. If `b` not set, assume `end()`|
 |ARR_SET|Overwrites existing item|`pos`,`item`||
 |ARR_SET_RANGE|Overwrites existing items|`pos`,`items`|Sets items array, starting at `pos`|
-|ARR_SWAP_ITEMS|Swaps two items|`pos1`, `pos2`||
+|ARR_SWAP_ITEMS|Swaps two items|`posA`, `posB`||
 
 
 ### List

@@ -10,12 +10,12 @@ class Swap(NDBArrayTest):
     await self.client.arr_create('arr1', len(data))
     await self.client.arr_set_rng('arr1', 0, data)
     
-    values = await self.client.arr_get_rng('arr1', 0, len(data)-1)
+    values = await self.client.arr_get_rng('arr1', 0, len(data))
 
     # swap {'k0':0} with {'k3':3}
     await self.client.arr_swap('arr1', 0, len(data)-1)
     
-    swappedValues = await self.client.arr_get_rng('arr1', 0, len(data)-1)
+    swappedValues = await self.client.arr_get_rng('arr1', 0, len(data))
 
     self.assertDictEqual(swappedValues[0], values[len(data)-1])
 

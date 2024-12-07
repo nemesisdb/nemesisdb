@@ -14,7 +14,7 @@ class SetRange(NDBArrayTest):
     await self.client.arr_create('arr1', size)
 
     await self.client.arr_set_rng('arr1', 0, data)
-    values = await self.client.arr_get_rng('arr1', 0, size-1)
+    values = await self.client.arr_get_rng('arr1', 0, size)
 
     self.assertEqual(len(values), size)
 
@@ -34,7 +34,7 @@ class SetRange(NDBArrayTest):
     await self.client.arr_create('arr2', size)
 
     await self.client.arr_set_rng('arr2', 0, data)
-    values = await self.client.arr_get_rng('arr2', 0, setSize-1)
+    values = await self.client.arr_get_rng('arr2', 0, setSize)
 
     self.assertEqual(len(values), setSize)
 
@@ -59,7 +59,7 @@ class SetRange(NDBArrayTest):
 
     await self.client.arr_set_rng('arr3', setStart, data[setStart:setStart+setSize])
 
-    values = await self.client.arr_get_rng('arr3', setStart, setStart+setSize-1)
+    values = await self.client.arr_get_rng('arr3', setStart, setStart+setSize)
     self.assertEqual(len(values), setSize)
     
     for i in range(0, len(values)):

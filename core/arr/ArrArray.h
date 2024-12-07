@@ -23,7 +23,7 @@ public:
   
   Array(const std::size_t size) : m_size(size)
   {
-    m_array.resize(m_size); // initialised as empty json object: {}
+    m_array.resize(m_size); // initialised as empty json objects: {}
   }
 
 
@@ -35,7 +35,7 @@ public:
 
   bool isInbounds(const std::size_t pos) const noexcept
   {
-    return pos <= m_size-1;
+    return pos < m_size;
   }
 
 
@@ -58,16 +58,30 @@ public:
   }
 
 
+  bool isSetInBounds(const std::size_t start, const std::size_t setSize)
+  {
+    return start < m_size && start + setSize <= m_size;
+  }
+
+
+  bool isGetInBounds(const std::size_t start, const std::size_t stop)
+  {
+    return start < m_size && start+(stop-start) <= m_size;
+  }
+
+
   njson getRange(const std::size_t start, const std::size_t stop) const
   {
-    const auto rangeSize = stop-start+1;
+    const auto itStart = std::next(m_array.cbegin(), start);
+    const auto itEnd = std::next(itStart, std::min<std::size_t>(m_size, stop-start));
+    const auto rangeSize = std::distance(itStart, itEnd);
 
     njson rsp = njson::make_array(std::clamp<std::size_t>(rangeSize, rangeSize, 100));
 
     PLOGD << "getRange(): rsp size " << rsp.size();
     
     std::size_t i = 0;
-    std::for_each_n(std::next(m_array.cbegin(), start), rangeSize, [&rsp, &i](const auto& json)
+    std::for_each_n(itStart, rangeSize, [&rsp, &i](const auto& json)
     {
       rsp[i++] = json;
     });

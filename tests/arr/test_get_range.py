@@ -20,7 +20,7 @@ class GetRange(RangeTest):
 
   async def test_small(self):
     rangeSize = self.size//4
-    stop = rangeSize - 1 # -1 because range is inclusive
+    stop = rangeSize 
 
     values = await self.client.arr_get_rng('arr', 0, stop)
     self.assertEqual(len(values), rangeSize)
@@ -31,7 +31,7 @@ class GetRange(RangeTest):
 
   async def test_larger(self):
     rangeSize = self.size//2
-    stop = rangeSize - 1 # -1 because range is inclusive
+    stop = rangeSize
 
     values = await self.client.arr_get_rng('arr', 0, stop)
     self.assertEqual(len(values), rangeSize)
@@ -40,8 +40,13 @@ class GetRange(RangeTest):
       self.assertDictEqual(values[i], {f'k{i}':i})
 
 
-  async def test_same_start_stop(self):
+  async def test_start_stop_eq(self):
     values = await self.client.arr_get_rng('arr', 0, 0)
+    self.assertEqual(len(values), 0)
+
+  
+  async def test_rng_one(self):
+    values = await self.client.arr_get_rng('arr', 0, 1)
     self.assertEqual(len(values), 1)
     self.assertDictEqual(values[0], {'k0':0})
 
@@ -53,13 +58,13 @@ class GetRange(RangeTest):
 
   async def test_stop_bounds(self):
     with self.assertRaises(ResponseError): 
-      await self.client.arr_get_rng('arr', 0, self.size)
+      await self.client.arr_get_rng('arr', 0, self.size+1)
 
 
   async def test_negative(self):
-    with self.assertRaises(ResponseError): 
-      await self.client.arr_get_rng('arr', -1, self.size//2)
-      
+    with self.assertRaises(ResponseError): # problem is negative start index
+      await self.client.arr_get_rng('arr', -1, 3)
+
 
 if __name__ == "__main__":
   unittest.main()

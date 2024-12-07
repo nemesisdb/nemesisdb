@@ -238,6 +238,8 @@ private:
 
   ndb_always_inline Response getRange(njson& request)
   {
+    // TODO 'stop' optional
+    
     if (auto [valid, rsp] = validateGetRange(request) ; !valid)
       return Response{.rsp = std::move(rsp)};
     else
