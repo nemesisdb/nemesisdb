@@ -56,6 +56,7 @@ public:
       {ArrQueryType::Len,             Handler{std::bind_front(&ArrHandler::length,             std::ref(*this))}},
       {ArrQueryType::Swap,            Handler{std::bind_front(&ArrHandler::swap,               std::ref(*this))}},
       {ArrQueryType::Exist,           Handler{std::bind_front(&ArrHandler::exist,              std::ref(*this))}},
+      {ArrQueryType::Clear,           Handler{std::bind_front(&ArrHandler::clear,              std::ref(*this))}},
     }, 1, alloc);
     
     return h;
@@ -77,6 +78,7 @@ public:
       {LenReq,              ArrQueryType::Len},
       {SwapReq,             ArrQueryType::Swap},
       {ExistReq,            ArrQueryType::Exist},
+      {ClearReq,            ArrQueryType::Clear},
     }, 1, alloc); 
 
     return map;
@@ -303,6 +305,20 @@ private:
     }
   }
 
+
+  ndb_always_inline Response clear(njson& request)
+  {
+    if (auto [valid, rsp] = validateClear(request) ; !valid)
+      return Response{.rsp = std::move(rsp)};
+    else
+    {
+      const auto& body = request.at(ClearReq);
+      if (auto [exist, it] = getArray(body.at("name").as_string(), body) ; !exist)
+        return Response{.rsp = createErrorResponseNoTkn(ClearRsp, RequestStatus::NotExist)};
+      else
+        return ArrayExecutor::clear(it->second, body);
+    }
+  }
 
   
 

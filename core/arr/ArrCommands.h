@@ -18,6 +18,8 @@ namespace nemesis { namespace arr { namespace cmds {
   const char LenRsp[]         = "ARR_LEN_RSP";
   const char SwapReq[]    = "ARR_SWAP";
   const char SwapRsp[]    = "ARR_SWAP_RSP";
+  const char ClearReq[]   = "ARR_CLEAR";
+  const char ClearRsp[]   = "ARR_CLEAR_RSP";  
   const char SetReq[]     = "ARR_SET";  
   const char SetRsp[]     = "ARR_SET_RSP";
   const char SetRngReq[]  = "ARR_SET_RNG";  

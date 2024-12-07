@@ -163,6 +163,34 @@ public:
     return response;
   }
 
+
+  static Response clear (Array& array, const njson& reqBody)
+  {
+    static const njson Prepared = njson{jsoncons::json_object_arg, {{ClearRsp, njson::object()}}};
+    
+    Response response{.rsp = Prepared};
+    response.rsp[ClearRsp]["st"] = toUnderlying(RequestStatus::Ok);
+
+    try
+    {
+      const auto& rng = reqBody.at("rng").array_range();
+      const auto start = rng.cbegin()->as<std::size_t>();
+      const auto stop = rng.crbegin()->as<std::size_t>();
+
+      if (!array.isInBounds(start))
+        response.rsp[ClearRsp]["st"] = toUnderlying(RequestStatus::Bounds);
+      else
+        array.clear(start, stop);
+    }
+    catch(const std::exception& e)
+    {
+      PLOGE << e.what();
+      response.rsp[ClearRsp]["st"] = toUnderlying(RequestStatus::Unknown);
+    }
+
+    return response;
+  }
+
 };
 
 }

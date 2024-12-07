@@ -105,7 +105,7 @@ namespace nemesis { namespace arr {
           return {RequestStatus::ValueTypeInvalid, "rng"};
         else if (nDims == 2)
         {
-          const auto second = std::next(rngArray.begin());
+          const auto second = std::next(first);
           if (!second->is_uint64())
             return {RequestStatus::ValueTypeInvalid, "rng"};
           else
@@ -151,6 +151,31 @@ namespace nemesis { namespace arr {
   Validity validateExist (const njson& req)
   {
     auto [valid, rsp] = isValid(ExistRsp, req.at(ExistReq), { {Param::required("name", JsonString)}});
+    return valid ? makeValid() : makeInvalid(std::move(rsp));
+  }
+
+
+  Validity validateClear (const njson& req)
+  {
+    auto checkRange = [](const njson& body) -> std::tuple<RequestStatus, const std::string_view>
+    {
+      if (body.at("rng").size() != 2)
+        return {RequestStatus::CommandSyntax, "rng"};
+      else
+      {
+        const auto rngArray = body.at("rng").array_range();
+        const auto first = rngArray.begin();
+        const auto second = std::next(first);
+
+        if (!(first->is_uint64() && second->is_uint64()))
+          return {RequestStatus::ValueTypeInvalid, "rng"};
+      }
+
+      return {RequestStatus::Ok, ""};
+    };
+
+    auto [valid, rsp] = isValid(ClearRsp, req.at(ClearReq), { {Param::required("name", JsonString)},
+                                                              {Param::required("rng", JsonArray)}}, checkRange);
     return valid ? makeValid() : makeInvalid(std::move(rsp));
   }
 }

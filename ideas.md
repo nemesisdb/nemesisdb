@@ -40,6 +40,7 @@ Note: all commands require a `name`, even if not shown, except `ARR_DELETE_ALL`
 |ARR_SET|Overwrites existing item|`pos`,`item`||
 |ARR_SET_RANGE|Overwrites existing items|`pos`,`items`|Sets items array, starting at `pos`|
 |ARR_SWAP|Swaps two items|`posA`, `posB`||
+|ARR_CLEAR|Resets items to empty objects|`name`, `rng:[a,b]`|Sets elements in `[a,b)` to empty object|
 
 
 <br/>

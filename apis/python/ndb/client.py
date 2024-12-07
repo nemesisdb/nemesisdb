@@ -346,13 +346,17 @@ class NdbClient:
     return rsp[ArrCmd.GET_RSP]['item']
 
 
-  async def arr_get_rng(self, name: str, start: int, stop: int) -> List[dict]:
+  async def arr_get_rng(self, name: str, start: int, stop = None) -> List[dict]:
     self._raise_if_empty(name)
 
-    if start > stop:
+    if stop == None:
+      rng = [start]
+    elif start > stop:
       raise ValueError('start > stop')
+    else:
+      rng = [start, stop]
         
-    rsp = await self._sendCmd(ArrCmd.GET_RNG_REQ, ArrCmd.GET_RNG_RSP, {'name':name, 'rng':[start, stop]})
+    rsp = await self._sendCmd(ArrCmd.GET_RNG_REQ, ArrCmd.GET_RNG_RSP, {'name':name, 'rng':rng})
     return rsp[ArrCmd.GET_RNG_RSP]['items']
   
   
@@ -374,6 +378,11 @@ class NdbClient:
     rsp = await self._sendCmd(ArrCmd.EXIST_REQ, ArrCmd.EXIST_RSP, {'name':name}, checkStatus=False)    
     return rsp[ArrCmd.EXIST_RSP]['st'] == StValues.ST_SUCCESS
   
+
+  async def arr_clear(self, name: str, start: int, stop: int) -> None:
+    self._raise_if_empty(name)
+    await self._sendCmd(ArrCmd.CLEAR_REQ, ArrCmd.CLEAR_RSP, {'name':name, 'rng':[start, stop]})
+
 
   #endregion
 

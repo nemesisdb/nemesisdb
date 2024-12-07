@@ -78,10 +78,10 @@ public:
 
   njson getRange(const std::size_t start, std::size_t stop) const
   {
-    stop = stop > m_size ? m_size : stop;
+    stop = std::min<std::size_t> (stop, m_size);
 
     const auto itStart = std::next(m_array.cbegin(), start);
-    const auto itEnd = std::next(itStart, std::min<std::size_t>(m_size, stop-start));
+    const auto itEnd = std::next(itStart, std::min<std::size_t>(m_size, stop-start)); // TODO std::next(m_array.cbegin(), stop); ?
     const auto rangeSize = std::distance(itStart, itEnd);
 
     PLOGD << "Array::getRange(): " << start << " to " << stop;
@@ -97,13 +97,29 @@ public:
     return rsp;
   }
 
-
   void swap(const std::size_t posA, const std::size_t posB)
   {
     std::iter_swap( std::next(m_array.begin(), posA),
                     std::next(m_array.begin(), posB));
   }
 
+
+  void clear(const std::size_t start)
+  {
+    clear(start, m_size);
+  }
+
+
+  void clear(const std::size_t start, const std::size_t stop)
+  {
+    PLOGD << "Array::clear(): " << start << " to " << stop;
+
+    const auto itStart = std::next(m_array.begin(), start);
+    const auto itEnd = std::next(m_array.begin(), std::min<std::size_t>(m_size, stop));
+
+    for (auto it = itStart ; it != itEnd; ++it)
+      *it = njson{};
+  }
 
 
   std::size_t size() const noexcept

@@ -24,7 +24,8 @@ namespace nemesis {  namespace arr {
     GetRng,
     Len,
     Swap,
-    Exist
+    Exist,
+    Clear
   };
 
 }

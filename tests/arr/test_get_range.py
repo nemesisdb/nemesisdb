@@ -57,6 +57,12 @@ class GetRange(RangeTest):
     self.assertEqual(len(values), self.size)
 
 
+  async def test_start_only(self):
+    # stop is capped to end()
+    values = await self.client.arr_get_rng('arr', 0)
+    self.assertEqual(len(values), self.size)
+
+
   async def test_start_gt_stop(self):
     with self.assertRaises(ValueError): # caught by the PyAPI before being sent
       await self.client.arr_get_rng('arr', 5, 0)
