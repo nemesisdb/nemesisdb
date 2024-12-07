@@ -4,7 +4,7 @@ from base import NDBArrayTest, ResponseError
 
 class Array(NDBArrayTest):
 
-  async def test_create_custom_size(self):
+  async def test_create(self):
     await self.client.arr_create('arr2', 30)
     len = await self.client.arr_len('arr2')
     self.assertEqual(len, 30)
@@ -17,6 +17,9 @@ class Array(NDBArrayTest):
 
     with self.assertRaises(ValueError): 
       await self.client.arr_create('arr_', -1)
+
+    with self.assertRaises(ResponseError): 
+      await self.client.arr_create('arr_', 10000)
 
 
   async def test_set_get(self):
