@@ -28,7 +28,7 @@ public:
     {
       const auto pos = reqBody.at("pos").as<std::size_t>();
       
-      if (!array.isInbounds(pos))
+      if (!array.isInBounds(pos))
         response.rsp[SetRsp]["st"] = toUnderlying(RequestStatus::Bounds);
       else
       {
@@ -81,7 +81,7 @@ public:
 
     const auto pos = reqBody.at("pos").as<std::size_t>();
 
-    if (!array.isInbounds(pos))
+    if (!array.isInBounds(pos))
       response.rsp[GetRsp]["st"] = toUnderlying(RequestStatus::Bounds);
     else
       response.rsp[GetRsp]["item"] = array.get(pos);
@@ -135,7 +135,7 @@ public:
       const auto posA = reqBody.at("posA").as<std::size_t>();
       const auto posB = reqBody.at("posB").as<std::size_t>();
       
-      if (!(array.isInbounds(posA) && array.isInbounds(posB)))
+      if (!(array.isInBounds(posA) && array.isInBounds(posB)))
         response.rsp[SwapRsp]["st"] = toUnderlying(RequestStatus::Bounds);
       else
         array.swap(posA, posB);
