@@ -33,9 +33,21 @@ public:
   }
 
 
-  bool isInbounds(const std::size_t pos) const noexcept
+  bool isInBounds(const std::size_t pos) const noexcept
   {
     return pos < m_size;
+  }
+
+
+  bool isSetInBounds(const std::size_t start, const std::size_t setSize)
+  {
+    return start < m_size && start + setSize <= m_size;
+  }
+
+
+  bool isGetInBounds(const std::size_t start, const std::size_t stop)
+  {
+    return start < m_size && start+(stop-start) <= m_size;
   }
 
 
@@ -55,18 +67,6 @@ public:
   njson get(const std::size_t pos) const
   {
     return m_array[pos];
-  }
-
-
-  bool isSetInBounds(const std::size_t start, const std::size_t setSize)
-  {
-    return start < m_size && start + setSize <= m_size;
-  }
-
-
-  bool isGetInBounds(const std::size_t start, const std::size_t stop)
-  {
-    return start < m_size && start+(stop-start) <= m_size;
   }
 
 
