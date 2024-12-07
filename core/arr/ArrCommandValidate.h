@@ -94,24 +94,29 @@ namespace nemesis { namespace arr {
   {
     auto validate = [](const njson& body) -> std::tuple<RequestStatus, const std::string_view>
     {
-      if (body.at("rng").size() != 2) [[unlikely]]
+      if (const auto nDims = body.at("rng").size(); !(nDims == 1 || nDims == 2)) [[unlikely]]
         return {RequestStatus::ValueSize, "rng"};
       else
       {
         const auto rngArray = body.at("rng").array_range();
         const auto first = rngArray.begin();
-        const auto second = std::next(rngArray.begin(), 1);
         
-        if (!(first->is_uint64() && second->is_uint64()))
+        if (!first->is_uint64())
           return {RequestStatus::ValueTypeInvalid, "rng"};
-        else
+        else if (nDims == 2)
         {
-          const auto start = first->as<std::size_t>();
-          const auto stop = second->as<std::size_t>();
+          const auto second = std::next(rngArray.begin());
+          if (!second->is_uint64())
+            return {RequestStatus::ValueTypeInvalid, "rng"};
+          else
+          {
+            const auto start = first->as<std::size_t>();
+            const auto stop = second->as<std::size_t>();
 
-          if (start > stop)
-            return {RequestStatus::CommandSyntax, "start > stop"};
-        }        
+            if (start > stop)
+              return {RequestStatus::CommandSyntax, "start > stop"};
+          }
+        }
       }
       
       return {RequestStatus::Ok, ""};

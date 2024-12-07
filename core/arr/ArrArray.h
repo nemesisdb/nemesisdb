@@ -47,7 +47,7 @@ public:
 
   bool isGetInBounds(const std::size_t start, const std::size_t stop)
   {
-    return start < m_size && start+(stop-start) <= m_size;
+    return start < m_size ;//&& start+(stop-start) <= m_size;
   }
 
 
@@ -70,20 +70,28 @@ public:
   }
 
 
-  njson getRange(const std::size_t start, const std::size_t stop) const
+  njson getRange(const std::size_t start) const
   {
+    return getRange(start, m_size);
+  }
+
+
+  njson getRange(const std::size_t start, std::size_t stop) const
+  {
+    stop = stop > m_size ? m_size : stop;
+
     const auto itStart = std::next(m_array.cbegin(), start);
     const auto itEnd = std::next(itStart, std::min<std::size_t>(m_size, stop-start));
     const auto rangeSize = std::distance(itStart, itEnd);
 
-    njson rsp = njson::make_array(std::clamp<std::size_t>(rangeSize, rangeSize, 100));
+    PLOGD << "Array::getRange(): " << start << " to " << stop;
 
-    PLOGD << "getRange(): rsp size " << rsp.size();
+    njson rsp{njson::make_array(std::min<std::size_t>(rangeSize, 100))};
     
     std::size_t i = 0;
-    std::for_each_n(itStart, rangeSize, [&rsp, &i](const auto& json)
+    std::for_each(itStart, itEnd, [&rsp, &i](const auto& item)
     {
-      rsp[i++] = json;
+      rsp[i++] = item;
     });
 
     return rsp;

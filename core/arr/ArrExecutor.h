@@ -94,19 +94,33 @@ public:
   {
     static const njson Prepared = njson{jsoncons::json_object_arg, {{GetRngRsp, njson::object()}}};
     
+    RequestStatus status = RequestStatus::Ok;
     Response response{.rsp = Prepared};
-    response.rsp[GetRngRsp]["st"] = toUnderlying(RequestStatus::Ok);
 
     const auto rngArray = reqBody.at("rng").array_range();
     const auto start = rngArray.begin()->as<std::size_t>();
-    const auto stop = std::next(rngArray.begin(), 1)->as<std::size_t>();
 
-    PLOGD << "getRange(): " << start << " to " << stop;
+    njson items;
 
-    if (!array.isGetInBounds(start, stop))  [[unlikely]]
-      response.rsp[GetRngRsp]["st"] = toUnderlying(RequestStatus::Bounds);
+    if (reqBody.at("rng").size() == 1)
+    {
+      if (!array.isInBounds(start))  [[unlikely]]
+        status = RequestStatus::Bounds;
+      else
+        items = array.getRange(start);
+    }
     else
-      response.rsp[GetRngRsp].try_emplace("items", array.getRange(start, stop));
+    {
+      const auto stop = std::next(rngArray.begin())->as<std::size_t>();
+      
+      if (!array.isGetInBounds(start, stop))  [[unlikely]]
+        status = RequestStatus::Bounds;
+      else
+        items = array.getRange(start, stop);
+    }
+    
+    response.rsp[GetRngRsp].try_emplace("items", std::move(items));
+    response.rsp[GetRngRsp]["st"] = toUnderlying(status);
 
     return response;
   }
