@@ -31,11 +31,8 @@ namespace nemesis { namespace arr {
   template<typename Cmds>
   Validity validateCreate (const njson& request)
   {
-    static const constexpr auto req = Cmds::CreateReq;
-    static const constexpr auto rsp = Cmds::CreateRsp;
-    
-    auto [valid, err] = isValid(rsp, request.at(req), { {Param::required("name", JsonString)},
-                                                        {Param::required("len", JsonUInt)}});
+    auto [valid, err] = isValid(Cmds::CreateRsp, request.at(Cmds::CreateReq), { {Param::required("name", JsonString)},
+                                                                                {Param::required("len", JsonUInt)}});
 
     return valid ? makeValid() : makeInvalid(std::move(err));
   }
@@ -56,10 +53,7 @@ namespace nemesis { namespace arr {
     auto [valid, err] = isValid(Cmds::SetRsp, req.at(Cmds::SetReq), { {Param::required("name", JsonString)},
                                                                       {Param::required("pos",  JsonUInt)},
                                                                       {Param::required("item", itemType)}});
-    if (!valid)
-      return makeInvalid(std::move(err));
-    else
-      return makeValid();
+    return valid ? makeValid() : makeInvalid(std::move(err));
   }
 
 
@@ -84,14 +78,12 @@ namespace nemesis { namespace arr {
   }
 
 
+  template<typename Cmds>
   Validity validateGet (const njson& req)
   {
-    auto [valid, err] = isValid(GetRsp, req.at(GetReq), { {Param::required("name", JsonString)},
-                                                          {Param::required("pos",  JsonUInt)}});
-    if (!valid)
-      return makeInvalid(std::move(err));
-    else
-      return makeValid();
+    auto [valid, err] = isValid(Cmds::GetRsp, req.at(Cmds::GetReq), { {Param::required("name", JsonString)},
+                                                                      {Param::required("pos",  JsonUInt)}});
+    return valid ? makeValid() : makeInvalid(std::move(err));
   }
 
 

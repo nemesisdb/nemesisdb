@@ -21,7 +21,6 @@ public:
   static Response set (Array& array, const njson& reqBody)
   {
     static const constexpr auto RspName = Cmds::SetRsp.data();
-    
     static const njson Prepared = njson{jsoncons::json_object_arg, {{RspName, njson::object()}}};
     
     Response response{.rsp = Prepared};
@@ -78,17 +77,18 @@ public:
 
   static Response get (Array& array, const njson& reqBody)
   {
-    static const njson Prepared = njson{jsoncons::json_object_arg, {{GetRsp, njson::object()}}};
+    static const constexpr auto RspName = Cmds::SetRsp.data();
+    static const njson Prepared = njson{jsoncons::json_object_arg, {{RspName, njson::object()}}};
     
     Response response{.rsp = Prepared};
-    response.rsp[GetRsp]["st"] = toUnderlying(RequestStatus::Ok);
+    response.rsp[RspName]["st"] = toUnderlying(RequestStatus::Ok);
 
     const auto pos = reqBody.at("pos").as<std::size_t>();
 
     if (!array.isInBounds(pos))
-      response.rsp[GetRsp]["st"] = toUnderlying(RequestStatus::Bounds);
+      response.rsp[RspName]["st"] = toUnderlying(RequestStatus::Bounds);
     else
-      response.rsp[GetRsp]["item"] = array.get(pos);
+      response.rsp[RspName]["item"] = array.get(pos);
 
     return response;
   }

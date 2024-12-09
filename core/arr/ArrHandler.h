@@ -84,17 +84,17 @@ public:
   {
     QueryTypePmrMap map ( 
     {  
-      {CreateReq,           ArrQueryType::Create},
-      {DeleteReq,           ArrQueryType::Delete},
-      {DeleteAllReq,        ArrQueryType::DeleteAll},
-      {SetReq,              ArrQueryType::Set},
-      {SetRngReq,           ArrQueryType::SetRng},
-      {GetReq,              ArrQueryType::Get},
-      {GetRngReq,           ArrQueryType::GetRng},
-      {LenReq,              ArrQueryType::Len},
-      {SwapReq,             ArrQueryType::Swap},
-      {ExistReq,            ArrQueryType::Exist},
-      {ClearReq,            ArrQueryType::Clear},
+      {Cmds::CreateReq,       ArrQueryType::Create},
+      {Cmds::DeleteReq,       ArrQueryType::Delete},
+      {Cmds::DeleteAllReq,    ArrQueryType::DeleteAll},
+      {Cmds::SetReq,          ArrQueryType::Set},
+      {Cmds::SetRngReq,       ArrQueryType::SetRng},
+      {Cmds::GetReq,          ArrQueryType::Get},
+      {Cmds::GetRngReq,       ArrQueryType::GetRng},
+      {Cmds::LenReq,          ArrQueryType::Len},
+      {Cmds::SwapReq,         ArrQueryType::Swap},
+      {Cmds::ExistReq,        ArrQueryType::Exist},
+      {Cmds::ClearReq,        ArrQueryType::Clear},
     }, 1, alloc); 
 
     return map;
@@ -136,28 +136,33 @@ public:
 private:
   ndb_always_inline Response createArray(njson& request)
   {
+    static constexpr auto ReqName = Cmds::CreateReq.data();
+    static constexpr auto RspName = Cmds::CreateRsp.data();
+
+    const auto& reqBody = request.at(ReqName);
+
     if (auto [valid, rsp] = validateCreate<Cmds>(request) ; !valid)
       return Response{.rsp = std::move(rsp)};
-    else if (const auto& name = request.at(CreateReq).at("name").as_string(); arrayExist(name))
-      return Response{.rsp = createErrorResponseNoTkn(CreateRsp, RequestStatus::Duplicate)};
-    else if (const auto size = request.at(CreateReq).at("len").as<std::size_t>(); !ArrayT::isRequestedSizeValid(size))
-      return Response{.rsp = createErrorResponseNoTkn(CreateRsp, RequestStatus::ValueSize)};
+    else if (const auto& name = reqBody.at("name").as_string(); arrayExist(name))
+      return Response{.rsp = createErrorResponseNoTkn(RspName, RequestStatus::Duplicate)};
+    else if (const std::size_t size = reqBody.at("len").template as<std::size_t>(); !ArrayT::isRequestedSizeValid(size))
+      return Response{.rsp = createErrorResponseNoTkn(RspName, RequestStatus::ValueSize)};
     else
     {
       Response response;
-      response.rsp = njson{jsoncons::json_object_arg, {{CreateRsp, njson::object()}}};
-      response.rsp[CreateRsp]["st"] = toUnderlying(RequestStatus::Ok);
+      response.rsp = njson{jsoncons::json_object_arg, {{RspName, njson::object()}}};
+      response.rsp[RspName]["st"] = toUnderlying(RequestStatus::Ok);
 
       try
       {
-        const std::size_t size = request.at(CreateReq).at("len").as<std::size_t>();
+        const std::size_t size = reqBody.at("len").template as<std::size_t>();
         [[maybe_unused]] const auto [it, emplaced] = m_arrays.try_emplace(name, ArrayT{size});
         // already checked the array name does not exist, so can ignore try_emplace() return val
       }
       catch(const std::exception& e)
       {
         PLOGE << __PRETTY_FUNCTION__ << e.what();
-        response.rsp[CreateRsp]["st"] = toUnderlying(RequestStatus::Unknown);
+        response.rsp[RspName]["st"] = toUnderlying(RequestStatus::Unknown);
       }
 
       return response;
@@ -225,9 +230,9 @@ private:
       return Response{.rsp = std::move(rsp)};
     else
     {
-      const auto& body = request.at(SetReq);
-      if (auto [exist, it] = getArray(body.at("name").as_string(), body) ; !exist)
-        return Response{.rsp = createErrorResponseNoTkn(SetRsp, RequestStatus::NotExist)};
+      const auto& body = request.at(Cmds::SetReq);
+      if (auto [exist, it] = getArray(body) ; !exist)
+        return Response{.rsp = createErrorResponseNoTkn(Cmds::SetRsp, RequestStatus::NotExist)};
       else
         return ArrayExecutor<ArrayT, Cmds>::set(it->second, body);
     }
@@ -254,19 +259,16 @@ private:
 
   ndb_always_inline Response get(njson& request)
   {
-    return Response{};
-    /*
-    if (auto [valid, rsp] = validateGet(request) ; !valid)
+    if (auto [valid, rsp] = validateGet<Cmds>(request) ; !valid)
       return Response{.rsp = std::move(rsp)};
     else
     {
-      const auto& body = request.at(GetReq);
+      const auto& body = request.at(Cmds::GetReq);
       if (auto [exist, it] = getArray(body) ; !exist)
-        return Response{.rsp = createErrorResponseNoTkn(GetRsp, RequestStatus::NotExist)};
+        return Response{.rsp = createErrorResponseNoTkn(Cmds::GetRsp, RequestStatus::NotExist)};
       else
-        return ArrayExecutor::get(it->second, body);
+        return ArrayExecutor<ArrayT, Cmds>::get(it->second, body);
     }
-    */
   }
 
 
@@ -375,11 +377,11 @@ private:
     return {it != m_arrays.end(), it};
   }
 
-  // std::tuple<bool, Arrays::iterator> getArray (const njson& cmd)
-  // {
-  //   const auto& name = cmd.at("name").as_string();
-  //   return getArray(name, cmd);
-  // }
+  std::tuple<bool, Iterator> getArray (const njson& cmd)
+  {
+    const auto& name = cmd.at("name").as_string();
+    return getArray(name, cmd);
+  }
 
   bool arrayExist (const std::string& name)
   {

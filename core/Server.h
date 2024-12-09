@@ -339,7 +339,7 @@ public:
               send(ws, response.rsp);
             }
             //else if (arrCmds::OArrCmds::Ident.compare(type))
-            else if (type2 == arrCmds::OArrCmds::Ident)
+            else if (type2 == arrCmds::OArrayIdent)
             {
               const Response response = m_objectArrHandler->handle(command, request);
               send(ws, response.rsp);
