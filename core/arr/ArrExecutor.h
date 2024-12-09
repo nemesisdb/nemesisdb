@@ -78,7 +78,7 @@ public:
 
   static Response get (Array& array, const njson& reqBody)
   {
-    static const constexpr auto RspName = Cmds::SetRsp.data();
+    static const constexpr auto RspName = Cmds::GetRsp.data();
     static const njson Prepared = njson{jsoncons::json_object_arg, {{RspName, njson::object()}}};
     
     Response response{.rsp = Prepared};
