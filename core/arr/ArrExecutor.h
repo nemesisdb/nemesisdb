@@ -18,6 +18,8 @@ template<class Array, class Cmds>
 class ArrayExecutor
 {
 public:
+  using ArrayValueT = Array::ValueT;
+
   static Response set (Array& array, const njson& reqBody)
   {
     static const constexpr auto RspName = Cmds::SetRsp.data();
@@ -36,7 +38,7 @@ public:
       if (!array.isInBounds(pos))
         rspBody["st"] = toUnderlying(RequestStatus::Bounds);
       else
-        array.set(pos, reqBody.at("item"));
+        array.set(pos, reqBody.at("item").as<ArrayValueT>());
     }
     catch(const std::exception& e)
     {
@@ -59,7 +61,7 @@ public:
     try
     {
       const auto pos = reqBody.at("pos").template as<std::size_t>();
-      const auto& items = reqBody.at("items");
+      const auto& items = reqBody.at("items").as<std::vector<ArrayValueT>>();
 
       if (!array.isSetInBounds(pos, items.size()))
         response.rsp[RspName]["st"] = toUnderlying(RequestStatus::Bounds);

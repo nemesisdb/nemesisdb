@@ -155,7 +155,7 @@ namespace nemesis {
   private:
     Param () = delete;
 
-    Param(const JsonType type, const bool required) : type(type), isRequired(required)
+    Param(const JsonType type, const bool required, const bool variableType = false) : type(type), isRequired(required), variableType(variableType)
     {
     }
 
@@ -171,28 +171,16 @@ namespace nemesis {
       return {name, Param {type, false}};
     }
 
-    JsonType type;
-    bool isRequired;
-  };
-
-
-  // Checks the params (if present and correct type). If that passes and onPostValidate is set, onPostValidate() is called for custom checks.
-  template <class JSON, typename StatusT, StatusT Ok, StatusT ParamMissing, StatusT ParamType>
-  std::tuple<StatusT, const std::string_view> isCmdValid (const JSON& msg,
-                                                          const std::map<const std::string_view, const Param>& params,
-                                                          std::function<std::tuple<StatusT, const std::string_view>(const JSON&)> onPostValidate)
-    //requires(std::is_enum_v<StatusT>)
-  {
-    for (const auto& [member, param] : params)
+    static std::pair<std::string_view, Param> variable (const std::string_view name)
     {
-      if (param.isRequired && !msg.contains(member))
-        return {ParamMissing, "Missing parameter"};
-      else if (msg.contains(member) && msg.at(member).type() != param.type) // not required but present OR required and present: check type
-        return {ParamType, "Param type incorrect"};
+      return {name, Param {JsonType::null_value, true, true}};
     }
 
-    return onPostValidate ? onPostValidate(msg) : std::make_tuple(Ok, "");
-  }
+    JsonType type;
+    bool isRequired;
+    bool variableType{false};
+  };
+
 
 
   template<typename T, std::size_t Size>
@@ -280,6 +268,15 @@ namespace nemesis {
     return rsp;
   }
 
+  
+  static inline njson createErrorResponse (const RequestStatus status, const std::string_view msg = "")
+  {
+    njson rsp;
+    rsp["ERR"]["st"] = toUnderlying(status);
+    rsp["ERR"]["m"] = msg;
+    return rsp;
+  }
+
 
   static inline njson createErrorResponseNoTkn (const std::string_view commandRsp, const RequestStatus status, const std::string_view msg = "")
   {
@@ -290,24 +287,29 @@ namespace nemesis {
   }
 
 
-  // Response is the original command is unknown (i.e. JSON parse error).
-  static inline njson createErrorResponse (const RequestStatus status, const std::string_view msg = "")
+  // Checks the params (if present and correct type). If that passes and onPostValidate is set, onPostValidate() is called for custom checks.
+  std::tuple<RequestStatus, const std::string_view> isCmdValid (const njson& msg,
+                                                                const std::map<const std::string_view, const Param>& params,
+                                                                std::function<std::tuple<RequestStatus, const std::string_view>(const njson&)> onPostValidate)
   {
-    njson rsp;
-    rsp["ERR"]["st"] = toUnderlying(status);
-    rsp["ERR"]["m"] = msg;
-    return rsp;
+    for (const auto& [member, param] : params)
+    {
+      if (param.isRequired && !msg.contains(member))
+        return {RequestStatus::ParamMissing, "Missing parameter"};
+      else if (msg.contains(member) && msg.at(member).type() != param.type) // not required but present OR required and present: check type
+        return {RequestStatus::ValueTypeInvalid, "Param type incorrect"};
+    }
+
+    return onPostValidate ? onPostValidate(msg) : std::make_tuple(RequestStatus::Ok, "");
   }
 
 
-  std::tuple<bool, njson> doIsValid (const std::string_view queryRspName, 
-                  const njson& cmd, const std::map<const std::string_view, const Param>& params,
-                  std::function<std::tuple<RequestStatus, const std::string_view>(const njson&)> onPostValidate = nullptr)
+  std::tuple<bool, njson> isValid ( const std::string_view queryRspName, 
+                                    const njson& req,
+                                    const std::map<const std::string_view, const Param>& params,
+                                    std::function<std::tuple<RequestStatus, const std::string_view>(const njson&)> onPostValidate = nullptr)
   {
-    const auto [stat, msg] = isCmdValid<njson,  RequestStatus,
-                                                RequestStatus::Ok,
-                                                RequestStatus::ParamMissing,
-                                                RequestStatus::ValueTypeInvalid>(cmd, params, onPostValidate);
+    const auto [stat, msg] = isCmdValid(req, params, onPostValidate);
     
     if (stat != RequestStatus::Ok) [[unlikely]]
     {
@@ -319,12 +321,34 @@ namespace nemesis {
   }
 
 
-  std::tuple<bool, njson> isValid ( const std::string_view queryRspName, 
-                                    const njson& req,
-                                    const std::map<const std::string_view, const Param>& params,
-                                    std::function<std::tuple<RequestStatus, const std::string_view>(const njson&)> onPostValidate = nullptr)
+  template <class ArrayCmds>
+  std::tuple<bool, njson> isArrayCmdValid (  const std::string_view queryRspName, 
+                                                      const njson& req,
+                                                      const std::map<const std::string_view, const Param>& params,
+                                                      std::function<std::tuple<RequestStatus, const std::string_view>(const njson&)> onPostValidate = nullptr)
   {
-    return doIsValid(queryRspName, req, params, onPostValidate);
+    for (const auto& [member, param] : params)
+    {
+      if (param.variableType && !ArrayCmds::isTypeValid(req.at(member).type()))
+        return {false, createErrorResponse(queryRspName, RequestStatus::ValueTypeInvalid)};
+      else if (!param.variableType)
+      {
+        if (param.isRequired && !req.contains(member))
+          return {false, createErrorResponse(queryRspName, RequestStatus::ParamMissing)};
+        else if (req.contains(member) && req.at(member).type() != param.type)
+          return {false, createErrorResponse(queryRspName, RequestStatus::ValueTypeInvalid)};
+      }
+    }
+
+    if (onPostValidate)
+    { 
+      if (auto [stat, msg] = onPostValidate(req); stat == RequestStatus::Ok)
+        return {true, njson{}};
+      else
+        return {false, createErrorResponse(queryRspName, stat, msg)};
+    }
+    else
+      return {true, njson{}};
   }
 
 

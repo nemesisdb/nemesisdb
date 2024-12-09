@@ -47,11 +47,13 @@ namespace nemesis { namespace arr {
 
 
   template<typename Cmds>
-  Validity validateSet (const njson& req, const JsonType itemType)
+  Validity validateSet (const njson& req)
   {
-    auto [valid, err] = isValid(Cmds::SetRsp, req.at(Cmds::SetReq), { {Param::required("name", JsonString)},
-                                                                      {Param::required("pos",  JsonUInt)},
-                                                                      {Param::required("item", itemType)}});
+    auto[valid, err] = isArrayCmdValid<Cmds>(Cmds::SetRsp, req.at(Cmds::SetReq), {{Param::required("name", JsonString)},
+                                                                                  {Param::required("pos",  JsonUInt)},
+                                                                                  {Param::variable("item")} });
+
+    
     return valid ? makeValid() : makeInvalid(std::move(err));
   }
 
@@ -59,18 +61,19 @@ namespace nemesis { namespace arr {
   template<typename Cmds>
   Validity validateSetRange (const njson& req)
   {
-    auto validate = [](const njson& body) -> std::tuple<RequestStatus, const std::string_view>
+    auto itemsValid = [](const njson& body) -> std::tuple<RequestStatus, const std::string_view>
     {
       for(const auto& item : body.at("items").array_range())
-        if (!item.is_object())
+        if (!Cmds::isTypeValid(item.type()))
           return {RequestStatus::ValueTypeInvalid, "items"};
       
       return {RequestStatus::Ok, ""};
     };
 
-    auto [valid, err] = isValid(Cmds::SetRngRsp, req.at(Cmds::SetRngReq), { {Param::required("name", JsonString)},
-                                                                            {Param::required("pos",  JsonUInt)},
-                                                                            {Param::required("items", JsonArray)}}, validate);
+
+    auto [valid, err] = isArrayCmdValid<Cmds>(Cmds::SetRngRsp, req.at(Cmds::SetRngReq), { {Param::required("name", JsonString)},
+                                                                                          {Param::required("pos",  JsonUInt)},
+                                                                                          {Param::required("items", JsonArray)}}, itemsValid);
     return valid ? makeValid() : makeInvalid(std::move(err));
   }
 

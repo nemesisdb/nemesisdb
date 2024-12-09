@@ -22,6 +22,8 @@ template<typename T>
 class Array
 {
 public:
+
+  using ValueT = T;
   
   Array(const std::size_t size) : m_size(size)
   {
@@ -47,15 +49,15 @@ public:
   }
 
 
-  void set(const std::size_t pos, const njson& item)
+  void set(const std::size_t pos, const T& item)
   {
     m_array[pos] = item;
   }
 
 
-  void setRange(std::size_t pos, const njson& items)
+  void setRange(std::size_t pos, const std::vector<T>& items)
   {    
-    for (const auto& item : items.array_range())
+    for (const auto& item : items)
       m_array[pos++] = item;
   }
 
@@ -77,7 +79,7 @@ public:
     stop = std::min<std::size_t> (stop, m_size);
 
     const auto itStart = std::next(m_array.cbegin(), start);
-    const auto itEnd = std::next(itStart, std::min<std::size_t>(m_size, stop-start)); // TODO std::next(m_array.cbegin(), stop); ?
+    const auto itEnd = std::next(m_array.cbegin(), stop);
     const auto rangeSize = std::distance(itStart, itEnd);
 
     PLOGD << "Array::getRange(): " << start << " to " << stop;
@@ -115,7 +117,7 @@ public:
     const auto itEnd = std::next(m_array.begin(), std::min<std::size_t>(m_size, stop));
 
     for (auto it = itStart ; it != itEnd; ++it)
-      *it = njson{};
+      *it = T{};
   }
 
 
@@ -131,6 +133,8 @@ private:
 
 
 using OArray = Array<njson>;
+using IArray = Array<std::int64_t>;
+using SArray = Array<std::string>;
 
 }
 }
