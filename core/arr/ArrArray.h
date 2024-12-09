@@ -17,6 +17,8 @@ using std::vector;
 A fixed-sized std::vector. Does not perform bounds checks, but
 does provide isInbounds() for users.
 */
+
+template<typename T>
 class Array
 {
 public:
@@ -47,7 +49,7 @@ public:
 
   bool isGetInBounds(const std::size_t start, const std::size_t stop)
   {
-    return start < m_size ;//&& start+(stop-start) <= m_size;
+    return isInBounds(start, m_size);
   }
 
 
@@ -128,9 +130,12 @@ public:
   }
 
 private:
-  std::vector<njson> m_array;
+  std::vector<T> m_array;
   std::size_t m_size;
 };
+
+
+using OArray = Array<njson>;
 
 }
 }

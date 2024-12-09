@@ -149,7 +149,7 @@ public:
         
         m_kvHandler = std::make_shared<kv::KvHandler>(m_settings);
         m_shHandler = std::make_shared<sh::ShHandler>(m_settings, m_sessions);
-        m_arrHandler = std::make_shared<arr::ArrHandler>(m_settings);
+        m_objectArrHandler = std::make_shared<arr::ArrHandler<njson, arrCmds::OArrCmds>>(m_settings);
       }
       catch(const std::exception& e)
       {
@@ -331,15 +331,17 @@ public:
           else
           {
             const auto type = command.substr(0, pos);
+            const auto type2 = std::string_view(command.substr(0, pos));
             
             if (type == kvCmds::KvIdent)
             {
               const Response response = m_kvHandler->handle(command, request);
               send(ws, response.rsp);
             }
-            else if (type == arrCmds::ArrIdent)
+            //else if (arrCmds::OArrCmds::Ident.compare(type))
+            else if (type2 == arrCmds::OArrCmds::Ident)
             {
-              const Response response = m_arrHandler->handle(command, request);
+              const Response response = m_objectArrHandler->handle(command, request);
               send(ws, response.rsp);
             }
             else if (type == shCmds::ShIdent)
@@ -434,7 +436,7 @@ public:
     // TODO profile runtime cost of shared_ptr vs raw ptr
     std::shared_ptr<kv::KvHandler> m_kvHandler;
     std::shared_ptr<sh::ShHandler> m_shHandler;
-    std::shared_ptr<arr::ArrHandler> m_arrHandler;
+    std::shared_ptr<arr::ArrHandler<njson, arrCmds::OArrCmds>> m_objectArrHandler;
     std::shared_ptr<sh::Sessions> m_sessions;
     Settings m_settings;
 };

@@ -21,12 +21,28 @@ namespace nemesis { namespace arr {
 using namespace nemesis::arr::cmds;
 
 
-/*
+template<typename T>
+consteval JsonType toJsonType ()
+{
+  if constexpr (std::is_same_v<T, std::int64_t>)
+    return JsonInt;
+  else if constexpr (std::is_same_v<T, std::string>)
+    return JsonString;
+  else if constexpr (std::is_same_v<T, njson>)
+    return JsonObject;
+  else
+    static_assert(false, "Array does support this type");
+}
 
-*/
+
+
+template<typename T, typename Cmds>
 class ArrHandler
 {
-  using Arrays = ankerl::unordered_dense::map<std::string, Array>;
+  using ArrayT = Array<T>;
+  using Arrays = ankerl::unordered_dense::map<std::string, Array<T>>; // array name->arrays container
+  using Iterator = ankerl::unordered_dense::map<std::string, Array<T>>::iterator;
+  using ConstIterator = ankerl::unordered_dense::map<std::string, Array<T>>::const_iterator;
 
 
 public:
@@ -46,17 +62,17 @@ public:
     // initialise with 1 bucket and pmr allocator
     HandlerPmrMap h (
     {
-      {ArrQueryType::Create,          Handler{std::bind_front(&ArrHandler::createArray,        std::ref(*this))}},      
-      {ArrQueryType::Delete,          Handler{std::bind_front(&ArrHandler::deleteArray,        std::ref(*this))}},
-      {ArrQueryType::DeleteAll,       Handler{std::bind_front(&ArrHandler::deleteAll,          std::ref(*this))}},
-      {ArrQueryType::Set,             Handler{std::bind_front(&ArrHandler::set,                std::ref(*this))}},
-      {ArrQueryType::SetRng,          Handler{std::bind_front(&ArrHandler::setRange,           std::ref(*this))}},
-      {ArrQueryType::Get,             Handler{std::bind_front(&ArrHandler::get,                std::ref(*this))}},
-      {ArrQueryType::GetRng,          Handler{std::bind_front(&ArrHandler::getRange,           std::ref(*this))}},
-      {ArrQueryType::Len,             Handler{std::bind_front(&ArrHandler::length,             std::ref(*this))}},
-      {ArrQueryType::Swap,            Handler{std::bind_front(&ArrHandler::swap,               std::ref(*this))}},
-      {ArrQueryType::Exist,           Handler{std::bind_front(&ArrHandler::exist,              std::ref(*this))}},
-      {ArrQueryType::Clear,           Handler{std::bind_front(&ArrHandler::clear,              std::ref(*this))}},
+      {ArrQueryType::Create,          Handler{std::bind_front(&ArrHandler<T, Cmds>::createArray,        std::ref(*this))}},
+      {ArrQueryType::Delete,          Handler{std::bind_front(&ArrHandler<T, Cmds>::deleteArray,        std::ref(*this))}},
+      {ArrQueryType::DeleteAll,       Handler{std::bind_front(&ArrHandler<T, Cmds>::deleteAll,          std::ref(*this))}},
+      {ArrQueryType::Set,             Handler{std::bind_front(&ArrHandler<T, Cmds>::set,                std::ref(*this))}},
+      {ArrQueryType::SetRng,          Handler{std::bind_front(&ArrHandler<T, Cmds>::setRange,           std::ref(*this))}},
+      {ArrQueryType::Get,             Handler{std::bind_front(&ArrHandler<T, Cmds>::get,                std::ref(*this))}},
+      {ArrQueryType::GetRng,          Handler{std::bind_front(&ArrHandler<T, Cmds>::getRange,           std::ref(*this))}},
+      {ArrQueryType::Len,             Handler{std::bind_front(&ArrHandler<T, Cmds>::length,             std::ref(*this))}},
+      {ArrQueryType::Swap,            Handler{std::bind_front(&ArrHandler<T, Cmds>::swap,               std::ref(*this))}},
+      {ArrQueryType::Exist,           Handler{std::bind_front(&ArrHandler<T, Cmds>::exist,              std::ref(*this))}},
+      {ArrQueryType::Clear,           Handler{std::bind_front(&ArrHandler<T, Cmds>::clear,              std::ref(*this))}},
     }, 1, alloc);
     
     return h;
@@ -120,11 +136,11 @@ public:
 private:
   ndb_always_inline Response createArray(njson& request)
   {
-    if (auto [valid, rsp] = validateCreate(request) ; !valid)
+    if (auto [valid, rsp] = validateCreate<Cmds>(request) ; !valid)
       return Response{.rsp = std::move(rsp)};
     else if (const auto& name = request.at(CreateReq).at("name").as_string(); arrayExist(name))
       return Response{.rsp = createErrorResponseNoTkn(CreateRsp, RequestStatus::Duplicate)};
-    else if (const auto size = request.at(CreateReq).at("len").as<std::size_t>(); !Array::isRequestedSizeValid(size))
+    else if (const auto size = request.at(CreateReq).at("len").as<std::size_t>(); !ArrayT::isRequestedSizeValid(size))
       return Response{.rsp = createErrorResponseNoTkn(CreateRsp, RequestStatus::ValueSize)};
     else
     {
@@ -135,7 +151,7 @@ private:
       try
       {
         const std::size_t size = request.at(CreateReq).at("len").as<std::size_t>();
-        [[maybe_unused]] const auto [it, emplaced] = m_arrays.try_emplace(name, Array{size});
+        [[maybe_unused]] const auto [it, emplaced] = m_arrays.try_emplace(name, ArrayT{size});
         // already checked the array name does not exist, so can ignore try_emplace() return val
       }
       catch(const std::exception& e)
@@ -151,6 +167,8 @@ private:
 
   ndb_always_inline Response deleteArray(njson& request)
   {
+    return Response{};
+    /*
     if (auto [valid, rsp] = validateDelete(request) ; !valid)
       return Response{.rsp = std::move(rsp)};
     else
@@ -171,11 +189,14 @@ private:
 
       return response;
     }
+    */
   }
 
   
   ndb_always_inline Response deleteAll(njson& request)
   {
+    return Response{};
+    /*
     Response response;
     response.rsp = njson{jsoncons::json_object_arg, {{DeleteAllRsp, njson::object()}}};
     response.rsp[DeleteAllRsp]["st"] = toUnderlying(RequestStatus::Ok);
@@ -192,12 +213,15 @@ private:
     }
 
     return response;
+    */
   }
 
 
   ndb_always_inline Response set(njson& request)
   {
-    if (auto [valid, rsp] = validateSet(request) ; !valid)
+    static const auto itemType = toJsonType<T>();
+
+    if (auto [valid, rsp] = validateSet<Cmds>(request, itemType) ; !valid)
       return Response{.rsp = std::move(rsp)};
     else
     {
@@ -205,13 +229,15 @@ private:
       if (auto [exist, it] = getArray(body.at("name").as_string(), body) ; !exist)
         return Response{.rsp = createErrorResponseNoTkn(SetRsp, RequestStatus::NotExist)};
       else
-        return ArrayExecutor::set(it->second, body);
+        return ArrayExecutor<ArrayT, Cmds>::set(it->second, body);
     }
   }
 
 
   ndb_always_inline Response setRange(njson& request)
   {
+    return Response{};
+    /*
     if (auto [valid, rsp] = validateSetRange(request) ; !valid)
       return Response{.rsp = std::move(rsp)};
     else
@@ -222,11 +248,14 @@ private:
       else
         return ArrayExecutor::setRange(it->second, body);
     }
+    */
   }
 
 
   ndb_always_inline Response get(njson& request)
   {
+    return Response{};
+    /*
     if (auto [valid, rsp] = validateGet(request) ; !valid)
       return Response{.rsp = std::move(rsp)};
     else
@@ -237,6 +266,7 @@ private:
       else
         return ArrayExecutor::get(it->second, body);
     }
+    */
   }
 
 
@@ -244,6 +274,8 @@ private:
   {
     // TODO 'stop' optional
     
+    return Response{};
+    /*
     if (auto [valid, rsp] = validateGetRange(request) ; !valid)
       return Response{.rsp = std::move(rsp)};
     else
@@ -254,11 +286,14 @@ private:
       else
         return ArrayExecutor::getRange(it->second, body);
     }
+    */
   }
 
 
   ndb_always_inline Response length(njson& request)
   {
+    return Response{};
+    /*
     if (auto [valid, rsp] = validateLength(request) ; !valid)
       return Response{.rsp = std::move(rsp)};
     else
@@ -269,11 +304,14 @@ private:
       else
         return ArrayExecutor::length(it->second, body);
     }
+    */
   }
 
 
   ndb_always_inline Response swap(njson& request)
   {
+    return Response{};
+    /*
     if (auto [valid, rsp] = validateSwap(request) ; !valid)
       return Response{.rsp = std::move(rsp)};
     else
@@ -284,11 +322,14 @@ private:
       else
         return ArrayExecutor::swap(it->second, body);
     }
+    */
   }
 
 
   ndb_always_inline Response exist(njson& request)
   {
+    return Response{};
+    /*
     if (auto [valid, err] = validateExist(request) ; !valid)
       return Response{.rsp = std::move(err)};
     else
@@ -303,11 +344,14 @@ private:
 
       return Response { .rsp = std::move(rsp)};
     }
+    */
   }
 
 
   ndb_always_inline Response clear(njson& request)
   {
+    return Response{};
+    /*
     if (auto [valid, rsp] = validateClear(request) ; !valid)
       return Response{.rsp = std::move(rsp)};
     else
@@ -318,23 +362,24 @@ private:
       else
         return ArrayExecutor::clear(it->second, body);
     }
+    */
   }
 
   
 
 private:
-  
-  std::tuple<bool, Arrays::iterator> getArray (const std::string& name, const njson& cmd)
+
+  std::tuple<bool, Iterator> getArray (const std::string& name, const njson& cmd)
   {
     const auto it = m_arrays.find(name);
-    return {it != m_arrays.cend(), it};
+    return {it != m_arrays.end(), it};
   }
 
-  std::tuple<bool, Arrays::iterator> getArray (const njson& cmd)
-  {
-    const auto& name = cmd.at("name").as_string();
-    return getArray(name, cmd);
-  }
+  // std::tuple<bool, Arrays::iterator> getArray (const njson& cmd)
+  // {
+  //   const auto& name = cmd.at("name").as_string();
+  //   return getArray(name, cmd);
+  // }
 
   bool arrayExist (const std::string& name)
   {
@@ -345,6 +390,7 @@ private:
 private:
   Settings m_settings;
   Arrays m_arrays;
+  Cmds m_cmds;
 };
 
 }

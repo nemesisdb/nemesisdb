@@ -14,31 +14,35 @@ namespace nemesis { namespace arr {
 namespace kvcmds = nemesis::arr::cmds;
 
 
+template<class Array, class Cmds>
 class ArrayExecutor
 {
 public:
   static Response set (Array& array, const njson& reqBody)
   {
-    static const njson Prepared = njson{jsoncons::json_object_arg, {{SetRsp, njson::object()}}};
+    static const constexpr auto RspName = Cmds::SetRsp.data();
+    
+    static const njson Prepared = njson{jsoncons::json_object_arg, {{RspName, njson::object()}}};
     
     Response response{.rsp = Prepared};
-    response.rsp[SetRsp]["st"] = toUnderlying(RequestStatus::Ok);
+    
+    auto& rspBody = response.rsp.at(RspName);
+
+    rspBody["st"] = toUnderlying(RequestStatus::Ok);
 
     try
     {
       const auto pos = reqBody.at("pos").as<std::size_t>();
       
       if (!array.isInBounds(pos))
-        response.rsp[SetRsp]["st"] = toUnderlying(RequestStatus::Bounds);
+        rspBody["st"] = toUnderlying(RequestStatus::Bounds);
       else
-      {
         array.set(pos, reqBody.at("item"));
-      }        
     }
     catch(const std::exception& e)
     {
       PLOGE << e.what();
-      response.rsp[SetRsp]["st"] = toUnderlying(RequestStatus::Unknown);
+      rspBody["st"] = toUnderlying(RequestStatus::Unknown);
     }
 
     return response;

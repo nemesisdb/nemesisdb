@@ -2,11 +2,14 @@
 #define NDB_CORE_ARRCMDVALIDATE_H
 
 #include <tuple>
+#include <string_view>
 #include <core/NemesisCommon.h>
 #include <core/arr/ArrCommands.h>
 
 
 namespace nemesis { namespace arr {
+
+  using namespace std::literals;
 
   using namespace nemesis::arr::cmds;
   using Validity = std::tuple<bool, njson>;
@@ -19,40 +22,42 @@ namespace nemesis { namespace arr {
   }
   
 
-  Validity makeInvalid (njson rsp)
+  Validity makeInvalid (njson err)
   {
-    return Validity{false, std::move(rsp)};
+    return Validity{false, std::move(err)};
   }
 
 
-  Validity validateCreate (const njson& req)
+  template<typename Cmds>
+  Validity validateCreate (const njson& request)
   {
-    auto [valid, rsp] = isValid(CreateRsp, req.at(CreateReq), { {Param::required("name", JsonString)},
-                                                                {Param::required("len", JsonUInt)}});
+    static const constexpr auto req = Cmds::CreateReq;
+    static const constexpr auto rsp = Cmds::CreateRsp;
+    
+    auto [valid, err] = isValid(rsp, request.at(req), { {Param::required("name", JsonString)},
+                                                        {Param::required("len", JsonUInt)}});
 
-    if (!valid)
-      return makeInvalid(std::move(rsp));
-    else
-      return makeValid();
+    return valid ? makeValid() : makeInvalid(std::move(err));
   }
 
 
   Validity validateDelete (const njson& req)
   {
-    if (auto [valid, rsp] = isValid(DeleteRsp, req.at(DeleteReq), {{Param::required("name", JsonString)}}); !valid)
-      return makeInvalid(std::move(rsp));
+    if (auto [valid, err] = isValid(DeleteRsp, req.at(DeleteReq), {{Param::required("name", JsonString)}}); !valid)
+      return makeInvalid(std::move(err));
     else
       return makeValid();
   }
 
 
-  Validity validateSet (const njson& req)
+  template<typename Cmds>
+  Validity validateSet (const njson& req, const JsonType itemType)
   {
-    auto [valid, rsp] = isValid(SetRsp, req.at(SetReq), { {Param::required("name", JsonString)},
-                                                          {Param::required("pos",  JsonUInt)},
-                                                          {Param::required("item", JsonObject)}});
+    auto [valid, err] = isValid(Cmds::SetRsp, req.at(Cmds::SetReq), { {Param::required("name", JsonString)},
+                                                                      {Param::required("pos",  JsonUInt)},
+                                                                      {Param::required("item", itemType)}});
     if (!valid)
-      return makeInvalid(std::move(rsp));
+      return makeInvalid(std::move(err));
     else
       return makeValid();
   }
@@ -69,11 +74,11 @@ namespace nemesis { namespace arr {
       return {RequestStatus::Ok, ""};
     };
 
-    auto [valid, rsp] = isValid(SetRngRsp, req.at(SetRngReq), { {Param::required("name", JsonString)},
+    auto [valid, err] = isValid(SetRngRsp, req.at(SetRngReq), { {Param::required("name", JsonString)},
                                                                 {Param::required("pos",  JsonUInt)},
                                                                 {Param::required("items", JsonArray)}}, validate);
     if (!valid)
-      return makeInvalid(std::move(rsp));
+      return makeInvalid(std::move(err));
     else
       return makeValid();
   }
@@ -81,10 +86,10 @@ namespace nemesis { namespace arr {
 
   Validity validateGet (const njson& req)
   {
-    auto [valid, rsp] = isValid(GetRsp, req.at(GetReq), { {Param::required("name", JsonString)},
+    auto [valid, err] = isValid(GetRsp, req.at(GetReq), { {Param::required("name", JsonString)},
                                                           {Param::required("pos",  JsonUInt)}});
     if (!valid)
-      return makeInvalid(std::move(rsp));
+      return makeInvalid(std::move(err));
     else
       return makeValid();
   }
@@ -123,10 +128,10 @@ namespace nemesis { namespace arr {
     };
 
 
-    auto [valid, rsp] = isValid(GetRngRsp, req.at(GetRngReq), { {Param::required("name", JsonString)},
+    auto [valid, err] = isValid(GetRngRsp, req.at(GetRngReq), { {Param::required("name", JsonString)},
                                                                 {Param::required("rng",  JsonArray)}}, validate);
     if (!valid)
-      return makeInvalid(std::move(rsp));
+      return makeInvalid(std::move(err));
     else
       return makeValid();
   }
@@ -134,24 +139,24 @@ namespace nemesis { namespace arr {
 
   Validity validateLength (const njson& req)
   {
-    auto [valid, rsp] = isValid(LenRsp, req.at(LenReq), { {Param::required("name", JsonString)}});
-    return valid ? makeValid() : makeInvalid(std::move(rsp));
+    auto [valid, err] = isValid(LenRsp, req.at(LenReq), { {Param::required("name", JsonString)}});
+    return valid ? makeValid() : makeInvalid(std::move(err));
   }
 
 
   Validity validateSwap (const njson& req)
   {
-    auto [valid, rsp] = isValid(SwapRsp, req.at(SwapReq), { {Param::required("name", JsonString)},
+    auto [valid, err] = isValid(SwapRsp, req.at(SwapReq), { {Param::required("name", JsonString)},
                                                             {Param::required("posA", JsonUInt)},
                                                             {Param::required("posB", JsonUInt)}});
-    return valid ? makeValid() : makeInvalid(std::move(rsp));
+    return valid ? makeValid() : makeInvalid(std::move(err));
   }
 
 
   Validity validateExist (const njson& req)
   {
-    auto [valid, rsp] = isValid(ExistRsp, req.at(ExistReq), { {Param::required("name", JsonString)}});
-    return valid ? makeValid() : makeInvalid(std::move(rsp));
+    auto [valid, err] = isValid(ExistRsp, req.at(ExistReq), { {Param::required("name", JsonString)}});
+    return valid ? makeValid() : makeInvalid(std::move(err));
   }
 
 
@@ -174,9 +179,9 @@ namespace nemesis { namespace arr {
       return {RequestStatus::Ok, ""};
     };
 
-    auto [valid, rsp] = isValid(ClearRsp, req.at(ClearReq), { {Param::required("name", JsonString)},
+    auto [valid, err] = isValid(ClearRsp, req.at(ClearReq), { {Param::required("name", JsonString)},
                                                               {Param::required("rng", JsonArray)}}, checkRange);
-    return valid ? makeValid() : makeInvalid(std::move(rsp));
+    return valid ? makeValid() : makeInvalid(std::move(err));
   }
 }
 }
