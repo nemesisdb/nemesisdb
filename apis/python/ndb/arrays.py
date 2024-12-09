@@ -1,4 +1,4 @@
-from ndb.commands import StValues, OArrCmd
+from ndb.commands import StValues, OArrCmd, IArrCmd
 from ndb.client import NdbClient
 from ndb.common import raise_if, raise_if_empty
 from typing import List
@@ -81,7 +81,6 @@ class _Arrays:
 class OArrays:
   
   def __init__(self, client: NdbClient):
-    self.client = client
     self._array = _Arrays(client)
 
 
@@ -136,7 +135,49 @@ class OArrays:
 class IArrays:
   
   def __init__(self, client: NdbClient):
-    self.client = client
+    self._array = _Arrays(client)
 
+  async def iarr_create(self, *args) -> int:
+    return await self._array.arr_create(IArrCmd.CREATE_REQ, IArrCmd.CREATE_RSP, *args)
+
+
+  async def iarr_delete(self, *args) -> None:
+    await self._array.arr_delete(IArrCmd.DELETE_REQ, IArrCmd.DELETE_RSP, *args)
+
+  
+  async def iarr_delete_all(self) -> None:
+    await self._array.arr_delete_all(IArrCmd.DELETE_ALL_REQ, IArrCmd.DELETE_ALL_RSP)
+
+
+  async def iarr_set(self, *args) -> None:
+    await self._array.arr_set(IArrCmd.SET_REQ, IArrCmd.SET_RSP, *args)
+    
+
+  async def iarr_set_rng(self, *args) -> None:
+    await self._array.arr_set_rng(IArrCmd.SET_RNG_REQ, IArrCmd.SET_RNG_RSP,*args)
+
+
+  async def iarr_get(self, *args) -> dict:
+    return await self._array.arr_get(IArrCmd.GET_REQ, IArrCmd.GET_RSP, *args)
+       
+
+  async def iarr_get_rng(self, *args) -> List[dict]:
+    return await self._array.arr_get_rng(IArrCmd.GET_RNG_REQ, IArrCmd.GET_RNG_RSP, *args)
+  
+  
+  async def iarr_len(self, *args) -> int:
+    return await self._array.arr_len(IArrCmd.LEN_REQ, IArrCmd.LEN_RSP, *args)
+  
+
+  async def iarr_swap(self, *args) -> int:
+    return await self._array.arr_swap(IArrCmd.SWAP_REQ, IArrCmd.SWAP_RSP, *args)
+
+  
+  async def iarr_exist(self, *args) -> bool:
+    return await self._array.arr_exist(IArrCmd.EXIST_REQ, IArrCmd.EXIST_RSP, *args)
+  
+
+  async def iarr_clear(self, *args) -> None:
+    return await self._array.arr_clear(IArrCmd.CLEAR_REQ, IArrCmd.CLEAR_RSP, *args)
 
 #endregion

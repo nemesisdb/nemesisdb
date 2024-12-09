@@ -25,6 +25,12 @@ else
   python3 -m unittest -f
   cd - > /dev/null
 
+  
+  cd iarr > /dev/null
+  python3 -m unittest -f
+  cd - > /dev/null
+
+
   kill_server
   
 fi
