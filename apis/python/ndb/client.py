@@ -1,5 +1,3 @@
-
-
 from ndb.commands import StValues, Fields, SvCmd, KvCmd, ShCmd, ArrCmd
 from ndb.connection import Connection
 from ndb.logging import logger
@@ -7,7 +5,7 @@ from typing import Tuple, List
 
 import logging
 
-
+## MOVE to common
 class NdbException(Exception):
   def __init__(self, msg):
     super().__init__(msg)
@@ -24,6 +22,7 @@ class ResponseError(NdbException):
     self.rsp = body
 
 
+## MOVE to sessions.py
 class Session:
   """Stores the session token session.
   """
@@ -313,40 +312,40 @@ class NdbClient:
   #endregion
 
   
-  #region ARR
+  #region OARR
 
-  async def arr_create(self, name: str, len: int) -> int:
+  async def oarr_create(self, name: str, len: int) -> int:
     self._raise_if_empty(name)
     self._raise_if(len, 'zero', lambda v: v <= 0)
     await self._sendCmd(ArrCmd.CREATE_REQ, ArrCmd.CREATE_RSP, {'name':name, 'len':len})
 
 
-  async def arr_delete(self, name: str) -> None:
+  async def oarr_delete(self, name: str) -> None:
     self._raise_if_empty(name)
     await self._sendCmd(ArrCmd.DELETE_REQ, ArrCmd.DELETE_RSP, {'name':name})
 
   
-  async def arr_delete_all(self) -> None:
+  async def oarr_delete_all(self) -> None:
     await self._sendCmd(ArrCmd.DELETE_ALL_REQ, ArrCmd.DELETE_ALL_RSP, {})
 
 
-  async def arr_set(self, name: str, pos: int, item: dict) -> None:
+  async def oarr_set(self, name: str, pos: int, item: dict) -> None:
     self._raise_if_empty(name)
     await self._sendCmd(ArrCmd.SET_REQ, ArrCmd.SET_RSP, {'name':name, 'pos': pos, 'item':item})
 
 
-  async def arr_set_rng(self, name: str, pos: int, items: List[dict]) -> None:
+  async def oarr_set_rng(self, name: str, pos: int, items: List[dict]) -> None:
     self._raise_if_empty(name)
     await self._sendCmd(ArrCmd.SET_RNG_REQ, ArrCmd.SET_RNG_RSP, {'name':name, 'pos': pos, 'items':items})
 
 
-  async def arr_get(self, name: str, pos: int) -> dict:
+  async def oarr_get(self, name: str, pos: int) -> dict:
     self._raise_if_empty(name)
     rsp = await self._sendCmd(ArrCmd.GET_REQ, ArrCmd.GET_RSP, {'name':name, 'pos':pos})
     return rsp[ArrCmd.GET_RSP]['item']
 
 
-  async def arr_get_rng(self, name: str, start: int, stop = None) -> List[dict]:
+  async def oarr_get_rng(self, name: str, start: int, stop = None) -> List[dict]:
     self._raise_if_empty(name)
 
     if stop == None:
@@ -360,18 +359,18 @@ class NdbClient:
     return rsp[ArrCmd.GET_RNG_RSP]['items']
   
   
-  async def arr_len(self, name: str) -> int:
+  async def oarr_len(self, name: str) -> int:
     self._raise_if_empty(name)
     rsp = await self._sendCmd(ArrCmd.LEN_REQ, ArrCmd.LEN_RSP, {'name':name})
     return rsp[ArrCmd.LEN_RSP]['len']
 
 
-  async def arr_swap(self, name: str, posA: int, posB: int) -> int:
+  async def oarr_swap(self, name: str, posA: int, posB: int) -> int:
     self._raise_if_empty(name)
     await self._sendCmd(ArrCmd.SWAP_REQ, ArrCmd.SWAP_RSP, {'name':name, 'posA':posA, 'posB':posB})
 
   
-  async def arr_exist(self, name: str) -> bool:
+  async def oarr_exist(self, name: str) -> bool:
     # this query uses the status to indicate result: StValue.ST_SUCCESS means the array exists
     self._raise_if_empty(name)
     # checkStatus=False because 'status' not being success is not an error
@@ -379,7 +378,7 @@ class NdbClient:
     return rsp[ArrCmd.EXIST_RSP]['st'] == StValues.ST_SUCCESS
   
 
-  async def arr_clear(self, name: str, start: int, stop: int) -> None:
+  async def oarr_clear(self, name: str, start: int, stop: int) -> None:
     self._raise_if_empty(name)
     await self._sendCmd(ArrCmd.CLEAR_REQ, ArrCmd.CLEAR_RSP, {'name':name, 'rng':[start, stop]})
 
@@ -393,6 +392,10 @@ class NdbClient:
     if checkStatus:
       self._raise_if_invalid(rsp, cmdRsp, stSuccess)
     return rsp
+  
+
+  async def sendCmd(self, cmdReq: str, cmdRsp: str, body: dict, stSuccess = StValues.ST_SUCCESS, checkStatus = True):
+    return await self._sendCmd(cmdReq, cmdRsp, body, stSuccess, checkStatus)
   
 
   async def _sendTknCmd(self, cmdReq: str, cmdRsp: str, body: dict, tkn: int):

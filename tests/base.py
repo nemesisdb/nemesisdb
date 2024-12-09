@@ -1,5 +1,6 @@
 from unittest import IsolatedAsyncioTestCase
-from ndb.client import NdbClient, ResponseError
+from ndb.client import NdbClient
+from ndb.arrays import OArrays
 
 
 class NDBTest(IsolatedAsyncioTestCase):
@@ -31,5 +32,7 @@ class NDBArrayTest(IsolatedAsyncioTestCase):
     connected = await self.client.open('ws://127.0.0.1:1987')
     self.assertTrue(connected, 'Connection failed')
     
+    self.arrays = OArrays(self.client)
+
     # clear before each test
-    await self.client.arr_delete_all()
+    await self.arrays.oarr_delete_all()

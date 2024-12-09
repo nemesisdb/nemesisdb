@@ -1,5 +1,6 @@
 import unittest
-from base import NDBArrayTest, ResponseError
+from base import NDBArrayTest
+from ndb.client import ResponseError
 
 
 class SetRange(NDBArrayTest):
@@ -11,10 +12,10 @@ class SetRange(NDBArrayTest):
     for i in range(0, size):
       data.append({f'k{i}':i})
     
-    await self.client.arr_create('arr1', size)
+    await self.arrays.oarr_create('arr1', size)
 
-    await self.client.arr_set_rng('arr1', 0, data)
-    values = await self.client.arr_get_rng('arr1', 0, size)
+    await self.arrays.oarr_set_rng('arr1', 0, data)
+    values = await self.arrays.oarr_get_rng('arr1', 0, size)
 
     self.assertEqual(len(values), size)
 
@@ -31,10 +32,10 @@ class SetRange(NDBArrayTest):
     for i in range(0, setSize):
       data.append({f'k{i}':i})
     
-    await self.client.arr_create('arr2', size)
+    await self.arrays.oarr_create('arr2', size)
 
-    await self.client.arr_set_rng('arr2', 0, data)
-    values = await self.client.arr_get_rng('arr2', 0, setSize)
+    await self.arrays.oarr_set_rng('arr2', 0, data)
+    values = await self.arrays.oarr_get_rng('arr2', 0, setSize)
 
     self.assertEqual(len(values), setSize)
 
@@ -55,11 +56,11 @@ class SetRange(NDBArrayTest):
     for i in range(0, size):
       data.append({f'k{i}':i})
     
-    await self.client.arr_create('arr3', size)
+    await self.arrays.oarr_create('arr3', size)
 
-    await self.client.arr_set_rng('arr3', setStart, data[setStart:setStart+setSize])
+    await self.arrays.oarr_set_rng('arr3', setStart, data[setStart:setStart+setSize])
 
-    values = await self.client.arr_get_rng('arr3', setStart, setStart+setSize)
+    values = await self.arrays.oarr_get_rng('arr3', setStart, setStart+setSize)
     self.assertEqual(len(values), setSize)
     
     for i in range(0, len(values)):
@@ -67,13 +68,13 @@ class SetRange(NDBArrayTest):
 
 
   async def test_pos_bounds(self):
-    await self.client.arr_create('arr4', 5)
+    await self.arrays.oarr_create('arr4', 5)
     
     with self.assertRaises(ResponseError):
-      await self.client.arr_set_rng('arr4', 5, [{'a':0}])
+      await self.arrays.oarr_set_rng('arr4', 5, [{'a':0}])
 
     with self.assertRaises(ResponseError):
-      await self.client.arr_set_rng('arr4', 7, [{'a':0}])
+      await self.arrays.oarr_set_rng('arr4', 7, [{'a':0}])
 
 
 if __name__ == "__main__":
