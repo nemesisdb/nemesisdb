@@ -21,7 +21,7 @@ else
   fi
 
   
-  cd arr > /dev/null
+  cd oarr > /dev/null
   python3 -m unittest -f
   cd - > /dev/null
 

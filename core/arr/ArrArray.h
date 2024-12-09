@@ -15,9 +15,8 @@ using std::vector;
 
 /*
 A fixed-sized std::vector. Does not perform bounds checks, but
-does provide isInbounds() for users.
+does provide functions for that purpose.
 */
-
 template<typename T>
 class Array
 {

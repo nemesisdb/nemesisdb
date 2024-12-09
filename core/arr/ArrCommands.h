@@ -50,20 +50,6 @@ namespace nemesis { namespace arr { namespace cmds {
   static constexpr FixedString StrArrayIdent_  = "SARR_";
   
 
-  
-  // template<FixedString C>
-  // static consteval auto oArrayReq() -> decltype(OArrayIdent_ + C)
-  // {
-  //   return makeReq<OArrayIdent_, C>();
-  // }
-
-  // template<FixedString C>
-  // static consteval auto oArrayRsp() -> decltype(OArrayIdent_+C+Rsp)
-  // {
-  //   return makeRsp<OArrayIdent_, C>();
-  // }
-
-
   template <FixedString Ident>
   struct ArrCmds
   {

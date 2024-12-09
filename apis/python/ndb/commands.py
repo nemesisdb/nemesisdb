@@ -87,7 +87,7 @@ class ShCmd:
   KEYS_RSP      = 'SH_KEYS_RSP'
 
 
-class ArrCmd:
+class OArrCmd:
   CREATE_REQ        =    "OARR_CREATE"
   CREATE_RSP        =    "OARR_CREATE_RSP"
   DELETE_REQ        =    "OARR_DELETE"
