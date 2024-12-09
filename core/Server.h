@@ -330,16 +330,15 @@ public:
             send(ws, createErrorResponse(command+"_RSP", RequestStatus::CommandSyntax));
           else
           {
-            const auto type = command.substr(0, pos);
-            const auto type2 = std::string_view(command.substr(0, pos));
+            //const auto type = command.substr(0, pos);
+            const auto type = std::string_view(command.substr(0, pos));
             
             if (type == kvCmds::KvIdent)
             {
               const Response response = m_kvHandler->handle(command, request);
               send(ws, response.rsp);
             }
-            //else if (arrCmds::OArrCmds::Ident.compare(type))
-            else if (type2 == arrCmds::OArrayIdent)
+            else if (type == arrCmds::OArrayIdent)
             {
               const Response response = m_objectArrHandler->handle(command, request);
               send(ws, response.rsp);
@@ -349,7 +348,7 @@ public:
               const Response response = m_shHandler->handle(command, request);
               send(ws, response.rsp);
             }
-            else if (command == sv::cmds::InfoReq)  [[unlikely]]  // only one SV command at the moment
+            else if (command == sv::cmds::InfoReq)  // only one SV command at the moment
             {
               // the json_object_arg is a tag, followed by initializer_list<pair<string, njson>>
               static const njson Info = {jsoncons::json_object_arg, {
@@ -361,7 +360,7 @@ public:
 
               send(ws, Prepared);
             }
-            else
+            else  [[unlikely]]
             {
               static const njson Prepared {createErrorResponse(command+"_RSP", RequestStatus::CommandNotExist)};
               send(ws, Prepared);

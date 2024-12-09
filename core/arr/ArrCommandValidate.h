@@ -38,12 +38,11 @@ namespace nemesis { namespace arr {
   }
 
 
+  template<typename Cmds>
   Validity validateDelete (const njson& req)
   {
-    if (auto [valid, err] = isValid(DeleteRsp, req.at(DeleteReq), {{Param::required("name", JsonString)}}); !valid)
-      return makeInvalid(std::move(err));
-    else
-      return makeValid();
+    auto [valid, err] = isValid(Cmds::DeleteRsp, req.at(Cmds::DeleteReq), {{Param::required("name", JsonString)}});
+    return valid ? makeValid() : makeInvalid(std::move(err));
   }
 
 
@@ -57,6 +56,7 @@ namespace nemesis { namespace arr {
   }
 
 
+  template<typename Cmds>
   Validity validateSetRange (const njson& req)
   {
     auto validate = [](const njson& body) -> std::tuple<RequestStatus, const std::string_view>
@@ -68,13 +68,10 @@ namespace nemesis { namespace arr {
       return {RequestStatus::Ok, ""};
     };
 
-    auto [valid, err] = isValid(SetRngRsp, req.at(SetRngReq), { {Param::required("name", JsonString)},
-                                                                {Param::required("pos",  JsonUInt)},
-                                                                {Param::required("items", JsonArray)}}, validate);
-    if (!valid)
-      return makeInvalid(std::move(err));
-    else
-      return makeValid();
+    auto [valid, err] = isValid(Cmds::SetRngRsp, req.at(Cmds::SetRngReq), { {Param::required("name", JsonString)},
+                                                                            {Param::required("pos",  JsonUInt)},
+                                                                            {Param::required("items", JsonArray)}}, validate);
+    return valid ? makeValid() : makeInvalid(std::move(err));
   }
 
 
@@ -87,9 +84,10 @@ namespace nemesis { namespace arr {
   }
 
 
+  template<typename Cmds>
   Validity validateGetRange (const njson& req)
   {
-    auto validate = [](const njson& body) -> std::tuple<RequestStatus, const std::string_view>
+    auto checkRng = [](const njson& body) -> std::tuple<RequestStatus, const std::string_view>
     {
       if (const auto nDims = body.at("rng").size(); !(nDims == 1 || nDims == 2)) [[unlikely]]
         return {RequestStatus::ValueSize, "rng"};
@@ -120,38 +118,39 @@ namespace nemesis { namespace arr {
     };
 
 
-    auto [valid, err] = isValid(GetRngRsp, req.at(GetRngReq), { {Param::required("name", JsonString)},
-                                                                {Param::required("rng",  JsonArray)}}, validate);
-    if (!valid)
-      return makeInvalid(std::move(err));
-    else
-      return makeValid();
+    auto [valid, err] = isValid(Cmds::GetRngRsp, req.at(Cmds::GetRngReq), { {Param::required("name", JsonString)},
+                                                                            {Param::required("rng",  JsonArray)}}, checkRng);
+    return valid ? makeValid() : makeInvalid(std::move(err));
   }
 
 
+  template<typename Cmds>
   Validity validateLength (const njson& req)
   {
-    auto [valid, err] = isValid(LenRsp, req.at(LenReq), { {Param::required("name", JsonString)}});
+    auto [valid, err] = isValid(Cmds::LenRsp, req.at(Cmds::LenReq.data()), { {Param::required("name", JsonString)}});
     return valid ? makeValid() : makeInvalid(std::move(err));
   }
 
 
+  template<typename Cmds>
   Validity validateSwap (const njson& req)
   {
-    auto [valid, err] = isValid(SwapRsp, req.at(SwapReq), { {Param::required("name", JsonString)},
-                                                            {Param::required("posA", JsonUInt)},
-                                                            {Param::required("posB", JsonUInt)}});
+    auto [valid, err] = isValid(Cmds::SwapRsp, req.at(Cmds::SwapReq), { {Param::required("name", JsonString)},
+                                                                        {Param::required("posA", JsonUInt)},
+                                                                        {Param::required("posB", JsonUInt)}});
     return valid ? makeValid() : makeInvalid(std::move(err));
   }
 
 
+  template<typename Cmds>
   Validity validateExist (const njson& req)
   {
-    auto [valid, err] = isValid(ExistRsp, req.at(ExistReq), { {Param::required("name", JsonString)}});
+    auto [valid, err] = isValid(Cmds::ExistRsp, req.at(Cmds::ExistReq), { {Param::required("name", JsonString)}});
     return valid ? makeValid() : makeInvalid(std::move(err));
   }
 
 
+  template<typename Cmds>
   Validity validateClear (const njson& req)
   {
     auto checkRange = [](const njson& body) -> std::tuple<RequestStatus, const std::string_view>
@@ -171,8 +170,8 @@ namespace nemesis { namespace arr {
       return {RequestStatus::Ok, ""};
     };
 
-    auto [valid, err] = isValid(ClearRsp, req.at(ClearReq), { {Param::required("name", JsonString)},
-                                                              {Param::required("rng", JsonArray)}}, checkRange);
+    auto [valid, err] = isValid(Cmds::ClearRsp, req.at(Cmds::ClearReq), { {Param::required("name", JsonString)},
+                                                                          {Param::required("rng", JsonArray)}}, checkRange);
     return valid ? makeValid() : makeInvalid(std::move(err));
   }
 }

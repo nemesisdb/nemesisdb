@@ -50,25 +50,26 @@ public:
 
   static Response setRange (Array& array, const njson& reqBody)
   {
-    static const njson Prepared = njson{jsoncons::json_object_arg, {{SetRngRsp, njson::object()}}};
+    static const constexpr auto RspName = Cmds::SetRngRsp.data();
+    static const njson Prepared = njson{jsoncons::json_object_arg, {{RspName, njson::object()}}};
     
     Response response{.rsp = Prepared};
-    response.rsp[SetRngRsp]["st"] = toUnderlying(RequestStatus::Ok);
+    response.rsp[RspName]["st"] = toUnderlying(RequestStatus::Ok);
 
     try
     {
-      const auto pos = reqBody.at("pos").as<std::size_t>();
+      const auto pos = reqBody.at("pos").template as<std::size_t>();
       const auto& items = reqBody.at("items");
 
       if (!array.isSetInBounds(pos, items.size()))
-        response.rsp[SetRngRsp]["st"] = toUnderlying(RequestStatus::Bounds);
+        response.rsp[RspName]["st"] = toUnderlying(RequestStatus::Bounds);
       else
         array.setRange(pos, items);
     }
     catch(const std::exception& e)
     {
       PLOGE << e.what();
-      response.rsp[SetRngRsp]["st"] = toUnderlying(RequestStatus::Unknown);
+      response.rsp[RspName]["st"] = toUnderlying(RequestStatus::Unknown);
     }
 
     return response;
@@ -96,7 +97,8 @@ public:
 
   static Response getRange (Array& array, const njson& reqBody)
   {
-    static const njson Prepared = njson{jsoncons::json_object_arg, {{GetRngRsp, njson::object()}}};
+    static const constexpr auto RspName = Cmds::GetRngRsp.data();
+    static const njson Prepared = njson{jsoncons::json_object_arg, {{RspName, njson::object()}}};
     
     RequestStatus status = RequestStatus::Ok;
     Response response{.rsp = Prepared};
@@ -117,14 +119,14 @@ public:
     {
       const auto stop = std::next(rngArray.begin())->as<std::size_t>();
       
-      if (!array.isGetInBounds(start, stop))  [[unlikely]]
+      if (!array.isInBounds(start))  [[unlikely]]
         status = RequestStatus::Bounds;
       else
         items = array.getRange(start, stop);
     }
     
-    response.rsp[GetRngRsp].try_emplace("items", std::move(items));
-    response.rsp[GetRngRsp]["st"] = toUnderlying(status);
+    response.rsp[RspName].try_emplace("items", std::move(items));
+    response.rsp[RspName]["st"] = toUnderlying(status);
 
     return response;
   }
@@ -132,21 +134,22 @@ public:
 
   static Response length (Array& array, const njson& reqBody)
   {
-    static const njson Prepared = njson{jsoncons::json_object_arg, {{LenRsp, njson::object()}}};
+    static const njson Prepared = njson{jsoncons::json_object_arg, {{Cmds::LenRsp.data(), njson::object()}}};
     
     Response response{.rsp = Prepared};
-    response.rsp[LenRsp]["st"] = toUnderlying(RequestStatus::Ok);
-    response.rsp[LenRsp]["len"] = array.size();
+    response.rsp[Cmds::LenRsp]["st"] = toUnderlying(RequestStatus::Ok);
+    response.rsp[Cmds::LenRsp]["len"] = array.size();
     return response;
   }
 
 
   static Response swap (Array& array, const njson& reqBody)
   {
-    static const njson Prepared = njson{jsoncons::json_object_arg, {{SwapRsp, njson::object()}}};
+    static const constexpr auto RspName = Cmds::SwapRsp.data();
+    static const njson Prepared = njson{jsoncons::json_object_arg, {{RspName, njson::object()}}};
     
     Response response{.rsp = Prepared};
-    response.rsp[SwapRsp]["st"] = toUnderlying(RequestStatus::Ok);
+    response.rsp[RspName]["st"] = toUnderlying(RequestStatus::Ok);
 
     try
     {
@@ -154,14 +157,14 @@ public:
       const auto posB = reqBody.at("posB").as<std::size_t>();
       
       if (!(array.isInBounds(posA) && array.isInBounds(posB)))
-        response.rsp[SwapRsp]["st"] = toUnderlying(RequestStatus::Bounds);
+        response.rsp[RspName]["st"] = toUnderlying(RequestStatus::Bounds);
       else
         array.swap(posA, posB);
     }
     catch(const std::exception& e)
     {
       PLOGE << e.what();
-      response.rsp[SwapRsp]["st"] = toUnderlying(RequestStatus::Unknown);
+      response.rsp[RspName]["st"] = toUnderlying(RequestStatus::Unknown);
     }
 
     return response;
@@ -169,11 +172,12 @@ public:
 
 
   static Response clear (Array& array, const njson& reqBody)
-  {
-    static const njson Prepared = njson{jsoncons::json_object_arg, {{ClearRsp, njson::object()}}};
+  { 
+    static const constexpr auto RspName = Cmds::ClearRsp.data();
+    static const njson Prepared = njson{jsoncons::json_object_arg, {{RspName, njson::object()}}};
     
     Response response{.rsp = Prepared};
-    response.rsp[ClearRsp]["st"] = toUnderlying(RequestStatus::Ok);
+    response.rsp[RspName]["st"] = toUnderlying(RequestStatus::Ok);
 
     try
     {
@@ -182,14 +186,14 @@ public:
       const auto stop = rng.crbegin()->as<std::size_t>();
 
       if (!array.isInBounds(start))
-        response.rsp[ClearRsp]["st"] = toUnderlying(RequestStatus::Bounds);
+        response.rsp[RspName]["st"] = toUnderlying(RequestStatus::Bounds);
       else
         array.clear(start, stop);
     }
     catch(const std::exception& e)
     {
       PLOGE << e.what();
-      response.rsp[ClearRsp]["st"] = toUnderlying(RequestStatus::Unknown);
+      response.rsp[RspName]["st"] = toUnderlying(RequestStatus::Unknown);
     }
 
     return response;

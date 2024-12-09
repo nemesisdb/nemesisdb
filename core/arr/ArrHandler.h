@@ -172,39 +172,37 @@ private:
 
   ndb_always_inline Response deleteArray(njson& request)
   {
-    return Response{};
-    /*
-    if (auto [valid, rsp] = validateDelete(request) ; !valid)
+    static constexpr auto ReqName = Cmds::DeleteReq.data();
+    static constexpr auto RspName = Cmds::DeleteRsp.data();
+
+    if (auto [valid, rsp] = validateDelete<Cmds>(request) ; !valid)
       return Response{.rsp = std::move(rsp)};
     else
     {
       Response response;
-      response.rsp = njson{jsoncons::json_object_arg, {{DeleteRsp, njson::object()}}};
-      response.rsp[DeleteRsp]["st"] = toUnderlying(RequestStatus::Ok);
+      response.rsp = njson{jsoncons::json_object_arg, {{RspName, njson::object()}}};
+      response.rsp[RspName]["st"] = toUnderlying(RequestStatus::Ok);
 
       try
       {
-        m_arrays.erase(request.at(DeleteReq).at("name").as_string());
+        m_arrays.erase(request.at(ReqName).at("name").as_string());
       }
       catch(const std::exception& e)
       {
         PLOGE << __PRETTY_FUNCTION__ << e.what();
-        response.rsp[DeleteRsp]["st"] = toUnderlying(RequestStatus::Unknown);
+        response.rsp[RspName]["st"] = toUnderlying(RequestStatus::Unknown);
       }
 
       return response;
     }
-    */
   }
 
   
   ndb_always_inline Response deleteAll(njson& request)
   {
-    return Response{};
-    /*
     Response response;
-    response.rsp = njson{jsoncons::json_object_arg, {{DeleteAllRsp, njson::object()}}};
-    response.rsp[DeleteAllRsp]["st"] = toUnderlying(RequestStatus::Ok);
+    response.rsp = njson{jsoncons::json_object_arg, {{Cmds::DeleteAllRsp.data(), njson::object()}}};
+    response.rsp[Cmds::DeleteAllRsp]["st"] = toUnderlying(RequestStatus::Ok);
 
     try
     {
@@ -214,11 +212,10 @@ private:
     catch(const std::exception& e)
     {
       PLOGE << __PRETTY_FUNCTION__ << e.what();
-      response.rsp[DeleteAllRsp]["st"] = toUnderlying(RequestStatus::Unknown);
+      response.rsp[Cmds::DeleteAllRsp]["st"] = toUnderlying(RequestStatus::Unknown);
     }
 
     return response;
-    */
   }
 
 
@@ -241,19 +238,16 @@ private:
 
   ndb_always_inline Response setRange(njson& request)
   {
-    return Response{};
-    /*
-    if (auto [valid, rsp] = validateSetRange(request) ; !valid)
+    if (auto [valid, rsp] = validateSetRange<Cmds>(request) ; !valid)
       return Response{.rsp = std::move(rsp)};
     else
     {
-      const auto& body = request.at(SetRngReq);
+      const auto& body = request.at(Cmds::SetRngReq);
       if (auto [exist, it] = getArray(body.at("name").as_string(), body) ; !exist)
-        return Response{.rsp = createErrorResponseNoTkn(SetRngRsp, RequestStatus::NotExist)};
+        return Response{.rsp = createErrorResponseNoTkn(Cmds::SetRngRsp, RequestStatus::NotExist)};
       else
-        return ArrayExecutor::setRange(it->second, body);
+        return ArrayExecutor<ArrayT, Cmds>::setRange(it->second, body);
     }
-    */
   }
 
 
@@ -274,97 +268,83 @@ private:
 
   ndb_always_inline Response getRange(njson& request)
   {
-    // TODO 'stop' optional
-    
-    return Response{};
-    /*
-    if (auto [valid, rsp] = validateGetRange(request) ; !valid)
+    if (auto [valid, rsp] = validateGetRange<Cmds>(request) ; !valid)
       return Response{.rsp = std::move(rsp)};
     else
     {
-      const auto& body = request.at(GetRngReq);
+      const auto& body = request.at(Cmds::GetRngReq);
       if (auto [exist, it] = getArray(body) ; !exist)
-        return Response{.rsp = createErrorResponseNoTkn(GetRngRsp, RequestStatus::NotExist)};
+        return Response{.rsp = createErrorResponseNoTkn(Cmds::GetRngRsp, RequestStatus::NotExist)};
       else
-        return ArrayExecutor::getRange(it->second, body);
+        return ArrayExecutor<ArrayT, Cmds>::getRange(it->second, body);
     }
-    */
   }
 
 
   ndb_always_inline Response length(njson& request)
-  {
-    return Response{};
-    /*
-    if (auto [valid, rsp] = validateLength(request) ; !valid)
+  {    
+    if (auto [valid, rsp] = validateLength<Cmds>(request) ; !valid)
       return Response{.rsp = std::move(rsp)};
     else
     {
-      const auto& body = request.at(LenReq);
+      const auto& body = request.at(Cmds::LenReq);
       if (auto [exist, it] = getArray(body.at("name").as_string(), body) ; !exist)
-        return Response{.rsp = createErrorResponseNoTkn(LenRsp, RequestStatus::NotExist)};
+        return Response{.rsp = createErrorResponseNoTkn(Cmds::LenRsp, RequestStatus::NotExist)};
       else
-        return ArrayExecutor::length(it->second, body);
+        return ArrayExecutor<ArrayT, Cmds>::length(it->second, body);
     }
-    */
   }
 
 
   ndb_always_inline Response swap(njson& request)
   {
-    return Response{};
-    /*
-    if (auto [valid, rsp] = validateSwap(request) ; !valid)
+    if (auto [valid, rsp] = validateSwap<Cmds>(request) ; !valid)
       return Response{.rsp = std::move(rsp)};
     else
     {
-      const auto& body = request.at(SwapReq);
+      const auto& body = request.at(Cmds::SwapReq);
       if (auto [exist, it] = getArray(body.at("name").as_string(), body) ; !exist)
-        return Response{.rsp = createErrorResponseNoTkn(SwapRsp, RequestStatus::NotExist)};
+        return Response{.rsp = createErrorResponseNoTkn(Cmds::SwapRsp, RequestStatus::NotExist)};
       else
-        return ArrayExecutor::swap(it->second, body);
+        return ArrayExecutor<ArrayT, Cmds>::swap(it->second, body);
     }
-    */
   }
 
 
   ndb_always_inline Response exist(njson& request)
   {
-    return Response{};
-    /*
-    if (auto [valid, err] = validateExist(request) ; !valid)
+    static constexpr auto ReqName = Cmds::ExistReq.data();
+    static constexpr auto RspName = Cmds::ExistRsp.data();
+
+    if (auto [valid, err] = validateExist<Cmds>(request) ; !valid)
       return Response{.rsp = std::move(err)};
     else
     {
-      static const njson Prepared = njson{jsoncons::json_object_arg, {{ExistRsp, njson::object()}}};
+      static const njson Prepared = njson{jsoncons::json_object_arg, {{RspName, njson::object()}}};
 
-      const auto& name = request.at(ExistReq).at("name").as_string();
+      const auto& name = request.at(ReqName).at("name").as_string();
       const auto status = toUnderlying(arrayExist(name) ? RequestStatus::Ok : RequestStatus::NotExist);
 
-      njson rsp {Prepared};
-      rsp[ExistRsp]["st"] = status;
-
+      njson rsp {jsoncons::json_object_arg, {{RspName, njson{}}}}; 
+      rsp[RspName]["st"] = status;
+      
       return Response { .rsp = std::move(rsp)};
     }
-    */
   }
 
 
   ndb_always_inline Response clear(njson& request)
   {
-    return Response{};
-    /*
-    if (auto [valid, rsp] = validateClear(request) ; !valid)
+    if (auto [valid, rsp] = validateClear<Cmds>(request) ; !valid)
       return Response{.rsp = std::move(rsp)};
     else
     {
-      const auto& body = request.at(ClearReq);
+      const auto& body = request.at(Cmds::ClearReq);
       if (auto [exist, it] = getArray(body.at("name").as_string(), body) ; !exist)
-        return Response{.rsp = createErrorResponseNoTkn(ClearRsp, RequestStatus::NotExist)};
+        return Response{.rsp = createErrorResponseNoTkn(Cmds::ClearRsp, RequestStatus::NotExist)};
       else
-        return ArrayExecutor::clear(it->second, body);
+        return ArrayExecutor<ArrayT, Cmds>::clear(it->second, body);
     }
-    */
   }
 
   

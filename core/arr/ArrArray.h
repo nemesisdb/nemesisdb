@@ -25,11 +25,11 @@ public:
   
   Array(const std::size_t size) : m_size(size)
   {
-    m_array.resize(m_size); // initialised as empty json objects: {}
+    m_array.resize(m_size);
   }
 
 
-  static bool isRequestedSizeValid(const std::size_t size)
+  static bool isRequestedSizeValid(const std::size_t size) noexcept
   {
     return size == std::clamp<std::size_t>(size, 1, 1'000); // TODO quite arbitrary
   }
@@ -41,15 +41,9 @@ public:
   }
 
 
-  bool isSetInBounds(const std::size_t start, const std::size_t setSize)
+  bool isSetInBounds(const std::size_t start, const std::size_t setSize) const noexcept
   {
     return start < m_size && start + setSize <= m_size;
-  }
-
-
-  bool isGetInBounds(const std::size_t start, const std::size_t stop)
-  {
-    return isInBounds(start, m_size);
   }
 
 
@@ -98,6 +92,7 @@ public:
 
     return rsp;
   }
+
 
   void swap(const std::size_t posA, const std::size_t posB)
   {
