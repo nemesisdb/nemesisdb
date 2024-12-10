@@ -168,7 +168,8 @@ public:
     const auto itStart = std::next(m_array.begin(), start);
     const auto itPivot = std::next(m_array.begin(), std::min<std::size_t>(m_used, stop));
 
-    if (itPivot != m_array.end())
+    // don't rotate if it's the entire array    
+    if (!(itStart == m_array.begin() && itPivot == m_array.end()))
     {
       std::rotate(itStart, itPivot, m_array.end());
       m_used -= std::distance(itStart, itPivot);
