@@ -17,14 +17,14 @@ using std::vector;
 A fixed-sized std::vector. Does not perform bounds checks, but
 does provide functions for that purpose.
 */
-template<typename T>
+template<typename T, bool Sorted>
 class Array
 {
 public:
 
   using ValueT = T;
   
-  Array(const std::size_t size) : m_size(size)
+  Array(const std::size_t size) : m_size(size), m_used(0)
   {
     m_array.resize(m_size);
   }
@@ -42,40 +42,78 @@ public:
   }
 
 
-  bool isSetInBounds(const std::size_t start, const std::size_t setSize) const noexcept
+  bool isFull() const noexcept
+  {
+    return m_used > m_size;
+  }
+
+
+  bool hasCapacity(const std::size_t n) const noexcept
+  {
+    return m_used+n <= m_size;
+  }
+
+
+  bool isSetInBounds(const std::size_t start, const std::size_t setSize) const noexcept requires (!Sorted)
   {
     return start < m_size && start + setSize <= m_size;
   }
 
 
-  void set(const std::size_t pos, const T& item)
+  void set(const std::size_t pos, const T& item) requires (!Sorted)
   {
     m_array[pos] = item;
   }
 
-
-  void setRange(std::size_t pos, const std::vector<T>& items)
-  {    
-    for (const auto& item : items)
-      m_array[pos++] = item;
+  void set(const T& item) requires (Sorted)
+  {
+    m_array[m_used++] = item;
+    std::sort(m_array.begin(), std::next(m_array.begin(), m_used));
   }
 
 
-  njson get(const std::size_t pos) const
+  void setRange(std::size_t pos, const std::vector<T>& items) requires (!Sorted)
+  { 
+    for (const auto& item : items)
+      m_array[pos++] = item;
+
+    m_used += items.size();
+  }
+
+  
+  void setRange(const std::vector<T>& items) requires (Sorted)
+  {    
+    for (const auto& item : items)
+      m_array[m_used++] = item;
+
+    std::sort(m_array.begin(), std::next(m_array.begin(), m_used));
+  }
+
+
+  T get(const std::size_t pos) const
   {
     return m_array[pos];
   }
 
 
-  njson getRange(const std::size_t start) const
+  njson getRange(const std::size_t start) const requires (!Sorted)
   {
     return getRange(start, m_size);
   }
 
 
+  njson getRange(const std::size_t start) const requires (Sorted)
+  {
+    return getRange(start, m_used);
+  }
+
+
   njson getRange(const std::size_t start, std::size_t stop) const
   {
-    stop = std::min<std::size_t> (stop, m_size);
+    if constexpr (Sorted)
+      stop = std::min<std::size_t> (stop, m_used);
+    else
+      stop = std::min<std::size_t> (stop, m_size);  
 
     const auto itStart = std::next(m_array.cbegin(), start);
     const auto itEnd = std::next(m_array.cbegin(), stop);
@@ -95,7 +133,7 @@ public:
   }
 
 
-  void swap(const std::size_t posA, const std::size_t posB)
+  void swap(const std::size_t posA, const std::size_t posB) requires (!Sorted)
   {
     std::iter_swap( std::next(m_array.begin(), posA),
                     std::next(m_array.begin(), posB));
@@ -105,10 +143,11 @@ public:
   void clear(const std::size_t start)
   {
     clear(start, m_size);
+    m_used = 0;
   }
 
 
-  void clear(const std::size_t start, const std::size_t stop)
+  void clear(const std::size_t start, const std::size_t stop) requires (!Sorted)
   {
     PLOGD << "Array::clear(): " << start << " to " << stop;
 
@@ -117,6 +156,23 @@ public:
 
     for (auto it = itStart ; it != itEnd; ++it)
       *it = T{};
+
+    m_used -= stop-start;
+  }
+
+
+  void clear(const std::size_t start, const std::size_t stop) requires (Sorted)
+  {
+    PLOGD << "Array::clear(): " << start << " to " << stop;
+
+    const auto itStart = std::next(m_array.begin(), start);
+    const auto itPivot = std::next(m_array.begin(), std::min<std::size_t>(m_used, stop));
+
+    if (itPivot != m_array.end())
+    {
+      std::rotate(itStart, itPivot, m_array.end());
+      m_used -= std::distance(itStart, itPivot);
+    }
   }
 
 
@@ -125,15 +181,30 @@ public:
     return m_size;
   }
 
+
+  std::vector<T>::const_iterator cbegin() const noexcept requires (Sorted)
+  {
+    return m_array.cbegin();
+  }
+
+
+  std::vector<T>::const_iterator cend() const noexcept requires (Sorted)
+  {
+    return std::next(m_array.cbegin(), m_used);
+  }
+
 private:
   std::vector<T> m_array;
   std::size_t m_size;
+  std::size_t m_used;
 };
 
 
-using OArray = Array<njson>;
-using IArray = Array<std::int64_t>;
-using SArray = Array<std::string>;
+using OArray = Array<njson, false>;
+using IArray = Array<std::int64_t, false>;
+using SArray = Array<std::string, false>;
+
+using SortedIArray = Array<std::int64_t, true>;
 
 }
 }

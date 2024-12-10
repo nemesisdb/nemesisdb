@@ -4,18 +4,18 @@
 
 |Container|Cpp Type|API Ident|Notes|
 |---|---|---|---|
-|Array|std::vector|ARR_|Fixed size|
+|Array|std::vector|ARR_|Fixed size arrays, of various data types: object, integer, string (possibly byte)|
 |List|std::list/std::forward_list|LST_|Use forward_list unless we need bidirection|
 |Queue|std::queue|QUE_|Use std::vector as underlying container|
 |Set|ankerl|SET_|set or segmented_set, also check `std::unordered_set`|
 
 
-## Issues
+# Issues
 - How to persist
 
 
 
-## Array
+# Array
 
 A fixed size vector.
 
@@ -24,38 +24,53 @@ A fixed size vector.
 
 <br/>
 
-### Initial
+`OARR_` : object array
+`IARR_` : integer array (int or unsigned)
+
+> NOTE
+>
+> `IARR` stores values as `std::int64_t` but allows unsigned values, this limits max  value.
+>
+
+## Initial
 
 Note: all commands require a `name`, even if not shown, except `ARR_DELETE_ALL`
 
 |Command|Purpose|Args|Notes|
 |---|---|---|---|
-|ARR_CREATE|Creates array|`name`,`len`|Call `resize()`. Items are empty json object|
-|ARR_DELETE|Deletes array|||
-|ARR_DELETE_ALL|Deletes all arrays||Useful for testing, maybe not production|
-|ARR_EXISTS|Checks array name|`name`||
-|ARR_LEN|Returns `size()`|||
-|ARR_GET|Returns a single item|`pos`||
-|ARR_GET_RNG|Returns multiple, based on range|`rng:[a,b]` or `rng:[a]`|Range is: `[a,b)`. If `b` not set or past end, assume `end()`. Allow negative indices?|
-|ARR_SET|Overwrites existing item|`pos`,`item`||
-|ARR_SET_RANGE|Overwrites existing items|`pos`,`items`|Sets items array, starting at `pos`|
-|ARR_SWAP|Swaps two items|`posA`, `posB`||
-|ARR_CLEAR|Resets items to empty objects|`name`, `rng:[a,b]`|Sets elements in `[a,b)` to empty object|
+|_CREATE|Creates array|`name`,`len`|Call `resize()`. Items are empty json object|
+|_DELETE|Deletes array|||
+|_DELETE_ALL|Deletes all arrays||Useful for testing, maybe not production|
+|_EXISTS|Checks array name|`name`||
+|_LEN|Returns `size()`|||
+|_GET|Returns a single item|`pos`||
+|_GET_RNG|Returns multiple, based on range|`rng:[a,b]` or `rng:[a]`|Range is: `[a,b)`. If `b` not set or past end, assume `end()`. Allow negative indices?|
+|_SET|Overwrites existing item|`pos`,`item`||
+|_SET_RANGE|Overwrites existing items|`pos`,`items`|Sets items array, starting at `pos`|
+|_SWAP|Swaps two items|`posA`, `posB`||
+|_CLEAR|Resets items to empty objects|`name`, `rng:[a,b]`|Sets elements in `[a,b)` to empty object|
 
+
+---
+<br/>
+
+### IArray
+|Command|Purpose|Args|Notes|
+|---|---|---|---|
+|_INTERSECT|Intersects two __sorted__ arrays|`src1`, `src2`|Intersects arrays `src1` and `src2`, returning intersection|
 
 <br/>
 
-### Next
+## Later
 |Command|Purpose|Args|Notes|
 |---|---|---|---|
 |ARR_COPY|Copy array to new array|`src_name`,`dst_name`, `src_start`, `src_stop`|Creates `dst_name` array of size `src_stop - src_start` then copies from `[src_start, src_stop)`|
 |ARR_MOVE|Move to a different array|`src_name`, `dst_name`|Create `dst_name` if required. No items copied. Does `std::move()`. `dst_name` array is cleared if it has items.|
-|ARR_CLEAR|Resets items to initial value (empty object)|`start`, `stop`||
 
 
 <br/>
 
-## List
+# List
 Suitable for inserts at random positions at the expensive of spacial locality.
 
 TODO
@@ -81,7 +96,7 @@ TODO
 
 <br/>
 
-## Queue
+# Queue
 Standard queue backed by `std::vector`.
 
 |Command|Purpose|Args|Notes|
@@ -99,7 +114,7 @@ Standard queue backed by `std::vector`.
 
 <br/>
 
-## Set
+# Set
 |Command|Purpose|Args|Notes|
 |---|---|---|---|
 |SET_CREATE|Create|`name`||

@@ -171,6 +171,7 @@ namespace nemesis {
       return {name, Param {type, false}};
     }
 
+    // if type is variable (i.e. in IARR, SARR, OARR, see isArrayCmdValid())
     static std::pair<std::string_view, Param> variable (const std::string_view name)
     {
       return {name, Param {JsonType::null_value, true, true}};
@@ -287,9 +288,11 @@ namespace nemesis {
   }
 
 
+  using ValidateParams = std::map<const std::string_view, const Param>;
+
   // Checks the params (if present and correct type). If that passes and onPostValidate is set, onPostValidate() is called for custom checks.
   std::tuple<RequestStatus, const std::string_view> isCmdValid (const njson& msg,
-                                                                const std::map<const std::string_view, const Param>& params,
+                                                                const ValidateParams& params,
                                                                 std::function<std::tuple<RequestStatus, const std::string_view>(const njson&)> onPostValidate)
   {
     for (const auto& [member, param] : params)
@@ -306,7 +309,7 @@ namespace nemesis {
 
   std::tuple<bool, njson> isValid ( const std::string_view queryRspName, 
                                     const njson& req,
-                                    const std::map<const std::string_view, const Param>& params,
+                                    const ValidateParams& params,
                                     std::function<std::tuple<RequestStatus, const std::string_view>(const njson&)> onPostValidate = nullptr)
   {
     const auto [stat, msg] = isCmdValid(req, params, onPostValidate);
@@ -324,7 +327,7 @@ namespace nemesis {
   template <class ArrayCmds>
   std::tuple<bool, njson> isArrayCmdValid (  const std::string_view queryRspName, 
                                                       const njson& req,
-                                                      const std::map<const std::string_view, const Param>& params,
+                                                      const ValidateParams& params,
                                                       std::function<std::tuple<RequestStatus, const std::string_view>(const njson&)> onPostValidate = nullptr)
   {
     for (const auto& [member, param] : params)

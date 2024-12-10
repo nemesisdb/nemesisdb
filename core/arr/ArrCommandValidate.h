@@ -32,7 +32,8 @@ namespace nemesis { namespace arr {
   Validity validateCreate (const njson& request)
   {
     auto [valid, err] = isValid(Cmds::CreateRsp, request.at(Cmds::CreateReq), { {Param::required("name", JsonString)},
-                                                                                {Param::required("len", JsonUInt)}});
+                                                                                {Param::required("len", JsonUInt)},
+                                                                                {Param::optional("sorted", JsonBool)}});
 
     return valid ? makeValid() : makeInvalid(std::move(err));
   }
@@ -49,11 +50,16 @@ namespace nemesis { namespace arr {
   template<typename Cmds>
   Validity validateSet (const njson& req)
   {
-    auto[valid, err] = isArrayCmdValid<Cmds>(Cmds::SetRsp, req.at(Cmds::SetReq), {{Param::required("name", JsonString)},
-                                                                                  {Param::required("pos",  JsonUInt)},
-                                                                                  {Param::variable("item")} });
+    ValidateParams params;
 
-    
+    // if container can be sorted, then request cannot set a position (since it may change after sorting)
+    if constexpr (Cmds::IsSorted)
+      params = {{Param::required("name", JsonString)}, {Param::variable("item")} };
+    else
+      params = {{Param::required("name", JsonString)}, {Param::required("pos",  JsonUInt)}, {Param::variable("item")} };
+
+
+    auto[valid, err] = isArrayCmdValid<Cmds>(Cmds::SetRsp, req.at(Cmds::SetReq), params);
     return valid ? makeValid() : makeInvalid(std::move(err));
   }
 
@@ -71,9 +77,20 @@ namespace nemesis { namespace arr {
     };
 
 
-    auto [valid, err] = isArrayCmdValid<Cmds>(Cmds::SetRngRsp, req.at(Cmds::SetRngReq), { {Param::required("name", JsonString)},
-                                                                                          {Param::required("pos",  JsonUInt)},
-                                                                                          {Param::required("items", JsonArray)}}, itemsValid);
+    ValidateParams params;
+
+    // if container can be sorted, then request cannot set a position (since it may change after sorting)
+    if constexpr (Cmds::IsSorted)
+    {
+      params = {{Param::required("name", JsonString)}, {Param::required("items", JsonArray)} };
+      //std::tie(valid, err) = isArrayCmdValid<Cmds>(Cmds::SetRngRsp, req.at(Cmds::SetRngReq), params, itemsValid);
+    }
+    else
+    {
+      params = {{Param::required("name", JsonString)}, {Param::required("items", JsonArray)}, {Param::required("pos",  JsonUInt)} };
+    }
+
+    auto [valid, err] = isArrayCmdValid<Cmds>(Cmds::SetRngRsp, req.at(Cmds::SetRngReq), params, itemsValid);
     return valid ? makeValid() : makeInvalid(std::move(err));
   }
 
@@ -175,6 +192,20 @@ namespace nemesis { namespace arr {
 
     auto [valid, err] = isValid(Cmds::ClearRsp, req.at(Cmds::ClearReq), { {Param::required("name", JsonString)},
                                                                           {Param::required("rng", JsonArray)}}, checkRange);
+    return valid ? makeValid() : makeInvalid(std::move(err));
+  }
+
+
+  template<typename Cmds>
+  Validity validateIntersect (const njson& req)
+  {
+    const auto reqName = Cmds::IntersectReq.data();
+    const auto rspName = Cmds::IntersectRsp.data();
+
+    auto[valid, err] = isArrayCmdValid<Cmds>(rspName, req.at(reqName), {  {Param::required("srcA",  JsonString)},
+                                                                          {Param::required("srcB", JsonString)} });
+
+    
     return valid ? makeValid() : makeInvalid(std::move(err));
   }
 }

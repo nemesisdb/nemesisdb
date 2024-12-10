@@ -152,6 +152,7 @@ public:
         m_objectArrHandler = std::make_shared<arr::OArrHandler>(m_settings);
         m_intArrHandler = std::make_shared<arr::IntArrHandler>(m_settings);
         m_strArrHandler = std::make_shared<arr::StrArrHandler>(m_settings);
+        m_sortedIntArrHandler = std::make_shared<arr::SortedIntArrHandler>(m_settings);
       }
       catch(const std::exception& e)
       {
@@ -355,6 +356,11 @@ public:
               const Response response = m_strArrHandler->handle(command, request);
               send(ws, response.rsp);
             }
+            else if (type == arrCmds::SortedIntArrayIdent)
+            {
+              const Response response = m_sortedIntArrHandler->handle(command, request);
+              send(ws, response.rsp);
+            }
             else if (type == shCmds::ShIdent)
             {
               const Response response = m_shHandler->handle(command, request);
@@ -450,6 +456,7 @@ public:
     std::shared_ptr<arr::OArrHandler> m_objectArrHandler;
     std::shared_ptr<arr::IntArrHandler> m_intArrHandler;
     std::shared_ptr<arr::StrArrHandler> m_strArrHandler;
+    std::shared_ptr<arr::SortedIntArrHandler> m_sortedIntArrHandler;
     std::shared_ptr<sh::Sessions> m_sessions;
     Settings m_settings;
 };

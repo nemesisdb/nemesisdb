@@ -25,7 +25,8 @@ namespace nemesis {  namespace arr {
     Len,
     Swap,
     Exist,
-    Clear
+    Clear,
+    Intersect
   };
 
 }

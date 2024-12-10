@@ -20,6 +20,7 @@ class ArrayExecutor
 public:
   using ArrayValueT = Array::ValueT;
 
+
   static Response set (Array& array, const njson& reqBody)
   {
     static const constexpr auto RspName = Cmds::SetRsp.data();
@@ -33,12 +34,22 @@ public:
 
     try
     {
-      const auto pos = reqBody.at("pos").as<std::size_t>();
-      
-      if (!array.isInBounds(pos))
-        rspBody["st"] = toUnderlying(RequestStatus::Bounds);
+      if constexpr (Cmds::IsSorted)
+      {
+        if (array.isFull())
+          rspBody["st"] = toUnderlying(RequestStatus::Bounds);
+        else
+          array.set(reqBody.at("item").as<ArrayValueT>());
+      }
       else
-        array.set(pos, reqBody.at("item").as<ArrayValueT>());
+      {
+        const auto pos = reqBody.get_value_or<std::size_t>("pos", 0);
+      
+        if (!array.isInBounds(pos))
+          rspBody["st"] = toUnderlying(RequestStatus::Bounds);
+        else
+          array.set(pos, reqBody.at("item").as<ArrayValueT>());
+      }
     }
     catch(const std::exception& e)
     {
@@ -60,13 +71,24 @@ public:
 
     try
     {
-      const auto pos = reqBody.at("pos").template as<std::size_t>();
       const auto& items = reqBody.at("items").as<std::vector<ArrayValueT>>();
 
-      if (!array.isSetInBounds(pos, items.size()))
-        response.rsp[RspName]["st"] = toUnderlying(RequestStatus::Bounds);
+      if constexpr (Cmds::IsSorted)
+      {
+        if (!array.hasCapacity(items.size()))
+          response.rsp[RspName]["st"] = toUnderlying(RequestStatus::Bounds);
+        else
+          array.setRange(items);
+      }
       else
-        array.setRange(pos, items);
+      {
+        const auto pos = reqBody.at("pos").template as<std::size_t>();
+
+        if (!array.isSetInBounds(pos, items.size()))
+          response.rsp[RspName]["st"] = toUnderlying(RequestStatus::Bounds);
+        else
+          array.setRange(pos, items);
+      }
     }
     catch(const std::exception& e)
     {
@@ -78,7 +100,7 @@ public:
   }
 
 
-  static Response get (Array& array, const njson& reqBody)
+  static Response get (const Array& array, const njson& reqBody)
   {
     static const constexpr auto RspName = Cmds::GetRsp.data();
     static const njson Prepared = njson{jsoncons::json_object_arg, {{RspName, njson::object()}}};
@@ -97,7 +119,7 @@ public:
   }
 
 
-  static Response getRange (Array& array, const njson& reqBody)
+  static Response getRange (const Array& array, const njson& reqBody)
   {
     static const constexpr auto RspName = Cmds::GetRngRsp.data();
     static const njson Prepared = njson{jsoncons::json_object_arg, {{RspName, njson::object()}}};
@@ -134,7 +156,7 @@ public:
   }
 
 
-  static Response length (Array& array, const njson& reqBody)
+  static Response length (const Array& array, const njson& reqBody)
   {
     static const njson Prepared = njson{jsoncons::json_object_arg, {{Cmds::LenRsp.data(), njson::object()}}};
     
@@ -201,6 +223,36 @@ public:
     return response;
   }
 
+
+  static Response intersect (const Array& a, const Array& b) requires (Cmds::IsSorted)
+  {
+    static const constexpr auto RspName = Cmds::IntersectRsp.data();
+    static const njson Prepared = njson{jsoncons::json_object_arg, {{RspName, njson::object()}}};
+
+    Response response{.rsp = Prepared};
+    response.rsp[RspName]["st"] = toUnderlying(RequestStatus::Ok);
+
+    try
+    {
+      std::vector<typename Cmds::ItemT> result;
+      std::set_intersection(a.cbegin(), a.cend(),
+                            b.cbegin(), b.cend(),
+                            std::back_inserter(result));
+
+      
+      njson items (jsoncons::json_array_arg,  std::make_move_iterator(result.begin()),
+                                              std::make_move_iterator(result.end()));
+      
+      response.rsp[RspName]["items"] = std::move(items);
+    }
+    catch(const std::exception& e)
+    {
+      PLOGE << e.what();
+      response.rsp[RspName]["st"] = toUnderlying(RequestStatus::Unknown);
+    }
+
+    return response;
+  }
 };
 
 }

@@ -39,10 +39,10 @@ namespace nemesis { namespace arr {
   template<typename T, typename Cmds>
   class ArrHandler
   {
-    using ArrayT = Array<T>;
-    using Arrays = ankerl::unordered_dense::map<std::string, Array<T>>; // array name->arrays container
-    using Iterator = ankerl::unordered_dense::map<std::string, Array<T>>::iterator;
-    using ConstIterator = ankerl::unordered_dense::map<std::string, Array<T>>::const_iterator;
+    using ArrayT = Array<T, Cmds::IsSorted>;
+    using Arrays = ankerl::unordered_dense::map<std::string, Array<T, Cmds::IsSorted>>; // array name->arrays container
+    using Iterator = ankerl::unordered_dense::map<std::string, Array<T, Cmds::IsSorted>>::iterator;
+    using ConstIterator = ankerl::unordered_dense::map<std::string, Array<T, Cmds::IsSorted>>::const_iterator;
 
 
   public:
@@ -69,11 +69,20 @@ namespace nemesis { namespace arr {
         {ArrQueryType::SetRng,          Handler{std::bind_front(&ArrHandler<T, Cmds>::setRange,           std::ref(*this))}},
         {ArrQueryType::Get,             Handler{std::bind_front(&ArrHandler<T, Cmds>::get,                std::ref(*this))}},
         {ArrQueryType::GetRng,          Handler{std::bind_front(&ArrHandler<T, Cmds>::getRange,           std::ref(*this))}},
-        {ArrQueryType::Len,             Handler{std::bind_front(&ArrHandler<T, Cmds>::length,             std::ref(*this))}},
-        {ArrQueryType::Swap,            Handler{std::bind_front(&ArrHandler<T, Cmds>::swap,               std::ref(*this))}},
+        {ArrQueryType::Len,             Handler{std::bind_front(&ArrHandler<T, Cmds>::length,             std::ref(*this))}},        
         {ArrQueryType::Exist,           Handler{std::bind_front(&ArrHandler<T, Cmds>::exist,              std::ref(*this))}},
-        {ArrQueryType::Clear,           Handler{std::bind_front(&ArrHandler<T, Cmds>::clear,              std::ref(*this))}},
+        {ArrQueryType::Clear,           Handler{std::bind_front(&ArrHandler<T, Cmds>::clear,              std::ref(*this))}},        
       }, 1, alloc);
+      
+      
+      if constexpr (!Cmds::IsSorted)
+      {
+        h.emplace(ArrQueryType::Swap, Handler{std::bind_front(&ArrHandler<T, Cmds>::swap, std::ref(*this))});        
+      }
+      else
+      {
+        h.emplace(ArrQueryType::Intersect,  Handler{std::bind_front(&ArrHandler<T, Cmds>::intersect, std::ref(*this))});
+      }
       
       return h;
     }
@@ -95,6 +104,7 @@ namespace nemesis { namespace arr {
         {Cmds::SwapReq,         ArrQueryType::Swap},
         {Cmds::ExistReq,        ArrQueryType::Exist},
         {Cmds::ClearReq,        ArrQueryType::Clear},
+        {Cmds::IntersectReq,    ArrQueryType::Intersect},
       }, 1, alloc); 
 
       return map;
@@ -294,7 +304,7 @@ namespace nemesis { namespace arr {
     }
 
 
-    ndb_always_inline Response swap(njson& request)
+    ndb_always_inline Response swap(njson& request) requires(!Cmds::IsSorted)
     {
       if (auto [valid, rsp] = validateSwap<Cmds>(request) ; !valid)
         return Response{.rsp = std::move(rsp)};
@@ -346,6 +356,30 @@ namespace nemesis { namespace arr {
     }
 
     
+    ndb_always_inline Response intersect(njson& request) requires (Cmds::IsSorted)
+    {
+      if (auto [valid, rsp] = validateIntersect<Cmds>(request) ; !valid)
+        return Response{.rsp = std::move(rsp)};
+      else
+      {
+        const auto& body = request.at(Cmds::IntersectReq);
+        const auto& srcA = body.at("srcA").as_string();
+        const auto& srcB = body.at("srcB").as_string();
+
+        if (srcA == srcB)
+          return Response{.rsp = createErrorResponseNoTkn(Cmds::IntersectRsp, RequestStatus::Duplicate)};
+        else
+        {
+          const auto [arrAExist, arrA] = getArray(srcA, body);
+          const auto [arrBExist, arrB] = getArray(srcB, body);
+
+          if (!(arrAExist && arrBExist))
+            return Response{.rsp = createErrorResponseNoTkn(Cmds::IntersectRsp, RequestStatus::NotExist)};
+          else
+            return ArrayExecutor<ArrayT, Cmds>::intersect(arrA->second, arrB->second);
+        }
+      }
+    }
 
   private:
 
@@ -377,6 +411,8 @@ namespace nemesis { namespace arr {
   using OArrHandler = ArrHandler<njson, OArrCmds>;
   using IntArrHandler = ArrHandler<std::int64_t, IntArrCmds>;
   using StrArrHandler = ArrHandler<std::string, StrArrCmds>;
+
+  using SortedIntArrHandler = ArrHandler<std::int64_t, SortedIntArrCmds>;
 
 }
 }

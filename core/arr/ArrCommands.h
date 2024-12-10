@@ -24,6 +24,7 @@ namespace nemesis { namespace arr { namespace cmds {
   static constexpr FixedString Len        = "LEN";
   static constexpr FixedString Swap       = "SWAP";
   static constexpr FixedString Clear      = "CLEAR";
+  static constexpr FixedString Intersect  = "INTERSECT";
   
 
   template<FixedString Ident, FixedString Cmd>
@@ -48,6 +49,9 @@ namespace nemesis { namespace arr { namespace cmds {
 
   static constexpr FixedString StrArrayIdent   = "SARR";
   static constexpr FixedString StrArrayIdent_  = "SARR_";
+  
+  static constexpr FixedString SortedIntArrayIdent   = "SIARR";
+  static constexpr FixedString SortedIntArrayIdent_  = "SIARR_";
   
 
   template <FixedString Ident>
@@ -75,6 +79,9 @@ namespace nemesis { namespace arr { namespace cmds {
     static constexpr auto GetRsp        = makeRsp<Ident,Get>();
     static constexpr auto GetRngReq     = makeReq<Ident,GetRng>();
     static constexpr auto GetRngRsp     = makeRsp<Ident,GetRng>();
+    //
+    static constexpr auto IntersectReq = makeReq<Ident,Intersect>();
+    static constexpr auto IntersectRsp = makeRsp<Ident,Intersect>();
   };
 
   
@@ -83,6 +90,8 @@ namespace nemesis { namespace arr { namespace cmds {
     using ItemT = njson;
     
     static constexpr JsonType ItemJsonT = JsonObject;
+    static constexpr bool IsSorted = false;
+    static constexpr bool CanIntersect = false;
 
     static constexpr bool isTypeValid (const JsonType t)
     {
@@ -96,6 +105,8 @@ namespace nemesis { namespace arr { namespace cmds {
     using ItemT = std::int64_t;
     
     static constexpr JsonType ItemJsonT = JsonInt;
+    static constexpr bool IsSorted = false;
+    static constexpr bool CanIntersect = false;
 
     static constexpr bool isTypeValid (const JsonType t)
     {
@@ -109,6 +120,8 @@ namespace nemesis { namespace arr { namespace cmds {
     using ItemT = std::string;
     
     static constexpr JsonType ItemJsonT = JsonString;
+    static constexpr bool IsSorted = true;
+    static constexpr bool CanIntersect = false;
 
     static constexpr bool isTypeValid (const JsonType t)
     {
@@ -116,6 +129,20 @@ namespace nemesis { namespace arr { namespace cmds {
     }
   };
 
+  // sorted arrays
+  struct SortedIntArrCmds : public ArrCmds<SortedIntArrayIdent_>
+  {   
+    using ItemT = std::int64_t;
+    
+    static constexpr JsonType ItemJsonT = JsonInt;
+    static constexpr bool IsSorted = true;
+    static constexpr bool CanIntersect = true;
+
+    static constexpr bool isTypeValid (const JsonType t)
+    {
+      return t == JsonUInt || t == JsonInt;
+    }
+  };
 }
 }
 }
