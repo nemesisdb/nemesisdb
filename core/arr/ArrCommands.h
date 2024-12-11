@@ -40,15 +40,14 @@ namespace nemesis { namespace arr { namespace cmds {
   }
 
 
-  // OARR
   static constexpr FixedString OArrayIdent   = "OARR";
   static constexpr FixedString OArrayIdent_  = "OARR_";
 
   static constexpr FixedString IntArrayIdent   = "IARR";
   static constexpr FixedString IntArrayIdent_  = "IARR_";
 
-  static constexpr FixedString StrArrayIdent   = "SARR";
-  static constexpr FixedString StrArrayIdent_  = "SARR_";
+  static constexpr FixedString StrArrayIdent   = "STRARR";
+  static constexpr FixedString StrArrayIdent_  = "STRARR_";
   
   static constexpr FixedString SortedIntArrayIdent   = "SIARR";
   static constexpr FixedString SortedIntArrayIdent_  = "SIARR_";
@@ -69,8 +68,6 @@ namespace nemesis { namespace arr { namespace cmds {
     static constexpr auto ExistRsp      = makeRsp<Ident,Exist>();
     static constexpr auto LenReq        = makeReq<Ident,Len>();
     static constexpr auto LenRsp        = makeRsp<Ident,Len>();
-    static constexpr auto SwapReq       = makeReq<Ident,Swap>();
-    static constexpr auto SwapRsp       = makeRsp<Ident,Swap>();
     static constexpr auto ClearReq      = makeReq<Ident,Clear>();
     static constexpr auto ClearRsp      = makeRsp<Ident,Clear>();
     static constexpr auto SetRngReq     = makeReq<Ident,SetRng>();
@@ -79,12 +76,27 @@ namespace nemesis { namespace arr { namespace cmds {
     static constexpr auto GetRsp        = makeRsp<Ident,Get>();
     static constexpr auto GetRngReq     = makeReq<Ident,GetRng>();
     static constexpr auto GetRngRsp     = makeRsp<Ident,GetRng>();
-    //
+    
+    // not enabled in sorted containers
+    static constexpr auto SwapReq       = makeReq<Ident,Swap>();
+    static constexpr auto SwapRsp       = makeRsp<Ident,Swap>();
+    
+    // only enabled in sorted containers
     static constexpr auto IntersectReq = makeReq<Ident,Intersect>();
     static constexpr auto IntersectRsp = makeRsp<Ident,Intersect>();
   };
 
   
+  //
+  // These structs build the command names by passing the ident
+  // required. 
+  // The IsSorted and CanIntersect are both probably not required,
+  // because intersection requires a sorted container, so can probably
+  // remove CanIntersect, unless there's a container that's sorted but
+  // can't be intersected. Decide when linked list is implemented.
+  //
+
+  // Object Array
   struct OArrCmds : public ArrCmds<OArrayIdent_>
   {   
     using ItemT = njson;
@@ -100,6 +112,7 @@ namespace nemesis { namespace arr { namespace cmds {
   };
 
 
+  // Integer Array (signed)
   struct IntArrCmds : public ArrCmds<IntArrayIdent_>
   {   
     using ItemT = std::int64_t;
@@ -110,11 +123,16 @@ namespace nemesis { namespace arr { namespace cmds {
 
     static constexpr bool isTypeValid (const JsonType t)
     {
+      // jsoncons (and possibly JSON specs) stores an an integer 
+      // as unsigned unless the value is negative, then its signed int.
+      // this containres handles both, but could create
+      // an unsigned version if required.
       return t == JsonUInt || t == JsonInt;
     }
   };
 
 
+  // String Array
   struct StrArrCmds : public ArrCmds<StrArrayIdent_>
   {   
     using ItemT = std::string;
@@ -129,7 +147,8 @@ namespace nemesis { namespace arr { namespace cmds {
     }
   };
 
-  // sorted arrays
+
+  // Sorted Integer Array (signed)
   struct SortedIntArrCmds : public ArrCmds<SortedIntArrayIdent_>
   {   
     using ItemT = std::int64_t;
