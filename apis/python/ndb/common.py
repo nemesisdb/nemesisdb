@@ -32,3 +32,8 @@ def raise_if (value: str, msg: str, f):
   "Calls f(value), and if f() return True, prints 'value is {msg}'"
   if f(value):
     raise ValueError(f'value is {msg}')
+  
+
+def raise_if_equal (val1: str, val2: str, msg:str):
+  if val1 == val2:  
+    raise ValueError(msg)

@@ -87,6 +87,8 @@ class ShCmd:
   KEYS_RSP      = 'SH_KEYS_RSP'
 
 
+# TODO see if this can be tidied/reduced
+
 class OArrCmd:
   CREATE_REQ        =    "OARR_CREATE"
   CREATE_RSP        =    "OARR_CREATE_RSP"
@@ -135,3 +137,28 @@ class IArrCmd:
   EXIST_RSP         =    "IARR_EXIST_RSP"
   CLEAR_REQ         =    "IARR_CLEAR"
   CLEAR_RSP         =    "IARR_CLEAR_RSP"
+
+
+class SortedIArrCmd:
+  CREATE_REQ        =    "SIARR_CREATE"
+  CREATE_RSP        =    "SIARR_CREATE_RSP"
+  DELETE_REQ        =    "SIARR_DELETE"
+  DELETE_RSP        =    "SIARR_DELETE_RSP"
+  DELETE_ALL_REQ    =    "SIARR_DELETE_ALL"
+  DELETE_ALL_RSP    =    "SIARR_DELETE_ALL_RSP"
+  SET_REQ           =    "SIARR_SET"
+  SET_RSP           =    "SIARR_SET_RSP"
+  SET_RNG_REQ       =    "SIARR_SET_RNG"
+  SET_RNG_RSP       =    "SIARR_SET_RNG_RSP"
+  GET_REQ           =    "SIARR_GET"
+  GET_RSP           =    "SIARR_GET_RSP"
+  GET_RNG_REQ       =    "SIARR_GET_RNG"
+  GET_RNG_RSP       =    "SIARR_GET_RNG_RSP"
+  LEN_REQ           =    "SIARR_LEN"
+  LEN_RSP           =    "SIARR_LEN_RSP"
+  EXIST_REQ         =    "SIARR_EXIST"
+  EXIST_RSP         =    "SIARR_EXIST_RSP"
+  CLEAR_REQ         =    "SIARR_CLEAR"
+  CLEAR_RSP         =    "SIARR_CLEAR_RSP"
+  INTERSECT_REQ     =    "SIARR_INTERSECT"
+  INTERSECT_RSP     =    "SIARR_INTERSECT_RSP"

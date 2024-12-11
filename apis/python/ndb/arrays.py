@@ -1,46 +1,136 @@
-from ndb.commands import StValues, OArrCmd, IArrCmd
+from ndb.commands import StValues, OArrCmd, IArrCmd, SortedIArrCmd
 from ndb.client import NdbClient
-from ndb.common import raise_if, raise_if_empty
+from ndb.common import raise_if, raise_if_empty, raise_if_equal
 from typing import List
+from abc import ABC, abstractmethod
 
 
-class _Arrays:
+class _Arrays(ABC):
+
   def __init__(self, client: NdbClient):
     self.client = client
+    self.cmds = self.getCommandNames()
 
-  async def arr_create(self, reqName:str, rspName:str, name: str, len: int) -> int:
+  @abstractmethod
+  def getCommandNames(self):
+    return
+
+  async def arr_create(self, name: str, len: int) -> int:
     raise_if_empty(name)
     raise_if(len, 'must be > 0', lambda v: v <= 0)
-    await self.client.sendCmd(reqName, rspName, {'name':name, 'len':len})
+    await self.client.sendCmd(self.cmds.CREATE_REQ, self.cmds.CREATE_RSP, {'name':name, 'len':len})
 
 
-  async def arr_delete(self, reqName:str, rspName:str, name: str) -> None:
+  async def arr_delete(self, name: str) -> None:
     raise_if_empty(name)
-    await self.client.sendCmd(reqName, rspName, {'name':name})
+    await self.client.sendCmd(self.cmds.DELETE_REQ, self.cmds.DELETE_RSP, {'name':name})
 
   
-  async def arr_delete_all(self, reqName:str, rspName:str) -> None:
-    await self.client.sendCmd(reqName, rspName, {})
+  async def arr_delete_all(self) -> None:
+    await self.client.sendCmd(self.cmds.DELETE_ALL_REQ, self.cmds.DELETE_ALL_RSP, {})
 
-
-  async def arr_set(self, reqName:str, rspName:str, name: str, pos: int, item: dict) -> None:
+  
+  async def arr_len(self, name: str) -> int:
     raise_if_empty(name)
-    await self.client.sendCmd(reqName, rspName, {'name':name, 'pos': pos, 'item':item})
+    rsp = await self.client.sendCmd(self.cmds.LEN_REQ, self.cmds.LEN_RSP, {'name':name})
+    return rsp[self.cmds.LEN_RSP]['len']
 
 
-  async def arr_set_rng(self, reqName:str, rspName:str, name: str, pos: int, items: List[dict]) -> None:
+  # TODO override in sorted container, throw not implemented or something
+  async def arr_swap(self, name: str, posA: int, posB: int) -> int:
     raise_if_empty(name)
-    await self.client.sendCmd(reqName, rspName, {'name':name, 'pos': pos, 'items':items})
+    await self.client.sendCmd(self.cmds.SWAP_REQ, self.cmds.SWAP_RSP, {'name':name, 'posA':posA, 'posB':posB})
 
-
-  async def arr_get(self, reqName:str, rspName:str, name: str, pos: int) -> dict:
+  
+  async def arr_exist(self, name: str) -> bool:
+    # this query uses the status to indicate result: StValue.ST_SUCCESS means the array exists
     raise_if_empty(name)
-    rsp = await self.client.sendCmd(reqName, rspName, {'name':name, 'pos':pos})
-    return rsp[rspName]['item']
+    # checkStatus=False because 'status' not being success is not an error
+    rsp = await self.client.sendCmd(self.cmds.EXIST_REQ, self.cmds.EXIST_RSP, {'name':name}, checkStatus=False)    
+    return rsp[self.cmds.EXIST_RSP]['st'] == StValues.ST_SUCCESS
+  
 
-
-  async def arr_get_rng(self,reqName:str, rspName:str, name: str, start: int, stop = None) -> List[dict]:
+  async def arr_clear(self, name: str, start: int, stop: int) -> None:
     raise_if_empty(name)
+    await self.client.sendCmd(self.cmds.CLEAR_REQ, self.cmds.CLEAR_RSP, {'name':name, 'rng':[start, stop]})
+
+
+#region OArrays
+class OArrays(_Arrays):  
+  def __init__(self, client: NdbClient):
+    super().__init__(client)
+
+  # override of base class 
+  def getCommandNames(self) -> OArrCmd:
+    return OArrCmd()
+
+  async def arr_set(self, name: str, pos: int, item: dict) -> None:
+    raise_if_empty(name)
+    await self.client.sendCmd(self.cmds.SET_REQ, self.cmds.SET_RSP, {'name':name, 'pos': pos, 'item':item})
+
+
+  async def arr_set_rng(self, name: str, pos: int, items: List[dict]) -> None:
+    raise_if_empty(name)
+    await self.client.sendCmd(self.cmds.SET_RNG_REQ, self.cmds.SET_RNG_RSP, {'name':name, 'pos': pos, 'items':items})
+
+
+  async def arr_get(self, name: str, pos: int) -> dict:
+    raise_if_empty(name)
+    rsp = await self.client.sendCmd(self.cmds.GET_REQ, self.cmds.GET_RSP, {'name':name, 'pos':pos})
+    return rsp[self.cmds.GET_RSP]['item']
+
+
+  async def arr_get_rng(self, name: str, start: int, stop = None) -> List[dict]:
+    raise_if_empty(name)
+
+    reqName = self.cmds.GET_RNG_REQ
+    rspName = self.cmds.GET_RNG_RSP
+
+    if stop == None:
+      rng = [start]
+    elif start > stop:
+      raise ValueError('start > stop')
+    else:
+      rng = [start, stop]
+        
+    rsp = await self.client.sendCmd(reqName, rspName, {'name':name, 'rng':rng})
+    return rsp[rspName]['items']
+
+#endregion
+
+
+#region IArray
+
+class IntArrays(_Arrays):
+  def __init__(self, client: NdbClient):
+    super().__init__(client)
+
+  # override of base class 
+  def getCommandNames(self) -> IArrCmd:
+    return IArrCmd()
+  
+
+  async def arr_set(self, name: str, pos: int, item: int) -> None:
+    raise_if_empty(name)
+    await self.client.sendCmd(self.cmds.SET_REQ, self.cmds.SET_RSP, {'name':name, 'pos': pos, 'item':item})
+
+
+  async def arr_set_rng(self, name: str, pos: int, items: List[int]) -> None:
+    raise_if_empty(name)
+    await self.client.sendCmd(self.cmds.SET_RNG_REQ, self.cmds.SET_RNG_RSP, {'name':name, 'pos': pos, 'items':items})
+
+
+  async def arr_get(self, name: str, pos: int) -> int:
+    raise_if_empty(name)
+    rsp = await self.client.sendCmd(self.cmds.GET_REQ, self.cmds.GET_RSP, {'name':name, 'pos':pos})
+    return rsp[self.cmds.GET_RSP]['item']
+
+
+  async def arr_get_rng(self, name: str, start: int, stop = None) -> List[int]:
+    raise_if_empty(name)
+
+    reqName = self.cmds.GET_RNG_REQ
+    rspName = self.cmds.GET_RNG_RSP
 
     if stop == None:
       rng = [start]
@@ -52,132 +142,58 @@ class _Arrays:
     rsp = await self.client.sendCmd(reqName, rspName, {'name':name, 'rng':rng})
     return rsp[rspName]['items']
   
-  
-  async def arr_len(self, reqName:str, rspName:str, name: str) -> int:
-    raise_if_empty(name)
-    rsp = await self.client.sendCmd(reqName, rspName, {'name':name})
-    return rsp[rspName]['len']
-
-
-  async def arr_swap(self, reqName:str, rspName:str, name: str, posA: int, posB: int) -> int:
-    raise_if_empty(name)
-    await self.client.sendCmd(reqName, rspName, {'name':name, 'posA':posA, 'posB':posB})
-
-  
-  async def arr_exist(self, reqName:str, rspName:str, name: str) -> bool:
-    # this query uses the status to indicate result: StValue.ST_SUCCESS means the array exists
-    raise_if_empty(name)
-    # checkStatus=False because 'status' not being success is not an error
-    rsp = await self.client.sendCmd(reqName, rspName, {'name':name}, checkStatus=False)    
-    return rsp[rspName]['st'] == StValues.ST_SUCCESS
-  
-
-  async def arr_clear(self, reqName:str, rspName:str, name: str, start: int, stop: int) -> None:
-    raise_if_empty(name)
-    await self.client.sendCmd(reqName, rspName, {'name':name, 'rng':[start, stop]})
-
-
-#region OArrays
-class OArrays:
-  
-  def __init__(self, client: NdbClient):
-    self._array = _Arrays(client)
-
-
-  async def oarr_create(self, *args) -> int:
-    return await self._array.arr_create(OArrCmd.CREATE_REQ, OArrCmd.CREATE_RSP, *args)
-
-
-  async def oarr_delete(self, *args) -> None:
-    await self._array.arr_delete(OArrCmd.DELETE_REQ, OArrCmd.DELETE_RSP, *args)
-
-  
-  async def oarr_delete_all(self) -> None:
-    await self._array.arr_delete_all(OArrCmd.DELETE_ALL_REQ, OArrCmd.DELETE_ALL_RSP)
-
-
-  async def oarr_set(self, *args) -> None:
-    await self._array.arr_set(OArrCmd.SET_REQ, OArrCmd.SET_RSP, *args)
-    
-
-  async def oarr_set_rng(self, *args) -> None:
-    await self._array.arr_set_rng(OArrCmd.SET_RNG_REQ, OArrCmd.SET_RNG_RSP,*args)
-
-
-  async def oarr_get(self, *args) -> dict:
-    return await self._array.arr_get(OArrCmd.GET_REQ, OArrCmd.GET_RSP, *args)
-       
-
-  async def oarr_get_rng(self, *args) -> List[dict]:
-    return await self._array.arr_get_rng(OArrCmd.GET_RNG_REQ, OArrCmd.GET_RNG_RSP, *args)
-  
-  
-  async def oarr_len(self, *args) -> int:
-    return await self._array.arr_len(OArrCmd.LEN_REQ, OArrCmd.LEN_RSP, *args)
-  
-
-  async def oarr_swap(self, *args) -> int:
-    return await self._array.arr_swap(OArrCmd.SWAP_REQ, OArrCmd.SWAP_RSP, *args)
-
-  
-  async def oarr_exist(self, *args) -> bool:
-    return await self._array.arr_exist(OArrCmd.EXIST_REQ, OArrCmd.EXIST_RSP, *args)
-  
-
-  async def oarr_clear(self, *args) -> None:
-    return await self._array.arr_clear(OArrCmd.CLEAR_REQ, OArrCmd.CLEAR_RSP, *args)
-
 #endregion
 
 
 #region IArray
 
-class IArrays:
-  
+class SortedIntArrays(_Arrays):
   def __init__(self, client: NdbClient):
-    self._array = _Arrays(client)
+    super().__init__(client)
 
-  async def iarr_create(self, *args) -> int:
-    return await self._array.arr_create(IArrCmd.CREATE_REQ, IArrCmd.CREATE_RSP, *args)
-
-
-  async def iarr_delete(self, *args) -> None:
-    await self._array.arr_delete(IArrCmd.DELETE_REQ, IArrCmd.DELETE_RSP, *args)
-
-  
-  async def iarr_delete_all(self) -> None:
-    await self._array.arr_delete_all(IArrCmd.DELETE_ALL_REQ, IArrCmd.DELETE_ALL_RSP)
-
-
-  async def iarr_set(self, *args) -> None:
-    await self._array.arr_set(IArrCmd.SET_REQ, IArrCmd.SET_RSP, *args)
-    
-
-  async def iarr_set_rng(self, *args) -> None:
-    await self._array.arr_set_rng(IArrCmd.SET_RNG_REQ, IArrCmd.SET_RNG_RSP,*args)
-
-
-  async def iarr_get(self, *args) -> dict:
-    return await self._array.arr_get(IArrCmd.GET_REQ, IArrCmd.GET_RSP, *args)
-       
-
-  async def iarr_get_rng(self, *args) -> List[dict]:
-    return await self._array.arr_get_rng(IArrCmd.GET_RNG_REQ, IArrCmd.GET_RNG_RSP, *args)
-  
-  
-  async def iarr_len(self, *args) -> int:
-    return await self._array.arr_len(IArrCmd.LEN_REQ, IArrCmd.LEN_RSP, *args)
+  # override of base class 
+  def getCommandNames(self) -> SortedIArrCmd:
+    return SortedIArrCmd()
   
 
-  async def iarr_swap(self, *args) -> int:
-    return await self._array.arr_swap(IArrCmd.SWAP_REQ, IArrCmd.SWAP_RSP, *args)
+  async def arr_set(self, name: str, item: int) -> None:
+    raise_if_empty(name)
+    await self.client.sendCmd(self.cmds.SET_REQ, self.cmds.SET_RSP, {'name':name, 'item':item})
 
-  
-  async def iarr_exist(self, *args) -> bool:
-    return await self._array.arr_exist(IArrCmd.EXIST_REQ, IArrCmd.EXIST_RSP, *args)
+
+  async def arr_set_rng(self, name: str, items: List[int]) -> None:
+    raise_if_empty(name)
+    await self.client.sendCmd(self.cmds.SET_RNG_REQ, self.cmds.SET_RNG_RSP, {'name':name, 'items':items})
+
+
+  async def arr_get(self, name: str, pos: int) -> int:
+    raise_if_empty(name)
+    rsp = await self.client.sendCmd(self.cmds.GET_REQ, self.cmds.GET_RSP, {'name':name, 'pos':pos})
+    return rsp[self.cmds.GET_RSP]['item']
+
+
+  async def arr_get_rng(self, name: str, start: int, stop = None) -> List[int]:
+    raise_if_empty(name)
+
+    reqName = self.cmds.GET_RNG_REQ
+    rspName = self.cmds.GET_RNG_RSP
+
+    if stop == None:
+      rng = [start]
+    elif start > stop:
+      raise ValueError('start > stop')
+    else:
+      rng = [start, stop]
+        
+    rsp = await self.client.sendCmd(reqName, rspName, {'name':name, 'rng':rng})
+    return rsp[rspName]['items']
   
 
-  async def iarr_clear(self, *args) -> None:
-    return await self._array.arr_clear(IArrCmd.CLEAR_REQ, IArrCmd.CLEAR_RSP, *args)
+  async def arr_intersect(self, arrA: str, arrB: str) -> List[int]:
+    raise_if_empty(arrA)
+    raise_if_empty(arrB)
+    raise_if_equal(arrA, arrB, 'Intersect on the same arrays')
+    rsp = await self.client.sendCmd(self.cmds.INTERSECT_REQ, self.cmds.INTERSECT_RSP, {'srcA':arrA, 'srcB':arrB})
+    return rsp[self.cmds.INTERSECT_RSP]['items']
 
 #endregion

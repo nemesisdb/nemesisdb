@@ -21,15 +21,23 @@ else
   fi
 
   
+  echo "Object Array"
+
   cd oarr > /dev/null
   python3 -m unittest -f
   cd - > /dev/null
 
   
+  echo "Integer Array"
   cd iarr > /dev/null
   python3 -m unittest -f
   cd - > /dev/null
 
+
+  echo "Sorted Integer Array"
+  cd sorted_iarr > /dev/null
+  python3 -m unittest -f
+  cd - > /dev/null
 
   kill_server
   

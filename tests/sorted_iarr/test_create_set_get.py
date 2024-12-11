@@ -1,9 +1,9 @@
 import unittest
-from base import NDBIArrayTest
+from base import NDBSortedIntArrayTest
 from ndb.client import ResponseError
 
 
-class Array(NDBIArrayTest):
+class Array(NDBSortedIntArrayTest):
   async def test_create(self):
     await self.arrays.arr_create('arr2', 30)
     len = await self.arrays.arr_len('arr2')
@@ -25,35 +25,19 @@ class Array(NDBIArrayTest):
     data1 = 1
     await self.arrays.arr_create('arr3', 10)
     
-    await self.arrays.arr_set('arr3', 0, data1)
+    await self.arrays.arr_set('arr3', data1)
     output = await self.arrays.arr_get('arr3', 0)
     self.assertEqual(output, data1)
 
     data2 = 2
-    await self.arrays.arr_set('arr3', 1, data2)
+    await self.arrays.arr_set('arr3', data2)
     output = await self.arrays.arr_get('arr3', 1)
     self.assertEqual(output, data2)
 
 
+  # TODO
   async def test_overwrite(self):
-    data1 = 1
-    await self.arrays.arr_create('arr4', 2)
-    
-    await self.arrays.arr_set('arr4', 0, data1)
-    output = await self.arrays.arr_get('arr4', 0)
-    self.assertEqual(output, data1)
-
-    data2 = 2
-    await self.arrays.arr_set('arr4', 0, data2)
-    output = await self.arrays.arr_get('arr4', 0)
-    self.assertEqual(output, data2)
-
-
-  async def test_set_bounds(self):
-    await self.arrays.arr_create('arr5', 5)
-    
-    with self.assertRaises(ResponseError):
-      await self.arrays.arr_set('arr5', 10, 123)
+    pass 
 
   
   async def test_get_bounds(self):
@@ -66,13 +50,13 @@ class Array(NDBIArrayTest):
     await self.arrays.arr_create('arr7', 5)
 
     with self.assertRaises(ResponseError):
-      await self.arrays.arr_set('arr7', 0, {'a':'b'})
+      await self.arrays.arr_set('arr7', {'a':'b'})
 
     with self.assertRaises(ResponseError):
-      await self.arrays.arr_set('arr7', 0, 0.5)
+      await self.arrays.arr_set('arr7',  0.5)
 
     with self.assertRaises(ResponseError):
-      await self.arrays.arr_set('arr7', 0, "")
+      await self.arrays.arr_set('arr7', "")
 
 
 
