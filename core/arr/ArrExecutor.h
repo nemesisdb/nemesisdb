@@ -11,9 +11,6 @@
 namespace nemesis { namespace arr {
 
 
-namespace kvcmds = nemesis::arr::cmds;
-
-
 template<class Array, class Cmds>
 class ArrayExecutor
 {
