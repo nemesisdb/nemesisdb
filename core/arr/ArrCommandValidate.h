@@ -175,16 +175,22 @@ namespace nemesis { namespace arr {
   {
     auto checkRange = [](const njson& body) -> std::tuple<RequestStatus, const std::string_view>
     {
-      if (body.at("rng").size() != 2)
+      if (const auto nRng = body.at("rng").size(); !(nRng == 2 || nRng == 1))
         return {RequestStatus::CommandSyntax, "rng"};
       else
       {
         const auto rngArray = body.at("rng").array_range();
         const auto first = rngArray.begin();
-        const auto second = std::next(first);
 
-        if (!(first->is_uint64() && second->is_uint64()))
-          return {RequestStatus::ValueTypeInvalid, "rng"};
+        if (!first->is_uint64())
+            return {RequestStatus::ValueTypeInvalid, "rng"};
+
+        if (nRng == 2)
+        {
+          const auto second = std::next(first);
+          if (!(first->is_uint64() && second->is_uint64()))
+            return {RequestStatus::ValueTypeInvalid, "rng"};
+        }
       }
 
       return {RequestStatus::Ok, ""};

@@ -411,9 +411,9 @@ namespace nemesis { namespace arr {
   using OArrHandler = ArrHandler<njson, OArrCmds>;
   using IntArrHandler = ArrHandler<std::int64_t, IntArrCmds>;
   using StrArrHandler = ArrHandler<std::string, StrArrCmds>;
-
+  
   using SortedIntArrHandler = ArrHandler<std::int64_t, SortedIntArrCmds>;
-
+  using SortedStrArrHandler = ArrHandler<std::string, SortedStrArrCmds>;
 }
 }
 

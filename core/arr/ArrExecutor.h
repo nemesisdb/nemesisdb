@@ -124,33 +124,19 @@ public:
     static const constexpr auto RspName = Cmds::GetRngRsp.data();
     static const njson Prepared = njson{jsoncons::json_object_arg, {{RspName, njson::object()}}};
     
-    RequestStatus status = RequestStatus::Ok;
     Response response{.rsp = Prepared};
+    response.rsp[RspName]["st"] = toUnderlying(RequestStatus::Ok);
 
     const auto rngArray = reqBody.at("rng").array_range();
     const auto start = rngArray.begin()->as<std::size_t>();
 
-    njson items;
-
-    if (reqBody.at("rng").size() == 1)
-    {
-      if (!array.isInBounds(start))  [[unlikely]]
-        status = RequestStatus::Bounds;
-      else
-        items = array.getRange(start);
-    }
+    if (!array.isInBounds(start))  [[unlikely]]
+        response.rsp[RspName]["st"] = toUnderlying(RequestStatus::Bounds);
     else
     {
-      const auto stop = std::next(rngArray.begin())->as<std::size_t>();
-      
-      if (!array.isInBounds(start))  [[unlikely]]
-        status = RequestStatus::Bounds;
-      else
-        items = array.getRange(start, stop);
+      const auto stop = reqBody.at("rng").size() == 2 ? rngArray.crbegin()->as<std::size_t>() : array.size();
+      response.rsp[RspName]["items"] = array.getRange(start, stop);
     }
-    
-    response.rsp[RspName].try_emplace("items", std::move(items));
-    response.rsp[RspName]["st"] = toUnderlying(status);
 
     return response;
   }
@@ -207,7 +193,7 @@ public:
     {
       const auto& rng = reqBody.at("rng").array_range();
       const auto start = rng.cbegin()->as<std::size_t>();
-      const auto stop = rng.crbegin()->as<std::size_t>();
+      const auto stop = reqBody.at("rng").size() == 2 ? rng.crbegin()->as<std::size_t>() : array.size();
 
       if (!array.isInBounds(start))
         response.rsp[RspName]["st"] = toUnderlying(RequestStatus::Bounds);

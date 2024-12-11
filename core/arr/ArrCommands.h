@@ -51,6 +51,9 @@ namespace nemesis { namespace arr { namespace cmds {
   
   static constexpr FixedString SortedIntArrayIdent   = "SIARR";
   static constexpr FixedString SortedIntArrayIdent_  = "SIARR_";
+
+  static constexpr FixedString SortedStrArrayIdent   = "SSTRARR"; // Sorted STRing ARRay
+  static constexpr FixedString SortedStrArrayIdent_  = "SSTRARR_";
   
 
   template <FixedString Ident>
@@ -143,7 +146,7 @@ namespace nemesis { namespace arr { namespace cmds {
 
     static constexpr bool isTypeValid (const JsonType t)
     {
-      return t == JsonString;
+      return t == ItemJsonT;
     }
   };
 
@@ -160,6 +163,22 @@ namespace nemesis { namespace arr { namespace cmds {
     static constexpr bool isTypeValid (const JsonType t)
     {
       return t == JsonUInt || t == JsonInt;
+    }
+  };
+
+
+  // Sorted String Array
+  struct SortedStrArrCmds : public ArrCmds<SortedStrArrayIdent_>
+  {   
+    using ItemT = std::string;
+    
+    static constexpr JsonType ItemJsonT = JsonString;
+    static constexpr bool IsSorted = true;
+    static constexpr bool CanIntersect = true;
+
+    static constexpr bool isTypeValid (const JsonType t)
+    {
+      return t == ItemJsonT;
     }
   };
 }
