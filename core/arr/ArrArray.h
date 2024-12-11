@@ -44,7 +44,7 @@ public:
 
   bool isFull() const noexcept
   {
-    return m_used > m_size;
+    return m_used >= m_size;
   }
 
 
