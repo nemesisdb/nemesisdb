@@ -34,9 +34,9 @@ namespace nemesis { namespace arr { namespace cmds {
   }
 
   template<FixedString Ident, FixedString Cmd>
-  static consteval auto makeRsp() -> decltype(Ident+Cmd+Rsp)
+  static consteval auto makeRsp() -> decltype(makeReq<Ident, Cmd>()+Rsp)
   {
-    return Ident+Cmd+Rsp;
+    return makeReq<Ident, Cmd>()+Rsp;
   }
 
 
