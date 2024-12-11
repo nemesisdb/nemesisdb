@@ -174,6 +174,10 @@ public:
       std::rotate(itStart, itPivot, m_array.end());
       m_used -= std::distance(itStart, itPivot);
     }
+    else
+    {
+      m_used = 0;
+    }
   }
 
 
