@@ -90,24 +90,25 @@ namespace nemesis { namespace arr { namespace cmds {
   };
 
   
+  template <typename T, JsonType JT, FixedString Ident>
+  struct UnsortedArray : public ArrCmds<Ident>
+  {
+    using ItemT = T;
+    
+    static constexpr JsonType ItemJsonT = JT;
+    static constexpr bool IsSorted = false;
+    static constexpr bool CanIntersect = false;
+  };
+
+
   //
   // These structs build the command names by passing the ident
-  // required. 
-  // The IsSorted and CanIntersect are both probably not required,
-  // because intersection requires a sorted container, so can probably
-  // remove CanIntersect, unless there's a container that's sorted but
-  // can't be intersected. Decide when linked list is implemented.
+  // required.   
   //
 
   // Object Array
-  struct OArrCmds : public ArrCmds<OArrayIdent_>
-  {   
-    using ItemT = njson;
-    
-    static constexpr JsonType ItemJsonT = JsonObject;
-    static constexpr bool IsSorted = false;
-    static constexpr bool CanIntersect = false;
-
+  struct OArrCmds : public UnsortedArray<njson, JsonObject, OArrayIdent_>
+  {  
     static constexpr bool isTypeValid (const JsonType t)
     {
       return t == ItemJsonT;
@@ -116,14 +117,8 @@ namespace nemesis { namespace arr { namespace cmds {
 
 
   // Integer Array (signed)
-  struct IntArrCmds : public ArrCmds<IntArrayIdent_>
-  {   
-    using ItemT = std::int64_t;
-    
-    static constexpr JsonType ItemJsonT = JsonInt;
-    static constexpr bool IsSorted = false;
-    static constexpr bool CanIntersect = false;
-
+  struct IntArrCmds : public UnsortedArray<std::int64_t, JsonInt, IntArrayIdent_>
+  {  
     static constexpr bool isTypeValid (const JsonType t)
     {
       // jsoncons (and possibly JSON specs) stores an an integer 
@@ -136,14 +131,8 @@ namespace nemesis { namespace arr { namespace cmds {
 
 
   // String Array
-  struct StrArrCmds : public ArrCmds<StrArrayIdent_>
+  struct StrArrCmds : public UnsortedArray<std::string, JsonString, StrArrayIdent_>
   {   
-    using ItemT = std::string;
-    
-    static constexpr JsonType ItemJsonT = JsonString;
-    static constexpr bool IsSorted = true;
-    static constexpr bool CanIntersect = false;
-
     static constexpr bool isTypeValid (const JsonType t)
     {
       return t == ItemJsonT;
@@ -151,15 +140,25 @@ namespace nemesis { namespace arr { namespace cmds {
   };
 
 
-  // Sorted Integer Array (signed)
-  struct SortedIntArrCmds : public ArrCmds<SortedIntArrayIdent_>
-  {   
-    using ItemT = std::int64_t;
+  // The IsSorted and CanIntersect are both probably not required,
+  // because intersection requires a sorted container, so can probably
+  // remove CanIntersect. There may be a container that's sorted but
+  // can't be intersected. Decide when linked list is implemented.
+
+  template <typename T, JsonType JT, FixedString Ident>
+  struct SortedArray : public ArrCmds<Ident>
+  {
+    using ItemT = T;
     
-    static constexpr JsonType ItemJsonT = JsonInt;
+    static constexpr JsonType ItemJsonT = JT;
     static constexpr bool IsSorted = true;
     static constexpr bool CanIntersect = true;
+  };
 
+
+  // Sorted Integer Array (signed)
+  struct SortedIntArrCmds : public SortedArray<std::int64_t, JsonInt, SortedIntArrayIdent_>
+  {   
     static constexpr bool isTypeValid (const JsonType t)
     {
       return t == JsonUInt || t == JsonInt;
@@ -168,14 +167,8 @@ namespace nemesis { namespace arr { namespace cmds {
 
 
   // Sorted String Array
-  struct SortedStrArrCmds : public ArrCmds<SortedStrArrayIdent_>
+  struct SortedStrArrCmds : public SortedArray<std::string, JsonString, SortedStrArrayIdent_>
   {   
-    using ItemT = std::string;
-    
-    static constexpr JsonType ItemJsonT = JsonString;
-    static constexpr bool IsSorted = true;
-    static constexpr bool CanIntersect = true;
-
     static constexpr bool isTypeValid (const JsonType t)
     {
       return t == ItemJsonT;
