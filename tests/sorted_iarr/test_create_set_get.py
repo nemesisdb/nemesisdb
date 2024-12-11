@@ -35,9 +35,9 @@ class Array(NDBSortedIntArrayTest):
     self.assertEqual(output, data2)
 
 
-  # TODO
-  async def test_overwrite(self):
-    pass 
+  async def test_swap(self):
+    with self.assertRaises(NotImplementedError):
+      await self.arrays.arr_swap('arr6', 0, 1)
 
   
   async def test_get_bounds(self):

@@ -36,7 +36,6 @@ class _Arrays(ABC):
     return rsp[self.cmds.LEN_RSP]['len']
 
 
-  # TODO override in sorted container, throw not implemented or something
   async def arr_swap(self, name: str, posA: int, posB: int) -> int:
     raise_if_empty(name)
     await self.client.sendCmd(self.cmds.SWAP_REQ, self.cmds.SWAP_RSP, {'name':name, 'posA':posA, 'posB':posB})
@@ -145,7 +144,7 @@ class IntArrays(_Arrays):
 #endregion
 
 
-#region IArray
+#region Sorted IArray
 
 class SortedIntArrays(_Arrays):
   def __init__(self, client: NdbClient):
@@ -195,5 +194,9 @@ class SortedIntArrays(_Arrays):
     raise_if_equal(arrA, arrB, 'Intersect on the same arrays')
     rsp = await self.client.sendCmd(self.cmds.INTERSECT_REQ, self.cmds.INTERSECT_RSP, {'srcA':arrA, 'srcB':arrB})
     return rsp[self.cmds.INTERSECT_RSP]['items']
+  
+
+  async def arr_swap(self, name: str, posA: int, posB: int) -> int:
+    raise NotImplementedError('Swap not permitted on sorted array')
 
 #endregion
