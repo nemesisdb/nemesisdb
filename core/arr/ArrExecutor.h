@@ -170,6 +170,17 @@ public:
   }
 
 
+  static Response used (const Array& array, const njson& reqBody)
+  {
+    static const njson Prepared = njson{jsoncons::json_object_arg, {{Cmds::UsedRsp.data(), njson::object()}}};
+    
+    Response response{.rsp = Prepared};
+    response.rsp[Cmds::UsedRsp]["st"] = toUnderlying(RequestStatus::Ok);
+    response.rsp[Cmds::UsedRsp]["used"] = array.used();
+    return response;
+  }
+
+
   static Response swap (Array& array, const njson& reqBody)
   {
     static const constexpr auto RspName = Cmds::SwapRsp.data();

@@ -21,21 +21,6 @@ namespace nemesis { namespace arr {
   using namespace nemesis::arr::cmds;
 
 
-  template<typename T>
-  consteval JsonType toJsonType ()
-  {
-    if constexpr (std::is_same_v<T, std::int64_t>)
-      return JsonInt;
-    else if constexpr (std::is_same_v<T, std::string>)
-      return JsonString;
-    else if constexpr (std::is_same_v<T, njson>)
-      return JsonObject;
-    else
-      static_assert(false, "Array does support this type");
-  }
-
-
-
   template<typename T, typename Cmds>
   class ArrHandler
   {
@@ -69,7 +54,8 @@ namespace nemesis { namespace arr {
         {ArrQueryType::SetRng,          Handler{std::bind_front(&ArrHandler<T, Cmds>::setRange,           std::ref(*this))}},
         {ArrQueryType::Get,             Handler{std::bind_front(&ArrHandler<T, Cmds>::get,                std::ref(*this))}},
         {ArrQueryType::GetRng,          Handler{std::bind_front(&ArrHandler<T, Cmds>::getRange,           std::ref(*this))}},
-        {ArrQueryType::Len,             Handler{std::bind_front(&ArrHandler<T, Cmds>::length,             std::ref(*this))}},        
+        {ArrQueryType::Len,             Handler{std::bind_front(&ArrHandler<T, Cmds>::length,             std::ref(*this))}},
+        {ArrQueryType::Used,            Handler{std::bind_front(&ArrHandler<T, Cmds>::used,               std::ref(*this))}},
         {ArrQueryType::Exist,           Handler{std::bind_front(&ArrHandler<T, Cmds>::exist,              std::ref(*this))}},
         {ArrQueryType::Clear,           Handler{std::bind_front(&ArrHandler<T, Cmds>::clear,              std::ref(*this))}},        
       }, 1, alloc);
@@ -101,6 +87,7 @@ namespace nemesis { namespace arr {
         {Cmds::GetReq,          ArrQueryType::Get},
         {Cmds::GetRngReq,       ArrQueryType::GetRng},
         {Cmds::LenReq,          ArrQueryType::Len},
+        {Cmds::UsedReq,         ArrQueryType::Used},
         {Cmds::SwapReq,         ArrQueryType::Swap},
         {Cmds::ExistReq,        ArrQueryType::Exist},
         {Cmds::ClearReq,        ArrQueryType::Clear},
@@ -289,6 +276,7 @@ namespace nemesis { namespace arr {
     }
 
 
+    // NOTE: length is actually capacity 
     ndb_always_inline Response length(njson& request)
     {    
       if (auto [valid, rsp] = validateLength<Cmds>(request) ; !valid)
@@ -300,6 +288,21 @@ namespace nemesis { namespace arr {
           return Response{.rsp = createErrorResponseNoTkn(Cmds::LenRsp, RequestStatus::NotExist)};
         else
           return ArrayExecutor<ArrayT, Cmds>::length(it->second, body);
+      }
+    }
+
+
+    ndb_always_inline Response used(njson& request)
+    {    
+      if (auto [valid, rsp] = validateUsed<Cmds>(request) ; !valid)
+        return Response{.rsp = std::move(rsp)};
+      else
+      {
+        const auto& body = request.at(Cmds::UsedReq);
+        if (auto [exist, it] = getArray(body.at("name").as_string(), body) ; !exist)
+          return Response{.rsp = createErrorResponseNoTkn(Cmds::UsedRsp, RequestStatus::NotExist)};
+        else
+          return ArrayExecutor<ArrayT, Cmds>::used(it->second, body);
       }
     }
 

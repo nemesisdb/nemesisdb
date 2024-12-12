@@ -148,6 +148,14 @@ namespace nemesis { namespace arr {
 
 
   template<typename Cmds>
+  Validity validateUsed (const njson& req)
+  {
+    auto [valid, err] = isValid(Cmds::UsedRsp, req.at(Cmds::UsedReq.data()), { {Param::required("name", JsonString)}});
+    return valid ? makeValid() : makeInvalid(std::move(err));
+  }
+
+
+  template<typename Cmds>
   Validity validateSwap (const njson& req)
   {
     auto [valid, err] = isValid(Cmds::SwapRsp, req.at(Cmds::SwapReq), { {Param::required("name", JsonString)},

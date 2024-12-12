@@ -22,6 +22,7 @@ namespace nemesis { namespace arr { namespace cmds {
   static constexpr FixedString Get        = "GET";  
   static constexpr FixedString GetRng     = "GET_RNG";  
   static constexpr FixedString Len        = "LEN";
+  static constexpr FixedString Used       = "USED";
   static constexpr FixedString Swap       = "SWAP";
   static constexpr FixedString Clear      = "CLEAR";
   static constexpr FixedString Intersect  = "INTERSECT";
@@ -71,6 +72,8 @@ namespace nemesis { namespace arr { namespace cmds {
     static constexpr auto ExistRsp      = makeRsp<Ident,Exist>();
     static constexpr auto LenReq        = makeReq<Ident,Len>();
     static constexpr auto LenRsp        = makeRsp<Ident,Len>();
+    static constexpr auto UsedReq       = makeReq<Ident,Used>();
+    static constexpr auto UsedRsp       = makeRsp<Ident,Used>();
     static constexpr auto ClearReq      = makeReq<Ident,Clear>();
     static constexpr auto ClearRsp      = makeRsp<Ident,Clear>();
     static constexpr auto SetRngReq     = makeReq<Ident,SetRng>();

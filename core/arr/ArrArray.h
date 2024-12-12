@@ -151,22 +151,19 @@ public:
   }
 
 
-  void clear(const std::size_t start, const std::size_t stop)// requires (Sorted)
+  void clear(const std::size_t start, const std::size_t stop)
   {
     PLOGD << "Array::clear(): " << start << " to " << std::min<std::size_t>(m_used, stop);
 
     const auto itStart = std::next(m_array.begin(), start);
     const auto itPivot = std::next(m_array.begin(), std::min<std::size_t>(m_used, stop));
-
-    // don't rotate if it's the entire array    
-    if (!(itStart == m_array.begin() && itPivot == m_array.end()))
-    {
-      std::rotate(itStart, itPivot, m_array.end());
-      m_used -= std::distance(itStart, itPivot);
-    }
+    
+    if (itStart == m_array.begin() && itPivot == m_array.end())
+      m_used = 0; // clearing entire array
     else
     {
-      m_used = 0;
+      std::rotate(itStart, itPivot, m_array.end());
+      m_used -= std::distance(itStart, itPivot);      
     }
   }
 
@@ -174,6 +171,12 @@ public:
   std::size_t size() const noexcept
   {
     return m_size;
+  }
+
+
+  std::size_t used() const noexcept
+  {
+    return m_used;
   }
 
 
