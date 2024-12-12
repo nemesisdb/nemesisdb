@@ -301,6 +301,33 @@ async def sarr_delete():
   await arrays.set_rng('names', ['hello', 'world', 'again'])
 
 
+async def sarr_used():
+  client = NdbClient()
+  await client.open('ws://127.0.0.1:1987/')
+  await delete_all(client)
+
+  arrays = StringArrays(client)
+  await arrays.create('values', capacity=4)
+  
+  # no items stored
+  capacity = await arrays.capacity('values')
+  used = await arrays.used('values')
+  print (f'1. capacity: {capacity}, used: {used}')
+
+  # store 3 items, leaving 1 array slot free
+  await arrays.set_rng('values', ['a', 'b', 'c'])
+  capacity = await arrays.capacity('values')
+  used = await arrays.used('values')
+  print (f'2. capacity: {capacity}, used: {used}')
+
+  # clear the first 2 items
+  await arrays.clear('values', start=0, stop=2)
+  
+  capacity = await arrays.capacity('values')
+  used = await arrays.used('values')
+  print (f'3. capacity: {capacity}, used: {used}')
+
+
 if __name__ == "__main__":
   for f in [iarr_unsorted_set_rng(),
             iarr_sorted_set_rng(),
@@ -312,7 +339,8 @@ if __name__ == "__main__":
             iarr_clear(),
             iarr_clear_all(),
             iarr_intersect(),
-            sarr_delete()]:
+            sarr_delete(),
+            sarr_used()]:
     
     print(f'---- {f.__name__} ----')
     asio.run(f)

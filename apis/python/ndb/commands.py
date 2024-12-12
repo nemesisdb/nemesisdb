@@ -106,13 +106,15 @@ class OArrCmd:
   GET_RNG_RSP       =    "OARR_GET_RNG_RSP"
   LEN_REQ           =    "OARR_LEN"
   LEN_RSP           =    "OARR_LEN_RSP"
+  USED_REQ          =    "OARR_USED"
+  USED_RSP          =    "OARR_USED_RSP"
   SWAP_REQ          =    "OARR_SWAP"
   SWAP_RSP          =    "OARR_SWAP_RSP"
   EXIST_REQ         =    "OARR_EXIST"
   EXIST_RSP         =    "OARR_EXIST_RSP"
   CLEAR_REQ         =    "OARR_CLEAR"
   CLEAR_RSP         =    "OARR_CLEAR_RSP"
-  
+    
 
 class IArrCmd:
   CREATE_REQ        =    "IARR_CREATE"
@@ -131,13 +133,15 @@ class IArrCmd:
   GET_RNG_RSP       =    "IARR_GET_RNG_RSP"
   LEN_REQ           =    "IARR_LEN"
   LEN_RSP           =    "IARR_LEN_RSP"
+  USED_REQ          =    "IARR_USED"
+  USED_RSP          =    "IARR_USED_RSP"
   SWAP_REQ          =    "IARR_SWAP"
   SWAP_RSP          =    "IARR_SWAP_RSP"
   EXIST_REQ         =    "IARR_EXIST"
   EXIST_RSP         =    "IARR_EXIST_RSP"
   CLEAR_REQ         =    "IARR_CLEAR"
   CLEAR_RSP         =    "IARR_CLEAR_RSP"
-
+  
 
 class StringArrCmd:
   CREATE_REQ        =    "STRARR_CREATE"
@@ -156,13 +160,15 @@ class StringArrCmd:
   GET_RNG_RSP       =    "STRARR_GET_RNG_RSP"
   LEN_REQ           =    "STRARR_LEN"
   LEN_RSP           =    "STRARR_LEN_RSP"
+  USED_REQ          =    "STRARR_USED"
+  USED_RSP          =    "STRARR_USED_RSP"
   SWAP_REQ          =    "STRARR_SWAP"
   SWAP_RSP          =    "STRARR_SWAP_RSP"
   EXIST_REQ         =    "STRARR_EXIST"
   EXIST_RSP         =    "STRARR_EXIST_RSP"
   CLEAR_REQ         =    "STRARR_CLEAR"
   CLEAR_RSP         =    "STRARR_CLEAR_RSP"
-
+  
 
 class SortedIArrCmd:
   CREATE_REQ        =    "SIARR_CREATE"
@@ -181,6 +187,8 @@ class SortedIArrCmd:
   GET_RNG_RSP       =    "SIARR_GET_RNG_RSP"
   LEN_REQ           =    "SIARR_LEN"
   LEN_RSP           =    "SIARR_LEN_RSP"
+  USED_REQ          =    "SIARR_USED"
+  USED_RSP          =    "SIARR_USED_RSP"
   EXIST_REQ         =    "SIARR_EXIST"
   EXIST_RSP         =    "SIARR_EXIST_RSP"
   CLEAR_REQ         =    "SIARR_CLEAR"
@@ -206,6 +214,8 @@ class SortedStrArrCmd:
   GET_RNG_RSP       =    "SSTRARR_GET_RNG_RSP"
   LEN_REQ           =    "SSTRARR_LEN"
   LEN_RSP           =    "SSTRARR_LEN_RSP"
+  USED_REQ          =    "SSTRARR_USED"
+  USED_RSP          =    "SSTRARR_USED_RSP"
   EXIST_REQ         =    "SSTRARR_EXIST"
   EXIST_RSP         =    "SSTRARR_EXIST_RSP"
   CLEAR_REQ         =    "SSTRARR_CLEAR"

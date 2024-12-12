@@ -39,6 +39,12 @@ class _Arrays(ABC):
     return rsp[self.cmds.LEN_RSP]['len']
 
 
+  async def used(self, name: str) -> int:
+    raise_if_empty(name)
+    rsp = await self.client.sendCmd(self.cmds.USED_REQ, self.cmds.USED_RSP, {'name':name})
+    return rsp[self.cmds.USED_RSP]['used']
+  
+
   async def swap(self, name: str, posA: int, posB: int) -> int:
     raise_if_empty(name)
     await self.client.sendCmd(self.cmds.SWAP_REQ, self.cmds.SWAP_RSP, {'name':name, 'posA':posA, 'posB':posB})
