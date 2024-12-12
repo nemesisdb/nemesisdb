@@ -11,7 +11,7 @@ class Swap(NDBArrayTest):
     arrays = ObjArrays(self.client)
 
     await arrays.create('arr1', len(data))
-    await arrays.set_rng('arr1', 0, data)
+    await arrays.set_rng('arr1', data)
     
     values = await arrays.get_rng('arr1', 0, len(data))
 

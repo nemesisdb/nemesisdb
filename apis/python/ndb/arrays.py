@@ -10,11 +10,13 @@ class _Arrays(ABC):
 
   def __init__(self, client: NdbClient):
     self.client = client
-    self.cmds = self.getCommandNames()
+    self.cmds = self.getCommandNames()  # calls child class
+
 
   @abstractmethod
   def getCommandNames(self):
     return
+
 
   async def create(self, name: str, length: int) -> None:
     raise_if_empty(name)
@@ -55,23 +57,47 @@ class _Arrays(ABC):
     await self.client.sendCmd(self.cmds.CLEAR_REQ, self.cmds.CLEAR_RSP, {'name':name, 'rng':[start, stop]})
 
 
+  async def _doUnsortedSet(self, name: str, item, pos = None):
+    if pos is None:
+      await self.client.sendCmd(self.cmds.SET_REQ, self.cmds.SET_RSP, {'name':name, 'item':item})
+    else:
+      await self.client.sendCmd(self.cmds.SET_REQ, self.cmds.SET_RSP, {'name':name, 'pos': pos, 'item':item})
+
+
+  async def _doSetRng(self, name: str, items, pos = None):
+    if pos is None:
+      await self.client.sendCmd(self.cmds.SET_RNG_REQ, self.cmds.SET_RNG_RSP, {'name':name, 'items':items})
+    else:
+      await self.client.sendCmd(self.cmds.SET_RNG_REQ, self.cmds.SET_RNG_RSP, {'name':name, 'pos': pos, 'items':items})
+
+
 #region ObjArrays
 class ObjArrays(_Arrays):  
   def __init__(self, client: NdbClient):
     super().__init__(client)
 
+
   # override of base class 
   def getCommandNames(self) -> OArrCmd:
     return OArrCmd()
+  
 
-  async def set(self, name: str, pos: int, item: dict) -> None:
+  async def set(self, name: str, item: dict, pos = None) -> None:
     raise_if_empty(name)
-    await self.client.sendCmd(self.cmds.SET_REQ, self.cmds.SET_RSP, {'name':name, 'pos': pos, 'item':item})
+    await self._doUnsortedSet(name, item, pos)
+    # if pos is None:
+    #   await self.client.sendCmd(self.cmds.SET_REQ, self.cmds.SET_RSP, {'name':name, 'item':item})
+    # else:
+    #   await self.client.sendCmd(self.cmds.SET_REQ, self.cmds.SET_RSP, {'name':name, 'pos': pos, 'item':item})
 
 
-  async def set_rng(self, name: str, pos: int, items: List[dict]) -> None:
+  async def set_rng(self, name: str, items: List[dict], pos = None) -> None:
     raise_if_empty(name)
-    await self.client.sendCmd(self.cmds.SET_RNG_REQ, self.cmds.SET_RNG_RSP, {'name':name, 'pos': pos, 'items':items})
+    await self._doSetRng(name, items, pos)
+    # if pos is None:
+    #   await self.client.sendCmd(self.cmds.SET_RNG_REQ, self.cmds.SET_RNG_RSP, {'name':name, 'items':items})
+    # else:
+    #   await self.client.sendCmd(self.cmds.SET_RNG_REQ, self.cmds.SET_RNG_RSP, {'name':name, 'pos': pos, 'items':items})
 
 
   async def get(self, name: str, pos: int) -> dict:
@@ -105,19 +131,22 @@ class IntArrays(_Arrays):
   def __init__(self, client: NdbClient):
     super().__init__(client)
 
+
   # override of base class 
   def getCommandNames(self) -> IArrCmd:
     return IArrCmd()
   
 
-  async def set(self, name: str, pos: int, item: int) -> None:
+  async def set(self, name: str, item: int, pos = None) -> None:
     raise_if_empty(name)
-    await self.client.sendCmd(self.cmds.SET_REQ, self.cmds.SET_RSP, {'name':name, 'pos': pos, 'item':item})
+    await self._doUnsortedSet(name, item, pos)    
+    #await self.client.sendCmd(self.cmds.SET_REQ, self.cmds.SET_RSP, {'name':name, 'pos': pos, 'item':item})
 
 
-  async def set_rng(self, name: str, pos: int, items: List[int]) -> None:
+  async def set_rng(self, name: str, items: List[int], pos = None) -> None:
     raise_if_empty(name)
-    await self.client.sendCmd(self.cmds.SET_RNG_REQ, self.cmds.SET_RNG_RSP, {'name':name, 'pos': pos, 'items':items})
+    await self._doSetRng(name, items, pos)
+    #await self.client.sendCmd(self.cmds.SET_RNG_REQ, self.cmds.SET_RNG_RSP, {'name':name, 'pos': pos, 'items':items})
 
 
   async def get(self, name: str, pos: int) -> int:
@@ -150,19 +179,22 @@ class StringArrays(_Arrays):
   def __init__(self, client: NdbClient):
     super().__init__(client)
 
+
   # override of base class 
   def getCommandNames(self) -> StringArrCmd:
     return StringArrCmd()
   
 
-  async def set(self, name: str, pos: int, item: str) -> None:
+  async def set(self, name: str, item: str, pos = None) -> None:
     raise_if_empty(name)
-    await self.client.sendCmd(self.cmds.SET_REQ, self.cmds.SET_RSP, {'name':name, 'pos': pos, 'item':item})
+    await self._doUnsortedSet(name, item, pos)
+    #await self.client.sendCmd(self.cmds.SET_REQ, self.cmds.SET_RSP, {'name':name, 'pos': pos, 'item':item})
 
 
-  async def set_rng(self, name: str, pos: int, items: List[str]) -> None:
+  async def set_rng(self, name: str, items: List[str], pos = None) -> None:
     raise_if_empty(name)
-    await self.client.sendCmd(self.cmds.SET_RNG_REQ, self.cmds.SET_RNG_RSP, {'name':name, 'pos': pos, 'items':items})
+    await self._doSetRng(name, items, pos)
+    #await self.client.sendCmd(self.cmds.SET_RNG_REQ, self.cmds.SET_RNG_RSP, {'name':name, 'pos': pos, 'items':items})
 
 
   async def get(self, name: str, pos: int) -> str:
@@ -194,6 +226,7 @@ class StringArrays(_Arrays):
 class SortedIntArrays(_Arrays):
   def __init__(self, client: NdbClient):
     super().__init__(client)
+
 
   # override of base class 
   def getCommandNames(self) -> SortedIArrCmd:
@@ -252,6 +285,7 @@ class SortedIntArrays(_Arrays):
 class SortedStrArrays(_Arrays):
   def __init__(self, client: NdbClient):
     super().__init__(client)
+
 
   # override of base class 
   def getCommandNames(self) -> SortedStrArrCmd:

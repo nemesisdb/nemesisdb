@@ -42,7 +42,7 @@ public:
       {
         if (reqBody.contains("pos"))
         {
-          const auto pos = reqBody.get_value_or<std::size_t>("pos", 0);
+          const std::size_t pos = reqBody.at("pos").as<std::size_t>();
       
           if (!array.isInBounds(pos))
             rspBody["st"] = toUnderlying(RequestStatus::Bounds);
@@ -89,12 +89,22 @@ public:
       }
       else
       {
-        const auto pos = reqBody.at("pos").template as<std::size_t>();
+        if (reqBody.contains("pos"))
+        {
+          const std::size_t pos = reqBody.at("pos").as<std::size_t>();
 
-        if (!array.isSetInBounds(pos, items.size()))
-          response.rsp[RspName]["st"] = toUnderlying(RequestStatus::Bounds);
+          if (!array.isSetInBounds(pos, items.size()))
+            response.rsp[RspName]["st"] = toUnderlying(RequestStatus::Bounds);
+          else
+            array.setRange(pos, items);
+        }
         else
-          array.setRange(pos, items);
+        {
+          if (array.isFull())
+            response.rsp[RspName]["st"] = toUnderlying(RequestStatus::Bounds);
+          else
+            array.setRange(items);
+        }
       }
     }
     catch(const std::exception& e)

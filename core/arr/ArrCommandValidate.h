@@ -81,14 +81,9 @@ namespace nemesis { namespace arr {
 
     // if container can be sorted, then request cannot set a position (since it may change after sorting)
     if constexpr (Cmds::IsSorted)
-    {
-      params = {{Param::required("name", JsonString)}, {Param::required("items", JsonArray)} };
-      //std::tie(valid, err) = isArrayCmdValid<Cmds>(Cmds::SetRngRsp, req.at(Cmds::SetRngReq), params, itemsValid);
-    }
+      params = {{Param::required("name", JsonString)}, {Param::required("items", JsonArray)}};
     else
-    {
-      params = {{Param::required("name", JsonString)}, {Param::required("items", JsonArray)}, {Param::required("pos",  JsonUInt)} };
-    }
+      params = {{Param::required("name", JsonString)}, {Param::required("items", JsonArray)}, {Param::optional("pos", JsonUInt)}};
 
     auto [valid, err] = isArrayCmdValid<Cmds>(Cmds::SetRngRsp, req.at(Cmds::SetRngReq), params, itemsValid);
     return valid ? makeValid() : makeInvalid(std::move(err));

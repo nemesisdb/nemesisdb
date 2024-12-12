@@ -25,12 +25,26 @@ class Array(NDBIArrayTest):
     data1 = 1
     await self.arrays.create('arr3', 10)
     
-    await self.arrays.set('arr3', 0, data1)
+    await self.arrays.set('arr3', data1, 0)
     output = await self.arrays.get('arr3', 0)
     self.assertEqual(output, data1)
 
     data2 = 2
-    await self.arrays.set('arr3', 1, data2)
+    await self.arrays.set('arr3', data2, 1)
+    output = await self.arrays.get('arr3', 1)
+    self.assertEqual(output, data2)
+
+
+  async def test_set_get_nopos(self):
+    data1 = 1
+    await self.arrays.create('arr3', 10)
+    
+    await self.arrays.set('arr3', data1)
+    output = await self.arrays.get('arr3', 0)
+    self.assertEqual(output, data1)
+
+    data2 = 2
+    await self.arrays.set('arr3', data2)
     output = await self.arrays.get('arr3', 1)
     self.assertEqual(output, data2)
 
@@ -39,12 +53,12 @@ class Array(NDBIArrayTest):
     data1 = 1
     await self.arrays.create('arr4', 2)
     
-    await self.arrays.set('arr4', 0, data1)
+    await self.arrays.set('arr4', data1)
     output = await self.arrays.get('arr4', 0)
     self.assertEqual(output, data1)
 
     data2 = 2
-    await self.arrays.set('arr4', 0, data2)
+    await self.arrays.set('arr4', data2, pos=0)
     output = await self.arrays.get('arr4', 0)
     self.assertEqual(output, data2)
 
@@ -53,7 +67,7 @@ class Array(NDBIArrayTest):
     await self.arrays.create('arr5', 5)
     
     with self.assertRaises(ResponseError):
-      await self.arrays.set('arr5', 10, 123)
+      await self.arrays.set('arr5', 123, pos=10)
 
   
   async def test_get_bounds(self):
@@ -66,13 +80,13 @@ class Array(NDBIArrayTest):
     await self.arrays.create('arr7', 5)
 
     with self.assertRaises(ResponseError):
-      await self.arrays.set('arr7', 0, {'a':'b'})
+      await self.arrays.set('arr7', {'a':'b'})
 
     with self.assertRaises(ResponseError):
-      await self.arrays.set('arr7', 0, 0.5)
+      await self.arrays.set('arr7', 0.5)
 
     with self.assertRaises(ResponseError):
-      await self.arrays.set('arr7', 0, "")
+      await self.arrays.set('arr7', "")
 
 
 

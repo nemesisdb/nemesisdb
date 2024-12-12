@@ -28,12 +28,12 @@ class Array(NDBArrayTest):
     data1 = {'x':1, 'y':2}
     await self.arrays.create('arr3', 10)
     
-    await self.arrays.set('arr3', 0, data1)
+    await self.arrays.set('arr3', data1)
     output = await self.arrays.get('arr3', 0)
     self.assertDictEqual(output, data1)
 
     data2 = {'a':1, 'b':2}
-    await self.arrays.set('arr3', 1, data2)
+    await self.arrays.set('arr3', data2)
     output = await self.arrays.get('arr3', 1)
     self.assertDictEqual(output, data2)
 
@@ -42,12 +42,12 @@ class Array(NDBArrayTest):
     data1 = {'x':1, 'y':2}
     await self.arrays.create('arr4', 10)
     
-    await self.arrays.set('arr4', 0, data1)
+    await self.arrays.set('arr4', data1)
     output = await self.arrays.get('arr4', 0)
     self.assertDictEqual(output, data1)
 
     data2 = {'a':1, 'b':2}
-    await self.arrays.set('arr4', 0, data2)
+    await self.arrays.set('arr4', data2, pos=0)
     output = await self.arrays.get('arr4', 0)
     self.assertDictEqual(output, data2)
 
@@ -56,7 +56,7 @@ class Array(NDBArrayTest):
     await self.arrays.create('arr5', 5)
     
     with self.assertRaises(ResponseError):
-      await self.arrays.set('arr5', 10, {'x':1, 'y':2})
+      await self.arrays.set('arr5', {'x':1, 'y':2}, pos=6)
 
   
   async def test_get_bounds(self):

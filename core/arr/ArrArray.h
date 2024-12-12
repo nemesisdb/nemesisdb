@@ -65,6 +65,7 @@ public:
     m_array[pos] = item;
   }
 
+
   void set(const T& item)
   {
     m_array[m_used++] = item;
@@ -83,12 +84,13 @@ public:
   }
 
   
-  void setRange(const std::vector<T>& items) requires (Sorted)
+  void setRange(const std::vector<T>& items)
   {    
     for (const auto& item : items)
       m_array[m_used++] = item;
 
-    std::sort(m_array.begin(), std::next(m_array.begin(), m_used));
+    if constexpr (Sorted)
+      std::sort(m_array.begin(), std::next(m_array.begin(), m_used));
   }
 
 

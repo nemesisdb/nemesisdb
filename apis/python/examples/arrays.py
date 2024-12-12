@@ -18,7 +18,7 @@ async def iarr_unsorted_set_rng():
   await arrays.create('example', 4)
   
   # set four integers
-  await arrays.set_rng('example', 0, [100,50,200,10])
+  await arrays.set_rng('example', [100,50,200,10], 0)
   
   # get all values: stop is exclusive
   allValues = await arrays.get_rng('example', start=0, stop=5)
@@ -53,7 +53,7 @@ async def iarr_create_sorted_unsorted():
   await unsortedArrays.create('my_array', 4)
   await sortedArrays.create('my_array', 4)
 
-  await unsortedArrays.set_rng('my_array', 0, [100,50,200,10])
+  await unsortedArrays.set_rng('my_array', [100,50,200,10])
   await sortedArrays.set_rng('my_array', [100,50,200,10])
 
   # omit 'stop', get all values
@@ -77,9 +77,9 @@ async def arr_set_multiple_types():
   await sortedIntArrays.create('student_scores', 3)
   
   # student records as json objects
-  await objectArrays.set('student_records', 0, {'name':'Alice', 'modules':['Geography', 'Biology']})
-  await objectArrays.set('student_records', 1, {'name':'Bob', 'modules':['Art', 'Philosophy']})
-  await objectArrays.set('student_records', 2, {'name':'Charles', 'modules':['Music']})
+  await objectArrays.set('student_records', {'name':'Alice', 'modules':['Geography', 'Biology']})
+  await objectArrays.set('student_records', {'name':'Bob', 'modules':['Art', 'Philosophy']})
+  await objectArrays.set('student_records', {'name':'Charles', 'modules':['Music']})
 
   # sorted names
   await sortedStrArrays.set('student_names_sorted', 'Charles')

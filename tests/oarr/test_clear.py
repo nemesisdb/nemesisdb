@@ -8,7 +8,7 @@ class Clear(NDBArrayTest):
     data = [{'k0':0}, {'k1':1}, {'k2':2}, {'k3':3}, {'k4':4}]
     
     await self.arrays.create('arr1', 5)
-    await self.arrays.set_rng('arr1', 0, data)
+    await self.arrays.set_rng('arr1', data)
 
     # clear k1 to k3 inclusive
     await self.arrays.clear('arr1', 1, 4)

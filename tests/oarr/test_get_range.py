@@ -14,7 +14,7 @@ class RangeTest(NDBArrayTest):
     self.assertEqual(size, self.size)
 
     for i in range(0, self.size):
-      await self.arrays.set('arr', i, {f'k{i}':i})
+      await self.arrays.set('arr', {f'k{i}':i})
 
 
 class GetRange(RangeTest):

@@ -14,12 +14,12 @@ class Array(NDBStrArrayTest):
     data1 = "hello"
     await self.arrays.create('arr3', 10)
     
-    await self.arrays.set('arr3', 0, data1)
+    await self.arrays.set('arr3', data1)
     output = await self.arrays.get('arr3', 0)
     self.assertEqual(output, data1)
 
     data2 = "world"
-    await self.arrays.set('arr3', 1, data2)
+    await self.arrays.set('arr3', data2)
     output = await self.arrays.get('arr3', 1)
     self.assertEqual(output, data2)
 
@@ -27,11 +27,11 @@ class Array(NDBStrArrayTest):
   async def test_overwrite(self):
     await self.arrays.create('arr4', 1)
     
-    await self.arrays.set('arr4', 0, "hello world")
+    await self.arrays.set('arr4', "hello world")
     output = await self.arrays.get('arr4', 0)
     self.assertEqual(output, "hello world")
 
-    await self.arrays.set('arr4', 0, "Hello World")
+    await self.arrays.set('arr4', "Hello World", pos=0)
     output = await self.arrays.get('arr4', 0)
     self.assertEqual(output, "Hello World")
     
