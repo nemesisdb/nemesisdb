@@ -45,8 +45,9 @@ class _Arrays(ABC):
     return rsp[self.cmds.USED_RSP]['used']
   
 
-  async def swap(self, name: str, posA: int, posB: int) -> int:
+  async def swap(self, name: str, posA: int, posB: int) -> None:
     raise_if_empty(name)
+    raise_if_equal(posA, posB, 'Swap indices are the same')
     await self.client.sendCmd(self.cmds.SWAP_REQ, self.cmds.SWAP_RSP, {'name':name, 'posA':posA, 'posB':posB})
 
   

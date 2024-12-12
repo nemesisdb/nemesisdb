@@ -34,6 +34,6 @@ def raise_if (value: str, msg: str, f):
     raise ValueError(f'value is {msg}')
   
 
-def raise_if_equal (val1: str, val2: str, msg:str):
+def raise_if_equal (val1, val2, msg:str):
   if val1 == val2:  
     raise ValueError(msg)

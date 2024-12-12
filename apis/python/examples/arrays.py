@@ -259,21 +259,40 @@ async def iarr_clear_all():
 
 
 async def iarr_intersect():
+  client = NdbClient()
+  await client.open('ws://127.0.0.1:1987/')
+  await delete_all(client)
+
+  sortedInts = SortedIntArrays(client)
+  await sortedInts.create('array1', 5)
+  await sortedInts.create('array2', 6)
+
+  await sortedInts.set_rng('array1', [25,10,50,100,80])
+  await sortedInts.set_rng('array2', [10,25,100,120,200,5])
+
+  intersected = await sortedInts.intersect('array1', 'array2')
+  print(intersected)
+
+
+async def iarr_intersect_random():
   async def createData(s: int, size: int):
     from random import sample, seed
     seed(s)
     return sample(range(0, size*4), size)
 
   client = NdbClient()
-  await client.open('ws://127.0.0.1:1987/')
-  await delete_all(client)
+  connect = client.open('ws://127.0.0.1:1987/')
 
   print('Creating data') 
   data1 = await createData(7,500)
-  data2 = await createData(9,500)
+  data2 = await createData(9,500) 
 
-  print('Creating arrays') 
+  await connect
+  await delete_all(client)
+  
   sortedInts = SortedIntArrays(client)
+  
+  print('Creating arrays')   
   await sortedInts.create('array1', 500)
   await sortedInts.create('array2', 500)
   
@@ -283,7 +302,7 @@ async def iarr_intersect():
 
   print('Intersecting')
   intersected = await sortedInts.intersect('array1', 'array2')
-  print(f'Intersecting has: {len(intersected)} values')
+  print(f'Intersected has: {len(intersected)} values')
 
 
 async def sarr_delete():
@@ -328,6 +347,21 @@ async def sarr_used():
   print (f'3. capacity: {capacity}, used: {used}')
 
 
+async def sarr_swap():
+  client = NdbClient()
+  await client.open('ws://127.0.0.1:1987/')
+  await delete_all(client)
+
+  arrays = StringArrays(client)
+  await arrays.create('values', capacity=4)
+  
+  await arrays.set_rng('values', ['a', 'b', 'c', 'd'])
+  print(await arrays.get_rng('values', start=0))
+  
+  await arrays.swap('values', 0, 3)
+  print(await arrays.get_rng('values', start=0))
+
+
 if __name__ == "__main__":
   for f in [iarr_unsorted_set_rng(),
             iarr_sorted_set_rng(),
@@ -337,10 +371,12 @@ if __name__ == "__main__":
             iarr_get(),
             iarr_get_rng(),
             iarr_clear(),
-            iarr_clear_all(),
-            iarr_intersect(),
+            iarr_clear_all(),            
             sarr_delete(),
-            sarr_used()]:
+            sarr_used(),
+            sarr_swap(),
+            iarr_intersect(),
+            iarr_intersect_random()]:
     
     print(f'---- {f.__name__} ----')
     asio.run(f)
