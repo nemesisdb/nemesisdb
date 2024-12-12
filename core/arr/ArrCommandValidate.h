@@ -56,7 +56,7 @@ namespace nemesis { namespace arr {
     if constexpr (Cmds::IsSorted)
       params = {{Param::required("name", JsonString)}, {Param::variable("item")} };
     else
-      params = {{Param::required("name", JsonString)}, {Param::required("pos",  JsonUInt)}, {Param::variable("item")} };
+      params = {{Param::required("name", JsonString)}, {Param::optional("pos",  JsonUInt)}, {Param::variable("item")} };
 
 
     auto[valid, err] = isArrayCmdValid<Cmds>(Cmds::SetRsp, req.at(Cmds::SetReq), params);

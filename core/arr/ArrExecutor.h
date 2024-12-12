@@ -40,12 +40,22 @@ public:
       }
       else
       {
-        const auto pos = reqBody.get_value_or<std::size_t>("pos", 0);
+        if (reqBody.contains("pos"))
+        {
+          const auto pos = reqBody.get_value_or<std::size_t>("pos", 0);
       
-        if (!array.isInBounds(pos))
-          rspBody["st"] = toUnderlying(RequestStatus::Bounds);
+          if (!array.isInBounds(pos))
+            rspBody["st"] = toUnderlying(RequestStatus::Bounds);
+          else
+            array.set(pos, reqBody.at("item").as<ArrayValueT>());
+        }
         else
-          array.set(pos, reqBody.at("item").as<ArrayValueT>());
+        {
+          if (array.isFull())
+            rspBody["st"] = toUnderlying(RequestStatus::Bounds);
+          else
+            array.set(reqBody.at("item").as<ArrayValueT>());
+        }
       }
     }
     catch(const std::exception& e)

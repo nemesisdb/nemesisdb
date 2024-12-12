@@ -65,10 +65,12 @@ public:
     m_array[pos] = item;
   }
 
-  void set(const T& item) requires (Sorted)
+  void set(const T& item)
   {
     m_array[m_used++] = item;
-    std::sort(m_array.begin(), std::next(m_array.begin(), m_used));
+
+    if constexpr (Sorted)
+      std::sort(m_array.begin(), std::next(m_array.begin(), m_used));
   }
 
 
