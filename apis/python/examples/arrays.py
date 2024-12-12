@@ -193,6 +193,7 @@ async def iarr_get_rng():
   await sortedInts.create('scores', 5)
   await sortedInts.set_rng('scores', [50,102,95,64,22])
 
+  # get all and slice
   scores = await sortedInts.get_rng('scores', start=0)
   
   print(f'Ascending: {scores}')
@@ -201,6 +202,11 @@ async def iarr_get_rng():
         f'Low: {scores[0]}, '
         f'Top Three: {scores[-1:-4:-1]}')
 
+  
+  # get just the top three
+  scores = await sortedInts.get_rng('scores', start=2)
+  print(f'Top Three with get_rng(): {scores[::-1]}')
+  
 
 if __name__ == "__main__":
   for f in [iarr_unsorted_set_rng(),

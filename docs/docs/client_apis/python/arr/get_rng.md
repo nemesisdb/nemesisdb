@@ -52,10 +52,16 @@ print(f'Descending: {scores[::-1]}')
 print(f'High: {scores[-1]}, '
       f'Low: {scores[0]}, '
       f'Top Three: {scores[-1:-4:-1]}')
+
+
+# get just the top three
+scores = await sortedInts.get_rng('scores', start=2)
+print(f'Top Three with get_rng(): {scores[::-1]}')
 ```
 
 ```
 Ascending: [22, 50, 64, 95, 102]
 Descending: [102, 95, 64, 50, 22]
 High: 102, Low: 22, Top Three: [102, 95, 64]
+Top Three with get_rng(): [102, 95, 64]
 ```
