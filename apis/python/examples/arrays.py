@@ -3,7 +3,7 @@ import sys
 sys.path.append('../')
 from pprint import pprint
 
-from ndb.client import NdbClient
+from ndb.client import NdbClient, ResponseError
 from ndb.arrays import IntArrays, SortedIntArrays, ObjArrays, SortedStrArrays, StringArrays
 
 
@@ -208,6 +208,99 @@ async def iarr_get_rng():
   print(f'Top Three with get_rng(): {scores[::-1]}')
   
 
+async def iarr_clear():
+  client = NdbClient()
+  await client.open('ws://127.0.0.1:1987/')
+  await delete_all(client)
+
+  arrays = IntArrays(client)
+  await arrays.create('values', 4)
+
+  # fill array
+  await arrays.set_rng('values', [56,34,78,45])
+  
+  values = await arrays.get_rng('values', start=0)
+  print(values)
+
+  # array is full
+  try:
+    await arrays.set_rng('values', [99, 66])
+  except ResponseError:
+    print("Array full")
+
+  # clear 34 and 78 then try again
+  await arrays.clear('values', start=1, stop=3)
+  await arrays.set_rng('values', [99,66])
+  
+  values = await arrays.get_rng('values', start=0)
+  print(values)
+
+
+async def iarr_clear_all():
+  client = NdbClient()
+  await client.open('ws://127.0.0.1:1987/')
+  await delete_all(client)
+
+  arrays = IntArrays(client)
+  await arrays.create('values', 4)
+
+  # fill array
+  await arrays.set_rng('values', [56,34,78,45])
+  
+  values = await arrays.get_rng('values', start=0)
+  print(values)
+  
+  # clear all and set new
+  await arrays.clear('values', start=0, stop=5)
+  await arrays.set_rng('values', [33,11,99,66])
+  
+  values = await arrays.get_rng('values', start=0)
+  print(values)
+
+
+async def iarr_intersect():
+  async def createData(s: int, size: int):
+    from random import sample, seed
+    seed(s)
+    return sample(range(0, size*4), size)
+
+  client = NdbClient()
+  await client.open('ws://127.0.0.1:1987/')
+  await delete_all(client)
+
+  print('Creating data') 
+  data1 = await createData(7,500)
+  data2 = await createData(9,500)
+
+  print('Creating arrays') 
+  sortedInts = SortedIntArrays(client)
+  await sortedInts.create('array1', 500)
+  await sortedInts.create('array2', 500)
+  
+  print('Storing data')
+  await sortedInts.set_rng('array1', data1)
+  await sortedInts.set_rng('array2', data2)
+
+  print('Intersecting')
+  intersected = await sortedInts.intersect('array1', 'array2')
+  print(f'Intersecting has: {len(intersected)} values')
+
+
+async def sarr_delete():
+  client = NdbClient()
+  await client.open('ws://127.0.0.1:1987/')
+  await delete_all(client)
+
+  arrays = StringArrays(client)
+  await arrays.create('names', 4)
+  await arrays.set_rng('names', ['hello', 'world', 'goodbye', 'world'])
+
+  await arrays.delete('names')
+  # we can create an array with the same name after deleting the original
+  await arrays.create('names', 3)
+  await arrays.set_rng('names', ['hello', 'world', 'again'])
+
+
 if __name__ == "__main__":
   for f in [iarr_unsorted_set_rng(),
             iarr_sorted_set_rng(),
@@ -215,7 +308,11 @@ if __name__ == "__main__":
             arr_set_multiple_types(),
             arr_setrng_multiple_types(),
             iarr_get(),
-            iarr_get_rng()]:
+            iarr_get_rng(),
+            iarr_clear(),
+            iarr_clear_all(),
+            iarr_intersect(),
+            sarr_delete()]:
     
     print(f'---- {f.__name__} ----')
     asio.run(f)

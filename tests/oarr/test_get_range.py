@@ -10,7 +10,7 @@ class RangeTest(NDBArrayTest):
     self.size = 20
 
     await self.arrays.create('arr', self.size)
-    size = await self.arrays.len('arr')
+    size = await self.arrays.capacity('arr')
     self.assertEqual(size, self.size)
 
     for i in range(0, self.size):

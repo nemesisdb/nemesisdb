@@ -4,11 +4,15 @@ displayed_sidebar: clientApisSidebar
 ---
 
 # Overview
-Arrays are fixed size containers for JSON objects, strings or integers. They are implemented in contigious memory. Because they are fixed sized, their length must be defined at creation time, and cannot change.
+Arrays are fixed size containers for JSON objects, strings or integers, implemented in contigious memory. Because they are fixed sized, their length must be defined at creation time, and cannot change.
 
-There are sorted and unsorted versions of string and integer arrays, but object arrays are only unsorted.
-
-Sorted arrays allow for operations such as intersecting two arrays.
+- Rather than length, the terms "capacity" and "used" are preferred
+    - `capacity`: the size of the array, allocated when `create()` is called
+    - `used`: the number of items in the array. The array is full when `used == capacity`
+    - `clear()` removes items, reducing `used`
+- There are sorted and unsorted versions of string and integer arrays, but object arrays cannot be sorted
+- Sorting is always in ascending order
+- Sorted arrays allow for operations such as intersecting
 
 
 ## API
@@ -41,11 +45,12 @@ await client.open('ws://127.0.0.1:1987/')
 # create API object
 arrays = IntArrays(client)
 
-# create array called 'example' of length 4
+# create array called 'example' with capacity of 4
 await arrays.create('example', 4)
 
-# in 'example' array, starting at positon 0, set four integers
-await arrays.set_rng('example', 0, [100,50,200,10])
+# in 'example' array, set four integers
+# no `pos` is set so the next available position is used (which is 0 since the array is empty)
+await arrays.set_rng('example', [100,50,200,10])
 
 # get all values: stop is exclusive
 allValues = await arrays.get_rng('example', start=0, stop=5)
@@ -69,16 +74,16 @@ from ndb.arrays import SortedIntArrays
 client = NdbClient()
 await client.open('ws://127.0.0.1:1987/')
 
-# create a SortedIntArrays API 
-arrays = SortedIntArrays(client)
+# this time use the SortedIntArrays API
+sortedArrays = SortedIntArrays(client)
 
 # create an array named 'sorted'
-await arrays.create('sorted', 4)
+await sortedArrays.create('sorted', 4)
 
-# note: no position is allowed on a sorted array
-await arrays.set_rng('sorted', [100,50,200,10])
+await sortedArrays.set_rng('sorted', [100,50,200,10])
 
-allValues = await arrays.get_rng('sorted', start=0, stop=5)
+# omit 'stop' to get all items
+allValues = await sortedArrays.get_rng('sorted', start=0)
 print(allValues)
 ```
 
@@ -89,7 +94,7 @@ print(allValues)
 
 ## API Classes
 
-|API Class Name|Storage Type|
+|API Class|Storage Type|
 |---|---|
 |OArrays|JSON object|
 |IntArrays|signed integer|
@@ -105,19 +110,4 @@ print(allValues)
 - The same will apply as other operations are added, such as union
 
 ### Swap Items
-- Items can't be swapped in a sorted array as this would break the sorting
-
-### Clearing
-Calling `clear()` on a sorted array does not overwrite the existing value because that would break the sorting, instead the cleared values are rotated to after the sorted values. See [`std::rotate`](https://en.cppreference.com/w/cpp/algorithm/rotate)
-
-In the example above with `[10,50,100,200]`, if `clear()` is called on `50`, the array becomes:
-
-```
-[10, 100, 200, 50]
-           ^   ^
-       Last    Ignored
-```
-
-An internal variable marking `200` as the last value so subsequent calls to `get()`/`get_rng()` only consider `[10,100,200]`.
-
-When `set()` is called again, `50` is overwritten and the array is sorted.
+- Items can't be swapped in a sorted array as this would break ordering

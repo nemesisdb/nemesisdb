@@ -6,21 +6,24 @@ displayed_sidebar: clientApisSidebar
 # create
 
 ```py
-async def create(name: str, length: int) -> None
+async def create(name: str, capacity: int) -> None
 ```
 
 |Param|Description|
 |---|---|
-|name|Name of the array|
-|length|Length of the array|
+|name|Name of the array.<br/>The `name` must only be unique amongst arrays of the same type, i.e. you can create an object array called `students` and an integer array also called `students`|
+|capacity|Maximum length of the array|
 
 :::note
-The length is fixed, the array cannot extend
+The capacity is fixed, the array's length/capacity cannot increase.
 :::
 
-<br/>
+The `capacity` is the maximum length of the array. As new values are set, the `used()` increases. 
+When `used() == capacity()` the array is full. Calls to `clear()` reduces `used()`. 
 
-The `name` must only be unique amongst arrays of the same type, i.e. you can create an object array called `students` and an int array also called `students`.
+In an unsorted array you can use `set()` to overwrite existing values, so the `used()` does not change.
+
+
 
 ## Array Type Differences
 None

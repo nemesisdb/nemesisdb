@@ -151,23 +151,9 @@ public:
   }
 
 
-  void clear(const std::size_t start, const std::size_t stop) requires (!Sorted)
+  void clear(const std::size_t start, const std::size_t stop)// requires (Sorted)
   {
-    PLOGD << "Array::clear(): " << start << " to " << stop;
-
-    const auto itStart = std::next(m_array.begin(), start);
-    const auto itEnd = std::next(m_array.begin(), std::min<std::size_t>(m_size, stop));
-
-    for (auto it = itStart ; it != itEnd; ++it)
-      *it = T{};
-
-    m_used -= stop-start;
-  }
-
-
-  void clear(const std::size_t start, const std::size_t stop) requires (Sorted)
-  {
-    PLOGD << "Array::clear(): " << start << " to " << stop;
+    PLOGD << "Array::clear(): " << start << " to " << std::min<std::size_t>(m_used, stop);
 
     const auto itStart = std::next(m_array.begin(), start);
     const auto itPivot = std::next(m_array.begin(), std::min<std::size_t>(m_used, stop));

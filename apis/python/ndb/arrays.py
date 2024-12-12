@@ -18,10 +18,10 @@ class _Arrays(ABC):
     return
 
 
-  async def create(self, name: str, length: int) -> None:
+  async def create(self, name: str, capacity: int) -> None:
     raise_if_empty(name)
-    raise_if(length, 'must be > 0', lambda v: v <= 0)
-    await self.client.sendCmd(self.cmds.CREATE_REQ, self.cmds.CREATE_RSP, {'name':name, 'len':length})
+    raise_if(capacity, 'must be > 0', lambda v: v <= 0)
+    await self.client.sendCmd(self.cmds.CREATE_REQ, self.cmds.CREATE_RSP, {'name':name, 'len':capacity})
 
 
   async def delete(self, name: str) -> None:
@@ -33,7 +33,7 @@ class _Arrays(ABC):
     await self.client.sendCmd(self.cmds.DELETE_ALL_REQ, self.cmds.DELETE_ALL_RSP, {})
 
   
-  async def len(self, name: str) -> int:
+  async def capacity(self, name: str) -> int:
     raise_if_empty(name)
     rsp = await self.client.sendCmd(self.cmds.LEN_REQ, self.cmds.LEN_RSP, {'name':name})
     return rsp[self.cmds.LEN_RSP]['len']
@@ -140,13 +140,11 @@ class IntArrays(_Arrays):
   async def set(self, name: str, item: int, pos = None) -> None:
     raise_if_empty(name)
     await self._doUnsortedSet(name, item, pos)    
-    #await self.client.sendCmd(self.cmds.SET_REQ, self.cmds.SET_RSP, {'name':name, 'pos': pos, 'item':item})
 
 
   async def set_rng(self, name: str, items: List[int], pos = None) -> None:
     raise_if_empty(name)
     await self._doSetRng(name, items, pos)
-    #await self.client.sendCmd(self.cmds.SET_RNG_REQ, self.cmds.SET_RNG_RSP, {'name':name, 'pos': pos, 'items':items})
 
 
   async def get(self, name: str, pos: int) -> int:

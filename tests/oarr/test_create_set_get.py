@@ -8,7 +8,7 @@ class Array(NDBArrayTest):
   async def test_create(self):
 
     await self.arrays.create('arr2', 30)
-    len = await self.arrays.len('arr2')
+    len = await self.arrays.capacity('arr2')
     self.assertEqual(len, 30)
 
   
