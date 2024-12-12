@@ -1,6 +1,6 @@
 import unittest
 from base import NDBArrayTest
-from ndb.arrays import OArrays
+from ndb.arrays import ObjArrays
 
 
 class Swap(NDBArrayTest):
@@ -8,7 +8,7 @@ class Swap(NDBArrayTest):
   async def test_entire(self):
     data = [{'k0':0}, {'k1':1}, {'k2':2}, {'k3':3}]
     
-    arrays = OArrays(self.client)
+    arrays = ObjArrays(self.client)
 
     await arrays.create('arr1', len(data))
     await arrays.set_rng('arr1', 0, data)

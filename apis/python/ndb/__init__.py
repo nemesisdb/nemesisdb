@@ -1,5 +1,5 @@
 from .client import NdbClient
-from .arrays import OArrays
+from .arrays import ObjArrays
 
 
 __all__ = ['NdbClient', 'Arrays']

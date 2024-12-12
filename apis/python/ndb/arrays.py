@@ -16,10 +16,10 @@ class _Arrays(ABC):
   def getCommandNames(self):
     return
 
-  async def create(self, name: str, len: int) -> int:
+  async def create(self, name: str, length: int) -> None:
     raise_if_empty(name)
-    raise_if(len, 'must be > 0', lambda v: v <= 0)
-    await self.client.sendCmd(self.cmds.CREATE_REQ, self.cmds.CREATE_RSP, {'name':name, 'len':len})
+    raise_if(length, 'must be > 0', lambda v: v <= 0)
+    await self.client.sendCmd(self.cmds.CREATE_REQ, self.cmds.CREATE_RSP, {'name':name, 'len':length})
 
 
   async def delete(self, name: str) -> None:
@@ -55,8 +55,8 @@ class _Arrays(ABC):
     await self.client.sendCmd(self.cmds.CLEAR_REQ, self.cmds.CLEAR_RSP, {'name':name, 'rng':[start, stop]})
 
 
-#region OArrays
-class OArrays(_Arrays):  
+#region ObjArrays
+class ObjArrays(_Arrays):  
   def __init__(self, client: NdbClient):
     super().__init__(client)
 
