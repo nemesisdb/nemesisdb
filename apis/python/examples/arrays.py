@@ -4,12 +4,22 @@ sys.path.append('../')
 from pprint import pprint
 
 from ndb.client import NdbClient
-from ndb.arrays import IntArrays, SortedIntArrays, ObjArrays, SortedStrArrays
+from ndb.arrays import IntArrays, SortedIntArrays, ObjArrays, SortedStrArrays, StringArrays
+
+
+async def delete_all(client: NdbClient):
+  await IntArrays(client).delete_all()
+  await ObjArrays(client).delete_all()
+  await StringArrays(client).delete_all()
+  await SortedStrArrays(client).delete_all()
+  await SortedIntArrays(client).delete_all()
 
 
 async def iarr_unsorted_set_rng():
   client = NdbClient()
   await client.open('ws://127.0.0.1:1987/')
+
+  await delete_all(client)
 
   # create API object
   arrays = IntArrays(client)
@@ -29,6 +39,8 @@ async def iarr_sorted_set_rng():
   client = NdbClient()
   await client.open('ws://127.0.0.1:1987/')
 
+  await delete_all(client)
+
   sortedArrays = SortedIntArrays(client)
 
   await sortedArrays.create('sorted', 4)
@@ -45,6 +57,7 @@ async def iarr_create_sorted_unsorted():
   client = NdbClient()
   await client.open('ws://127.0.0.1:1987/')
 
+  await delete_all(client)
   # create API object for unsorted and sorted int array
   unsortedArrays = IntArrays(client)
   sortedArrays = SortedIntArrays(client)
@@ -67,6 +80,8 @@ async def iarr_create_sorted_unsorted():
 async def arr_set_multiple_types():
   client = NdbClient()
   await client.open('ws://127.0.0.1:1987/')
+
+  await delete_all(client)
 
   objectArrays = ObjArrays(client)
   sortedStrArrays = SortedStrArrays(client)
@@ -103,9 +118,98 @@ async def arr_set_multiple_types():
   print(scores)
 
 
+async def arr_setrng_multiple_types():
+  client = NdbClient()
+  await client.open('ws://127.0.0.1:1987/')
+
+  await delete_all(client)
+
+  objectArrays = ObjArrays(client)
+  sortedStrArrays = SortedStrArrays(client)
+  sortedIntArrays = SortedIntArrays(client) 
+
+  await objectArrays.create('student_records', 3)
+  await sortedStrArrays.create('student_names_sorted', 3)
+  await sortedIntArrays.create('student_scores', 3)
+
+  # student records as json objects
+  records = [
+              {'name':'Alice', 'modules':['Geography', 'Biology']},
+              {'name':'Bob', 'modules':['Art', 'Philosophy']},
+              {'name':'Charles', 'modules':['Music']}
+            ]
+
+  await objectArrays.set_rng('student_records', records)
+
+  # sorted names
+  await sortedStrArrays.set_rng('student_names_sorted', ['Charles', 'Bob', 'Alice'])
+  # sorted leaderboard scores
+  await sortedIntArrays.set_rng('student_scores', [21, 20, 18])
+
+  records = await objectArrays.get_rng('student_records', start=0)
+  names = await sortedStrArrays.get_rng('student_names_sorted', start=0)
+  scores = await sortedIntArrays.get_rng('student_scores', start=0)
+
+  print('Records')
+  pprint(records)
+  print('Names')
+  print(names)
+  print('Scores')
+  print(scores)
+
+
+async def iarr_get():
+  client = NdbClient()
+  await client.open('ws://127.0.0.1:1987/')
+  await delete_all(client)
+
+  values = [56,34,78,45]
+
+  # unsorted
+  unsortedInts = IntArrays(client)
+  await unsortedInts.create('values', 4)
+  await unsortedInts.set_rng('values', values)
+
+  # sorted
+  sortedInts = SortedIntArrays(client)
+  await sortedInts.create('values', 4)
+  await sortedInts.set_rng('values', values)
+
+  first = await unsortedInts.get('values', 0)
+  last = await unsortedInts.get('values', 3)
+  print(f'Unsorted: {first} and {last}')
+
+  first = await sortedInts.get('values', 0)
+  last = await sortedInts.get('values', 3)
+  print(f'Sorted: {first} and {last}')
+
+
+async def iarr_get_rng():
+  client = NdbClient()
+  await client.open('ws://127.0.0.1:1987/')
+  await delete_all(client)
+
+  sortedInts = SortedIntArrays(client)
+  await sortedInts.create('scores', 5)
+  await sortedInts.set_rng('scores', [50,102,95,64,22])
+
+  scores = await sortedInts.get_rng('scores', start=0)
+  
+  print(f'Ascending: {scores}')
+  print(f'Descending: {scores[::-1]}')
+  print(f'High: {scores[-1]}, '
+        f'Low: {scores[0]}, '
+        f'Top Three: {scores[-1:-4:-1]}')
+
+
 if __name__ == "__main__":
-  for f in [iarr_unsorted_set_rng(), iarr_sorted_set_rng(),
-            iarr_create_sorted_unsorted(), arr_set_multiple_types()]:
+  for f in [iarr_unsorted_set_rng(),
+            iarr_sorted_set_rng(),
+            iarr_create_sorted_unsorted(),
+            arr_set_multiple_types(),
+            arr_setrng_multiple_types(),
+            iarr_get(),
+            iarr_get_rng()]:
     
     print(f'---- {f.__name__} ----')
     asio.run(f)

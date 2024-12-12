@@ -1,36 +1,36 @@
 ---
-sidebar_position: 30
+sidebar_position: 40
 displayed_sidebar: clientApisSidebar
 ---
 
-# set
+# set_rng
 
 ```py title='Object Array'
-async def set(name: str, item: dict, pos = None) -> None:
+async def set_rng(name: name: str, items: List[dict], pos = None) -> None:
 ```
 
 ```py title='Int Array'
-async def set(name: str, item: int, pos = None) -> None:
+async def set_rng(name: str, items: List[int], pos = None) -> None:
 ```
 
 ```py title='String Array'
-async def set(name: str, item: str, pos = None) -> None:
+async def set_rng(name: str, items: List[str], pos = None) -> None:
 ```
 
 ```py title='Sorted Int Array'
-async def set(name: str, item: int) -> None:
+async def set_rng(name: str, items: List[int]) -> None:
 ```
 
 ```py title='Sorted String Array'
-async def set(name: str, item: str) -> None:
+async def set_rng(name: str, items: List[str]) -> None:
 ```
 
 
 |Param|Description|
 |---|---|
 |name|Name of the array|
-|item|The item to store|
-|pos|__Unsorted arrays only__ <br/> The position to store. The existing value is overwritten.<br/>If `None` the next available position is used.|
+|items|A list of items to store|
+|pos|__Unsorted arrays only__ <br/> The position to begin storing. The existing value is overwritten.<br/>If `None` the next available position is used.|
 
 
 
@@ -48,13 +48,7 @@ async def set(name: str, item: str) -> None:
 
 ## Examples
 
-:::note
-In the example, `set()` is called multiple times for illustration, a better approach is to use `set_rng()`, i.e.:
-
-```py
-await sortedStrArrays.set_rng('student_names_sorted', ['Charles', 'Bob', 'Alice'])
-```
-:::
+Same as example in [set()](./set#examples) but with `set_rng()`.
 
 ```py
 from pprint import pprint
@@ -66,26 +60,23 @@ await client.open('ws://127.0.0.1:1987/')
 
 objectArrays = ObjArrays(client)
 sortedStrArrays = SortedStrArrays(client)
-sortedIntArrays = SortedIntArrays(client)
+sortedIntArrays = SortedIntArrays(client) 
 
 await objectArrays.create('student_records', 3)
 await sortedStrArrays.create('student_names_sorted', 3)
 await sortedIntArrays.create('student_scores', 3)
 
 # student records as json objects
-await objectArrays.set('student_records', {'name':'Alice', 'modules':['Geography', 'Biology']})
-await objectArrays.set('student_records', {'name':'Bob', 'modules':['Art', 'Philosophy']})
-await objectArrays.set('student_records', {'name':'Charles', 'modules':['Music']})
+records = [{'name':'Alice', 'modules':['Geography', 'Biology']},
+           {'name':'Bob', 'modules':['Art', 'Philosophy']},
+           {'name':'Charles', 'modules':['Music']}]
+
+await objectArrays.set_rng('student_records', records)
 
 # sorted names
-await sortedStrArrays.set('student_names_sorted', 'Charles')
-await sortedStrArrays.set('student_names_sorted', 'Bob')
-await sortedStrArrays.set('student_names_sorted', 'Alice')
-
+await sortedStrArrays.set_rng('student_names_sorted', ['Charles', 'Bob', 'Alice'])
 # sorted leaderboard scores
-await sortedIntArrays.set('student_scores', 21)
-await sortedIntArrays.set('student_scores', 20)
-await sortedIntArrays.set('student_scores', 18)
+await sortedIntArrays.set_rng('student_scores', [21, 20, 18])
 
 records = await objectArrays.get_rng('student_records', start=0)
 names = await sortedStrArrays.get_rng('student_names_sorted', start=0)
