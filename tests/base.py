@@ -1,6 +1,6 @@
 from unittest import IsolatedAsyncioTestCase
 from ndb.client import NdbClient
-from ndb.arrays import OArrays, IntArrays, SortedIntArrays
+from ndb.arrays import OArrays, IntArrays, SortedIntArrays, StringArrays, SortedStrArrays
 
 
 class NDBTest(IsolatedAsyncioTestCase):
@@ -35,7 +35,7 @@ class NDBArrayTest(IsolatedAsyncioTestCase):
     self.arrays = OArrays(self.client)
 
     # clear before each test
-    await self.arrays.arr_delete_all()
+    await self.arrays.delete_all()
 
 
 class NDBIArrayTest(IsolatedAsyncioTestCase):
@@ -48,7 +48,7 @@ class NDBIArrayTest(IsolatedAsyncioTestCase):
     self.arrays = IntArrays(self.client)
 
     # clear before each test
-    await self.arrays.arr_delete_all()
+    await self.arrays.delete_all()
 
 
 class NDBSortedIntArrayTest(IsolatedAsyncioTestCase):
@@ -61,4 +61,30 @@ class NDBSortedIntArrayTest(IsolatedAsyncioTestCase):
     self.arrays = SortedIntArrays(self.client)
 
     # clear before each test
-    await self.arrays.arr_delete_all()
+    await self.arrays.delete_all()
+
+
+class NDBStrArrayTest(IsolatedAsyncioTestCase):
+  async def asyncSetUp(self):
+    self.client = NdbClient()
+    
+    connected = await self.client.open('ws://127.0.0.1:1987')
+    self.assertTrue(connected, 'Connection failed')
+    
+    self.arrays = StringArrays(self.client)
+
+    # clear before each test
+    await self.arrays.delete_all()
+    
+
+class NDBSortedStrArrayTest(IsolatedAsyncioTestCase):
+  async def asyncSetUp(self):
+    self.client = NdbClient()
+    
+    connected = await self.client.open('ws://127.0.0.1:1987')
+    self.assertTrue(connected, 'Connection failed')
+    
+    self.arrays = SortedStrArrays(self.client)
+
+    # clear before each test
+    await self.arrays.delete_all()

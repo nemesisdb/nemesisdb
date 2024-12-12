@@ -8,6 +8,7 @@ clients/Release/bin/*
 clients/Debug/bin/*
 faff/Debug/*
 faff/Release/*
+apis/python/examples/cookies.json
 apis/python/__pycache__/*
 apis/python/examples/__pycache__/*
 apis/python/ndb/__pycache__/*
@@ -19,8 +20,6 @@ tests/sessions/__pycache__/*
 tests/oarr/__pycache__/*
 tests/iarr/__pycache__/*
 tests/sorted_iarr/__pycache__/*
-apis/python/examples/cookies.json
-
-
-
-
+tests/sorted_strarr/__pycache__/*
+tests/sorted_strarr/__pycache__/*
+tests/strarr/__pycache__/*

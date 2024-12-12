@@ -34,8 +34,20 @@ else
   cd - > /dev/null
 
 
+  echo "String Array"
+  cd strarr > /dev/null
+  python3 -m unittest -f
+  cd - > /dev/null
+
+
   echo "Sorted Integer Array"
   cd sorted_iarr > /dev/null
+  python3 -m unittest -f
+  cd - > /dev/null
+
+
+  echo "Sorted String Array"
+  cd sorted_strarr > /dev/null
   python3 -m unittest -f
   cd - > /dev/null
 

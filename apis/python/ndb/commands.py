@@ -87,7 +87,7 @@ class ShCmd:
   KEYS_RSP      = 'SH_KEYS_RSP'
 
 
-# TODO see if this can be tidied/reduced
+# TODO Tidy/compact this mess
 
 class OArrCmd:
   CREATE_REQ        =    "OARR_CREATE"
@@ -139,6 +139,31 @@ class IArrCmd:
   CLEAR_RSP         =    "IARR_CLEAR_RSP"
 
 
+class StringArrCmd:
+  CREATE_REQ        =    "STRARR_CREATE"
+  CREATE_RSP        =    "STRARR_CREATE_RSP"
+  DELETE_REQ        =    "STRARR_DELETE"
+  DELETE_RSP        =    "STRARR_DELETE_RSP"
+  DELETE_ALL_REQ    =    "STRARR_DELETE_ALL"
+  DELETE_ALL_RSP    =    "STRARR_DELETE_ALL_RSP"
+  SET_REQ           =    "STRARR_SET"
+  SET_RSP           =    "STRARR_SET_RSP"
+  SET_RNG_REQ       =    "STRARR_SET_RNG"
+  SET_RNG_RSP       =    "STRARR_SET_RNG_RSP"
+  GET_REQ           =    "STRARR_GET"
+  GET_RSP           =    "STRARR_GET_RSP"
+  GET_RNG_REQ       =    "STRARR_GET_RNG"
+  GET_RNG_RSP       =    "STRARR_GET_RNG_RSP"
+  LEN_REQ           =    "STRARR_LEN"
+  LEN_RSP           =    "STRARR_LEN_RSP"
+  SWAP_REQ          =    "STRARR_SWAP"
+  SWAP_RSP          =    "STRARR_SWAP_RSP"
+  EXIST_REQ         =    "STRARR_EXIST"
+  EXIST_RSP         =    "STRARR_EXIST_RSP"
+  CLEAR_REQ         =    "STRARR_CLEAR"
+  CLEAR_RSP         =    "STRARR_CLEAR_RSP"
+
+
 class SortedIArrCmd:
   CREATE_REQ        =    "SIARR_CREATE"
   CREATE_RSP        =    "SIARR_CREATE_RSP"
@@ -162,3 +187,28 @@ class SortedIArrCmd:
   CLEAR_RSP         =    "SIARR_CLEAR_RSP"
   INTERSECT_REQ     =    "SIARR_INTERSECT"
   INTERSECT_RSP     =    "SIARR_INTERSECT_RSP"
+
+
+class SortedStrArrCmd:
+  CREATE_REQ        =    "SSTRARR_CREATE"
+  CREATE_RSP        =    "SSTRARR_CREATE_RSP"
+  DELETE_REQ        =    "SSTRARR_DELETE"
+  DELETE_RSP        =    "SSTRARR_DELETE_RSP"
+  DELETE_ALL_REQ    =    "SSTRARR_DELETE_ALL"
+  DELETE_ALL_RSP    =    "SSTRARR_DELETE_ALL_RSP"
+  SET_REQ           =    "SSTRARR_SET"
+  SET_RSP           =    "SSTRARR_SET_RSP"
+  SET_RNG_REQ       =    "SSTRARR_SET_RNG"
+  SET_RNG_RSP       =    "SSTRARR_SET_RNG_RSP"
+  GET_REQ           =    "SSTRARR_GET"
+  GET_RSP           =    "SSTRARR_GET_RSP"
+  GET_RNG_REQ       =    "SSTRARR_GET_RNG"
+  GET_RNG_RSP       =    "SSTRARR_GET_RNG_RSP"
+  LEN_REQ           =    "SSTRARR_LEN"
+  LEN_RSP           =    "SSTRARR_LEN_RSP"
+  EXIST_REQ         =    "SSTRARR_EXIST"
+  EXIST_RSP         =    "SSTRARR_EXIST_RSP"
+  CLEAR_REQ         =    "SSTRARR_CLEAR"
+  CLEAR_RSP         =    "SSTRARR_CLEAR_RSP"
+  INTERSECT_REQ     =    "SSTRARR_INTERSECT"
+  INTERSECT_RSP     =    "SSTRARR_INTERSECT_RSP"
