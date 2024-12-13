@@ -143,7 +143,7 @@ namespace nemesis { namespace arr {
       else if (const auto& name = reqBody.at("name").as_string(); arrayExist(name))
         return Response{.rsp = createErrorResponseNoTkn(RspName, RequestStatus::Duplicate)};
       else if (const std::size_t size = reqBody.at("len").template as<std::size_t>(); !ArrayT::isRequestedSizeValid(size))
-        return Response{.rsp = createErrorResponseNoTkn(RspName, RequestStatus::ValueSize)};
+        return Response{.rsp = createErrorResponseNoTkn(RspName, RequestStatus::Bounds)};
       else
       {
         Response response;
