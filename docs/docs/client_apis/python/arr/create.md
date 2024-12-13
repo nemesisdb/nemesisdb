@@ -18,6 +18,8 @@ async def create(name: str, capacity: int) -> None
 The capacity is fixed, the array's length/capacity cannot increase.
 :::
 
+If `capacity` exceeds the `arrays:maxCapacity` in the server config a ResponseError is raised, containing the `Bounds` status. 
+
 The `capacity` is the maximum length of the array. As new values are set, the `used()` increases. 
 When `used() == capacity()` the array is full. Calls to `clear()` reduces `used()`. 
 
@@ -30,8 +32,9 @@ None
 
 
 ## Raises
-- `ResponseError` if query fails
-    - if `name` already exists    
+- `ResponseError`
+    - `name` already exists
+    - `capacity` exceeds maximum set in the server config
 - `ValueError` caught before query is sent
     - `name` is empty
     - `len` is `<= 0`
@@ -50,16 +53,17 @@ await client.open('ws://127.0.0.1:1987/')
 unsortedArrays = IntArrays(client)
 sortedArrays = SortedIntArrays(client)
 
-# can use the same name because arrays are different type
-await unsortedArrays.create('my_array', 4)
-await sortedArrays.create('my_array', 4)
+# create two arrays, each with a capacity of 4
+await unsortedArrays.create('my_array1', 4)
+await sortedArrays.create('my_array2', 4)
 
-await unsortedArrays.set_rng('my_array', 0, [100,50,200,10])
-await sortedArrays.set_rng('my_array', [100,50,200,10])
+# omit 'pos' to being set at next available position
+await unsortedArrays.set_rng('my_array1', [100,50,200,10])
+await sortedArrays.set_rng('my_array2', [100,50,200,10])
 
-# omit 'stop', get all values
-unsortedValues = await unsortedArrays.get_rng('my_array', start=0)
-sortedValues = await sortedArrays.get_rng('my_array', start=0)
+# omit 'stop', get values to end
+unsortedValues = await unsortedArrays.get_rng('my_array1', start=0)
+sortedValues = await sortedArrays.get_rng('my_array2', start=0)
 
 print(unsortedValues)
 print(sortedValues)

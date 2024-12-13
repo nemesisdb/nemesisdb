@@ -15,7 +15,7 @@ using std::vector;
 
 /*
 A fixed-sized std::vector. Does not perform bounds checks, but
-does provide functions for that purpose.
+provides functions for that purpose.
 */
 template<typename T, bool Sorted>
 class Array
@@ -24,7 +24,8 @@ public:
 
   using ValueT = T;
   
-  Array(const std::size_t size) : m_size(size), m_used(0), m_maxResponseSize(1000)
+
+  Array(const std::size_t size) : m_size(size), m_used(0)
   {
     m_array.resize(m_size);
   }
@@ -32,7 +33,7 @@ public:
 
   static bool isRequestedSizeValid(const std::size_t size) noexcept
   {
-    return size == std::clamp<std::size_t>(size, 1, 1'000); // TODO quite arbitrary
+    return size == std::clamp<std::size_t>(size, 1, Settings::get().arrays.maxCapacity);
   }
 
 
@@ -108,7 +109,7 @@ public:
 
   njson getRange(const std::size_t start, std::size_t stop) const
   {
-    stop = std::min<std::size_t>(std::min<std::size_t>(stop, m_used), m_maxResponseSize);
+    stop = std::min<std::size_t>(std::min<std::size_t>(stop, m_used), Settings::get().arrays.maxRspSize);
 
     const auto itStart = std::next(m_array.cbegin(), start);
     const auto itEnd = std::next(m_array.cbegin(), stop);
@@ -226,8 +227,6 @@ private:
   std::vector<T> m_array;
   std::size_t m_size;
   std::size_t m_used;
-  std::size_t m_maxArraySize;
-  std::size_t m_maxResponseSize;
 };
 
 

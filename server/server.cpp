@@ -15,7 +15,7 @@
 
 using namespace nemesis;
 
-Settings Settings::m_settings;
+Settings Settings::settings;
 
 static std::latch run{1U};
 static plog::ColorConsoleAppender<NdbFormatter> consoleAppender;
@@ -74,9 +74,10 @@ int main (int argc, char ** argv)
   else
     PLOGI << "Persist: Disabled";
   
+  PLOGI << "Arrays Max Capacity: " << settings.arrays.maxCapacity;
+  PLOGI << "Arrays Max Rsp Size: " << settings.arrays.maxRspSize;
   PLOGI << "Query Interface: " << settings.wsSettingsString();
   
-
   int error = 0;
   auto sessions = std::make_shared<nemesis::sh::Sessions>();
 

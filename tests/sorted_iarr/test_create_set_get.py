@@ -18,7 +18,7 @@ class Array(NDBSortedIntArrayTest):
       await self.arrays.create('arr_', -1)
 
     with self.assertRaises(ResponseError): 
-      await self.arrays.create('arr_', 10000)
+      await self.arrays.create('arr_', 100000)
 
 
   async def test_set_get(self):

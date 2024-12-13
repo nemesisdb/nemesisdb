@@ -39,8 +39,8 @@ namespace nemesis {
   namespace chrono = std::chrono;
   namespace jsonpath = jsoncons::jsonpath;
 
-  static const char * NEMESIS_VERSION = "0.7.4";
-  static const std::size_t NEMESIS_CONFIG_VERSION = 5U;
+  static const char * NEMESIS_VERSION = "0.8";
+  static const std::size_t NEMESIS_CONFIG_VERSION = 6U;
 
   static const std::size_t NEMESIS_KV_MINPAYLOAD = 64U;
   static const std::size_t NEMESIS_KV_MAXPAYLOAD = 8U * 1024U;
