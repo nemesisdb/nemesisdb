@@ -37,7 +37,7 @@ None
 
 ## Examples
 
-This is for illustration only, the is best acheived with [`min()`](./min) and [`max()`](./max).
+This is for illustration only, this is best achieved with [`min()`](./min) and [`max()`](./max).
 
 ```py
 client = NdbClient()
