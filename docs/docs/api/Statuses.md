@@ -6,58 +6,40 @@ displayed_sidebar: apiSidebar
 # Status Values
 Many commands return a status (`st`) value which is an unsigned integer.
 
-This table lists a 'friendly name' and value. The friendly name is used throughout the docs rather than the number value for readability and in case of changes.
+These are defined in `core/NemesisCommon.h`:
 
 
-## General
-|Name|Value|Meaning
-|:---|:---:|:---|
-|Ok|1|Command successful|
-|PayLoadInvalid|2|WebSocket pay invalid, must be text|
-|JsonInvalid|3|JSON failed parsing|
-|PathInvalid|4|Path invalid|
-|NoPath|5|No `path`|
-|CommandNotExist|10|Command does not exist|
-|CommandMultiple|11|Multiple commands in the same request|
-|CommandType|12|Command is known but it is the incorrect type (most commands are objects)|
-|CommandSyntax|13|Command is known but contains invalid syntax. `m` will contain the offending parameter if known.|
-|CommandDisabled|14|Command has been disabled (only applies to `SH_SAVE` and `KV_SAVE`)|
-|ParamMissing|26|A required parameter missing|
-
-
-## Session
-|Name|Value|Meaning
-|:---|:---:|:---|
-|SessionNotExist|100|Session does not exist|
-|SessionTokenInvalid|101|Token is not an unsigned int, not present or null|
-|SessionOpenFail|102|Failed to open session, either the name is incorrect or the session is not shared|
-|SessionNewFail|103|Failed to create new session. Only likely when creating a shared session with a name for a shared session that already exists|
-
-
-## Keys
-|Name|Value|Meaning
-|:---|:---:|:---|
-|KeyNotExist|22|Key does not exist|
-
-
-## Values
-|Name|Value|Meaning
-|:---|:---:|:---|
-|ValueMissing|40|Expected value not present|
-|ValueTypeInvalid|41|Value has incorrect type|
-|ValueSize|42|Value exceeds maximum size <br/> NOTE: if the whole WebSocket message payload size exceeds the maximum, a different response is returned|
-
-
-## Save
-|Name|Value|Meaning
-|:---|:---:|:---|
-|SaveComplete|121|`SH_SAVE` finished without error|
-|SaveDirWriteFail|122|Could not create directories/files whilst preparing `SH_SAVE` (no data written)|
-|SaveError|123|Could not complete `SH_SAVE`, this can be received after SaveStart|
-
-
-## Load
-|Name|Value|Meaning
-|:---|:---:|:---|
-|LoadComplete|141|Data loaded without error|
-|LoadError|142|Error during load|
+```cpp
+enum class RequestStatus
+{
+  Ok = 1,
+  OpCodeInvalid,
+  JsonInvalid,
+  PathInvalid,
+  NoPath,
+  CommandNotExist       = 10,
+  CommandMultiple,
+  CommandType,
+  CommandSyntax,
+  CommandDisabled,
+  NotExist              = 22,
+  ParamMissing          = 26,
+  ValueMissing          = 40,
+  ValueTypeInvalid,
+  ValueSize,
+  SessionNotExist       = 100,
+  SessionTokenInvalid,
+  SessionOpenFail,
+  SessionNewFail,  
+  SaveStart             = 120,
+  SaveComplete,
+  SaveDirWriteFail,
+  SaveError,
+  Loading               = 140,
+  LoadComplete,
+  LoadError,
+  Duplicate             = 160,
+  Bounds                = 161,
+  Unknown               = 1000
+}
+```

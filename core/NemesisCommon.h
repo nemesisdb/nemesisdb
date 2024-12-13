@@ -45,15 +45,6 @@ namespace nemesis {
   static const std::size_t NEMESIS_KV_MINPAYLOAD = 64U;
   static const std::size_t NEMESIS_KV_MAXPAYLOAD = 8U * 1024U;
 
-
-  enum class ServerMode
-  {
-    None,
-    KV,
-    KvSessions
-  };
-
-
   enum class RequestStatus
   {
     Ok = 1,
@@ -61,30 +52,30 @@ namespace nemesis {
     JsonInvalid,
     PathInvalid,
     NoPath,
-    CommandNotExist = 10,
+    CommandNotExist       = 10,
     CommandMultiple,
     CommandType,
     CommandSyntax,
     CommandDisabled,
-    NotExist = 22,
-    ParamMissing = 26,
-    ValueMissing = 40,
+    NotExist              = 22,
+    ParamMissing          = 26,
+    ValueMissing          = 40,
     ValueTypeInvalid,
     ValueSize,
-    SessionNotExist = 100,
+    SessionNotExist       = 100,
     SessionTokenInvalid,
     SessionOpenFail,
     SessionNewFail,  
-    SaveStart = 120,
+    SaveStart             = 120,
     SaveComplete,
     SaveDirWriteFail,
     SaveError,
-    Loading = 140,
+    Loading               = 140,
     LoadComplete,
     LoadError,
-    Duplicate = 160,
-    Bounds = 161,
-    Unknown = 1000
+    Duplicate             = 160,
+    Bounds                = 161,
+    Unknown               = 1000
   };
 
 
