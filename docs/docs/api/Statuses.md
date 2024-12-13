@@ -4,15 +4,13 @@ displayed_sidebar: apiSidebar
 ---
 
 # Status Values
-Many commands return a status (`st`) value which is an unsigned integer.
-
-These are defined in `core/NemesisCommon.h`:
+Many commands return a status (`st`), these are defined in `core/NemesisCommon.h`:
 
 
 ```cpp
 enum class RequestStatus
 {
-  Ok = 1,
+  Ok                    = 1,
   OpCodeInvalid,
   JsonInvalid,
   PathInvalid,
