@@ -23,11 +23,13 @@ namespace nemesis {  namespace arr {
     Get,
     GetRng,
     Len,
-    Used,
-    Swap,
+    Used,    
     Exist,
     Clear,
-    Intersect
+    Swap,
+    Intersect,
+    Min,
+    Max
   };
 
 }

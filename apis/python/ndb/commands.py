@@ -118,6 +118,8 @@ class SortedArrCmds(CommonArrCmds):
   def __init__(self, ident):
     super().__init__(ident)
     self.INTERSECT_REQ, self.INTERSECT_RSP = self.make(ident, "INTERSECT")
+    self.MIN_REQ, self.MIN_RSP = self.make(ident, "MIN")
+    self.MAX_REQ, self.MAX_RSP = self.make(ident, "MAX")
 
 
 

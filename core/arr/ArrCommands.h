@@ -26,6 +26,8 @@ namespace nemesis { namespace arr { namespace cmds {
   static constexpr FixedString Swap       = "SWAP";
   static constexpr FixedString Clear      = "CLEAR";
   static constexpr FixedString Intersect  = "INTERSECT";
+  static constexpr FixedString Min        = "MIN";
+  static constexpr FixedString Max        = "MAX";
   
 
   template<FixedString Ident, FixedString Cmd>
@@ -88,8 +90,12 @@ namespace nemesis { namespace arr { namespace cmds {
     static constexpr auto SwapRsp       = makeRsp<Ident,Swap>();
     
     // only enabled in sorted containers
-    static constexpr auto IntersectReq = makeReq<Ident,Intersect>();
+    static constexpr auto IntersectReq = makeReq<Ident,Intersect>();    
     static constexpr auto IntersectRsp = makeRsp<Ident,Intersect>();
+    static constexpr auto MinReq = makeReq<Ident,Min>();
+    static constexpr auto MinRsp = makeRsp<Ident,Min>();
+    static constexpr auto MaxReq = makeReq<Ident,Max>();
+    static constexpr auto MaxRsp = makeRsp<Ident,Max>();
   };
 
   

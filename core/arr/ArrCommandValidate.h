@@ -156,16 +156,6 @@ namespace nemesis { namespace arr {
 
 
   template<typename Cmds>
-  Validity validateSwap (const njson& req)
-  {
-    auto [valid, err] = isValid(Cmds::SwapRsp, req.at(Cmds::SwapReq), { {Param::required("name", JsonString)},
-                                                                        {Param::required("posA", JsonUInt)},
-                                                                        {Param::required("posB", JsonUInt)}});
-    return valid ? makeValid() : makeInvalid(std::move(err));
-  }
-
-
-  template<typename Cmds>
   Validity validateExist (const njson& req)
   {
     auto [valid, err] = isValid(Cmds::ExistRsp, req.at(Cmds::ExistReq), { {Param::required("name", JsonString)}});
@@ -215,6 +205,34 @@ namespace nemesis { namespace arr {
                                                                           {Param::required("srcB", JsonString)} });
 
     
+    return valid ? makeValid() : makeInvalid(std::move(err));
+  }
+
+
+  template<typename Cmds>
+  Validity validateSwap (const njson& req)
+  {
+    auto [valid, err] = isValid(Cmds::SwapRsp, req.at(Cmds::SwapReq), { {Param::required("name", JsonString)},
+                                                                        {Param::required("posA", JsonUInt)},
+                                                                        {Param::required("posB", JsonUInt)}});
+    return valid ? makeValid() : makeInvalid(std::move(err));
+  }
+
+
+  template<typename Cmds>
+  Validity validateMin (const njson& req)
+  {
+    auto [valid, err] = isValid(Cmds::MinRsp, req.at(Cmds::MinReq), { {Param::required("name", JsonString)},
+                                                                      {Param::required("n",    JsonUInt)}});
+    return valid ? makeValid() : makeInvalid(std::move(err));
+  }
+
+  
+  template<typename Cmds>
+  Validity validateMax (const njson& req)
+  {
+    auto [valid, err] = isValid(Cmds::MaxRsp, req.at(Cmds::MaxReq), { {Param::required("name", JsonString)},
+                                                                      {Param::required("n",    JsonUInt)}});
     return valid ? makeValid() : makeInvalid(std::move(err));
   }
 }

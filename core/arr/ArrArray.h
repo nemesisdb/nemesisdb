@@ -165,9 +165,49 @@ public:
   }
 
 
+  std::size_t isEmpty() const noexcept
+  {
+    return m_used == 0;
+  }
+
+
   std::size_t used() const noexcept
   {
     return m_used;
+  }
+
+
+  std::vector<T> min(const std::size_t n) const
+  {
+    const auto nValues = std::min<std::size_t>(n, m_used);
+    const auto itEnd = std::next(m_array.cbegin(), nValues);
+    
+    std::vector<T> result;
+    result.reserve(nValues);
+
+    std::for_each(m_array.cbegin(), itEnd, [&result](const auto& value)
+    {
+      result.emplace_back(value);
+    });
+
+    return result;
+  }
+
+
+  std::vector<T> max(const std::size_t n) const
+  {
+    const auto nValues = std::min<std::size_t>(n, m_used);
+    const auto itEnd = std::next(m_array.crbegin(), nValues);
+    
+    std::vector<T> result;
+    result.reserve(nValues);
+
+    std::for_each(m_array.crbegin(), itEnd, [&result](const auto& value)
+    {
+      result.emplace_back(value);
+    });
+
+    return result;
   }
 
 

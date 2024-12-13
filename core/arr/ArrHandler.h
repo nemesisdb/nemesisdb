@@ -57,7 +57,7 @@ namespace nemesis { namespace arr {
         {ArrQueryType::Len,             Handler{std::bind_front(&ArrHandler<T, Cmds>::length,             std::ref(*this))}},
         {ArrQueryType::Used,            Handler{std::bind_front(&ArrHandler<T, Cmds>::used,               std::ref(*this))}},
         {ArrQueryType::Exist,           Handler{std::bind_front(&ArrHandler<T, Cmds>::exist,              std::ref(*this))}},
-        {ArrQueryType::Clear,           Handler{std::bind_front(&ArrHandler<T, Cmds>::clear,              std::ref(*this))}},        
+        {ArrQueryType::Clear,           Handler{std::bind_front(&ArrHandler<T, Cmds>::clear,              std::ref(*this))}},
       }, 1, alloc);
       
       
@@ -67,7 +67,9 @@ namespace nemesis { namespace arr {
       }
       else
       {
-        h.emplace(ArrQueryType::Intersect,  Handler{std::bind_front(&ArrHandler<T, Cmds>::intersect, std::ref(*this))});
+        h.emplace(ArrQueryType::Intersect,  Handler{std::bind_front(&ArrHandler<T, Cmds>::intersect,  std::ref(*this))});
+        h.emplace(ArrQueryType::Min,        Handler{std::bind_front(&ArrHandler<T, Cmds>::min,        std::ref(*this))});
+        h.emplace(ArrQueryType::Max,        Handler{std::bind_front(&ArrHandler<T, Cmds>::max,        std::ref(*this))});
       }
       
       return h;
@@ -87,11 +89,13 @@ namespace nemesis { namespace arr {
         {Cmds::GetReq,          ArrQueryType::Get},
         {Cmds::GetRngReq,       ArrQueryType::GetRng},
         {Cmds::LenReq,          ArrQueryType::Len},
-        {Cmds::UsedReq,         ArrQueryType::Used},
-        {Cmds::SwapReq,         ArrQueryType::Swap},
+        {Cmds::UsedReq,         ArrQueryType::Used},        
         {Cmds::ExistReq,        ArrQueryType::Exist},
         {Cmds::ClearReq,        ArrQueryType::Clear},
+        {Cmds::SwapReq,         ArrQueryType::Swap},
         {Cmds::IntersectReq,    ArrQueryType::Intersect},
+        {Cmds::MinReq,          ArrQueryType::Min},
+        {Cmds::MaxReq,          ArrQueryType::Max},
       }, 1, alloc); 
 
       return map;
@@ -307,21 +311,6 @@ namespace nemesis { namespace arr {
     }
 
 
-    ndb_always_inline Response swap(njson& request) requires(!Cmds::IsSorted)
-    {
-      if (auto [valid, rsp] = validateSwap<Cmds>(request) ; !valid)
-        return Response{.rsp = std::move(rsp)};
-      else
-      {
-        const auto& body = request.at(Cmds::SwapReq);
-        if (auto [exist, it] = getArray(body.at("name").as_string(), body) ; !exist)
-          return Response{.rsp = createErrorResponseNoTkn(Cmds::SwapRsp, RequestStatus::NotExist)};
-        else
-          return ArrayExecutor<ArrayT, Cmds>::swap(it->second, body);
-      }
-    }
-
-
     ndb_always_inline Response exist(njson& request)
     {
       static constexpr auto ReqName = Cmds::ExistReq.data();
@@ -381,6 +370,51 @@ namespace nemesis { namespace arr {
           else
             return ArrayExecutor<ArrayT, Cmds>::intersect(arrA->second, arrB->second);
         }
+      }
+    }
+
+
+    ndb_always_inline Response swap(njson& request) requires(!Cmds::IsSorted)
+    {
+      if (auto [valid, rsp] = validateSwap<Cmds>(request) ; !valid)
+        return Response{.rsp = std::move(rsp)};
+      else
+      {
+        const auto& body = request.at(Cmds::SwapReq);
+        if (auto [exist, it] = getArray(body.at("name").as_string(), body) ; !exist)
+          return Response{.rsp = createErrorResponseNoTkn(Cmds::SwapRsp, RequestStatus::NotExist)};
+        else
+          return ArrayExecutor<ArrayT, Cmds>::swap(it->second, body);
+      }
+    }
+
+
+    ndb_always_inline Response min(njson& request) requires(Cmds::IsSorted)
+    {
+      if (auto [valid, rsp] = validateMin<Cmds>(request) ; !valid)
+        return Response{.rsp = std::move(rsp)};
+      else
+      {
+        const auto& body = request.at(Cmds::MinReq);
+        if (auto [exist, it] = getArray(body.at("name").as_string(), body) ; !exist)
+          return Response{.rsp = createErrorResponseNoTkn(Cmds::MinRsp, RequestStatus::NotExist)};
+        else
+          return ArrayExecutor<ArrayT, Cmds>::min(it->second, body);
+      }
+    }   
+
+    
+    ndb_always_inline Response max(njson& request) requires(Cmds::IsSorted)
+    {
+      if (auto [valid, rsp] = validateMax<Cmds>(request) ; !valid)
+        return Response{.rsp = std::move(rsp)};
+      else
+      {
+        const auto& body = request.at(Cmds::MaxReq);
+        if (auto [exist, it] = getArray(body.at("name").as_string(), body) ; !exist)
+          return Response{.rsp = createErrorResponseNoTkn(Cmds::MaxRsp, RequestStatus::NotExist)};
+        else
+          return ArrayExecutor<ArrayT, Cmds>::max(it->second, body);
       }
     }
 

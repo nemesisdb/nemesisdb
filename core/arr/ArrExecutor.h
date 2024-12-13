@@ -181,34 +181,6 @@ public:
   }
 
 
-  static Response swap (Array& array, const njson& reqBody)
-  {
-    static const constexpr auto RspName = Cmds::SwapRsp.data();
-    static const njson Prepared = njson{jsoncons::json_object_arg, {{RspName, njson::object()}}};
-    
-    Response response{.rsp = Prepared};
-    response.rsp[RspName]["st"] = toUnderlying(RequestStatus::Ok);
-
-    try
-    {
-      const auto posA = reqBody.at("posA").as<std::size_t>();
-      const auto posB = reqBody.at("posB").as<std::size_t>();
-      
-      if (!(array.isInBounds(posA) && array.isInBounds(posB)))
-        response.rsp[RspName]["st"] = toUnderlying(RequestStatus::Bounds);
-      else
-        array.swap(posA, posB);
-    }
-    catch(const std::exception& e)
-    {
-      PLOGE << e.what();
-      response.rsp[RspName]["st"] = toUnderlying(RequestStatus::Unknown);
-    }
-
-    return response;
-  }
-
-
   static Response clear (Array& array, const njson& reqBody)
   { 
     static const constexpr auto RspName = Cmds::ClearRsp.data();
@@ -258,6 +230,88 @@ public:
                                               std::make_move_iterator(result.end()));
       
       response.rsp[RspName]["items"] = std::move(items);
+    }
+    catch(const std::exception& e)
+    {
+      PLOGE << e.what();
+      response.rsp[RspName]["st"] = toUnderlying(RequestStatus::Unknown);
+    }
+
+    return response;
+  }
+
+
+  static Response swap (Array& array, const njson& reqBody)
+  {
+    static const constexpr auto RspName = Cmds::SwapRsp.data();
+    static const njson Prepared = njson{jsoncons::json_object_arg, {{RspName, njson::object()}}};
+    
+    Response response{.rsp = Prepared};
+    response.rsp[RspName]["st"] = toUnderlying(RequestStatus::Ok);
+
+    try
+    {
+      const auto posA = reqBody.at("posA").as<std::size_t>();
+      const auto posB = reqBody.at("posB").as<std::size_t>();
+      
+      if (!(array.isInBounds(posA) && array.isInBounds(posB)))
+        response.rsp[RspName]["st"] = toUnderlying(RequestStatus::Bounds);
+      else
+        array.swap(posA, posB);
+    }
+    catch(const std::exception& e)
+    {
+      PLOGE << e.what();
+      response.rsp[RspName]["st"] = toUnderlying(RequestStatus::Unknown);
+    }
+
+    return response;
+  }
+
+
+  static Response min (Array& array, const njson& reqBody)
+  {
+    static const constexpr auto RspName = Cmds::MinRsp.data();
+    static const njson Prepared = njson{jsoncons::json_object_arg, {{RspName, njson::object()}}};
+    
+    Response response{.rsp = Prepared};
+    response.rsp[RspName]["st"] = toUnderlying(RequestStatus::Ok);
+
+    try
+    {
+      const auto n = reqBody.at("n").as<std::size_t>();
+      
+      if (array.isEmpty())
+        response.rsp[RspName]["st"] = toUnderlying(RequestStatus::Bounds);
+      else
+        response.rsp[RspName]["items"] = array.min(n);
+    }
+    catch(const std::exception& e)
+    {
+      PLOGE << e.what();
+      response.rsp[RspName]["st"] = toUnderlying(RequestStatus::Unknown);
+    }
+
+    return response;
+  }
+
+
+  static Response max (Array& array, const njson& reqBody)
+  {
+    static const constexpr auto RspName = Cmds::MaxRsp.data();
+    static const njson Prepared = njson{jsoncons::json_object_arg, {{RspName, njson::object()}}};
+    
+    Response response{.rsp = Prepared};
+    response.rsp[RspName]["st"] = toUnderlying(RequestStatus::Ok);
+
+    try
+    {
+      const auto n = reqBody.at("n").as<std::size_t>();
+      
+      if (array.isEmpty())
+        response.rsp[RspName]["st"] = toUnderlying(RequestStatus::Bounds);
+      else
+        response.rsp[RspName]["items"] = array.max(n);
     }
     catch(const std::exception& e)
     {

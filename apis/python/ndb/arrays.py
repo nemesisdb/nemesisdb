@@ -1,7 +1,7 @@
 from ndb.commands import (StValues, OArrCmd, IArrCmd,
                           SortedIArrCmd, StringArrCmd, SortedStrArrCmd)
 from ndb.client import NdbClient
-from ndb.common import raise_if, raise_if_empty, raise_if_equal
+from ndb.common import raise_if, raise_if_empty, raise_if_equal, raise_if_lt
 from typing import List
 from abc import ABC, abstractmethod
 
@@ -231,9 +231,32 @@ class StringArrays(_Arrays):
 #endregion
 
 
+#
+# Sorted
+#
+
+class SortedArray(_Arrays):
+  def __init__(self, client: NdbClient):
+    super().__init__(client)
+
+
+  async def min(self, name: str, n = 1) -> List[int] | List[str]:
+    raise_if_empty(name)
+    raise_if_lt(n, 1, 'n must be > 0')
+    rsp = await self.client.sendCmd(self.cmds.MIN_REQ, self.cmds.MIN_RSP, {'name':name, 'n':n})
+    return rsp[self.cmds.MIN_RSP]['items']
+
+
+  async def max(self, name:str, n = 1) -> List[int] | List[str]:
+    raise_if_empty(name)
+    raise_if_lt(n, 1, 'n must be > 0')
+    rsp = await self.client.sendCmd(self.cmds.MAX_REQ, self.cmds.MAX_RSP, {'name':name, 'n':n})
+    return rsp[self.cmds.MAX_RSP]['items']
+
+
 #region Sorted IArray
 
-class SortedIntArrays(_Arrays):
+class SortedIntArrays(SortedArray):
   def __init__(self, client: NdbClient):
     super().__init__(client)
 

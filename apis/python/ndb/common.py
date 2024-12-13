@@ -34,6 +34,11 @@ def raise_if (value: str, msg: str, f):
     raise ValueError(f'value is {msg}')
   
 
+def raise_if_lt (value: int, maxValue:int, msg: str):
+  if value < maxValue:
+    raise ValueError(msg)
+
+
 def raise_if_equal (val1, val2, msg:str):
   if val1 == val2:  
     raise ValueError(msg)
