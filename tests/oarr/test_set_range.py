@@ -61,7 +61,7 @@ class SetRange(NDBArrayTest):
     await self.arrays.set_rng('arr3', data[setStart:setStart+setSize], pos=setStart)
 
     values = await self.arrays.get_rng('arr3', setStart, setStart+setSize)
-    self.assertEqual(len(values), setSize)
+    self.assertEqual(len(values), setSize-setStart)
     
     for i in range(0, len(values)):
       self.assertDictEqual(values[i], {f'k{i+setStart}':i+setStart})

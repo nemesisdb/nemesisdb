@@ -13,12 +13,10 @@ class Clear(NDBArrayTest):
     # clear k1 to k3 inclusive
     await self.arrays.clear('arr1', 1, 4)
 
-    emptyValues = await self.arrays.get_rng('arr1', 0, 5)
-    self.assertDictEqual(emptyValues[0], {'k0':0})
-    self.assertDictEqual(emptyValues[1], {})
-    self.assertDictEqual(emptyValues[2], {})
-    self.assertDictEqual(emptyValues[3], {})
-    self.assertDictEqual(emptyValues[4], {'k4':4})
+    values = await self.arrays.get_rng('arr1', start=0)
+    self.assertEqual(len(values), 2)
+    self.assertDictEqual(values[0], {'k0':0})
+    self.assertDictEqual(values[1], {'k4':4})
 
 
 if __name__ == "__main__":

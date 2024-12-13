@@ -1,3 +1,4 @@
+from typing import List
 
 
 class StValues:
@@ -87,138 +88,59 @@ class ShCmd:
   KEYS_RSP      = 'SH_KEYS_RSP'
 
 
-# TODO Tidy/compact this mess
+class CommonArrCmds:
+  def __init__(self, ident: str):
+    self.CREATE_REQ, self.CREATE_RSP          = self.make(ident, "CREATE")
+    self.DELETE_REQ, self.DELETE_RSP          = self.make(ident, "DELETE")
+    self.DELETE_ALL_REQ, self.DELETE_ALL_RSP  = self.make(ident, "DELETE_ALL")
+    self.SET_REQ, self.SET_RSP                = self.make(ident, "SET")
+    self.SET_RNG_REQ, self.SET_RNG_RSP        = self.make(ident, "SET_RNG")
+    self.GET_REQ, self.GET_RSP                = self.make(ident, "GET")
+    self.GET_RNG_REQ, self.GET_RNG_RSP        = self.make(ident, "GET_RNG")
+    self.LEN_REQ, self.LEN_RSP                = self.make(ident, "LEN")
+    self.USED_REQ, self.USED_RSP              = self.make(ident, "USED")    
+    self.EXIST_REQ, self.EXIST_RSP            = self.make(ident, "EXIST")
+    self.CLEAR_REQ, self.CLEAR_RSP            = self.make(ident, "CLEAR")
 
-class OArrCmd:
-  CREATE_REQ        =    "OARR_CREATE"
-  CREATE_RSP        =    "OARR_CREATE_RSP"
-  DELETE_REQ        =    "OARR_DELETE"
-  DELETE_RSP        =    "OARR_DELETE_RSP"
-  DELETE_ALL_REQ    =    "OARR_DELETE_ALL"
-  DELETE_ALL_RSP    =    "OARR_DELETE_ALL_RSP"
-  SET_REQ           =    "OARR_SET"
-  SET_RSP           =    "OARR_SET_RSP"
-  SET_RNG_REQ       =    "OARR_SET_RNG"
-  SET_RNG_RSP       =    "OARR_SET_RNG_RSP"
-  GET_REQ           =    "OARR_GET"
-  GET_RSP           =    "OARR_GET_RSP"
-  GET_RNG_REQ       =    "OARR_GET_RNG"
-  GET_RNG_RSP       =    "OARR_GET_RNG_RSP"
-  LEN_REQ           =    "OARR_LEN"
-  LEN_RSP           =    "OARR_LEN_RSP"
-  USED_REQ          =    "OARR_USED"
-  USED_RSP          =    "OARR_USED_RSP"
-  SWAP_REQ          =    "OARR_SWAP"
-  SWAP_RSP          =    "OARR_SWAP_RSP"
-  EXIST_REQ         =    "OARR_EXIST"
-  EXIST_RSP         =    "OARR_EXIST_RSP"
-  CLEAR_REQ         =    "OARR_CLEAR"
-  CLEAR_RSP         =    "OARR_CLEAR_RSP"
+
+  def make(self, ident: str, cmd: str):
+    req = ident+'_'+cmd
+    return (req, req+'_RSP')
+
+
+class UnsortedArrCmds(CommonArrCmds):
+  def __init__(self, ident):
+    super().__init__(ident)
+    self.SWAP_REQ, self.SWAP_RSP = self.make(ident, "SWAP")
+
+
+class SortedArrCmds(CommonArrCmds):
+  def __init__(self, ident):
+    super().__init__(ident)
+    self.INTERSECT_REQ, self.INTERSECT_RSP = self.make(ident, "INTERSECT")
+
+
+
+class OArrCmd(UnsortedArrCmds):
+  def __init__(self):
+    super().__init__('OARR')
     
 
-class IArrCmd:
-  CREATE_REQ        =    "IARR_CREATE"
-  CREATE_RSP        =    "IARR_CREATE_RSP"
-  DELETE_REQ        =    "IARR_DELETE"
-  DELETE_RSP        =    "IARR_DELETE_RSP"
-  DELETE_ALL_REQ    =    "IARR_DELETE_ALL"
-  DELETE_ALL_RSP    =    "IARR_DELETE_ALL_RSP"
-  SET_REQ           =    "IARR_SET"
-  SET_RSP           =    "IARR_SET_RSP"
-  SET_RNG_REQ       =    "IARR_SET_RNG"
-  SET_RNG_RSP       =    "IARR_SET_RNG_RSP"
-  GET_REQ           =    "IARR_GET"
-  GET_RSP           =    "IARR_GET_RSP"
-  GET_RNG_REQ       =    "IARR_GET_RNG"
-  GET_RNG_RSP       =    "IARR_GET_RNG_RSP"
-  LEN_REQ           =    "IARR_LEN"
-  LEN_RSP           =    "IARR_LEN_RSP"
-  USED_REQ          =    "IARR_USED"
-  USED_RSP          =    "IARR_USED_RSP"
-  SWAP_REQ          =    "IARR_SWAP"
-  SWAP_RSP          =    "IARR_SWAP_RSP"
-  EXIST_REQ         =    "IARR_EXIST"
-  EXIST_RSP         =    "IARR_EXIST_RSP"
-  CLEAR_REQ         =    "IARR_CLEAR"
-  CLEAR_RSP         =    "IARR_CLEAR_RSP"
+class IArrCmd(UnsortedArrCmds):
+  def __init__(self):
+    super().__init__('IARR')
   
 
-class StringArrCmd:
-  CREATE_REQ        =    "STRARR_CREATE"
-  CREATE_RSP        =    "STRARR_CREATE_RSP"
-  DELETE_REQ        =    "STRARR_DELETE"
-  DELETE_RSP        =    "STRARR_DELETE_RSP"
-  DELETE_ALL_REQ    =    "STRARR_DELETE_ALL"
-  DELETE_ALL_RSP    =    "STRARR_DELETE_ALL_RSP"
-  SET_REQ           =    "STRARR_SET"
-  SET_RSP           =    "STRARR_SET_RSP"
-  SET_RNG_REQ       =    "STRARR_SET_RNG"
-  SET_RNG_RSP       =    "STRARR_SET_RNG_RSP"
-  GET_REQ           =    "STRARR_GET"
-  GET_RSP           =    "STRARR_GET_RSP"
-  GET_RNG_REQ       =    "STRARR_GET_RNG"
-  GET_RNG_RSP       =    "STRARR_GET_RNG_RSP"
-  LEN_REQ           =    "STRARR_LEN"
-  LEN_RSP           =    "STRARR_LEN_RSP"
-  USED_REQ          =    "STRARR_USED"
-  USED_RSP          =    "STRARR_USED_RSP"
-  SWAP_REQ          =    "STRARR_SWAP"
-  SWAP_RSP          =    "STRARR_SWAP_RSP"
-  EXIST_REQ         =    "STRARR_EXIST"
-  EXIST_RSP         =    "STRARR_EXIST_RSP"
-  CLEAR_REQ         =    "STRARR_CLEAR"
-  CLEAR_RSP         =    "STRARR_CLEAR_RSP"
+class StringArrCmd(UnsortedArrCmds):
+  def __init__(self):
+    super().__init__('STRARR')
   
 
-class SortedIArrCmd:
-  CREATE_REQ        =    "SIARR_CREATE"
-  CREATE_RSP        =    "SIARR_CREATE_RSP"
-  DELETE_REQ        =    "SIARR_DELETE"
-  DELETE_RSP        =    "SIARR_DELETE_RSP"
-  DELETE_ALL_REQ    =    "SIARR_DELETE_ALL"
-  DELETE_ALL_RSP    =    "SIARR_DELETE_ALL_RSP"
-  SET_REQ           =    "SIARR_SET"
-  SET_RSP           =    "SIARR_SET_RSP"
-  SET_RNG_REQ       =    "SIARR_SET_RNG"
-  SET_RNG_RSP       =    "SIARR_SET_RNG_RSP"
-  GET_REQ           =    "SIARR_GET"
-  GET_RSP           =    "SIARR_GET_RSP"
-  GET_RNG_REQ       =    "SIARR_GET_RNG"
-  GET_RNG_RSP       =    "SIARR_GET_RNG_RSP"
-  LEN_REQ           =    "SIARR_LEN"
-  LEN_RSP           =    "SIARR_LEN_RSP"
-  USED_REQ          =    "SIARR_USED"
-  USED_RSP          =    "SIARR_USED_RSP"
-  EXIST_REQ         =    "SIARR_EXIST"
-  EXIST_RSP         =    "SIARR_EXIST_RSP"
-  CLEAR_REQ         =    "SIARR_CLEAR"
-  CLEAR_RSP         =    "SIARR_CLEAR_RSP"
-  INTERSECT_REQ     =    "SIARR_INTERSECT"
-  INTERSECT_RSP     =    "SIARR_INTERSECT_RSP"
+class SortedIArrCmd(SortedArrCmds):
+  def __init__(self):
+    super().__init__('SIARR')
 
 
-class SortedStrArrCmd:
-  CREATE_REQ        =    "SSTRARR_CREATE"
-  CREATE_RSP        =    "SSTRARR_CREATE_RSP"
-  DELETE_REQ        =    "SSTRARR_DELETE"
-  DELETE_RSP        =    "SSTRARR_DELETE_RSP"
-  DELETE_ALL_REQ    =    "SSTRARR_DELETE_ALL"
-  DELETE_ALL_RSP    =    "SSTRARR_DELETE_ALL_RSP"
-  SET_REQ           =    "SSTRARR_SET"
-  SET_RSP           =    "SSTRARR_SET_RSP"
-  SET_RNG_REQ       =    "SSTRARR_SET_RNG"
-  SET_RNG_RSP       =    "SSTRARR_SET_RNG_RSP"
-  GET_REQ           =    "SSTRARR_GET"
-  GET_RSP           =    "SSTRARR_GET_RSP"
-  GET_RNG_REQ       =    "SSTRARR_GET_RNG"
-  GET_RNG_RSP       =    "SSTRARR_GET_RNG_RSP"
-  LEN_REQ           =    "SSTRARR_LEN"
-  LEN_RSP           =    "SSTRARR_LEN_RSP"
-  USED_REQ          =    "SSTRARR_USED"
-  USED_RSP          =    "SSTRARR_USED_RSP"
-  EXIST_REQ         =    "SSTRARR_EXIST"
-  EXIST_RSP         =    "SSTRARR_EXIST_RSP"
-  CLEAR_REQ         =    "SSTRARR_CLEAR"
-  CLEAR_RSP         =    "SSTRARR_CLEAR_RSP"
-  INTERSECT_REQ     =    "SSTRARR_INTERSECT"
-  INTERSECT_RSP     =    "SSTRARR_INTERSECT_RSP"
+class SortedStrArrCmd(SortedArrCmds):
+  def __init__(self):
+    super().__init__('SSTRARR')
