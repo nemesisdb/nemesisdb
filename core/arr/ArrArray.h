@@ -24,7 +24,7 @@ public:
 
   using ValueT = T;
   
-  Array(const std::size_t size) : m_size(size), m_used(0)
+  Array(const std::size_t size) : m_size(size), m_used(0), m_maxResponseSize(1000)
   {
     m_array.resize(m_size);
   }
@@ -108,7 +108,7 @@ public:
 
   njson getRange(const std::size_t start, std::size_t stop) const
   {
-    stop = std::min<std::size_t> (stop, m_used);
+    stop = std::min<std::size_t>(std::min<std::size_t>(stop, m_used), m_maxResponseSize);
 
     const auto itStart = std::next(m_array.cbegin(), start);
     const auto itEnd = std::next(m_array.cbegin(), stop);
@@ -116,7 +116,7 @@ public:
 
     PLOGD << "Array::getRange(): " << start << " to " << stop;
 
-    njson rsp{njson::make_array(std::min<std::size_t>(rangeSize, 100))};
+    njson rsp{njson::make_array(rangeSize)};
     
     std::size_t i = 0;
     std::for_each(itStart, itEnd, [&rsp, &i](const auto& item)
@@ -226,6 +226,8 @@ private:
   std::vector<T> m_array;
   std::size_t m_size;
   std::size_t m_used;
+  std::size_t m_maxArraySize;
+  std::size_t m_maxResponseSize;
 };
 
 

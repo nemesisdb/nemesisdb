@@ -28,11 +28,10 @@ KvHandler receives a command:
 class KvHandler
 {
 public:
-  KvHandler(const Settings& settings) : m_settings(settings)
-    
+  KvHandler() : m_settings(Settings::get())
   {
+
   }
-  
 
 private:
 
@@ -395,7 +394,7 @@ private:
 
 
 private:
-  Settings m_settings;
+  const Settings& m_settings;
   CacheMap m_map;
 };
 

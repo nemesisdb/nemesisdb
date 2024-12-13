@@ -31,11 +31,7 @@ namespace nemesis { namespace arr {
 
 
   public:
-    ArrHandler(const Settings& settings) : m_settings(settings)
-    {
-
-    }
-
+    ArrHandler() = default;
 
     using HandlerPmrMap = ankerl::unordered_dense::pmr::map<ArrQueryType, Handler>;
     using QueryTypePmrMap = ankerl::unordered_dense::pmr::map<std::string_view, ArrQueryType>;
@@ -439,7 +435,6 @@ namespace nemesis { namespace arr {
 
 
   private:
-    Settings m_settings;
     Arrays m_arrays;
     Cmds m_cmds;
   };

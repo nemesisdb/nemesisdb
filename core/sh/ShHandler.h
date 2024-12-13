@@ -90,7 +90,7 @@ class ShHandler
 
 
 public:
-  ShHandler(const Settings& settings, std::shared_ptr<Sessions> sessions) : m_settings(settings), m_sessions(sessions)
+  ShHandler(std::shared_ptr<Sessions> sessions) : m_settings(Settings::get()), m_sessions(sessions)
     
   {
   }
@@ -520,7 +520,7 @@ private:
 
 
 private:
-  Settings m_settings;
+  const Settings& m_settings;
   std::shared_ptr<Sessions> m_sessions;
 };
 

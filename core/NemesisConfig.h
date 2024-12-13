@@ -11,7 +11,6 @@
 
 namespace nemesis { 
 
-
   struct InterfaceSettings
   {
     std::string ip;
@@ -22,6 +21,7 @@ namespace nemesis {
 
   struct Settings
   {
+  private:
     Settings() : valid(false)
     {
 
@@ -51,10 +51,34 @@ namespace nemesis {
     }
 
 
-    std::string wsSettingsString ()
+  public:
+    static void init(const njson& cfg)
+    {
+      m_settings = Settings{cfg};
+    }
+
+    static void init(const njson& cfg, const fs::path startupLoadPath, const std::string_view startupLoadName)
+    {
+      m_settings = Settings{cfg, startupLoadPath, startupLoadName} ;
+    }
+
+    static void init()
+    {
+      // create invalid settings
+      m_settings = Settings{};
+    }
+
+    static const Settings& get()
+    {
+      return m_settings;
+    }
+
+
+    std::string wsSettingsString () const
     {
       return interface.ip + ":" + std::to_string(interface.port);
     }
+
 
     bool valid{false};
     InterfaceSettings interface;
@@ -65,6 +89,10 @@ namespace nemesis {
     bool loadOnStartup;
     bool persistEnabled;
     fs::path persistPath;
+
+  
+  private:
+    static Settings m_settings;
   };
 
   
@@ -115,7 +143,7 @@ namespace nemesis {
   }
 
 
-  Settings readConfig (const int argc, char ** argv)
+  void readConfig (const int argc, char ** argv)
   {
     namespace po = boost::program_options;
 
@@ -155,9 +183,9 @@ namespace nemesis {
     {
       PLOGF << "Unknown error reading program options";
     }
-    
 
-    Settings settings;  // invalid by default
+
+    Settings::init(); // initialise as invalid    
 
     if (parsedArgs)
     {
@@ -184,16 +212,14 @@ namespace nemesis {
                 PLOGF << "Load path does not exist: " << loadPath ;
               }
               else
-                settings = Settings{cfg, loadPath, loadName};
+                Settings::init(cfg, loadPath, loadName);
             }
             else
-              settings = Settings{cfg};
+              Settings::init(cfg);
           } 
         }
       }
     }
-
-    return settings;
   }
 
 
