@@ -6,35 +6,31 @@ from ndb.client import NdbClient
 
 async def connect_close():
   client = NdbClient()
-  if await client.open('ws://127.0.0.1:1987/'):
-    print('Connected')
-
-    # call command functions
-
-    await client.close()  
-
-    print('Disconnected')
+  await client.open('ws://127.0.0.1:1987/')
+  print('Connected')
+  await client.close()  
+  print('Disconnected')
 
 
 async def reconnect():
   client = NdbClient()
-  if await client.open('ws://127.0.0.1:1987/'):
-    print('Connected')
-    await client.close()
-    print('Disconnected')
+  await client.open('ws://127.0.0.1:1987/')
+  print('Connected')
+  await client.close()
+  print('Disconnected')
 
-    if await client.open('ws://127.0.0.1:1987/'):
-      print('Connected again')
-      await client.close()
-      print('Disconnected')
+  await client.open('ws://127.0.0.1:1987/')
+  print('Connected again')
+  await client.close()
+  print('Disconnected')
 
 
 async def multiple_clients():
 
   async def create() -> NdbClient:
     client = NdbClient()
-    opened = await client.open('ws://127.0.0.1:1987/')
-    return None if opened == False else client
+    await client.open('ws://127.0.0.1:1987/')
+    return client
 
 
   client1 = await create()

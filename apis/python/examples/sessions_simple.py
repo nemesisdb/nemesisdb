@@ -7,7 +7,9 @@ from ndb.client import NdbClient, Session
 
 async def basics():
   client = NdbClient(debug=False) # toggle for debug logs
-  if not (await client.open('ws://127.0.0.1:1987/')):
+  try:
+    await client.open('ws://127.0.0.1:1987/')
+  except:
     print('Failed to connect')
     return
 
@@ -65,7 +67,9 @@ async def multiple_sessions():
 
 
   client = NdbClient()
-  if not (await client.open('ws://127.0.0.1:1987/')):
+  try:
+    await client.open('ws://127.0.0.1:1987/')
+  except:
     print('Failed to connect')
     return
 

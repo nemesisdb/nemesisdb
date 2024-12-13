@@ -8,7 +8,9 @@ from ndb.client import NdbClient
 async def setget_basics():
   client = NdbClient(debug=False) # toggle for debug
 
-  if not (await client.open('ws://127.0.0.1:1987/')):
+  try:
+    await client.open('ws://127.0.0.1:1987/')
+  except:
     print('Failed to connect')
     return
 
@@ -26,7 +28,9 @@ async def setget_basics():
 async def setget_objects():
   client = NdbClient()
 
-  if not (await client.open('ws://127.0.0.1:1987/')):
+  try:
+    await client.open('ws://127.0.0.1:1987/')
+  except:
     print('Failed to connect')
     return
 
@@ -51,7 +55,9 @@ async def setget_objects():
 async def setget_overwrite():
   client = NdbClient()
 
-  if not (await client.open('ws://127.0.0.1:1987/')):
+  try:
+    await client.open('ws://127.0.0.1:1987/')
+  except:
     print('Failed to connect')
     return
 
@@ -82,7 +88,9 @@ async def setget_overwrite():
 async def add():
   client = NdbClient()
 
-  if not (await client.open('ws://127.0.0.1:1987/')):
+  try:
+    await client.open('ws://127.0.0.1:1987/')
+  except:
     print('Failed to connect')
     return
 
