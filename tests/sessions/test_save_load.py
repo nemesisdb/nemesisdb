@@ -5,12 +5,6 @@ from base import NDBSessionTest
 
 
 class SaveLoad(NDBSessionTest):
-
-  """
-  Save/Load test can be skipped by calling with  './run.sh skip' which sets NDB_SKIP_SAVELOAD
-  """
-
-  @unittest.skipIf(os.environ.get('NDB_SKIP_SAVELOAD') != None, 'Skipping Save/Load')
   async def test_save_load(self):
     nSessions = 10
     tokens = []
