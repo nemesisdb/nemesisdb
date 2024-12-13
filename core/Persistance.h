@@ -6,7 +6,7 @@
 #include <core/NemesisCommon.h>
 
 
-namespace nemesis { namespace core { 
+namespace nemesis { 
 
 
   inline const std::int16_t METADATA_VERSION = 2;
@@ -169,6 +169,6 @@ namespace nemesis { namespace core {
 
 
 }
-}
+
 
 #endif

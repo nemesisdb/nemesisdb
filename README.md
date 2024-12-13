@@ -40,25 +40,25 @@ values = await client.kv_get(keys=('username','password'))
 print (values) # {'password':'billy_password', 'username':'billy'}
 ```
 
-To create keys in a session:
+Arrays:
 
 ```py
-from ndb.client import NdbClient, Session
+from ndb.client import NdbClient
+from ndb.arrays import SortedIntArrays
 
 
 client = NdbClient()
 await client.open('ws://127.0.0.1:1987/')
 
-# create session() returns a Session object, containing the token (tkn)
-# sessions can expire but we create a session that never expires
-session = await client.sh_create()
+sortedInts = SortedIntArrays(client)
+await sortedInts.create('array1', capacity=5)
+await sortedInts.create('array2', capacity=6)
 
-await client.sh_set(session.tkn, {'username':'billy', 'password':'billy_password'})
-values = await client.sh_get(session.tkn, keys=('username','password'))
-print(values)
+await sortedInts.set_rng('array1', [25,10,50,100,80])
+await sortedInts.set_rng('array2', [10,25,100,120,200,5])
 
-# session has no expiry settings so end manually
-await client.sh_end(session.tkn)
+intersected = await sortedInts.intersect('array1', 'array2')
+print(intersected)
 ```
 
 <br/>
@@ -67,19 +67,39 @@ await client.sh_end(session.tkn)
 
 # Overview
 
-The server uses a JSON API over websockets. There are three APIs:
+The server uses a JSON API over websockets.
 
+## KV APIs
 |Name|Identifier|Purpose|
 |---|---|---|
 |KV|`KV_`|Store, retrieve, delete, etc keys|
 |SH|`SH_`|Sessions management and store/get/delete, etc keys in a session|
+|IARR|`IARR_`|Unsorted integer array|
+|STRARR|`STRARR_`|Unsorted string array|
+|OARR|`OARR_`|Unsorted JSON object array|
+|SIARR|`IARR_`|Sorted integer array|
+|SSTRARR|`STRARR_`|Sorted string array|
+
+
+## Arrays APIs
+|Name|Identifier|Purpose|
+|---|---|---|
+|IARR|`IARR_`|Unsorted integer array|
+|STRARR|`STRARR_`|Unsorted string array|
+|OARR|`OARR_`|Unsorted JSON object array|
+|SIARR|`IARR_`|Sorted integer array|
+|SSTRARR|`STRARR_`|Sorted string array|
+
+
+## General APIs
+|Name|Identifier|Purpose|
+|---|---|---|
 |SV|`SV_`|Server information|
 
 
 <br/>
-<br/>
 
-## Independent/Top Level Keys
+## Top Level Keys
 Keys that are not in a session, and are managed by the  `KV_` API.
 
 - There is one map for all independent keys
@@ -115,18 +135,7 @@ More info [here](https://docs.nemesisdb.io/tutorials/sessions/what-is-a-session)
 
 # Nemesis API
 
-To store a key the `KV_SET` command is used:
-
-```json
-{
-  "KV_SET":
-  {
-    "keys": {"username":"desire"}
-  }
-}
-```
-
-Or we can store multiple keys:
+To store multiple keys:
 
 ```json
 {
@@ -155,13 +164,13 @@ This sets three keys with value types:
 
 <br/>
 
-Use `KV_GET` to get keys:
+Use `KV_GET` to get key(s):
 
 ```json
 {
   "KV_GET":
   {
-    "keys":["username"]
+    "keys":["age", "forename"]
   }
 }
 ```
@@ -175,7 +184,8 @@ This responds with:
     "st": 1,
     "keys":
     {
-      "username": "desire"
+      "forename": "James",
+      "age":35
     }
   }
 }
@@ -189,35 +199,6 @@ This responds with:
 |keys|The keys and values retrieved. If a key does not exist, it is omitted from the response.|
 
 
-You can request multiple keys with `KV_GET`:
-
-```json
-{
-  "KV_GET":
-  {
-    "keys":["forename", "age", "address"]
-  }
-}
-```
-
-With response:
-
-```json
-{
-  "KV_GET_RSP": {
-    "st": 1,
-    "keys":
-    {
-      "forename": "James",
-      "age": 35,
-      "address":
-      {
-        "city": "Paris"
-      }
-    }
-  }
-}
-```
 <br/>
 
 # Install

@@ -1,3 +1,4 @@
+from typing import List
 
 
 class StValues:
@@ -48,6 +49,7 @@ class KvCmd:
   LOAD_REQ      = "KV_LOAD"
   LOAD_RSP      = "KV_LOAD_RSP"
 
+
 class ShCmd:
   NEW_REQ       = 'SH_NEW'
   NEW_RSP       = 'SH_NEW_RSP'
@@ -86,3 +88,61 @@ class ShCmd:
   KEYS_RSP      = 'SH_KEYS_RSP'
 
 
+class CommonArrCmds:
+  def __init__(self, ident: str):
+    self.CREATE_REQ, self.CREATE_RSP          = self.make(ident, "CREATE")
+    self.DELETE_REQ, self.DELETE_RSP          = self.make(ident, "DELETE")
+    self.DELETE_ALL_REQ, self.DELETE_ALL_RSP  = self.make(ident, "DELETE_ALL")
+    self.SET_REQ, self.SET_RSP                = self.make(ident, "SET")
+    self.SET_RNG_REQ, self.SET_RNG_RSP        = self.make(ident, "SET_RNG")
+    self.GET_REQ, self.GET_RSP                = self.make(ident, "GET")
+    self.GET_RNG_REQ, self.GET_RNG_RSP        = self.make(ident, "GET_RNG")
+    self.LEN_REQ, self.LEN_RSP                = self.make(ident, "LEN")
+    self.USED_REQ, self.USED_RSP              = self.make(ident, "USED")    
+    self.EXIST_REQ, self.EXIST_RSP            = self.make(ident, "EXIST")
+    self.CLEAR_REQ, self.CLEAR_RSP            = self.make(ident, "CLEAR")
+
+
+  def make(self, ident: str, cmd: str):
+    req = ident+'_'+cmd
+    return (req, req+'_RSP')
+
+
+class UnsortedArrCmds(CommonArrCmds):
+  def __init__(self, ident):
+    super().__init__(ident)
+    self.SWAP_REQ, self.SWAP_RSP = self.make(ident, "SWAP")
+
+
+class SortedArrCmds(CommonArrCmds):
+  def __init__(self, ident):
+    super().__init__(ident)
+    self.INTERSECT_REQ, self.INTERSECT_RSP = self.make(ident, "INTERSECT")
+    self.MIN_REQ, self.MIN_RSP = self.make(ident, "MIN")
+    self.MAX_REQ, self.MAX_RSP = self.make(ident, "MAX")
+
+
+
+class OArrCmd(UnsortedArrCmds):
+  def __init__(self):
+    super().__init__('OARR')
+    
+
+class IArrCmd(UnsortedArrCmds):
+  def __init__(self):
+    super().__init__('IARR')
+  
+
+class StringArrCmd(UnsortedArrCmds):
+  def __init__(self):
+    super().__init__('STRARR')
+  
+
+class SortedIArrCmd(SortedArrCmds):
+  def __init__(self):
+    super().__init__('SIARR')
+
+
+class SortedStrArrCmd(SortedArrCmds):
+  def __init__(self):
+    super().__init__('SSTRARR')

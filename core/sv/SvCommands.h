@@ -4,6 +4,7 @@
 
 namespace nemesis { namespace sv { namespace cmds {
 
+  const char InfoIdent[] = "SV";
   const char InfoReq[] = "SV_INFO";  
   const char InfoRsp[] = "SV_INFO_RSP";
 }

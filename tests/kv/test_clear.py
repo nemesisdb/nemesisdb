@@ -1,8 +1,8 @@
 import unittest
-from base import NDBTest
+from base import KvTest
 
 
-class Clear(NDBTest):
+class Clear(KvTest):
   
   async def test_clear(self):
     input = {'i':0, 's':'str', 'b':True, 'd':1.5}

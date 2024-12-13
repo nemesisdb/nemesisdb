@@ -28,7 +28,9 @@ async def getUser(client: NdbClient, tkn: int):
 
 async def two_sessions():
   client = NdbClient()
-  if not (await client.open('ws://127.0.0.1:1987/')):
+  try:
+    await client.open('ws://127.0.0.1:1987/')
+  except:
     print('Failed to connect')
     return
   

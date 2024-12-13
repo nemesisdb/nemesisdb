@@ -4,6 +4,8 @@
 
 namespace nemesis { namespace sh { namespace cmds {
 
+  const char ShIdent[] = "SH";
+
   const char NewReq[]       = "SH_NEW";  
   const char NewRsp[]       = "SH_NEW_RSP";
   const char EndReq[]       = "SH_END";

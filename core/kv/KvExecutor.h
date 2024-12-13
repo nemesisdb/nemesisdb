@@ -1,5 +1,3 @@
-
-
 #ifndef NDB_CORE_KVEXECUTOR_H
 #define NDB_CORE_KVEXECUTOR_H
 
@@ -14,7 +12,6 @@
 
 namespace nemesis { namespace kv {
 
-using namespace nemesis::core;
 
 namespace shcmds = nemesis::sh::cmds;
 namespace kvcmds = nemesis::kv::cmds;
@@ -319,7 +316,7 @@ public:
     const auto [keyExists, count] = map.update(key, path, cachedvalue::parse(cmd.at("value").to_string()));
     
     Response response = Rsp::make();
-    response.rsp.at(Rsp::name)["st"] = keyExists ? toUnderlying(RequestStatus::Ok) : toUnderlying(RequestStatus::KeyNotExist);
+    response.rsp.at(Rsp::name)["st"] = keyExists ? toUnderlying(RequestStatus::Ok) : toUnderlying(RequestStatus::NotExist);
     response.rsp.at(Rsp::name)["cnt"] = count;
 
     return response;
@@ -402,7 +399,7 @@ public:
         st = map.arrayAppend(key, items) ? RequestStatus::Ok : RequestStatus::Unknown;
     }
     else
-      st = RequestStatus::KeyNotExist;
+      st = RequestStatus::NotExist;
 
     Response response = Rsp::make();
     response.rsp[Rsp::name]["st"] = toUnderlying(st);

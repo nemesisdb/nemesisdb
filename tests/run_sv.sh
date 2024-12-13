@@ -15,7 +15,7 @@ else
   source ./useful.sh  
 
   # kv
-  run_kv_server
+  run_server
     
   cd sv > /dev/null
   python3 -m unittest -f test_server_info

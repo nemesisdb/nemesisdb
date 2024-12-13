@@ -11,7 +11,6 @@
 
 namespace nemesis { 
 
-
   struct InterfaceSettings
   {
     std::string ip;
@@ -19,9 +18,16 @@ namespace nemesis {
     std::size_t maxPayload;
   };
 
+  struct ArraySettings
+  {
+    std::size_t maxCapacity{};
+    std::size_t maxRspSize{};
+  };
+
 
   struct Settings
   {
+  private:
     Settings() : valid(false)
     {
 
@@ -39,6 +45,9 @@ namespace nemesis {
       persistEnabled = cfg.at("persist").at("enabled") == true;
       persistPath = cfg.at("persist").at("path").as_string();
 
+      arrays.maxCapacity = cfg.at("arrays").at("maxCapacity").as<std::size_t>();
+      arrays.maxRspSize = cfg.at("arrays").at("maxResponseSize").as<std::size_t>();
+
       valid = true;
     }
 
@@ -51,13 +60,38 @@ namespace nemesis {
     }
 
 
-    std::string wsSettingsString ()
+  public:
+    static void init(const njson& cfg)
+    {
+      settings = Settings{cfg};
+    }
+
+    static void init(const njson& cfg, const fs::path startupLoadPath, const std::string_view startupLoadName)
+    {
+      settings = Settings{cfg, startupLoadPath, startupLoadName} ;
+    }
+
+    static void init()
+    {
+      // create invalid settings
+      settings = Settings{};
+    }
+
+    static const Settings& get()
+    {
+      return settings;
+    }
+
+
+    std::string wsSettingsString () const
     {
       return interface.ip + ":" + std::to_string(interface.port);
     }
 
+
     bool valid{false};
     InterfaceSettings interface;
+    ArraySettings arrays;
     std::string startupLoadName;
     fs::path startupLoadPath;
     std::size_t maxPayload;
@@ -65,6 +99,10 @@ namespace nemesis {
     bool loadOnStartup;
     bool persistEnabled;
     fs::path persistPath;
+
+  
+  private:
+    static Settings settings;
   };
 
   
@@ -88,23 +126,39 @@ namespace nemesis {
   }
 
 
+  bool validateArrays(const njson& arrays)
+  {
+    return  isValid([&arrays]{ return arrays.contains("maxCapacity") && arrays.at("maxCapacity").is_uint64(); }, "arrays::maxCapacity must be an integer") &&
+            isValid([&arrays]{ return arrays.contains("maxResponseSize") && arrays.at("maxResponseSize").is_uint64(); }, "arrays::maxResponseSize must be an integer");
+  }
+
+
   std::tuple<bool, njson> parse(const fs::path& path)
   {
     try
     {
       std::ifstream configStream{path};
-      njson cfg = njson::parse(configStream);
+      const njson cfg = njson::parse(configStream);
 
-      bool valid =  isValid([&cfg]{ return cfg.contains("version") && cfg.at("version").is_uint64(); },   "Require version as an unsigned int") &&
-                    isValid([&cfg]{ return cfg.at("version") == nemesis::NEMESIS_CONFIG_VERSION; }, "Config version must be " + std::to_string(nemesis::NEMESIS_CONFIG_VERSION)) &&
+      // TODO this is becoming untidy
+
+      bool valid =  isValid([&cfg]{ return cfg.contains("persist") && cfg.at("persist").is_object(); },    "Require persist section") &&
+                    isValid([&cfg]{ return cfg.contains("arrays") && cfg.at("arrays").is_object(); },      "Require arrays section") &&
+                    isValid([&cfg]{ return cfg.contains("version") && cfg.at("version").is_uint64(); },   "Require version as an unsigned int") &&
+                    isValid([&cfg]{ return cfg.at("version") == nemesis::NEMESIS_CONFIG_VERSION; },       "Config version must be " + std::to_string(nemesis::NEMESIS_CONFIG_VERSION)) &&
                     isValid([&cfg]{ return !cfg.contains("core") || (cfg.contains("core") && cfg.at("core").is_uint64()); },  "'core' must be an unsigned integer") &&
                     isValid([&cfg]{ return cfg.contains("ip") && cfg.contains("port") && cfg.contains("maxPayload"); },       "Require ip, port, maxPayload and save") &&
                     isValid([&cfg]{ return cfg.at("ip").is_string() && cfg.at("port").is_uint64() && cfg.at("maxPayload").is_uint64(); }, "ip must string, port and maxPayload must be unsigned integer") &&
                     isValid([&cfg]{ return cfg.at("maxPayload") >= nemesis::NEMESIS_KV_MINPAYLOAD; }, "maxPayload below minimum") &&
                     isValid([&cfg]{ return cfg.at("maxPayload") <= nemesis::NEMESIS_KV_MAXPAYLOAD; }, "maxPayload exceeds maximum") ;
 
-      if (valid && validatePersist(cfg.at("persist")))
+      
+      if (valid &&
+          validatePersist(cfg.at("persist")) &&
+          validateArrays(cfg.at("arrays")))
+      {
         return {true, cfg};
+      }
     }
     catch(const std::exception& e)
     {
@@ -115,7 +169,7 @@ namespace nemesis {
   }
 
 
-  Settings readConfig (const int argc, char ** argv)
+  void readConfig (const int argc, char ** argv)
   {
     namespace po = boost::program_options;
 
@@ -155,9 +209,9 @@ namespace nemesis {
     {
       PLOGF << "Unknown error reading program options";
     }
-    
 
-    Settings settings;  // invalid by default
+
+    Settings::init(); // initialise as invalid    
 
     if (parsedArgs)
     {
@@ -184,16 +238,14 @@ namespace nemesis {
                 PLOGF << "Load path does not exist: " << loadPath ;
               }
               else
-                settings = Settings{cfg, loadPath, loadName};
+                Settings::init(cfg, loadPath, loadName);
             }
             else
-              settings = Settings{cfg};
+              Settings::init(cfg);
           } 
         }
       }
     }
-
-    return settings;
   }
 
 

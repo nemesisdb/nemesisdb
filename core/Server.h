@@ -16,15 +16,18 @@
 #include <core/sh/ShHandler.h>
 #include <core/sh/ShSessions.h>
 #include <core/sv/SvCommands.h>
+#include <core/arr/ArrHandler.h>
+#include <core/arr/ArrCommands.h>
 
 
 
 namespace nemesis { 
 
 
-using namespace nemesis::kv;
-using namespace nemesis::sh;
-using namespace nemesis::sv;
+namespace kvCmds = nemesis::kv::cmds;
+namespace shCmds = nemesis::sh;
+namespace svCmds = nemesis::sv;
+namespace arrCmds = nemesis::arr::cmds;
 
 
 
@@ -72,16 +75,14 @@ public:
   }
 
 
-  bool run (const Settings& settings, std::shared_ptr<sh::Sessions> sessions)
+  bool run (std::shared_ptr<sh::Sessions> sessions)
   {
     m_sessions = sessions;
-    m_settings = settings;
-
 
     if (!init())
       return false;
 
-    if (m_settings.loadOnStartup)
+    if (Settings::get().loadOnStartup)
     {
       if (auto [ok, msg] = startupLoad(); !ok)
       {
@@ -90,15 +91,15 @@ public:
       }
     }
 
-    const auto [ip, port, maxPayload] = m_settings.interface;
+    const auto [ip, port, maxPayload] = Settings::get().interface;
     std::size_t core = 0;
     
     if (const auto maxCores = std::thread::hardware_concurrency(); maxCores == 0)
       PLOGE << "Could not acquire available cores";
-    else if (m_settings.preferredCore > maxCores)
+    else if (Settings::get().preferredCore > maxCores)
       PLOGE << "'core' value in config is above maximum available: " << maxCores;
     else
-      core = m_settings.preferredCore;
+      core = Settings::get().preferredCore;
 
 
     if (!startWsServer(ip, port, maxPayload, core))
@@ -121,10 +122,10 @@ public:
 
       try
       {
-        if (m_settings.persistEnabled)
+        if (Settings::get().persistEnabled)
         {
           // test we can write to the persist path
-          if (std::filesystem::path path {m_settings.persistPath}; !std::filesystem::exists(path) || !std::filesystem::is_directory(path))
+          if (std::filesystem::path path {Settings::get().persistPath}; !std::filesystem::exists(path) || !std::filesystem::is_directory(path))
           {
             PLOGF << "persist path is not a directory or does not exist";
             return false;
@@ -144,8 +145,13 @@ public:
           }
         }
         
-        m_kvHandler = std::make_shared<kv::KvHandler>(m_settings);
-        m_shHandler = std::make_shared<sh::ShHandler>(m_settings, m_sessions);
+        m_kvHandler = std::make_shared<kv::KvHandler>();
+        m_shHandler = std::make_shared<sh::ShHandler>(m_sessions);
+        m_objectArrHandler = std::make_shared<arr::OArrHandler>();
+        m_intArrHandler = std::make_shared<arr::IntArrHandler>();
+        m_strArrHandler = std::make_shared<arr::StrArrHandler>();
+        m_sortedIntArrHandler = std::make_shared<arr::SortedIntArrHandler>();
+        m_sortedStrArrHandler = std::make_shared<arr::SortedStrArrHandler>();
       }
       catch(const std::exception& e)
       {
@@ -326,31 +332,57 @@ public:
             send(ws, createErrorResponse(command+"_RSP", RequestStatus::CommandSyntax));
           else
           {
-            const auto type = command.substr(0, pos);
+            //const auto type = command.substr(0, pos);
+            const auto type = std::string_view(command.substr(0, pos));
             
-            if (type == "KV")
+            if (type == kvCmds::KvIdent)
             {
               const Response response = m_kvHandler->handle(command, request);
               send(ws, response.rsp);
             }
-            else if (type == "SH")
+            else if (type == arrCmds::OArrayIdent)
+            {
+              const Response response = m_objectArrHandler->handle(command, request);
+              send(ws, response.rsp);
+            }
+            else if (type == arrCmds::IntArrayIdent)
+            {
+              const Response response = m_intArrHandler->handle(command, request);
+              send(ws, response.rsp);
+            }
+            else if (type == arrCmds::StrArrayIdent)
+            {
+              const Response response = m_strArrHandler->handle(command, request);
+              send(ws, response.rsp);
+            }
+            else if (type == arrCmds::SortedIntArrayIdent)
+            {
+              const Response response = m_sortedIntArrHandler->handle(command, request);
+              send(ws, response.rsp);
+            }
+            else if (type == arrCmds::SortedStrArrayIdent)
+            {
+              const Response response = m_sortedStrArrHandler->handle(command, request);
+              send(ws, response.rsp);
+            }
+            else if (type == shCmds::ShIdent)
             {
               const Response response = m_shHandler->handle(command, request);
               send(ws, response.rsp);
             }
-            else if (command == sv::cmds::InfoReq)
+            else if (command == sv::cmds::InfoReq)  // only one SV command at the moment
             {
               // the json_object_arg is a tag, followed by initializer_list<pair<string, njson>>
               static const njson Info = {jsoncons::json_object_arg, {
                                                                       {"st", toUnderlying(RequestStatus::Ok)},  // for compatibility with APIs and consistency
                                                                       {"serverVersion",   NEMESIS_VERSION},
-                                                                      {"persistEnabled",  m_settings.persistEnabled}
+                                                                      {"persistEnabled",  Settings::get().persistEnabled}
                                                                     }};
               static const njson Prepared {jsoncons::json_object_arg, {{sv::cmds::InfoRsp, Info}}}; 
 
               send(ws, Prepared);
             }
-            else
+            else  [[unlikely]]
             {
               static const njson Prepared {createErrorResponse(command+"_RSP", RequestStatus::CommandNotExist)};
               send(ws, Prepared);
@@ -365,8 +397,8 @@ public:
     {
       PLOGI << "-- Load --";
 
-      const auto& loadName = m_settings.startupLoadName;
-      const auto& loadPath = m_settings.startupLoadPath;
+      const auto& loadName = Settings::get().startupLoadName;
+      const auto& loadPath = Settings::get().startupLoadPath;
 
       if (PreLoadInfo info = validatePreLoad(loadName, loadPath); !info.valid)
       {
@@ -425,8 +457,13 @@ public:
     // TODO profile runtime cost of shared_ptr vs raw ptr
     std::shared_ptr<kv::KvHandler> m_kvHandler;
     std::shared_ptr<sh::ShHandler> m_shHandler;
+    std::shared_ptr<arr::OArrHandler> m_objectArrHandler;
+    std::shared_ptr<arr::IntArrHandler> m_intArrHandler;
+    std::shared_ptr<arr::StrArrHandler> m_strArrHandler;
+    std::shared_ptr<arr::SortedIntArrHandler> m_sortedIntArrHandler;
+    std::shared_ptr<arr::SortedStrArrHandler> m_sortedStrArrHandler;
+
     std::shared_ptr<sh::Sessions> m_sessions;
-    Settings m_settings;
 };
 
 }

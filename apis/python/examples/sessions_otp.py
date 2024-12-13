@@ -35,7 +35,10 @@ async def validate_otp(client: NdbClient, tkn: int, userCode: int) -> bool:
 
 async def otp():
   client = NdbClient()
-  if not (await client.open('ws://127.0.0.1:1987/')):
+
+  try:
+    await client.open('ws://127.0.0.1:1987/')
+  except:
     print('Failed to connect')
     return
 

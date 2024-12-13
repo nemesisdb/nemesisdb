@@ -15,6 +15,7 @@
 
 using namespace nemesis;
 
+Settings Settings::settings;
 
 static std::latch run{1U};
 static plog::ColorConsoleAppender<NdbFormatter> consoleAppender;
@@ -37,9 +38,7 @@ int main (int argc, char ** argv)
   signal(SIGTERM, kvSigHandle); // docker stop
   signal(SIGKILL, kvSigHandle); // docker kill 
 
-
-  Settings settings;
-
+ 
   #ifdef NDB_DEBUG
     const auto s = R"({
                         "version":5,                
@@ -54,16 +53,19 @@ int main (int argc, char ** argv)
                         }
                       })";
 
-    settings = Settings{njson::parse(s)};
+    Settings::init(njson::parse(s));
+    auto& settings = Settings::get();
 
-    if (settings.persistEnabled && !fs::exists(settings.persistPath))
-      fs::create_directories(settings.persistPath);
+    if (Settings::get().persistEnabled && !fs::exists(Settings::get().persistPath))
+      fs::create_directories(Settings::get().persistPath);
       
   #else
     PLOGI << "Reading config";
 
-    if (settings = nemesis::readConfig(argc, argv); !settings.valid)
+    if (nemesis::readConfig(argc, argv); !Settings::get().valid)
       return 1;
+
+    auto& settings = Settings::get();
   #endif
 
 
@@ -72,14 +74,15 @@ int main (int argc, char ** argv)
   else
     PLOGI << "Persist: Disabled";
   
+  PLOGI << "Arrays Max Capacity: " << settings.arrays.maxCapacity;
+  PLOGI << "Arrays Max Rsp Size: " << settings.arrays.maxRspSize;
   PLOGI << "Query Interface: " << settings.wsSettingsString();
   
-
   int error = 0;
   auto sessions = std::make_shared<nemesis::sh::Sessions>();
 
   Server server;
-  if (server.run(settings, sessions))
+  if (server.run(sessions))
     run.wait();
   else
   {

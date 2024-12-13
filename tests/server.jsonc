@@ -1,0 +1,18 @@
+{
+  "version":6,                // must be version 6 from server v0.8
+  "core":0,                   // CPU core the server instance is assigned to. If not present or value is greater than max cores, defaults to 0
+  "ip":"127.0.0.1",           // must be IPv4
+  "port":1987,
+  "maxPayload":4096,          // max bytes the query interface can accept
+  "persist":
+  {
+    "enabled":true,          // if true, the "path" must exist
+    "path":"./data"
+  },
+  "arrays":
+  {
+    "maxCapacity":10000,      // the max capacity of arrays (number of elements, not bytes)
+    "maxResponseSize":10000   // the max size of responses, such as get range (number of elements, not bytes)
+    // if maxResponseSize < maxCapacity, it is possible not all values will be returned
+  }
+}

@@ -5,7 +5,7 @@ from typing import Tuple, List
 
 import logging
 
-
+## MOVE to common
 class NdbException(Exception):
   def __init__(self, msg):
     super().__init__(msg)
@@ -22,6 +22,7 @@ class ResponseError(NdbException):
     self.rsp = body
 
 
+## MOVE to sessions.py
 class Session:
   """Stores the session token session.
   """
@@ -56,10 +57,9 @@ class NdbClient:
     if uri == '':
       raise ValueError('URI empty')
         
-    connected = await self.ws.start(uri)
-    logger.debug('Client: connected' if connected else 'Client: failed to connect')
-    return connected
-
+    await self.ws.start(uri)
+    logger.debug('Client connected')
+    
     
   async def close(self):
     await self.ws.close()
@@ -73,7 +73,7 @@ class NdbClient:
     return info
   
 
-  ## KV
+  #region KV
   async def kv_set(self, keys: dict) -> None:
     await self._sendCmd(KvCmd.SET_REQ, KvCmd.SET_RSP, {'keys':keys})
   
@@ -147,8 +147,10 @@ class NdbClient:
     rsp = await self._sendCmd(KvCmd.LOAD_REQ, KvCmd.LOAD_RSP, {'name':name}, StValues.ST_LOAD_COMPLETE)
     return rsp[KvCmd.LOAD_RSP]['keys']
 
+  #endregion
 
-  ## SH
+
+  #region SH
   async def sh_set(self, tkn: int, keys: dict):
     await self._sendTknCmd(ShCmd.SET_REQ, ShCmd.SET_RSP, {'keys':keys}, tkn)
   
@@ -306,11 +308,19 @@ class NdbClient:
     rsp = await self._sendTknCmd(ShCmd.GET_REQ, ShCmd.GET_RSP, {'keys':keys}, tkn)
     return rsp[ShCmd.GET_RSP]['keys']
   
-  async def _sendCmd(self, cmdReq: str, cmdRsp: str, body: dict, stSuccess = StValues.ST_SUCCESS):
+  #endregion
+
+  
+  async def _sendCmd(self, cmdReq: str, cmdRsp: str, body: dict, stSuccess = StValues.ST_SUCCESS, checkStatus = True):
     req = {cmdReq : body}
     rsp = await self.ws.query(req)
-    self._raise_if_invalid(rsp, cmdRsp, stSuccess)
+    if checkStatus:
+      self._raise_if_invalid(rsp, cmdRsp, stSuccess)
     return rsp
+  
+
+  async def sendCmd(self, cmdReq: str, cmdRsp: str, body: dict, stSuccess = StValues.ST_SUCCESS, checkStatus = True):
+    return await self._sendCmd(cmdReq, cmdRsp, body, stSuccess, checkStatus)
   
 
   async def _sendTknCmd(self, cmdReq: str, cmdRsp: str, body: dict, tkn: int):
@@ -324,4 +334,13 @@ class NdbClient:
     
     logger.debug(cmdRsp + ' ' + ('Response Ok'))
 
+
+  def _raise_if_empty (self, value: str):
+    self._raise_if(value, 'empty', lambda v: v == '')
+    #if value == '':
+     # raise ValueError('value empty')
   
+
+  def _raise_if (self, value: str, msg: str, f):
+    if f(value):
+      raise ValueError(f'value is {msg}')

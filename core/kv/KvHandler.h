@@ -28,35 +28,12 @@ KvHandler receives a command:
 class KvHandler
 {
 public:
-  KvHandler(const Settings& settings) : m_settings(settings)
-    
+  KvHandler() : m_settings(Settings::get())
   {
+
   }
-  
 
 private:
-
-  struct Handler
-  {
-    using Handle = std::function<Response(njson&)>;
-
-    Handler(Handle&& h) : handler(std::move(h))
-    {
-
-    }
-
-    Handler(const Handler&) = default;
-    Handler(Handler&&) = default;
-    Handler& operator= (Handler&&) = default;
-
-    Response operator()(njson& request)
-    {
-      return handler(request);
-    }
-
-    Handle handler;
-  };
-
 
   using HandlerPmrMap = ankerl::unordered_dense::pmr::map<KvQueryType, Handler>;
   using QueryTypePmrMap = ankerl::unordered_dense::pmr::map<std::string_view, KvQueryType>;
@@ -124,8 +101,8 @@ public:
   {      
     static PmrResource<typename HandlerPmrMap::value_type, 1024U> handlerPmrResource; // TODO buffer size
     static PmrResource<typename HandlerPmrMap::value_type, 1024U> queryTypeNamePmrResource; // TODO buffer size
-    static HandlerPmrMap MsgHandlers{createHandlers(handlerPmrResource.getAlloc())}; 
-    static QueryTypePmrMap QueryNameToType{createQueryTypeNameMap(queryTypeNamePmrResource.getAlloc())};
+    static const HandlerPmrMap MsgHandlers{createHandlers(handlerPmrResource.getAlloc())}; 
+    static const QueryTypePmrMap QueryNameToType{createQueryTypeNameMap(queryTypeNamePmrResource.getAlloc())};
     
 
     if (const auto itType = QueryNameToType.find(command) ; itType == QueryNameToType.cend())
@@ -417,7 +394,7 @@ private:
 
 
 private:
-  Settings m_settings;
+  const Settings& m_settings;
   CacheMap m_map;
 };
 

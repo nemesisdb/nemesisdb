@@ -11,9 +11,9 @@ Creates a new session.
 
 ```py
 sh_create(durationSeconds = 0,
-                  deleteSessionOnExpire = False,
-                  extendOnSetAdd = False,
-                  extendOnGet = False) -> Session
+          deleteSessionOnExpire = False,
+          extendOnSetAdd = False,
+          extendOnGet = False) -> Session
 ```
 
 

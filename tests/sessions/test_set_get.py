@@ -1,8 +1,8 @@
 import unittest
-from base import NDBSessionTest
+from base import SessionTest
 
 
-class SetGet(NDBSessionTest):
+class SetGet(SessionTest):
 
   async def test_set(self):
     session = await self.client.sh_create()

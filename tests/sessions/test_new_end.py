@@ -1,8 +1,8 @@
 import unittest
-from base import NDBSessionTest
+from base import SessionTest
 
 
-class NewEnd(NDBSessionTest):
+class NewEnd(SessionTest):
 
   async def test_create_single(self):
     session = await self.client.sh_create()
