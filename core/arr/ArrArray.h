@@ -100,13 +100,7 @@ public:
   }
 
 
-  njson getRange(const std::size_t start) const requires (!Sorted)
-  {
-    return getRange(start, m_size);
-  }
-
-
-  njson getRange(const std::size_t start) const requires (Sorted)
+  njson getRange(const std::size_t start)
   {
     return getRange(start, m_used);
   }
@@ -114,10 +108,7 @@ public:
 
   njson getRange(const std::size_t start, std::size_t stop) const
   {
-    if constexpr (Sorted)
-      stop = std::min<std::size_t> (stop, m_used);
-    else
-      stop = std::min<std::size_t> (stop, m_size);  
+    stop = std::min<std::size_t> (stop, m_used);
 
     const auto itStart = std::next(m_array.cbegin(), start);
     const auto itEnd = std::next(m_array.cbegin(), stop);
