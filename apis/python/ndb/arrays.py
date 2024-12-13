@@ -59,9 +59,14 @@ class _Arrays(ABC):
     return rsp[self.cmds.EXIST_RSP]['st'] == StValues.ST_SUCCESS
   
 
-  async def clear(self, name: str, start: int, stop: int) -> None:
+  async def clear(self, name: str, start: int, stop = None) -> None:
     raise_if_empty(name)
-    await self.client.sendCmd(self.cmds.CLEAR_REQ, self.cmds.CLEAR_RSP, {'name':name, 'rng':[start, stop]})
+    raise_if_equal(start, stop, 'start and stop the same')
+    if stop == None:
+      rng = [start]
+    else:
+      rng = [start, stop]
+    await self.client.sendCmd(self.cmds.CLEAR_REQ, self.cmds.CLEAR_RSP, {'name':name, 'rng':rng})
 
 
   async def _doUnsortedSet(self, name: str, item, pos = None):

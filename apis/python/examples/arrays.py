@@ -251,7 +251,7 @@ async def iarr_clear_all():
   print(values)
   
   # clear all and set new
-  await arrays.clear('values', start=0, stop=5)
+  await arrays.clear('values', start=0)
   await arrays.set_rng('values', [33,11,99,66])
   
   values = await arrays.get_rng('values', start=0)

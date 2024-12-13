@@ -84,8 +84,8 @@ await arrays.set_rng('values', [56,34,78,45])
 values = await arrays.get_rng('values', start=0)
 print(values)
 
-# clear all and set new
-await arrays.clear('values', start=0, stop=5)
+# clear all and set new ('stop' unset means clear to end)
+await arrays.clear('values', start=0)
 await arrays.set_rng('values', [33,11,99,66])
 
 values = await arrays.get_rng('values', start=0)
