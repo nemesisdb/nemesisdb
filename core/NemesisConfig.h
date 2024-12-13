@@ -128,9 +128,10 @@ namespace nemesis {
 
   bool validateArrays(const njson& arrays)
   {
-    return  isValid([&arrays]{ return arrays.contains("maxCapacity") && arrays.at("maxCapacity").is_int64(); }, "arrays::maxCapacity must be an integer") &&
-            isValid([&arrays]{ return arrays.contains("maxResponseSize") && arrays.at("maxResponseSize").is_int64(); }, "arrays::maxResponseSize must be an integer");
+    return  isValid([&arrays]{ return arrays.contains("maxCapacity") && arrays.at("maxCapacity").is_uint64(); }, "arrays::maxCapacity must be an integer") &&
+            isValid([&arrays]{ return arrays.contains("maxResponseSize") && arrays.at("maxResponseSize").is_uint64(); }, "arrays::maxResponseSize must be an integer");
   }
+
 
   std::tuple<bool, njson> parse(const fs::path& path)
   {
