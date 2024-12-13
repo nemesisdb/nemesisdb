@@ -1,9 +1,9 @@
 import unittest
-from base import NDBArrayTest
+from base import ObjArrayTest
 from ndb.client import ResponseError
 
 
-class RangeTest(NDBArrayTest):
+class RangeTest(ObjArrayTest):
   async def asyncSetUp(self):
     await super().asyncSetUp()    
 

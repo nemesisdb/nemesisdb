@@ -1,10 +1,10 @@
 import random
 import unittest
 import os
-from base import NDBTest
+from base import KvTest
 
 
-class SaveLoad(NDBTest):
+class SaveLoad(KvTest):
   async def test_save_load(self):
     input = {'a':0, 'b':'str', 'c':True, 'd':1.5}
 

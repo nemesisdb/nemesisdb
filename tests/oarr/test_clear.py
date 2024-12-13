@@ -1,8 +1,8 @@
 import unittest
-from base import NDBArrayTest
+from base import ObjArrayTest
 
 
-class Clear(NDBArrayTest):
+class Clear(ObjArrayTest):
 
   async def test_clear(self):
     data = [{'k0':0}, {'k1':1}, {'k2':2}, {'k3':3}, {'k4':4}]

@@ -6,85 +6,52 @@ from ndb.arrays import ObjArrays, IntArrays, SortedIntArrays, StringArrays, Sort
 class NDBTest(IsolatedAsyncioTestCase):
   async def asyncSetUp(self):
     self.client = NdbClient()
+    await self.client.open('ws://127.0.0.1:1987')    
     
-    connected = await self.client.open('ws://127.0.0.1:1987')
-    self.assertTrue(connected, 'Connection failed')
-    
-    # clear before each test
+
+class KvTest(NDBTest):
+  async def asyncSetUp(self):
+    await super().asyncSetUp()
+    await self.client.open('ws://127.0.0.1:1987')    
     await self.client.kv_clear()
 
 
-class NDBSessionTest(IsolatedAsyncioTestCase):
+class SessionTest(NDBTest):
   async def asyncSetUp(self):
-    self.client = NdbClient()
-    
-    connected = await self.client.open('ws://127.0.0.1:1987')
-    self.assertTrue(connected, 'Connection failed')
-    
-    # clear before each test
+    await super().asyncSetUp()
     await self.client.sh_end_all()
 
 
-class NDBArrayTest(IsolatedAsyncioTestCase):
+class ObjArrayTest(NDBTest):
   async def asyncSetUp(self):
-    self.client = NdbClient()
-    
-    connected = await self.client.open('ws://127.0.0.1:1987')
-    self.assertTrue(connected, 'Connection failed')
-    
+    await super().asyncSetUp()
     self.arrays = ObjArrays(self.client)
-
-    # clear before each test
     await self.arrays.delete_all()
 
 
-class NDBIArrayTest(IsolatedAsyncioTestCase):
+class IArrayTest(NDBTest):
   async def asyncSetUp(self):
-    self.client = NdbClient()
-    
-    connected = await self.client.open('ws://127.0.0.1:1987')
-    self.assertTrue(connected, 'Connection failed')
-    
+    await super().asyncSetUp()    
     self.arrays = IntArrays(self.client)
-
-    # clear before each test
     await self.arrays.delete_all()
 
 
-class NDBSortedIntArrayTest(IsolatedAsyncioTestCase):
+class SortedIntArrayTest(NDBTest):
   async def asyncSetUp(self):
-    self.client = NdbClient()
-    
-    connected = await self.client.open('ws://127.0.0.1:1987')
-    self.assertTrue(connected, 'Connection failed')
-    
+    await super().asyncSetUp()
     self.arrays = SortedIntArrays(self.client)
-
-    # clear before each test
     await self.arrays.delete_all()
 
 
-class NDBStrArrayTest(IsolatedAsyncioTestCase):
+class StrArrayTest(NDBTest):
   async def asyncSetUp(self):
-    self.client = NdbClient()
-    
-    connected = await self.client.open('ws://127.0.0.1:1987')
-    self.assertTrue(connected, 'Connection failed')
-    
+    await super().asyncSetUp()    
     self.arrays = StringArrays(self.client)
-
-    # clear before each test
     await self.arrays.delete_all()
     
 
-class NDBSortedStrArrayTest(IsolatedAsyncioTestCase):
+class SortedStrArrayTest(NDBTest):
   async def asyncSetUp(self):
-    self.client = NdbClient()
-    
-    connected = await self.client.open('ws://127.0.0.1:1987')
-    self.assertTrue(connected, 'Connection failed')
-    
+    await super().asyncSetUp()
     self.arrays = SortedStrArrays(self.client)
-
-    # clear before each test
     await self.arrays.delete_all()

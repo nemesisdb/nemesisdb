@@ -1,9 +1,9 @@
 import unittest
-from base import NDBSortedStrArrayTest
+from base import SortedStrArrayTest
 from ndb.client import ResponseError
 
 
-class Array(NDBSortedStrArrayTest):
+class Array(SortedStrArrayTest):
   async def test_create(self):
     await self.arrays.create('arr2', 30)
     len = await self.arrays.capacity('arr2')

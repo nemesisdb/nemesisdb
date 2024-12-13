@@ -1,10 +1,10 @@
 import unittest
 import random
 import os
-from base import NDBSessionTest
+from base import SessionTest
 
 
-class SaveLoad(NDBSessionTest):
+class SaveLoad(SessionTest):
   async def test_save_load(self):
     nSessions = 10
     tokens = []

@@ -1,8 +1,8 @@
 import unittest
-from base import NDBTest
+from base import KvTest
 
 
-class SetGet(NDBTest):
+class SetGet(KvTest):
   
   async def test_scalar(self):
     input = {'a':0, 'b':'str', 'c':True, 'd':1.5}

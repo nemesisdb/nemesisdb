@@ -1,9 +1,9 @@
 import unittest
-from base import NDBArrayTest
+from base import ObjArrayTest
 from ndb.client import ResponseError
 
 
-class SetRange(NDBArrayTest):
+class SetRange(ObjArrayTest):
 
   async def test_entire(self):
     size = 10

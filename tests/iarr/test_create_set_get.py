@@ -1,9 +1,9 @@
 import unittest
-from base import NDBIArrayTest
+from base import IArrayTest
 from ndb.client import ResponseError
 
 
-class Array(NDBIArrayTest):
+class Array(IArrayTest):
   async def test_create(self):
     await self.arrays.create('arr2', 30)
     len = await self.arrays.capacity('arr2')

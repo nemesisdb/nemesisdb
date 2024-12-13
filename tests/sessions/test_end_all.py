@@ -1,8 +1,8 @@
 import unittest
-from base import NDBSessionTest
+from base import SessionTest
 
 
-class EndAll(NDBSessionTest):
+class EndAll(SessionTest):
 
   async def test_end_all(self):
     nSessions = 10

@@ -16,7 +16,7 @@ class Connection:
     pass
 
 
-  async def start(self, uri: str):    
+  async def start(self, uri: str) -> None:
     self.uri = uri
     self.userClosed = False
     self.opened = False     
@@ -28,7 +28,8 @@ class Connection:
     
     # the listen_task will release this semaphore
     await self.connectedSem.acquire()
-    return self.opened
+    if not self.opened:
+      raise ConnectionClosed(f'Failed connection to {uri}')
   
 
   async def open(self):

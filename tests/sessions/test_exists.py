@@ -1,8 +1,8 @@
 import unittest
-from base import NDBSessionTest
+from base import SessionTest
 
 
-class Exists(NDBSessionTest):
+class Exists(SessionTest):
    
   async def test_exists(self):
     nSessions = 10

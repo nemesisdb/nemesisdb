@@ -1,8 +1,8 @@
 import unittest
-from base import NDBSortedIntArrayTest
+from base import SortedIntArrayTest
 
 
-class Clear(NDBSortedIntArrayTest):
+class Clear(SortedIntArrayTest):
 
   async def test_clear(self):
     data = [100,200,300,400,500]

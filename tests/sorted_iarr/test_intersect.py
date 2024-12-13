@@ -1,9 +1,9 @@
 import unittest
-from base import NDBSortedIntArrayTest
+from base import SortedIntArrayTest
 from ndb.client import ResponseError
 
 
-class Array(NDBSortedIntArrayTest):
+class Array(SortedIntArrayTest):
   async def test_intersect_ordered(self):
     await self.arrays.create('a', 5)
     await self.arrays.create('b', 5)

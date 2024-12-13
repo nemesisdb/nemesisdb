@@ -1,9 +1,9 @@
 import unittest
-from base import NDBSortedIntArrayTest
+from base import SortedIntArrayTest
 from ndb.client import ResponseError
 
 
-class Array(NDBSortedIntArrayTest):
+class Array(SortedIntArrayTest):
   async def test_min_1(self):
     await self.arrays.create('arr1', 6)
     await self.arrays.set_rng('arr1', [20,15,30,80,5,26])

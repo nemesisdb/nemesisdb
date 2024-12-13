@@ -1,8 +1,8 @@
 import unittest
-from base import NDBTest
+from base import KvTest
 
 
-class Remove(NDBTest):
+class Remove(KvTest):
   
   async def test_rmv_one(self):
     input = {'a':0, 'b':'str', 'c':True, 'd':1.5}

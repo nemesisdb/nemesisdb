@@ -1,9 +1,9 @@
 import unittest
-from base import NDBArrayTest
+from base import ObjArrayTest
 from ndb.arrays import ObjArrays
 
 
-class Swap(NDBArrayTest):
+class Swap(ObjArrayTest):
 
   async def test_entire(self):
     data = [{'k0':0}, {'k1':1}, {'k2':2}, {'k3':3}]

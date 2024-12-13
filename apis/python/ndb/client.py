@@ -57,10 +57,9 @@ class NdbClient:
     if uri == '':
       raise ValueError('URI empty')
         
-    connected = await self.ws.start(uri)
-    logger.debug('Client: connected' if connected else 'Client: failed to connect')
-    return connected
-
+    await self.ws.start(uri)
+    logger.debug('Client connected')
+    
     
   async def close(self):
     await self.ws.close()

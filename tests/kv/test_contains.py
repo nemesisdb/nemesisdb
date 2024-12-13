@@ -1,8 +1,8 @@
 import unittest
-from base import NDBTest
+from base import KvTest
 
 
-class Contains(NDBTest):
+class Contains(KvTest):
 
   async def test_exists_single(self):
     input = {'i':100}

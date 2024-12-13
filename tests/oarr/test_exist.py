@@ -1,8 +1,8 @@
 import unittest
-from base import NDBArrayTest
+from base import ObjArrayTest
 
 
-class Swap(NDBArrayTest):
+class Swap(ObjArrayTest):
 
   async def test_exist(self):
     await self.arrays.create('arr1', 5)

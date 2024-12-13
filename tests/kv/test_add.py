@@ -1,9 +1,9 @@
 import unittest
-from base import NDBTest
+from base import KvTest
 
 
 
-class Add(NDBTest):
+class Add(KvTest):
   # Minimal tests for add because this is essentially set but 
   # does not overwrite
 

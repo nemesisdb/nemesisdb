@@ -1,9 +1,9 @@
 import unittest
-from base import NDBArrayTest
+from base import ObjArrayTest
 from ndb.client import ResponseError
 
 
-class Array(NDBArrayTest):
+class Array(ObjArrayTest):
 
   async def test_create(self):
 
