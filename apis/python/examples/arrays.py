@@ -362,6 +362,23 @@ async def sarr_swap():
   print(await arrays.get_rng('values', start=0))
 
 
+async def siarr_min_max():
+  client = NdbClient()
+  await client.open('ws://127.0.0.1:1987/')
+
+  await delete_all(client)
+
+  sortedInts = SortedIntArrays(client)
+  await sortedInts.create('scores', 6)
+  await sortedInts.set_rng('scores', [50,35,75,100,15,82])
+
+  bottom3 = await sortedInts.min('scores', n=3)
+  top3 = await sortedInts.max('scores', n=3)
+
+  print(f'Best 3: {top3}')
+  print(f'Worst 3: {bottom3}')
+
+
 if __name__ == "__main__":
   for f in [iarr_unsorted_set_rng(),
             iarr_sorted_set_rng(),
@@ -376,7 +393,8 @@ if __name__ == "__main__":
             sarr_used(),
             sarr_swap(),
             iarr_intersect(),
-            iarr_intersect_random()]:
+            iarr_intersect_random(),
+            siarr_min_max()]:
     
     print(f'---- {f.__name__} ----')
     asio.run(f)

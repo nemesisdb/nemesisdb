@@ -37,6 +37,8 @@ None
 
 ## Examples
 
+This is for illustration only, the is best acheived with [`min()`](./min) and [`max()`](./max).
+
 ```py
 client = NdbClient()
 await client.open('ws://127.0.0.1:1987/')
