@@ -74,11 +74,6 @@ The server uses a JSON API over websockets.
 |---|---|---|
 |KV|`KV_`|Store, retrieve, delete, etc keys|
 |SH|`SH_`|Sessions management and store/get/delete, etc keys in a session|
-|IARR|`IARR_`|Unsorted integer array|
-|STRARR|`STRARR_`|Unsorted string array|
-|OARR|`OARR_`|Unsorted JSON object array|
-|SIARR|`IARR_`|Sorted integer array|
-|SSTRARR|`STRARR_`|Sorted string array|
 
 
 ## Arrays APIs

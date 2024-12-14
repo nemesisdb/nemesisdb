@@ -8,11 +8,15 @@ fi
 
 docker build --target publish -f docker/Dockerfile.alpine -t nemesisdb/nemesisdb:$1 .
 
-docker push nemesisdb/nemesisdb:$1
-
-docker tag nemesisdb/nemesisdb:$1 nemesisdb/nemesisdb:latest
-
-docker push nemesisdb/nemesisdb:latest
+if [ $? -eq 0 ]
+then  
+  echo "Build OK"
+  docker push nemesisdb/nemesisdb:$1
+  docker tag nemesisdb/nemesisdb:$1 nemesisdb/nemesisdb:latest
+  docker push nemesisdb/nemesisdb:latest
+else
+  echo "Build FAIL"
+fi
 
 
 # Linux run: 
