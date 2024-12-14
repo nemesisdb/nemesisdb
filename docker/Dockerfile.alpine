@@ -23,7 +23,7 @@ WORKDIR /build/vcpkg
 RUN ./bootstrap-vcpkg.sh
 
 # run vcpkg install command from script
-RUN ./vcpkg install boost-program-options uwebsockets plog --clean-after-build
+RUN ./vcpkg install boost-program-options uwebsockets plog fixed-string --clean-after-build
 
 
 
