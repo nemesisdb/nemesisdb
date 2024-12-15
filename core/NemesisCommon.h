@@ -21,6 +21,7 @@
 #include <plog/Init.h>
 #include <plog/Log.h>
 #include <plog/Appenders/ColorConsoleAppender.h>
+#include <fixed_string.hpp>
 
 
 #define ndb_always_inline inline __attribute__((always_inline))
@@ -97,6 +98,12 @@ namespace nemesis {
   const JsonType JsonArray = JsonType::array_value;
 
 
+  using namespace fixstr;
+
+  template<std::size_t N>
+  using FixedString = fixstr::fixed_string<N>;
+
+  
   // kv
   using cachedkey = std::string;
   using cachedvalue = njson;
@@ -313,39 +320,6 @@ namespace nemesis {
     else
       return {true, njson{}};
   }
-
-
-  template <class ArrayCmds>
-  std::tuple<bool, njson> isArrayCmdValid (  const std::string_view queryRspName, 
-                                                      const njson& req,
-                                                      const ValidateParams& params,
-                                                      std::function<std::tuple<RequestStatus, const std::string_view>(const njson&)> onPostValidate = nullptr)
-  {
-    for (const auto& [member, param] : params)
-    {
-      if (param.variableType && !ArrayCmds::isTypeValid(req.at(member).type()))
-        return {false, createErrorResponse(queryRspName, RequestStatus::ValueTypeInvalid)};
-      else if (!param.variableType)
-      {
-        if (param.isRequired && !req.contains(member))
-          return {false, createErrorResponse(queryRspName, RequestStatus::ParamMissing)};
-        else if (req.contains(member) && req.at(member).type() != param.type)
-          return {false, createErrorResponse(queryRspName, RequestStatus::ValueTypeInvalid)};
-      }
-    }
-
-    if (onPostValidate)
-    { 
-      if (auto [stat, msg] = onPostValidate(req); stat == RequestStatus::Ok)
-        return {true, njson{}};
-      else
-        return {false, createErrorResponse(queryRspName, stat, msg)};
-    }
-    else
-      return {true, njson{}};
-  }
-
-
 } // namespace nemesis
 
 

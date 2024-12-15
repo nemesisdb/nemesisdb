@@ -18,6 +18,8 @@
 #include <core/sv/SvCommands.h>
 #include <core/arr/ArrHandler.h>
 #include <core/arr/ArrCommands.h>
+#include <core/lst/LstHandler.h>
+#include <core/lst/LstCommands.h>
 
 
 
@@ -28,6 +30,7 @@ namespace kvCmds = nemesis::kv::cmds;
 namespace shCmds = nemesis::sh;
 namespace svCmds = nemesis::sv;
 namespace arrCmds = nemesis::arr::cmds;
+namespace lstCmds = nemesis::lst::cmds;
 
 
 
@@ -152,6 +155,7 @@ public:
         m_strArrHandler = std::make_shared<arr::StrArrHandler>();
         m_sortedIntArrHandler = std::make_shared<arr::SortedIntArrHandler>();
         m_sortedStrArrHandler = std::make_shared<arr::SortedStrArrHandler>();
+        m_listHandler = std::make_shared<lst::OLstHandler>();
       }
       catch(const std::exception& e)
       {
@@ -332,7 +336,6 @@ public:
             send(ws, createErrorResponse(command+"_RSP", RequestStatus::CommandSyntax));
           else
           {
-            //const auto type = command.substr(0, pos);
             const auto type = std::string_view(command.substr(0, pos));
             
             if (type == kvCmds::KvIdent)
@@ -363,6 +366,11 @@ public:
             else if (type == arrCmds::SortedStrArrayIdent)
             {
               const Response response = m_sortedStrArrHandler->handle(command, request);
+              send(ws, response.rsp);
+            }
+            else if (type == lstCmds::ListIdent)
+            {
+              const Response response = m_listHandler->handle(command, request);
               send(ws, response.rsp);
             }
             else if (type == shCmds::ShIdent)
@@ -462,6 +470,7 @@ public:
     std::shared_ptr<arr::StrArrHandler> m_strArrHandler;
     std::shared_ptr<arr::SortedIntArrHandler> m_sortedIntArrHandler;
     std::shared_ptr<arr::SortedStrArrHandler> m_sortedStrArrHandler;
+    std::shared_ptr<lst::OLstHandler> m_listHandler;
 
     std::shared_ptr<sh::Sessions> m_sessions;
 };

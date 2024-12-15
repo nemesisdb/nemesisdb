@@ -50,14 +50,19 @@ int main (int argc, char ** argv)
                         {
                           "enabled":true,          
                           "path":"./data"
+                        },
+                        "arrays":
+                        {
+                          "maxCapacity":1000,
+                          "maxResponseSize":1000
                         }
                       })";
 
     Settings::init(njson::parse(s));
     auto& settings = Settings::get();
 
-    if (Settings::get().persistEnabled && !fs::exists(Settings::get().persistPath))
-      fs::create_directories(Settings::get().persistPath);
+    if (settings.persistEnabled && !fs::exists(settings.persistPath))
+      fs::create_directories(settings.persistPath);
       
   #else
     PLOGI << "Reading config";
