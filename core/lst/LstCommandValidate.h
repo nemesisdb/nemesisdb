@@ -83,7 +83,7 @@ namespace nemesis { namespace lst {
   Validity validateGet (const njson& req)
   {
     auto [valid, err] = isValid(Cmds::GetRsp, req.at(Cmds::GetReq), { {Param::required("name", JsonString)},
-                                                                      {Param::required("pos",  JsonUInt)}});
+                                                                      {Param::optional("pos",  JsonUInt)}});
     return valid ? makeValid() : makeInvalid(std::move(err));
   }
 

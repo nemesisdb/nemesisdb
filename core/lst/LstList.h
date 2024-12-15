@@ -4,7 +4,9 @@
 #include <list>
 #include <tuple>
 #include <vector>
+#include <ranges>
 #include <core/NemesisCommon.h>
+
 
 namespace nemesis { namespace lst {
 
@@ -23,6 +25,12 @@ namespace nemesis { namespace lst {
     bool isInbounds(const std::size_t pos) const noexcept
     {
       return pos < m_list.size();
+    }
+
+
+    std::size_t size() const noexcept
+    {
+      return m_list.size();
     }
 
 
@@ -45,6 +53,22 @@ namespace nemesis { namespace lst {
       const auto itPos = std::next(m_list.cbegin(), std::min<std::size_t>(pos, m_list.size()));
       
       return doAdd(itPos, itItems, itItemsEnd);
+    }
+
+
+    void setRange(const njson& items, const std::size_t start)
+    {
+      auto itStart = std::next(m_list.begin(), start);
+      const auto itEnd = std::next(itStart, items.size());
+
+      auto itemsIt = items.array_range().cbegin();
+      std::ranges::subrange range{itStart, itEnd};
+
+      for (auto& item : range)
+      {
+        item = *itemsIt;
+        itemsIt = std::next(itemsIt);
+      }
     }
 
     

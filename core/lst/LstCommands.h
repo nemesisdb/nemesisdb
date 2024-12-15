@@ -38,8 +38,8 @@ namespace nemesis { namespace lst { namespace cmds {
   }
 
 
-  static constexpr FixedString ListIdent     = "LST";
-  static constexpr FixedString ListIdent_    = "LST_";
+  static constexpr FixedString ListIdent     = "OLST";
+  static constexpr FixedString ListIdent_    = "OLST_";
 
 
   template <FixedString Ident>

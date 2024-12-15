@@ -1,3 +1,5 @@
+
+
 #ifndef NDB_CORE_LSTEXECUTOR_H
 #define NDB_CORE_LSTEXECUTOR_H
 
@@ -55,11 +57,11 @@ public:
   }
 
 
-  static Response get (const List& list, const njson& reqBody)
+  static Response setRange (List& list, const njson& reqBody)
   {
-    static const constexpr auto RspName = Cmds::GetRsp.data();
+    static const constexpr auto RspName = Cmds::SetRngRsp.data();
     static const njson Prepared = njson{jsoncons::json_object_arg, {{RspName, njson::object()}}};
-    
+
     Response response{.rsp = Prepared};
     response.rsp[RspName]["st"] = toUnderlying(RequestStatus::Ok);
 
@@ -70,7 +72,39 @@ public:
       if (!list.isInbounds(pos))  [[unlikely]]
         response.rsp[RspName]["st"] = toUnderlying(RequestStatus::Bounds);
       else
-        response.rsp[RspName]["item"] = list.get(pos);
+        list.setRange(reqBody.at("items"), pos);
+    }
+    catch(const std::exception& e)
+    {
+      PLOGE << e.what();
+      response.rsp[RspName]["st"] = toUnderlying(RequestStatus::Unknown);
+    }
+
+    return response;
+  }
+
+
+  static Response get (const List& list, const njson& reqBody)
+  {
+    static const constexpr auto RspName = Cmds::GetRsp.data();
+    static const njson Prepared = njson{jsoncons::json_object_arg, {{RspName, njson::object()}}};
+    
+    Response response{.rsp = Prepared};
+    response.rsp[RspName]["st"] = toUnderlying(RequestStatus::Ok);
+
+    try
+    {
+      std::size_t pos{};
+
+      if (reqBody.contains("pos"))
+        pos = reqBody.at("pos").as<std::size_t>();
+      else if (const auto size = list.size(); size) 
+        pos = size-1; // tail
+
+      if (!list.isInbounds(pos))  [[unlikely]]
+        response.rsp[RspName]["st"] = toUnderlying(RequestStatus::Bounds);
+      else
+        response.rsp[RspName]["item"] = list.get(pos);      
     }
     catch(const std::exception& e)
     {

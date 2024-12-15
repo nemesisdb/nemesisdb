@@ -47,6 +47,8 @@ namespace nemesis { namespace lst {
         {LstQueryType::Add,             Handler{std::bind_front(&LstHandler<T, Cmds>::add,           std::ref(*this))}},
         {LstQueryType::Get,             Handler{std::bind_front(&LstHandler<T, Cmds>::get,           std::ref(*this))}},
         {LstQueryType::GetRng,          Handler{std::bind_front(&LstHandler<T, Cmds>::getRange,      std::ref(*this))}},
+        {LstQueryType::DeleteAll,       Handler{std::bind_front(&LstHandler<T, Cmds>::deleteAll,     std::ref(*this))}},
+        {LstQueryType::SetRng,          Handler{std::bind_front(&LstHandler<T, Cmds>::setRange,      std::ref(*this))}},
       }, 1, alloc);
       
       return h;
@@ -62,6 +64,8 @@ namespace nemesis { namespace lst {
         {Cmds::AddReq,          LstQueryType::Add},
         {Cmds::GetReq,          LstQueryType::Get},
         {Cmds::GetRngReq,       LstQueryType::GetRng},
+        {Cmds::DeleteAllReq,    LstQueryType::DeleteAll},
+        {Cmds::SetRngReq,       LstQueryType::SetRng},
       }, 1, alloc); 
 
       return map;
@@ -153,6 +157,23 @@ namespace nemesis { namespace lst {
     }
 
 
+    ndb_always_inline Response setRange(njson& request)
+    {
+      if (auto [valid, rsp] = validateSetRange<Cmds>(request) ; !valid)
+        return Response{.rsp = std::move(rsp)};
+      else
+      {
+        const auto& body = request.at(Cmds::SetRngReq);
+        if (auto [exist, it] = getList(body); !exist)
+          return Response{.rsp = createErrorResponseNoTkn(Cmds::SetRngRsp, RequestStatus::NotExist)};
+        else
+        {
+          return ListExecutor<ListT, Cmds>::setRange(it->second, body);
+        }
+      }
+    }
+
+
     ndb_always_inline Response get(njson& request)
     {
       if (auto [valid, rsp] = validateGet<Cmds>(request) ; !valid)
@@ -186,6 +207,27 @@ namespace nemesis { namespace lst {
     }
 
 
+    ndb_always_inline Response deleteAll(njson& request)
+    {
+      static const constexpr auto RspName = Cmds::DeleteAllRsp.data();
+      static const njson Prepared = njson{jsoncons::json_object_arg, {{RspName, njson::object()}}};
+      
+      Response response{.rsp = Prepared};
+      response.rsp[RspName]["st"] = toUnderlying(RequestStatus::Ok);
+      
+      try
+      {
+        m_lists.clear();
+      }
+      catch(const std::exception& e)
+      {
+        PLOGE << e.what();
+        response.rsp[RspName]["st"] = toUnderlying(RequestStatus::Unknown);
+      }
+
+      return response;
+    }
+
   private:
 
     std::tuple<bool, Iterator> getList (const std::string& name, const njson& cmd)
@@ -194,11 +236,13 @@ namespace nemesis { namespace lst {
       return {it != m_lists.end(), it};
     }
 
+
     std::tuple<bool, Iterator> getList (const njson& cmd)
     {
       const auto& name = cmd.at("name").as_string();
       return getList(name, cmd);
     }
+
 
     bool listExist (const std::string& name)
     {

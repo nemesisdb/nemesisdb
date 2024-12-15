@@ -88,6 +88,8 @@ class ShCmd:
   KEYS_RSP      = 'SH_KEYS_RSP'
 
 
+#region Arrays
+
 class CommonArrCmds:
   def __init__(self, ident: str):
     self.CREATE_REQ, self.CREATE_RSP          = self.make(ident, "CREATE")
@@ -146,3 +148,34 @@ class SortedIArrCmd(SortedArrCmds):
 class SortedStrArrCmd(SortedArrCmds):
   def __init__(self):
     super().__init__('SSTRARR')
+
+  #endregion
+
+
+  #region Lists
+class CommonListCmds:
+  def __init__(self, ident: str):
+    self.CREATE_REQ, self.CREATE_RSP          = self.make(ident, "CREATE")
+    self.DELETE_REQ, self.DELETE_RSP          = self.make(ident, "DELETE")
+    self.DELETE_ALL_REQ, self.DELETE_ALL_RSP  = self.make(ident, "DELETE_ALL")
+    self.ADD_REQ, self.ADD_RSP                = self.make(ident, "ADD")
+    self.SET_RNG_REQ, self.SET_RNG_RSP        = self.make(ident, "SET_RNG")
+    self.GET_REQ, self.GET_RSP                = self.make(ident, "GET")
+    self.GET_RNG_REQ, self.GET_RNG_RSP        = self.make(ident, "GET_RNG")
+    self.LEN_REQ, self.LEN_RSP                = self.make(ident, "LEN")
+    self.EXIST_REQ, self.EXIST_RSP            = self.make(ident, "EXIST")
+    self.CLEAR_REQ, self.CLEAR_RSP            = self.make(ident, "CLEAR")
+
+
+  def make(self, ident: str, cmd: str):
+    req = ident+'_'+cmd
+    return (req, req+'_RSP')
+  
+  
+class ObjListCmds(CommonListCmds):
+  def __init__(self):
+    super().__init__('OLST')
+
+
+
+  #endregion

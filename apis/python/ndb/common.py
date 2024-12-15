@@ -42,3 +42,8 @@ def raise_if_lt (value: int, maxValue:int, msg: str):
 def raise_if_equal (val1, val2, msg:str):
   if val1 == val2:  
     raise ValueError(msg)
+  
+
+def raise_if_not (condition, msg:str, errorType = ValueError):
+  if not condition:
+    raise errorType(msg)

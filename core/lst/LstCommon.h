@@ -10,7 +10,9 @@ namespace nemesis {  namespace lst {
   enum class LstQueryType : std::uint8_t
   { 
     Create,
+    DeleteAll,
     Add,
+    SetRng,
     Get,
     GetRng
   };

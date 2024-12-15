@@ -1,6 +1,7 @@
 from unittest import IsolatedAsyncioTestCase
 from ndb.client import NdbClient
 from ndb.arrays import ObjArrays, IntArrays, SortedIntArrays, StringArrays, SortedStrArrays
+from ndb.lists import ObjLists
 
 
 class NDBTest(IsolatedAsyncioTestCase):
@@ -55,3 +56,10 @@ class SortedStrArrayTest(NDBTest):
     await super().asyncSetUp()
     self.arrays = SortedStrArrays(self.client)
     await self.arrays.delete_all()
+
+
+class ObjListTest(NDBTest):
+  async def asyncSetUp(self):
+    await super().asyncSetUp()
+    self.lists = ObjLists(self.client)
+    await self.lists.delete_all() # TODO
