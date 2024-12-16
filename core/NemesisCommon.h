@@ -277,12 +277,19 @@ namespace nemesis {
   }
 
 
-  static inline njson createErrorResponseNoTkn (const std::string_view commandRsp, const RequestStatus status, const std::string_view msg = "")
+  static inline njson createErrorResponseNoTkn (const std::string_view commandRsp, const RequestStatus status, const std::string_view msg = "") noexcept
   {
-    njson rsp;
-    rsp[commandRsp]["st"] = toUnderlying(status);
-    rsp[commandRsp]["m"] = msg;
-    return rsp;
+    try
+    {
+      njson rsp;
+      rsp[commandRsp]["st"] = toUnderlying(status);
+      rsp[commandRsp]["m"] = msg;
+      return rsp;
+    }
+    catch(const std::exception& e)
+    {
+      return njson{};
+    }
   }
 
 

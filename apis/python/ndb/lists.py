@@ -36,6 +36,12 @@ class _Lists(ABC):
     # don't check status: EXIST response has 'st' success if list exists or NotExist otherwise (so not an error)
     rsp = await self.client.sendCmd(self.cmds.EXIST_REQ, self.cmds.EXIST_RSP, {'name':name}, checkStatus=False)
     return rsp[self.cmds.EXIST_RSP][Fields.STATUS] == StValues.ST_SUCCESS
+  
+
+  async def length(self, name: str) -> int:
+    raise_if_empty(name)
+    rsp = await self.client.sendCmd(self.cmds.LEN_REQ, self.cmds.LEN_RSP, {'name':name})
+    return rsp[self.cmds.LEN_RSP]['len']
 
 
   async def remove(self, name: str, start: int, stop = None) -> int:

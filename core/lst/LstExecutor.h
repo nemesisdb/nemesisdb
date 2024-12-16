@@ -161,10 +161,11 @@ public:
     static const njson Prepared = njson{jsoncons::json_object_arg, {{RspName, njson::object()}}};
     
     Response response{.rsp = Prepared};
-    response.rsp[RspName]["st"] = toUnderlying(RequestStatus::Ok);
 
     try
     {
+      response.rsp[RspName]["st"] = toUnderlying(RequestStatus::Ok);
+
       if (reqBody.contains("head") && reqBody.at("head").as_bool())
         list.removeHead();
       
@@ -179,6 +180,28 @@ public:
       }
 
       response.rsp[RspName]["size"] = list.size();
+    }
+    catch(const std::exception& e)
+    {
+      PLOGE << e.what();
+      response.rsp[RspName]["st"] = toUnderlying(RequestStatus::Unknown);
+    }
+
+    return response;
+  }
+
+
+  static Response length (const List& list, const njson& reqBody)
+  {
+    static const constexpr auto RspName = Cmds::LenRsp.data();
+    static const njson Prepared = njson{jsoncons::json_object_arg, {{RspName, njson::object()}}};
+    
+    Response response{.rsp = Prepared};
+
+    try
+    {
+      response.rsp[RspName]["st"] = toUnderlying(RequestStatus::Ok);
+      response.rsp[RspName]["len"] = list.size();
     }
     catch(const std::exception& e)
     {
