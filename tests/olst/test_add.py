@@ -8,7 +8,9 @@ class ListAdd(ObjListTest):
 
   async def test_add_nopos_empty(self):
     await self.lists.create('l1')
-    await self.lists.add('l1', [{'a':0}])
+    
+    pos = await self.lists.add('l1', [{'a':0}])
+    self.assertEqual(pos,0)
 
     values = await self.lists.get_rng('l1', 0)
     self.assertEqual(len(values), 1)
@@ -17,8 +19,12 @@ class ListAdd(ObjListTest):
 
   async def test_add_nopos(self):
     await self.lists.create('l2')
-    await self.lists.add('l2', [{'a':0}])
-    await self.lists.add('l2', [{'b':0}])
+
+    pos = await self.lists.add('l2', [{'a':0}])
+    self.assertEqual(pos,0)
+
+    pos = await self.lists.add('l2', [{'b':0}])
+    self.assertEqual(pos,1)
 
     values = await self.lists.get_rng('l2', 0)
     self.assertEqual(len(values), 2)
@@ -29,7 +35,9 @@ class ListAdd(ObjListTest):
     await self.lists.create('l3')
     await self.lists.add('l3', [{'b':0}])
 
-    await self.lists.add('l3', [{'a':0}], pos=0)
+    pos = await self.lists.add('l3', [{'a':0}], pos=0)
+    self.assertEqual(pos,0)
+
     values = await self.lists.get_rng('l3', 0)
     self.assertEqual(len(values), 2)
     self.assertListEqual([{'a':0}, {'b':0}], values)
@@ -40,7 +48,9 @@ class ListAdd(ObjListTest):
     await self.lists.create(name)
     await self.lists.add(name, [{'a':0}, {'b':0}])
 
-    await self.lists.add(name, [{'c':0}], pos=2)
+    pos = await self.lists.add(name, [{'c':0}], pos=2)
+    self.assertEqual(pos,2)
+
     values = await self.lists.get_rng(name, 0)
     self.assertEqual(len(values), 3)
     self.assertListEqual([{'a':0}, {'b':0}, {'c':0}], values)
@@ -51,11 +61,12 @@ class ListAdd(ObjListTest):
     await self.lists.create(name)
     await self.lists.add(name, [{'a':0}, {'c':0}])
 
-    await self.lists.add(name, [{'b':0}], pos=1)
+    pos = await self.lists.add(name, [{'b':0}], pos=1)
+    self.assertEqual(pos,1)
+
     values = await self.lists.get_rng(name, 0)
     self.assertEqual(len(values), 3)
     self.assertListEqual([{'a':0}, {'b':0}, {'c':0}], values)
-
 
 
   async def test_add_pos_bounds(self):
@@ -63,7 +74,9 @@ class ListAdd(ObjListTest):
     await self.lists.create(name)
     await self.lists.add(name, [{'a':0}, {'b':0}])
 
-    await self.lists.add(name, [{'c':0}], pos=100)
+    pos = await self.lists.add(name, [{'c':0}], pos=100)
+    self.assertEqual(pos,2)
+
     values = await self.lists.get_rng(name, 0)
     self.assertEqual(len(values), 3)
     self.assertListEqual([{'a':0}, {'b':0}, {'c':0}], values)
@@ -102,7 +115,8 @@ class ListAdd(ObjListTest):
     await self.lists.create(name)
     await self.lists.add(name, [{'a':0}, {'b':0}])
 
-    await self.lists.add_tail(name, [{'c':0}])
+    pos = await self.lists.add_tail(name, [{'c':0}])
+    self.assertEqual(pos, 2)
     values = await self.lists.get_rng(name, 0)
     self.assertEqual(len(values), 3)
     self.assertListEqual([{'a':0}, {'b':0}, {'c':0}], values)

@@ -1,4 +1,4 @@
-from ndb.commands import (StValues, ObjListCmds)
+from ndb.commands import (StValues, Fields, ObjListCmds)
 from ndb.client import NdbClient
 from ndb.common import raise_if, raise_if_empty, raise_if_equal, raise_if_lt, raise_if_not
 from typing import List
@@ -25,6 +25,18 @@ class _Lists(ABC):
   async def delete_all(self) -> None:
     await self.client.sendCmd(self.cmds.DELETE_ALL_REQ, self.cmds.DELETE_ALL_RSP, {})
 
+  
+  async def delete(self, name: str) -> None:
+    raise_if_empty(name)
+    await self.client.sendCmd(self.cmds.DELETE_REQ, self.cmds.DELETE_RSP, {'name':name})
+
+  
+  async def exist(self, name: str) -> None:
+    raise_if_empty(name)
+    # don't check status: EXIST response has 'st' success if list exists or NotExist otherwise (so not an error)
+    rsp = await self.client.sendCmd(self.cmds.EXIST_REQ, self.cmds.EXIST_RSP, {'name':name}, checkStatus=False)
+    return rsp[self.cmds.EXIST_RSP][Fields.STATUS] == StValues.ST_SUCCESS
+
 
 class ObjLists(_Lists):
   def __init__(self, client):
@@ -36,9 +48,8 @@ class ObjLists(_Lists):
     return ObjListCmds()
   
   
-  # NOTE: server contains 'pos' and 'size' in the response. Not returned here because
-  #       it may be removed later
-  async def add(self, name: str, items: List[dict], pos = None) -> None:
+  # NOTE: server contains 'pos' and 'size' in the response. Only return pos here.
+  async def add(self, name: str, items: List[dict], pos = None) -> int:
     raise_if_empty(name)
     if pos is None:
       args = {'name':name, 'items':items}      
@@ -47,7 +58,8 @@ class ObjLists(_Lists):
       raise_if_lt(pos, 0, 'pos < 0')    
       args = {'name':name, 'items':items, 'pos':pos}
 
-    await self.client.sendCmd(self.cmds.ADD_REQ, self.cmds.ADD_RSP, args)
+    rsp = await self.client.sendCmd(self.cmds.ADD_REQ, self.cmds.ADD_RSP, args)
+    return rsp[self.cmds.ADD_RSP]['pos']
 
 
   async def add_head(self, name: str, items: List[dict]) -> None:
@@ -55,7 +67,7 @@ class ObjLists(_Lists):
 
 
   async def add_tail(self, name: str, items: List[dict]) -> None:
-    await self.add(name, items, pos=None)
+    return await self.add(name, items, pos=None)
 
 
   async def set_rng(self, name: str, items: List[dict], start: int) -> None:

@@ -44,10 +44,12 @@ namespace nemesis { namespace lst {
       HandlerPmrMap h (
       {
         {LstQueryType::Create,          Handler{std::bind_front(&LstHandler<T, Cmds>::create,        std::ref(*this))}},
+        {LstQueryType::Delete,          Handler{std::bind_front(&LstHandler<T, Cmds>::deleteList,    std::ref(*this))}},
+        {LstQueryType::DeleteAll,       Handler{std::bind_front(&LstHandler<T, Cmds>::deleteAll,     std::ref(*this))}},
+        {LstQueryType::Exist,           Handler{std::bind_front(&LstHandler<T, Cmds>::exist,         std::ref(*this))}},
         {LstQueryType::Add,             Handler{std::bind_front(&LstHandler<T, Cmds>::add,           std::ref(*this))}},
         {LstQueryType::Get,             Handler{std::bind_front(&LstHandler<T, Cmds>::get,           std::ref(*this))}},
-        {LstQueryType::GetRng,          Handler{std::bind_front(&LstHandler<T, Cmds>::getRange,      std::ref(*this))}},
-        {LstQueryType::DeleteAll,       Handler{std::bind_front(&LstHandler<T, Cmds>::deleteAll,     std::ref(*this))}},
+        {LstQueryType::GetRng,          Handler{std::bind_front(&LstHandler<T, Cmds>::getRange,      std::ref(*this))}},        
         {LstQueryType::SetRng,          Handler{std::bind_front(&LstHandler<T, Cmds>::setRange,      std::ref(*this))}},
       }, 1, alloc);
       
@@ -61,10 +63,12 @@ namespace nemesis { namespace lst {
       QueryTypePmrMap map ( 
       {  
         {Cmds::CreateReq,       LstQueryType::Create},
+        {Cmds::DeleteReq,       LstQueryType::Delete},
+        {Cmds::DeleteAllReq,    LstQueryType::DeleteAll},
+        {Cmds::ExistReq,        LstQueryType::Exist},
         {Cmds::AddReq,          LstQueryType::Add},
         {Cmds::GetReq,          LstQueryType::Get},
-        {Cmds::GetRngReq,       LstQueryType::GetRng},
-        {Cmds::DeleteAllReq,    LstQueryType::DeleteAll},
+        {Cmds::GetRngReq,       LstQueryType::GetRng},        
         {Cmds::SetRngReq,       LstQueryType::SetRng},
       }, 1, alloc); 
 
@@ -117,8 +121,8 @@ namespace nemesis { namespace lst {
       response.rsp = Prepared;
       response.rsp[RspName]["st"] = toUnderlying(RequestStatus::Ok);
 
-      if (auto [valid, rsp] = validateCreate<Cmds>(request) ; !valid)
-        return Response{.rsp = std::move(rsp)};
+      if (auto [valid, err] = validateCreate<Cmds>(request) ; !valid)
+        return Response{.rsp = std::move(err)};
       else if (const auto& name = reqBody.at("name").as_string(); listExist(name))
         return Response{.rsp = createErrorResponseNoTkn(RspName, RequestStatus::Duplicate)};
       else
@@ -140,10 +144,64 @@ namespace nemesis { namespace lst {
     }
 
     
+    ndb_always_inline Response deleteList(njson& request)
+    {
+      static constexpr auto ReqName = Cmds::DeleteReq.data();
+      static constexpr auto RspName = Cmds::DeleteRsp.data();
+      static const njson Prepared {jsoncons::json_object_arg, {{RspName, njson::object()}}};
+
+      const auto& reqBody = request.at(ReqName);
+
+      Response response;
+      response.rsp = Prepared;
+      response.rsp[RspName]["st"] = toUnderlying(RequestStatus::Ok);
+
+      if (auto [valid, err] = validateDelete<Cmds>(request) ; !valid)
+        return Response{.rsp = std::move(err)};
+      else if (const auto& name = reqBody.at("name").as_string(); !listExist(name))
+        return Response{.rsp = createErrorResponseNoTkn(RspName, RequestStatus::NotExist)};
+      else
+      {
+        try
+        {
+          m_lists.erase(name);
+        }
+        catch(const std::exception& e)
+        {
+          PLOGE << __PRETTY_FUNCTION__ << e.what();
+          response.rsp[RspName]["st"] = toUnderlying(RequestStatus::Unknown);
+        }
+
+        return response;
+      }
+    }
+
+
+    ndb_always_inline Response exist(njson& request)
+    {
+      static constexpr auto ReqName = Cmds::ExistReq.data();
+      static constexpr auto RspName = Cmds::ExistRsp.data();
+      static const njson Prepared {jsoncons::json_object_arg, {{RspName, njson::object()}}};
+
+      if (auto [valid, err] = validateExist<Cmds>(request) ; !valid)
+        return Response{.rsp = std::move(err)};
+      else
+      {
+        const auto& name = request.at(ReqName).at("name").as_string();
+        const auto status = toUnderlying(listExist(name) ? RequestStatus::Ok : RequestStatus::NotExist);
+
+        njson rsp {jsoncons::json_object_arg, {{RspName, njson{}}}}; 
+        rsp[RspName]["st"] = status;
+
+        return Response { .rsp = std::move(rsp)};
+      }
+    }
+
+
     ndb_always_inline Response add(njson& request)
     {
-      if (auto [valid, rsp] = validateAdd<Cmds>(request) ; !valid)
-        return Response{.rsp = std::move(rsp)};
+      if (auto [valid, err] = validateAdd<Cmds>(request) ; !valid)
+        return Response{.rsp = std::move(err)};
       else
       {
         const auto& body = request.at(Cmds::AddReq);
@@ -159,8 +217,8 @@ namespace nemesis { namespace lst {
 
     ndb_always_inline Response setRange(njson& request)
     {
-      if (auto [valid, rsp] = validateSetRange<Cmds>(request) ; !valid)
-        return Response{.rsp = std::move(rsp)};
+      if (auto [valid, err] = validateSetRange<Cmds>(request) ; !valid)
+        return Response{.rsp = std::move(err)};
       else
       {
         const auto& body = request.at(Cmds::SetRngReq);
@@ -176,8 +234,8 @@ namespace nemesis { namespace lst {
 
     ndb_always_inline Response get(njson& request)
     {
-      if (auto [valid, rsp] = validateGet<Cmds>(request) ; !valid)
-        return Response{.rsp = std::move(rsp)};
+      if (auto [valid, err] = validateGet<Cmds>(request) ; !valid)
+        return Response{.rsp = std::move(err)};
       else
       {
         const auto& body = request.at(Cmds::GetReq);
@@ -193,8 +251,8 @@ namespace nemesis { namespace lst {
 
     ndb_always_inline Response getRange(njson& request)
     {
-      if (auto [valid, rsp] = validateGetRange<Cmds>(request) ; !valid)
-        return Response{.rsp = std::move(rsp)};
+      if (auto [valid, err] = validateGetRange<Cmds>(request) ; !valid)
+        return Response{.rsp = std::move(err)};
       else
       {
         const auto& body = request.at(Cmds::GetRngReq);

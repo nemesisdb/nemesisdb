@@ -22,15 +22,20 @@ Default settings:
 
 ```json title="default.jsonc"
 {
-  "version":5,
+  "version":6,
+  "core":0,
   "ip":"127.0.0.1",
   "port":1987,
-  "core":0,
-  "maxPayload":1024,
+  "maxPayload":8192,
   "persist":
   {
     "enabled":false,
     "path":"./data"
+  },
+  "arrays":
+  {
+    "maxCapacity":10000,
+    "maxResponseSize":10000
   }
 }
 ```
@@ -47,6 +52,7 @@ Default settings:
 |core|unsigned int|The core to assign this instance.<br/> If not present or above maximum available, defaults to `0`|N|
 |maxPayload|unsigned int|The max size, in bytes, of the WebSocket payload|Y|
 |persist|object|Settings for saving/loading keys|Y|
+|arrays|object|Settings for arrays|Y|
 
 
 <br/>
@@ -70,5 +76,12 @@ This is the **logical** core, which may differ from physical cores when hyperthr
 
 See [SH_SAVE](../api/sessions/sh-save) or [KV_SAVE](../api/kv/kv-save) for more.
 
+<br/>
 
+## arrays
+
+|Param|Type|Description|
+|:---|:---:|:---|
+|maxCapacity|unsigned int|Arrays are fixed size so this is the max number of elements in the array, __not__ max number of bytes.|
+|maxResponseSize|unsigned int|Maximum number of items permitted in a response that returns multiple items, such as `get_range()`.<br/>If this is less than `maxCapacity` it is possible that not all items will be returned|
 

@@ -33,7 +33,22 @@ namespace nemesis { namespace lst {
   Validity validateCreate (const njson& request)
   {
     auto [valid, err] = isValid(Cmds::CreateRsp, request.at(Cmds::CreateReq), { {Param::required("name", JsonString)} });
+    return valid ? makeValid() : makeInvalid(std::move(err));
+  }
 
+
+  template<typename Cmds>
+  Validity validateDelete (const njson& request)
+  {
+    auto [valid, err] = isValid(Cmds::DeleteRsp, request.at(Cmds::DeleteReq), { {Param::required("name", JsonString)} });
+    return valid ? makeValid() : makeInvalid(std::move(err));
+  }
+
+
+  template<typename Cmds>
+  Validity validateExist (const njson& req)
+  {
+    auto [valid, err] = isValid(Cmds::ExistRsp, req.at(Cmds::ExistReq), { {Param::required("name", JsonString)}});
     return valid ? makeValid() : makeInvalid(std::move(err));
   }
 
@@ -131,14 +146,6 @@ namespace nemesis { namespace lst {
   Validity validateLength (const njson& req)
   {
     auto [valid, err] = isValid(Cmds::LenRsp, req.at(Cmds::LenReq.data()), { {Param::required("name", JsonString)}});
-    return valid ? makeValid() : makeInvalid(std::move(err));
-  }
-
-
-  template<typename Cmds>
-  Validity validateExist (const njson& req)
-  {
-    auto [valid, err] = isValid(Cmds::ExistRsp, req.at(Cmds::ExistReq), { {Param::required("name", JsonString)}});
     return valid ? makeValid() : makeInvalid(std::move(err));
   }
 
