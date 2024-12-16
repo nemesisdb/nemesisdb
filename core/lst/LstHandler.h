@@ -51,6 +51,7 @@ namespace nemesis { namespace lst {
         {LstQueryType::Get,             Handler{std::bind_front(&LstHandler<T, Cmds>::get,           std::ref(*this))}},
         {LstQueryType::GetRng,          Handler{std::bind_front(&LstHandler<T, Cmds>::getRange,      std::ref(*this))}},        
         {LstQueryType::SetRng,          Handler{std::bind_front(&LstHandler<T, Cmds>::setRange,      std::ref(*this))}},
+        {LstQueryType::Remove,          Handler{std::bind_front(&LstHandler<T, Cmds>::remove,        std::ref(*this))}},
       }, 1, alloc);
       
       return h;
@@ -70,6 +71,7 @@ namespace nemesis { namespace lst {
         {Cmds::GetReq,          LstQueryType::Get},
         {Cmds::GetRngReq,       LstQueryType::GetRng},        
         {Cmds::SetRngReq,       LstQueryType::SetRng},
+        {Cmds::RemoveReq,       LstQueryType::Remove},
       }, 1, alloc); 
 
       return map;
@@ -285,6 +287,23 @@ namespace nemesis { namespace lst {
 
       return response;
     }
+
+
+    ndb_always_inline Response remove(njson& request)
+    {
+      if (auto [valid, err] = validateRemove<Cmds>(request) ; !valid)
+        return Response{.rsp = std::move(err)};
+      else
+      {
+        const auto& body = request.at(Cmds::RemoveReq);
+        if (auto [exist, it] = getList(body) ; !exist)
+          return Response{.rsp = createErrorResponseNoTkn(Cmds::RemoveRsp, RequestStatus::NotExist)};
+        else
+          return ListExecutor<ListT, Cmds>::remove(it->second, body);
+      }
+      return Response{};
+    }
+
 
   private:
 

@@ -38,6 +38,31 @@ class _Lists(ABC):
     return rsp[self.cmds.EXIST_RSP][Fields.STATUS] == StValues.ST_SUCCESS
 
 
+  async def remove(self, name: str, start: int, stop = None) -> int:
+    raise_if_empty(name)
+    raise_if_lt(start, 0, 'start < 0')
+    if stop is None:
+      args = {'name':name, 'rng':[start]}
+    else:
+      raise_if_lt(stop, 0, 'stop < 0')
+      args = {'name':name, 'rng':[start, stop]}
+
+    rsp = await self.client.sendCmd(self.cmds.RMV_REQ, self.cmds.RMV_RSP, args)
+    return rsp[self.cmds.RMV_RSP]['size']
+
+
+  async def remove_head(self, name: str) -> int:
+    raise_if_empty(name)
+    rsp = await self.client.sendCmd(self.cmds.RMV_REQ, self.cmds.RMV_RSP, {'name':name, 'head':True})
+    return rsp[self.cmds.RMV_RSP]['size']
+  
+
+  async def remove_tail(self, name: str) -> int:
+    raise_if_empty(name)
+    rsp = await self.client.sendCmd(self.cmds.RMV_REQ, self.cmds.RMV_RSP, {'name':name, 'tail':True})
+    return rsp[self.cmds.RMV_RSP]['size']
+  
+
 class ObjLists(_Lists):
   def __init__(self, client):
     super().__init__(client)

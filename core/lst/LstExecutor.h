@@ -16,6 +16,16 @@ namespace nemesis { namespace lst {
 template<class List, class Cmds>
 class ListExecutor
 {
+  // TODO use in ArrExecutor
+  struct Rng
+  {    
+    std::size_t start;
+    std::size_t stop{};
+    bool hasStop{false};
+    bool hasRng{false};
+  };
+
+
 public:
   using ListValueT = List::ValueT;
 
@@ -126,20 +136,14 @@ public:
 
     try
     {
-      const auto& rng = reqBody.at("rng").array_range().cbegin();
-      const auto start = rng->as<std::size_t>();
+      const auto [start, stop, hasStop, hasRange] = getRange(reqBody, "rng");
 
       if (!list.isInbounds(start))
         response.rsp[RspName]["items"] = njson::make_array();
-      else if (const auto rngSize = reqBody.at("rng").size(); rngSize == 1)
-      {
+      else if (!hasStop)
         response.rsp[RspName]["items"] = list.getRange(start);
-      }
       else
-      {
-        const auto stop = std::next(rng)->as<std::size_t>();
         response.rsp[RspName]["items"] = list.getRange(start, stop);
-      }
     }
     catch(const std::exception& e)
     {
@@ -149,6 +153,69 @@ public:
 
     return response;
   }
+
+
+  static Response remove (List& list, const njson& reqBody)
+  {
+    static const constexpr auto RspName = Cmds::RemoveRsp.data();
+    static const njson Prepared = njson{jsoncons::json_object_arg, {{RspName, njson::object()}}};
+    
+    Response response{.rsp = Prepared};
+    response.rsp[RspName]["st"] = toUnderlying(RequestStatus::Ok);
+
+    try
+    {
+      if (reqBody.contains("head") && reqBody.at("head").as_bool())
+        list.removeHead();
+      
+      if (reqBody.contains("tail") && reqBody.at("tail").as_bool())
+        list.removeTail();
+
+      const auto [start, stop, hasStop, hasRange] = getRange(reqBody, "rng");
+
+      if (hasRange)
+      {
+        hasStop ? list.remove(start, stop) : list.remove(start);
+      }
+
+      response.rsp[RspName]["size"] = list.size();
+    }
+    catch(const std::exception& e)
+    {
+      PLOGE << e.what();
+      response.rsp[RspName]["st"] = toUnderlying(RequestStatus::Unknown);
+    }
+
+    return response;
+  }
+
+private:
+  static Rng getRange(const njson& body, const std::string_view name)
+  {
+    if (!body.contains(name))
+      return {};
+    else
+    {
+      Rng result{.hasRng = true};
+
+      const auto& element = body.at(name);
+      const auto& rng = element.array_range();
+      
+      result.start = rng.cbegin()->as<std::size_t>();
+      
+      if (element.size() == 2)
+      {
+        result.stop = rng.crbegin()->as<std::size_t>();
+        result.hasStop = true;
+      }
+
+      return result;
+    }      
+  }
+
+private:
+  
+
 };
 
 }

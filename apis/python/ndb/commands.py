@@ -149,10 +149,10 @@ class SortedStrArrCmd(SortedArrCmds):
   def __init__(self):
     super().__init__('SSTRARR')
 
-  #endregion
+#endregion
 
 
-  #region Lists
+#region Lists
 class CommonListCmds:
   def __init__(self, ident: str):
     self.CREATE_REQ, self.CREATE_RSP          = self.make(ident, "CREATE")
@@ -164,7 +164,7 @@ class CommonListCmds:
     self.GET_RNG_REQ, self.GET_RNG_RSP        = self.make(ident, "GET_RNG")
     self.LEN_REQ, self.LEN_RSP                = self.make(ident, "LEN")
     self.EXIST_REQ, self.EXIST_RSP            = self.make(ident, "EXIST")
-    self.CLEAR_REQ, self.CLEAR_RSP            = self.make(ident, "CLEAR")
+    self.RMV_REQ, self.RMV_RSP                = self.make(ident, "RMV")
 
 
   def make(self, ident: str, cmd: str):
@@ -178,4 +178,4 @@ class ObjListCmds(CommonListCmds):
 
 
 
-  #endregion
+#endregion

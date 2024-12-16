@@ -21,7 +21,7 @@ namespace nemesis { namespace lst { namespace cmds {
   static constexpr FixedString GetRng     = "GET_RNG";
   static constexpr FixedString Len        = "LEN";
   static constexpr FixedString Swap       = "SWAP";
-  static constexpr FixedString Clear      = "CLEAR";
+  static constexpr FixedString Remove     = "RMV";
   static constexpr FixedString Intersect  = "INTERSECT";
   
 
@@ -45,6 +45,21 @@ namespace nemesis { namespace lst { namespace cmds {
   template <FixedString Ident>
   struct LstCmds
   {
+    // TODO consider (and for Arrays):
+    //
+    // template<FixedString Ident_, FixedString Name>
+    // struct Cmd
+    // {
+    //   static constexpr auto req = makeReq<Ident_,Name>();
+    //   static constexpr auto rsp = makeRsp<Ident_,Name>();
+    // };
+    // ...
+    // 
+    // static constexpr Cmd create = Cmd<Ident_, Create>;
+    // ...
+    //
+    // and access from handler/executor: Cmds::create::req
+
     static constexpr auto CreateReq     = makeReq<Ident,Create>();
     static constexpr auto CreateRsp     = makeRsp<Ident,Create>();
     static constexpr auto DeleteReq     = makeReq<Ident,Delete>();
@@ -63,8 +78,8 @@ namespace nemesis { namespace lst { namespace cmds {
     static constexpr auto GetRsp        = makeRsp<Ident,Get>();
     static constexpr auto GetRngReq     = makeReq<Ident,GetRng>();
     static constexpr auto GetRngRsp     = makeRsp<Ident,GetRng>();
-    static constexpr auto ClearReq      = makeReq<Ident,Clear>();
-    static constexpr auto ClearRsp      = makeRsp<Ident,Clear>();
+    static constexpr auto RemoveReq     = makeReq<Ident,Remove>();
+    static constexpr auto RemoveRsp     = makeRsp<Ident,Remove>();
     static constexpr auto SwapReq       = makeReq<Ident,Swap>();
     static constexpr auto SwapRsp       = makeRsp<Ident,Swap>();
     static constexpr auto IntersectReq  = makeReq<Ident,Intersect>();    

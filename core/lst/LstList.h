@@ -101,6 +101,39 @@ namespace nemesis { namespace lst {
       return result;
     }
 
+
+    void removeTail()
+    {
+      m_list.pop_back();
+    }
+
+
+    void removeHead()
+    {
+      m_list.pop_front();
+    }
+
+
+    void remove(const std::size_t start)
+    {
+      remove(start, m_list.size());
+    }
+
+
+    void remove(const std::size_t start, const std::size_t end)
+    {
+      if (start == 0 && end == m_list.size())
+        m_list.clear();
+      else
+      {
+        const auto itStart = std::next(m_list.begin(), start);
+        const auto itEnd = std::next(m_list.begin(), std::min<std::size_t>(m_list.size(), end));
+      
+        m_list.erase(itStart, itEnd);
+      }
+    }
+
+
   private:
     // Returns (pos, size)
     std::tuple<std::size_t, std::size_t> doAdd(const ConstIt dstIt, const std::vector<T>::const_iterator srcIt,
