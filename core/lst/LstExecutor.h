@@ -136,7 +136,7 @@ public:
 
     try
     {
-      const auto [start, stop, hasStop, hasRange] = getRange(reqBody, "rng");
+      const auto [start, stop, hasStop, hasRange] = rangeFromRequest(reqBody, "rng");
 
       if (!list.isInbounds(start))
         response.rsp[RspName]["items"] = njson::make_array();
@@ -172,7 +172,7 @@ public:
       if (reqBody.contains("tail") && reqBody.at("tail").as_bool())
         list.removeTail();
 
-      const auto [start, stop, hasStop, hasRange] = getRange(reqBody, "rng");
+      const auto [start, stop, hasStop, hasRange] = rangeFromRequest(reqBody, "rng");
 
       if (hasRange)
       {
@@ -212,8 +212,9 @@ public:
     return response;
   }
 
+
 private:
-  static Rng getRange(const njson& body, const std::string_view name)
+  static Rng rangeFromRequest(const njson& body, const std::string_view name)
   {
     if (!body.contains(name))
       return {};

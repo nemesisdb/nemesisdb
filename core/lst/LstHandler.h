@@ -28,17 +28,15 @@ namespace nemesis { namespace lst {
     using Lists = ankerl::unordered_dense::map<std::string, List<T>>; 
     using Iterator = ankerl::unordered_dense::map<std::string, List<T>>::iterator;
     using ConstIterator = ankerl::unordered_dense::map<std::string, List<T>>::const_iterator;
-
-
-  public:
-    LstHandler() = default;
-
     using HandlerPmrMap = ankerl::unordered_dense::pmr::map<LstQueryType, Handler>;
     using QueryTypePmrMap = ankerl::unordered_dense::pmr::map<std::string_view, LstQueryType>;
 
 
+  public:
+
+    // these are handled by this class, rather than by the executor
     template<class Alloc>
-    auto createHandlers (Alloc& alloc)
+    auto createLocalHandlers (Alloc& alloc)
     {
       // initialise with 1 bucket and pmr allocator
       HandlerPmrMap h (
@@ -47,12 +45,6 @@ namespace nemesis { namespace lst {
         {LstQueryType::Delete,          Handler{std::bind_front(&LstHandler<T, Cmds>::deleteList,    std::ref(*this))}},
         {LstQueryType::DeleteAll,       Handler{std::bind_front(&LstHandler<T, Cmds>::deleteAll,     std::ref(*this))}},
         {LstQueryType::Exist,           Handler{std::bind_front(&LstHandler<T, Cmds>::exist,         std::ref(*this))}},
-        {LstQueryType::Len,             Handler{std::bind_front(&LstHandler<T, Cmds>::length,        std::ref(*this))}},
-        {LstQueryType::Add,             Handler{std::bind_front(&LstHandler<T, Cmds>::add,           std::ref(*this))}},
-        {LstQueryType::Get,             Handler{std::bind_front(&LstHandler<T, Cmds>::get,           std::ref(*this))}},
-        {LstQueryType::GetRng,          Handler{std::bind_front(&LstHandler<T, Cmds>::getRange,      std::ref(*this))}},        
-        {LstQueryType::SetRng,          Handler{std::bind_front(&LstHandler<T, Cmds>::setRange,      std::ref(*this))}},
-        {LstQueryType::Remove,          Handler{std::bind_front(&LstHandler<T, Cmds>::remove,        std::ref(*this))}},
       }, 1, alloc);
       
       return h;
@@ -80,40 +72,122 @@ namespace nemesis { namespace lst {
     }
 
 
-  public:
-    
+    struct ValidateExecute
+    {
+      std::function<lst::Validity(const njson&)> validate;
+      std::function<Response(ListT&, const njson&)> execute;
+      std::string_view rspName;
+    };
 
-    Response handle(const std::string_view& command, njson& request)
+
+    const std::map<LstQueryType, ValidateExecute> ExecutorHandlers = 
+    {
+      { LstQueryType::Add,      ValidateExecute
+                                {
+                                  .validate = validateAdd<Cmds>,
+                                  .execute = ListExecutor<ListT, Cmds>::add,
+                                  .rspName = Cmds::create.rsp.data()
+                                }
+      },
+      {
+        LstQueryType::SetRng,   ValidateExecute
+                                {
+                                  .validate = validateSetRange<Cmds>,
+                                  .execute = ListExecutor<ListT, Cmds>::setRange,
+                                  .rspName = Cmds::setRng.rsp.data()
+                                }
+      },
+      {
+        LstQueryType::Get,      ValidateExecute
+                                {
+                                  .validate = validateGet<Cmds>,
+                                  .execute = ListExecutor<ListT, Cmds>::get,
+                                  .rspName = Cmds::get.rsp.data()
+                                }
+      },
+      {
+        LstQueryType::GetRng,   ValidateExecute
+                                {
+                                  .validate = validateGetRange<Cmds>,
+                                  .execute = ListExecutor<ListT, Cmds>::getRange,
+                                  .rspName = Cmds::getRng.rsp.data()
+                                }
+      },
+      {
+        LstQueryType::Remove,   ValidateExecute
+                                {
+                                  .validate = validateRemove<Cmds>,
+                                  .execute = ListExecutor<ListT, Cmds>::remove,
+                                  .rspName = Cmds::remove.rsp.data()
+                                }
+      },
+      {
+        LstQueryType::Len,      ValidateExecute
+                                {
+                                  .validate = validateLength<Cmds>,
+                                  .execute = ListExecutor<ListT, Cmds>::length,
+                                  .rspName = Cmds::len.rsp.data()
+                                }
+      }
+    };
+    
+  
+  public:
+
+
+    Response handle(const std::string_view& reqName, njson& request)
     {      
       static PmrResource<typename HandlerPmrMap::value_type, 1024U> handlerPmrResource; // TODO buffer size
       static PmrResource<typename HandlerPmrMap::value_type, 1024U> queryTypeNamePmrResource; // TODO buffer size
-      static const HandlerPmrMap MsgHandlers{createHandlers(handlerPmrResource.getAlloc())}; 
       static const QueryTypePmrMap QueryNameToType{createQueryTypeNameMap(queryTypeNamePmrResource.getAlloc())};
-      
+      static const HandlerPmrMap LocalHandlers{createLocalHandlers(handlerPmrResource.getAlloc())};
 
-      if (const auto itType = QueryNameToType.find(command) ; itType == QueryNameToType.cend())
+      if (const auto itType = QueryNameToType.find(reqName) ; itType == QueryNameToType.cend())
         return Response {.rsp = createErrorResponse(RequestStatus::CommandNotExist)};
-      else if (const auto handlerIt = MsgHandlers.find(itType->second) ; handlerIt == MsgHandlers.cend())
-        return Response {.rsp = createErrorResponse(RequestStatus::CommandDisabled)};
-      else
+      else if (const auto handlerIt = LocalHandlers.find(itType->second) ; handlerIt != LocalHandlers.cend())
       {
+        // handled locally
         try
         {
           auto& handler = handlerIt->second;
           return handler(request);
         }
-        catch (const std::exception& kex)
+        catch (const std::exception& ex)
         {
-          PLOGF << kex.what() ;
+          PLOGE << ex.what() ;
+          return Response {.rsp = createErrorResponse(RequestStatus::Unknown)};
         }
-
-        return Response {.rsp = createErrorResponse(RequestStatus::Unknown)};
       }
+      else if (const auto handlerIt = ExecutorHandlers.find(itType->second) ; handlerIt != ExecutorHandlers.cend())
+      {
+        return validateAndExecute(handlerIt, request, reqName);
+      }
+      else
+        return Response {.rsp = createErrorResponse(RequestStatus::CommandNotExist)};
     }
 
 
   private:
-    ndb_always_inline Response create(njson& request)
+
+    Response validateAndExecute(const std::map<LstQueryType, ValidateExecute>::const_iterator it, const njson& request, const std::string_view reqName)
+    {
+      const auto& validateExecute = it->second;
+
+      if (auto const[valid, err] = validateExecute.validate(request); !valid)
+        return Response{.rsp = std::move(err)};
+      else
+      {
+        const auto& body = request.at(reqName);
+
+        if (auto [exist, itNameToList] = getList(body); !exist)
+          return Response{.rsp = createErrorResponseNoTkn(validateExecute.rspName, RequestStatus::NotExist)};
+        else
+          return validateExecute.execute(itNameToList->second, body);
+      }
+    }
+
+
+    Response create(njson& request)
     {
       static constexpr auto ReqName = Cmds::create.req.data();
       static constexpr auto RspName = Cmds::create.rsp.data();
@@ -148,7 +222,7 @@ namespace nemesis { namespace lst {
     }
 
     
-    ndb_always_inline Response deleteList(njson& request)
+    Response deleteList(njson& request)
     {
       static constexpr auto ReqName = Cmds::del.req.data();
       static constexpr auto RspName = Cmds::del.rsp.data();
@@ -181,141 +255,7 @@ namespace nemesis { namespace lst {
     }
 
 
-    ndb_always_inline Response exist(njson& request)
-    {
-      static constexpr auto ReqName = Cmds::exist.req.data();
-      static constexpr auto RspName = Cmds::exist.rsp.data();
-      static const njson Prepared {jsoncons::json_object_arg, {{RspName, njson::object()}}};
-
-      if (auto [valid, err] = validateExist<Cmds>(request) ; !valid)
-        return Response{.rsp = std::move(err)};
-      else
-      {
-        const auto& name = request.at(ReqName).at("name").as_string();
-        const auto status = toUnderlying(listExist(name) ? RequestStatus::Ok : RequestStatus::NotExist);
-
-        njson rsp {jsoncons::json_object_arg, {{RspName, njson{}}}}; 
-        rsp[RspName]["st"] = status;
-
-        return Response { .rsp = std::move(rsp)};
-      }
-    }
-
-
-    ndb_always_inline Response length(njson& request)
-    {
-      static const constexpr auto ReqName = Cmds::len.req.data();
-      static const constexpr auto RspName = Cmds::len.rsp.data();
-
-      static const njson Prepared = njson{jsoncons::json_object_arg, {{RspName, njson::object()}}};
-      
-      try
-      {
-        if (auto [valid, err] = validateLength<Cmds>(request) ; !valid)
-          return Response{.rsp = std::move(err)};
-        else
-        {
-          const auto& body = request.at(ReqName);
-          if (auto [exist, it] = getList(body); !exist)
-            return Response{.rsp = createErrorResponseNoTkn(RspName, RequestStatus::NotExist)};
-          else
-            return ListExecutor<ListT, Cmds>::length(it->second, body);
-        }
-      }
-      catch(const std::exception& e)
-      {
-        PLOGE << e.what();
-        return Response{.rsp = createErrorResponseNoTkn(RspName, RequestStatus::Unknown)};
-      }
-    }
-
-
-    ndb_always_inline Response add(njson& request)
-    {
-      static constexpr auto ReqName = Cmds::add.req.data();
-      static constexpr auto RspName = Cmds::add.rsp.data();
-
-      if (auto [valid, err] = validateAdd<Cmds>(request) ; !valid)
-        return Response{.rsp = std::move(err)};
-      else
-      {
-        const auto& body = request.at(ReqName);
-        if (auto [exist, it] = getList(body); !exist)
-          return Response{.rsp = createErrorResponseNoTkn(RspName, RequestStatus::NotExist)};
-        else
-        {
-          return ListExecutor<ListT, Cmds>::add(it->second, body);
-        }
-      }
-    }
-
-
-    ndb_always_inline Response setRange(njson& request)
-    {
-      static const constexpr auto ReqName = Cmds::setRng.req.data();
-      static const constexpr auto RspName = Cmds::setRng.rsp.data();
-
-      if (auto [valid, err] = validateSetRange<Cmds>(request) ; !valid)
-        return Response{.rsp = std::move(err)};
-      else
-      {
-        const auto& body = request.at(ReqName);
-        if (auto [exist, it] = getList(body); !exist)
-          return Response{.rsp = createErrorResponseNoTkn(RspName, RequestStatus::NotExist)};
-        else
-        {
-          return ListExecutor<ListT, Cmds>::setRange(it->second, body);
-        }
-      }
-    }
-
-
-    ndb_always_inline Response get(njson& request)
-    {
-      static const constexpr auto ReqName = Cmds::get.req.data();
-      static const constexpr auto RspName = Cmds::get.rsp.data();
-
-      if (auto [valid, err] = validateGet<Cmds>(request) ; !valid)
-        return Response{.rsp = std::move(err)};
-      else
-      {
-        try
-        {
-          const auto& body = request.at(ReqName);
-          if (auto [exist, it] = getList(body); !exist)
-            return Response{.rsp = createErrorResponseNoTkn(RspName, RequestStatus::NotExist)};
-          else
-            return ListExecutor<ListT, Cmds>::get(it->second, body);
-        }
-        catch(const std::exception& e)
-        {
-          PLOGE << e.what();
-          return Response{.rsp = createErrorResponseNoTkn(RspName, RequestStatus::Unknown)};
-        }
-      }
-    }
-
-
-    ndb_always_inline Response getRange(njson& request)
-    {
-      static const constexpr auto ReqName = Cmds::getRng.req.data();
-      static const constexpr auto RspName = Cmds::getRng.rsp.data();
-
-      if (auto [valid, err] = validateGetRange<Cmds>(request) ; !valid)
-        return Response{.rsp = std::move(err)};
-      else
-      {
-        const auto& body = request.at(ReqName);
-        if (auto [exist, it] = getList(body) ; !exist)
-          return Response{.rsp = createErrorResponseNoTkn(RspName, RequestStatus::NotExist)};
-        else
-          return ListExecutor<ListT, Cmds>::getRange(it->second, body);
-      }
-      return Response{};
-    }
-
-
-    ndb_always_inline Response deleteAll(njson& request)
+    Response deleteAll(njson& request)
     {
       static const constexpr auto RspName = Cmds::deleteAll.rsp.data();
       static const njson Prepared = njson{jsoncons::json_object_arg, {{RspName, njson::object()}}};
@@ -337,27 +277,30 @@ namespace nemesis { namespace lst {
     }
 
 
-    ndb_always_inline Response remove(njson& request)
+    Response exist(njson& request)
     {
-      static const constexpr auto ReqName = Cmds::remove.req.data();
-      static const constexpr auto RspName = Cmds::remove.rsp.data();
+      static constexpr auto ReqName = Cmds::exist.req.data();
+      static constexpr auto RspName = Cmds::exist.rsp.data();
+      static const njson Prepared {jsoncons::json_object_arg, {{RspName, njson::object()}}};
 
-      if (auto [valid, err] = validateRemove<Cmds>(request) ; !valid)
+      if (auto [valid, err] = validateExist<Cmds>(request) ; !valid)
         return Response{.rsp = std::move(err)};
       else
       {
-        const auto& body = request.at(ReqName);
-        if (auto [exist, it] = getList(body) ; !exist)
-          return Response{.rsp = createErrorResponseNoTkn(RspName, RequestStatus::NotExist)};
-        else
-          return ListExecutor<ListT, Cmds>::remove(it->second, body);
+        const auto& name = request.at(ReqName).at("name").as_string();
+        const auto status = toUnderlying(listExist(name) ? RequestStatus::Ok : RequestStatus::NotExist);
+
+        njson rsp {jsoncons::json_object_arg, {{RspName, njson{}}}}; 
+        rsp[RspName]["st"] = status;
+
+        return Response { .rsp = std::move(rsp)};
       }
-      return Response{};
     }
 
-
+  
   private:
 
+    // helpers
     std::tuple<bool, Iterator> getList (const std::string& name, const njson& cmd)
     {
       const auto it = m_lists.find(name);
