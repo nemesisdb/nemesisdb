@@ -143,10 +143,12 @@ namespace nemesis { namespace lst {
       static const HandlerPmrMap LocalHandlers{createLocalHandlers(handlerPmrResource.getAlloc())};
 
       if (const auto itType = QueryNameToType.find(reqName) ; itType == QueryNameToType.cend())
+      {
         return Response {.rsp = createErrorResponse(RequestStatus::CommandNotExist)};
+      }
       else if (const auto handlerIt = LocalHandlers.find(itType->second) ; handlerIt != LocalHandlers.cend())
       {
-        // handled locally
+        // not sent to the executor
         try
         {
           auto& handler = handlerIt->second;
@@ -163,7 +165,9 @@ namespace nemesis { namespace lst {
         return validateAndExecute(handlerIt, request, reqName);
       }
       else
+      {
         return Response {.rsp = createErrorResponse(RequestStatus::CommandNotExist)};
+      }
     }
 
 
