@@ -329,10 +329,13 @@ class NdbClient:
   
 
   def _raise_if_invalid(self, rsp: dict, cmdRsp: str, expected = StValues.ST_SUCCESS):
-    if rsp[cmdRsp][Fields.STATUS] != expected:
-      raise ResponseError(rsp[cmdRsp])
-    
-    logger.debug(cmdRsp + ' ' + ('Response Ok'))
+    if cmdRsp in rsp:
+      if rsp[cmdRsp][Fields.STATUS] != expected:
+        raise ResponseError(rsp[cmdRsp])
+    elif 'ERR' in rsp:  # 'ERR' returned if the server cannot return the original request
+      raise ResponseError(rsp['ERR'])
+    else:
+      logger.debug(cmdRsp + ' ' + ('Response Ok'))
 
 
   def _raise_if_empty (self, value: str):

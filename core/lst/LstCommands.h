@@ -9,8 +9,6 @@ namespace nemesis { namespace lst { namespace cmds {
   // For now, there is only an Object List. For
   // ints or strings, there are arrays
 
-  static constexpr FixedString Rsp        = "_RSP";  
-
   static constexpr FixedString Create     = "CREATE";  
   static constexpr FixedString Delete     = "DELETE";
   static constexpr FixedString DeleteAll  = "DELETE_ALL";
@@ -25,6 +23,11 @@ namespace nemesis { namespace lst { namespace cmds {
   static constexpr FixedString Intersect  = "INTERSECT";
   
 
+  static constexpr FixedString ListIdent   = "OLST";
+  static constexpr FixedString ListIdent_  = "OLST_";
+  static constexpr FixedString Rsp         = "_RSP";  
+
+
   template<FixedString Ident, FixedString Cmd>
   static consteval auto makeReq() -> decltype(Ident+Cmd)
   {
@@ -38,52 +41,28 @@ namespace nemesis { namespace lst { namespace cmds {
   }
 
 
-  static constexpr FixedString ListIdent     = "OLST";
-  static constexpr FixedString ListIdent_    = "OLST_";
-
-
   template <FixedString Ident>
   struct LstCmds
   {
-    // TODO consider (and for Arrays):
-    //
-    // template<FixedString Ident_, FixedString Name>
-    // struct Cmd
-    // {
-    //   static constexpr auto req = makeReq<Ident_,Name>();
-    //   static constexpr auto rsp = makeRsp<Ident_,Name>();
-    // };
-    // ...
-    // 
-    // static constexpr Cmd create = Cmd<Ident_, Create>;
-    // ...
-    //
-    // and access from handler/executor: Cmds::create::req
+    template<FixedString Name>
+    struct Cmd
+    {
+      static constexpr auto req = makeReq<Ident, Name>();
+      static constexpr auto rsp = makeRsp<Ident, Name>();
+    };
 
-    static constexpr auto CreateReq     = makeReq<Ident,Create>();
-    static constexpr auto CreateRsp     = makeRsp<Ident,Create>();
-    static constexpr auto DeleteReq     = makeReq<Ident,Delete>();
-    static constexpr auto DeleteRsp     = makeRsp<Ident,Delete>();
-    static constexpr auto DeleteAllReq  = makeReq<Ident,DeleteAll>();
-    static constexpr auto DeleteAllRsp  = makeRsp<Ident,DeleteAll>();
-    static constexpr auto ExistReq      = makeReq<Ident,Exist>();
-    static constexpr auto ExistRsp      = makeRsp<Ident,Exist>();
-    static constexpr auto LenReq        = makeReq<Ident,Len>();
-    static constexpr auto LenRsp        = makeRsp<Ident,Len>();
-    static constexpr auto AddReq        = makeReq<Ident,Add>();
-    static constexpr auto AddRsp        = makeRsp<Ident,Add>();
-    static constexpr auto SetRngReq     = makeReq<Ident,SetRng>();
-    static constexpr auto SetRngRsp     = makeRsp<Ident,SetRng>();
-    static constexpr auto GetReq        = makeReq<Ident,Get>();
-    static constexpr auto GetRsp        = makeRsp<Ident,Get>();
-    static constexpr auto GetRngReq     = makeReq<Ident,GetRng>();
-    static constexpr auto GetRngRsp     = makeRsp<Ident,GetRng>();
-    static constexpr auto RemoveReq     = makeReq<Ident,Remove>();
-    static constexpr auto RemoveRsp     = makeRsp<Ident,Remove>();
-    static constexpr auto SwapReq       = makeReq<Ident,Swap>();
-    static constexpr auto SwapRsp       = makeRsp<Ident,Swap>();
-    static constexpr auto IntersectReq  = makeReq<Ident,Intersect>();    
-    static constexpr auto IntersectRsp  = makeRsp<Ident,Intersect>();
+    // TODO do for Arrays:
+    static constexpr Cmd<Create> create {};    
+    static constexpr Cmd<Delete> del{}; // or delete_ ?
+    static constexpr Cmd<DeleteAll> deleteAll{}; 
+    static constexpr Cmd<Exist> exist{};
+    static constexpr Cmd<Len> len{};
+    static constexpr Cmd<Add> add {};
+    static constexpr Cmd<SetRng> setRng{};
+    static constexpr Cmd<Get> get{};
+    static constexpr Cmd<GetRng> getRng{};
+    static constexpr Cmd<Remove> remove{};
+    static constexpr Cmd<Swap> swap{};  // TODO not implemented
   };
 
   

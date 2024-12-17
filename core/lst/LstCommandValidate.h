@@ -32,7 +32,7 @@ namespace nemesis { namespace lst {
   template<typename Cmds>
   static Validity validateCreate (const njson& request)
   {
-    auto [valid, err] = isValid(Cmds::CreateRsp, request.at(Cmds::CreateReq), { {Param::required("name", JsonString)} });
+    auto [valid, err] = isValid(Cmds::create.rsp, request.at(Cmds::create.req), { {Param::required("name", JsonString)} });
     return valid ? makeValid() : makeInvalid(std::move(err));
   }
 
@@ -40,7 +40,7 @@ namespace nemesis { namespace lst {
   template<typename Cmds>
   static Validity validateDelete (const njson& request)
   {
-    auto [valid, err] = isValid(Cmds::DeleteRsp, request.at(Cmds::DeleteReq), { {Param::required("name", JsonString)} });
+    auto [valid, err] = isValid(Cmds::del.rsp, request.at(Cmds::del.req), { {Param::required("name", JsonString)} });
     return valid ? makeValid() : makeInvalid(std::move(err));
   }
 
@@ -48,7 +48,7 @@ namespace nemesis { namespace lst {
   template<typename Cmds>
   static Validity validateExist (const njson& req)
   {
-    auto [valid, err] = isValid(Cmds::ExistRsp, req.at(Cmds::ExistReq), { {Param::required("name", JsonString)}});
+    auto [valid, err] = isValid(Cmds::exist.rsp, req.at(Cmds::exist.req), { {Param::required("name", JsonString)}});
     return valid ? makeValid() : makeInvalid(std::move(err));
   }
 
@@ -88,10 +88,10 @@ namespace nemesis { namespace lst {
       }
     };
 
-    auto [valid, err] = isValid(Cmds::RemoveRsp, req.at(Cmds::RemoveReq), { {Param::required("name", JsonString)},
-                                                                            {Param::optional("head", JsonBool)},
-                                                                            {Param::optional("tail", JsonBool)},
-                                                                            {Param::optional("rng", JsonArray)}}, checkRng);
+    auto [valid, err] = isValid(Cmds::remove.rsp, req.at(Cmds::remove.req), { {Param::required("name", JsonString)},
+                                                                              {Param::optional("head", JsonBool)},
+                                                                              {Param::optional("tail", JsonBool)},
+                                                                              {Param::optional("rng", JsonArray)}}, checkRng);
     return valid ? makeValid() : makeInvalid(std::move(err));
   }
 
@@ -108,9 +108,9 @@ namespace nemesis { namespace lst {
       return {RequestStatus::Ok, ""};
     };
 
-    auto[valid, err] = isValid(Cmds::AddRsp, req.at(Cmds::AddReq), {  {Param::required("name", JsonString)},
-                                                                            {Param::optional("pos",  JsonUInt)},
-                                                                            {Param::required("items", JsonArray)} }, itemsValid);
+    auto[valid, err] = isValid(Cmds::add.rsp, req.at(Cmds::add.req), {  {Param::required("name", JsonString)},
+                                                                          {Param::optional("pos",  JsonUInt)},
+                                                                          {Param::required("items", JsonArray)} }, itemsValid);
     return valid ? makeValid() : makeInvalid(std::move(err));
   }
 
@@ -132,7 +132,7 @@ namespace nemesis { namespace lst {
                              {Param::required("items", JsonArray)},
                              {Param::required("pos", JsonUInt)}};
 
-    auto [valid, err] = isValid(Cmds::SetRngRsp, req.at(Cmds::SetRngReq), params, itemsValid);
+    auto [valid, err] = isValid(Cmds::setRng.rsp, req.at(Cmds::setRng.req), params, itemsValid);
     return valid ? makeValid() : makeInvalid(std::move(err));
   }
 
@@ -140,8 +140,8 @@ namespace nemesis { namespace lst {
   template<typename Cmds>
   static Validity validateGet (const njson& req)
   {
-    auto [valid, err] = isValid(Cmds::GetRsp, req.at(Cmds::GetReq), { {Param::required("name", JsonString)},
-                                                                      {Param::optional("pos",  JsonUInt)}});
+    auto [valid, err] = isValid(Cmds::get.rsp, req.at(Cmds::get.req), { {Param::required("name", JsonString)},
+                                                                        {Param::optional("pos",  JsonUInt)}});
     return valid ? makeValid() : makeInvalid(std::move(err));
   }
 
@@ -179,8 +179,8 @@ namespace nemesis { namespace lst {
     };
 
 
-    auto [valid, err] = isValid(Cmds::GetRngRsp, req.at(Cmds::GetRngReq), { {Param::required("name", JsonString)},
-                                                                            {Param::required("rng",  JsonArray)}}, checkRng);
+    auto [valid, err] = isValid(Cmds::getRng.rsp, req.at(Cmds::getRng.req), { {Param::required("name", JsonString)},
+                                                                              {Param::required("rng",  JsonArray)}}, checkRng);
     return valid ? makeValid() : makeInvalid(std::move(err));
   }
 
@@ -188,7 +188,7 @@ namespace nemesis { namespace lst {
   template<typename Cmds>
   static Validity validateLength (const njson& req)
   {
-    auto [valid, err] = isValid(Cmds::LenRsp, req.at(Cmds::LenReq.data()), { {Param::required("name", JsonString)}});
+    auto [valid, err] = isValid(Cmds::len.rsp, req.at(Cmds::len.req), { {Param::required("name", JsonString)}});
     return valid ? makeValid() : makeInvalid(std::move(err));
   }
 
@@ -219,20 +219,20 @@ namespace nemesis { namespace lst {
       return {RequestStatus::Ok, ""};
     };
 
-    auto [valid, err] = isValid(Cmds::ClearRsp, req.at(Cmds::ClearReq), { {Param::required("name", JsonString)},
+    auto [valid, err] = isValid(Cmds::clear.rsp, req.at(Cmds::clear.req), { {Param::required("name", JsonString)},
                                                                           {Param::required("rng", JsonArray)}}, checkRange);
     return valid ? makeValid() : makeInvalid(std::move(err));
   }
 
 
-  template<typename Cmds>
-  static Validity validateSwap (const njson& req)
-  {
-    auto [valid, err] = isValid(Cmds::SwapRsp, req.at(Cmds::SwapReq), { {Param::required("name", JsonString)},
-                                                                        {Param::required("posA", JsonUInt)},
-                                                                        {Param::required("posB", JsonUInt)}});
-    return valid ? makeValid() : makeInvalid(std::move(err));
-  }
+  // template<typename Cmds>
+  // static Validity validateSwap (const njson& req)
+  // {
+  //   auto [valid, err] = isValid(Cmds::swap.rsp, req.at(Cmds::SwapReq), { {Param::required("name", JsonString)},
+  //                                                                       {Param::required("posA", JsonUInt)},
+  //                                                                       {Param::required("posB", JsonUInt)}});
+  //   return valid ? makeValid() : makeInvalid(std::move(err));
+  // }
 }
 }
 

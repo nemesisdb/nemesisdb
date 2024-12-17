@@ -32,7 +32,7 @@ public:
 
   static Response add (List& list, const njson& reqBody)
   {
-    static const constexpr auto RspName = Cmds::AddRsp.data();
+    static const constexpr auto RspName = Cmds::add.rsp.data();
     static const njson Prepared = njson{jsoncons::json_object_arg, {{RspName, njson::object()}}};
     
     Response response{.rsp = Prepared};
@@ -69,7 +69,7 @@ public:
 
   static Response setRange (List& list, const njson& reqBody)
   {
-    static const constexpr auto RspName = Cmds::SetRngRsp.data();
+    static const constexpr auto RspName = Cmds::setRng.rsp.data();
     static const njson Prepared = njson{jsoncons::json_object_arg, {{RspName, njson::object()}}};
 
     Response response{.rsp = Prepared};
@@ -96,7 +96,7 @@ public:
 
   static Response get (const List& list, const njson& reqBody)
   {
-    static const constexpr auto RspName = Cmds::GetRsp.data();
+    static const constexpr auto RspName = Cmds::get.rsp.data();
     static const njson Prepared = njson{jsoncons::json_object_arg, {{RspName, njson::object()}}};
     
     Response response{.rsp = Prepared};
@@ -128,7 +128,7 @@ public:
 
   static Response getRange (const List& list, const njson& reqBody)
   {
-    static const constexpr auto RspName = Cmds::GetRngRsp.data();
+    static const constexpr auto RspName = Cmds::getRng.rsp.data();
     static const njson Prepared = njson{jsoncons::json_object_arg, {{RspName, njson::object()}}};
     
     Response response{.rsp = Prepared};
@@ -157,7 +157,7 @@ public:
 
   static Response remove (List& list, const njson& reqBody)
   {
-    static const constexpr auto RspName = Cmds::RemoveRsp.data();
+    static const constexpr auto RspName = Cmds::remove.rsp.data();
     static const njson Prepared = njson{jsoncons::json_object_arg, {{RspName, njson::object()}}};
     
     Response response{.rsp = Prepared};
@@ -193,7 +193,7 @@ public:
 
   static Response length (const List& list, const njson& reqBody)
   {
-    static const constexpr auto RspName = Cmds::LenRsp.data();
+    static const constexpr auto RspName = Cmds::len.rsp.data();
     static const njson Prepared = njson{jsoncons::json_object_arg, {{RspName, njson::object()}}};
     
     Response response{.rsp = Prepared};

@@ -64,16 +64,16 @@ namespace nemesis { namespace lst {
     {
       QueryTypePmrMap map ( 
       {  
-        {Cmds::CreateReq,       LstQueryType::Create},
-        {Cmds::DeleteReq,       LstQueryType::Delete},
-        {Cmds::DeleteAllReq,    LstQueryType::DeleteAll},
-        {Cmds::ExistReq,        LstQueryType::Exist},
-        {Cmds::LenReq,          LstQueryType::Len},
-        {Cmds::AddReq,          LstQueryType::Add},
-        {Cmds::GetReq,          LstQueryType::Get},
-        {Cmds::GetRngReq,       LstQueryType::GetRng},        
-        {Cmds::SetRngReq,       LstQueryType::SetRng},
-        {Cmds::RemoveReq,       LstQueryType::Remove},
+        {Cmds::create.req,      LstQueryType::Create},
+        {Cmds::del.req,         LstQueryType::Delete},
+        {Cmds::deleteAll.req,   LstQueryType::DeleteAll},
+        {Cmds::exist.req,       LstQueryType::Exist},
+        {Cmds::len.req,         LstQueryType::Len},
+        {Cmds::add.req,         LstQueryType::Add},
+        {Cmds::get.req,         LstQueryType::Get},
+        {Cmds::getRng.req,      LstQueryType::GetRng},        
+        {Cmds::setRng.req,      LstQueryType::SetRng},
+        {Cmds::remove.req,      LstQueryType::Remove},
       }, 1, alloc); 
 
       return map;
@@ -115,8 +115,8 @@ namespace nemesis { namespace lst {
   private:
     ndb_always_inline Response create(njson& request)
     {
-      static constexpr auto ReqName = Cmds::CreateReq.data();
-      static constexpr auto RspName = Cmds::CreateRsp.data();
+      static constexpr auto ReqName = Cmds::create.req.data();
+      static constexpr auto RspName = Cmds::create.rsp.data();
       static const njson Prepared {jsoncons::json_object_arg, {{RspName, njson::object()}}};
 
       const auto& reqBody = request.at(ReqName);
@@ -150,8 +150,8 @@ namespace nemesis { namespace lst {
     
     ndb_always_inline Response deleteList(njson& request)
     {
-      static constexpr auto ReqName = Cmds::DeleteReq.data();
-      static constexpr auto RspName = Cmds::DeleteRsp.data();
+      static constexpr auto ReqName = Cmds::del.req.data();
+      static constexpr auto RspName = Cmds::del.rsp.data();
       static const njson Prepared {jsoncons::json_object_arg, {{RspName, njson::object()}}};
 
       const auto& reqBody = request.at(ReqName);
@@ -183,8 +183,8 @@ namespace nemesis { namespace lst {
 
     ndb_always_inline Response exist(njson& request)
     {
-      static constexpr auto ReqName = Cmds::ExistReq.data();
-      static constexpr auto RspName = Cmds::ExistRsp.data();
+      static constexpr auto ReqName = Cmds::exist.req.data();
+      static constexpr auto RspName = Cmds::exist.rsp.data();
       static const njson Prepared {jsoncons::json_object_arg, {{RspName, njson::object()}}};
 
       if (auto [valid, err] = validateExist<Cmds>(request) ; !valid)
@@ -204,7 +204,9 @@ namespace nemesis { namespace lst {
 
     ndb_always_inline Response length(njson& request)
     {
-      static const constexpr auto RspName = Cmds::LenRsp.data();
+      static const constexpr auto ReqName = Cmds::len.req.data();
+      static const constexpr auto RspName = Cmds::len.rsp.data();
+
       static const njson Prepared = njson{jsoncons::json_object_arg, {{RspName, njson::object()}}};
       
       try
@@ -213,7 +215,7 @@ namespace nemesis { namespace lst {
           return Response{.rsp = std::move(err)};
         else
         {
-          const auto& body = request.at(Cmds::LenReq);
+          const auto& body = request.at(ReqName);
           if (auto [exist, it] = getList(body); !exist)
             return Response{.rsp = createErrorResponseNoTkn(RspName, RequestStatus::NotExist)};
           else
@@ -230,13 +232,16 @@ namespace nemesis { namespace lst {
 
     ndb_always_inline Response add(njson& request)
     {
+      static constexpr auto ReqName = Cmds::add.req.data();
+      static constexpr auto RspName = Cmds::add.rsp.data();
+
       if (auto [valid, err] = validateAdd<Cmds>(request) ; !valid)
         return Response{.rsp = std::move(err)};
       else
       {
-        const auto& body = request.at(Cmds::AddReq);
+        const auto& body = request.at(ReqName);
         if (auto [exist, it] = getList(body); !exist)
-          return Response{.rsp = createErrorResponseNoTkn(Cmds::AddRsp, RequestStatus::NotExist)};
+          return Response{.rsp = createErrorResponseNoTkn(RspName, RequestStatus::NotExist)};
         else
         {
           return ListExecutor<ListT, Cmds>::add(it->second, body);
@@ -247,13 +252,16 @@ namespace nemesis { namespace lst {
 
     ndb_always_inline Response setRange(njson& request)
     {
+      static const constexpr auto ReqName = Cmds::setRng.req.data();
+      static const constexpr auto RspName = Cmds::setRng.rsp.data();
+
       if (auto [valid, err] = validateSetRange<Cmds>(request) ; !valid)
         return Response{.rsp = std::move(err)};
       else
       {
-        const auto& body = request.at(Cmds::SetRngReq);
+        const auto& body = request.at(ReqName);
         if (auto [exist, it] = getList(body); !exist)
-          return Response{.rsp = createErrorResponseNoTkn(Cmds::SetRngRsp, RequestStatus::NotExist)};
+          return Response{.rsp = createErrorResponseNoTkn(RspName, RequestStatus::NotExist)};
         else
         {
           return ListExecutor<ListT, Cmds>::setRange(it->second, body);
@@ -264,22 +272,25 @@ namespace nemesis { namespace lst {
 
     ndb_always_inline Response get(njson& request)
     {
+      static const constexpr auto ReqName = Cmds::get.req.data();
+      static const constexpr auto RspName = Cmds::get.rsp.data();
+
       if (auto [valid, err] = validateGet<Cmds>(request) ; !valid)
         return Response{.rsp = std::move(err)};
       else
       {
         try
         {
-          const auto& body = request.at(Cmds::GetReq);
+          const auto& body = request.at(ReqName);
           if (auto [exist, it] = getList(body); !exist)
-            return Response{.rsp = createErrorResponseNoTkn(Cmds::GetRsp, RequestStatus::NotExist)};
+            return Response{.rsp = createErrorResponseNoTkn(RspName, RequestStatus::NotExist)};
           else
             return ListExecutor<ListT, Cmds>::get(it->second, body);
         }
         catch(const std::exception& e)
         {
           PLOGE << e.what();
-          return Response{.rsp = createErrorResponseNoTkn(Cmds::GetRsp, RequestStatus::Unknown)};
+          return Response{.rsp = createErrorResponseNoTkn(RspName, RequestStatus::Unknown)};
         }
       }
     }
@@ -287,13 +298,16 @@ namespace nemesis { namespace lst {
 
     ndb_always_inline Response getRange(njson& request)
     {
+      static const constexpr auto ReqName = Cmds::getRng.req.data();
+      static const constexpr auto RspName = Cmds::getRng.rsp.data();
+
       if (auto [valid, err] = validateGetRange<Cmds>(request) ; !valid)
         return Response{.rsp = std::move(err)};
       else
       {
-        const auto& body = request.at(Cmds::GetRngReq);
+        const auto& body = request.at(ReqName);
         if (auto [exist, it] = getList(body) ; !exist)
-          return Response{.rsp = createErrorResponseNoTkn(Cmds::GetRngRsp, RequestStatus::NotExist)};
+          return Response{.rsp = createErrorResponseNoTkn(RspName, RequestStatus::NotExist)};
         else
           return ListExecutor<ListT, Cmds>::getRange(it->second, body);
       }
@@ -303,7 +317,7 @@ namespace nemesis { namespace lst {
 
     ndb_always_inline Response deleteAll(njson& request)
     {
-      static const constexpr auto RspName = Cmds::DeleteAllRsp.data();
+      static const constexpr auto RspName = Cmds::deleteAll.rsp.data();
       static const njson Prepared = njson{jsoncons::json_object_arg, {{RspName, njson::object()}}};
       
       Response response{.rsp = Prepared};
@@ -325,13 +339,16 @@ namespace nemesis { namespace lst {
 
     ndb_always_inline Response remove(njson& request)
     {
+      static const constexpr auto ReqName = Cmds::remove.req.data();
+      static const constexpr auto RspName = Cmds::remove.rsp.data();
+
       if (auto [valid, err] = validateRemove<Cmds>(request) ; !valid)
         return Response{.rsp = std::move(err)};
       else
       {
-        const auto& body = request.at(Cmds::RemoveReq);
+        const auto& body = request.at(ReqName);
         if (auto [exist, it] = getList(body) ; !exist)
-          return Response{.rsp = createErrorResponseNoTkn(Cmds::RemoveRsp, RequestStatus::NotExist)};
+          return Response{.rsp = createErrorResponseNoTkn(RspName, RequestStatus::NotExist)};
         else
           return ListExecutor<ListT, Cmds>::remove(it->second, body);
       }
