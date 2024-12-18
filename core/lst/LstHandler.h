@@ -136,7 +136,6 @@ namespace nemesis { namespace lst {
   
   public:
 
-
     Response handle(const std::string_view& reqName, njson& request)
     {      
       static PmrResource<typename HandlerPmrMap::value_type, 1024U> handlerPmrResource; // TODO buffer size

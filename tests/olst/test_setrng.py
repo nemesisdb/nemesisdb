@@ -42,7 +42,6 @@ class ListSetRng(ObjListTest):
     with self.assertRaises(ResponseError):
       await self.lists.set_rng(name, [{'f':0}, {'g':0}], start=1)
 
-
     await self.lists.add(name, [{'a':0}, {'b': 0}])
     with self.assertRaises(ResponseError):
       await self.lists.set_rng(name, [{'f':0}, {'g':0}], start=2)

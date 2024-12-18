@@ -6,7 +6,7 @@ from abc import ABC, abstractmethod
 
 
 class _Lists(ABC):
-
+  """ Functions common to all lists """
   def __init__(self, client: NdbClient):
     self.client = client
     self.cmds = self.getCommandNames()  # calls child class
@@ -82,9 +82,10 @@ class _Lists(ABC):
 
     await self.client.sendCmd(self.cmds.SPLICE_REQ, self.cmds.SPLICE_RSP, args)
    
-   
+
 
 class ObjLists(_Lists):
+  "Object lists"
   def __init__(self, client):
     super().__init__(client)
 
