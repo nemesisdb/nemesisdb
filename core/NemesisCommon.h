@@ -229,6 +229,37 @@ namespace nemesis {
   using KvWebSocket = uWS::WebSocket<false, true, WsSession>;
 
 
+  // TODO use in ArrExecutor
+  struct Rng
+  {    
+    std::size_t start;
+    std::size_t stop{};
+    bool hasStop{false};  // if false, ignore stop
+    bool hasRng{false};   // if false, ignore everything else
+  };
+
+  static inline Rng rangeFromRequest(const njson& body, const std::string_view name)
+  {
+    if (!body.contains(name))
+      return {};
+    else
+    {
+      Rng result{.hasRng = true};
+
+      const auto& element = body.at(name);
+      const auto& rng = element.array_range();
+      
+      result.start = rng.cbegin()->as<std::size_t>();
+      
+      if (element.size() == 2)
+      {
+        result.stop = rng.crbegin()->as<std::size_t>();
+        result.hasStop = true;
+      }
+
+      return result;
+    }      
+  }
 
 
   template<class Formatter>

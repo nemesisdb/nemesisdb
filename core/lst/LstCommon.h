@@ -17,10 +17,9 @@ namespace nemesis {  namespace lst {
     Get,
     GetRng,
     Remove,
-    Copy, // TODO
-    Move, // TODO
     Len,
-    Swap,  // TODO
+    Splice,
+    Copy, // TODO
     MAX
   };
 }

@@ -18,7 +18,7 @@ namespace nemesis { namespace lst { namespace cmds {
   static constexpr FixedString Get        = "GET";
   static constexpr FixedString GetRng     = "GET_RNG";
   static constexpr FixedString Len        = "LEN";
-  static constexpr FixedString Swap       = "SWAP";
+  static constexpr FixedString Splice     = "SPLICE";
   static constexpr FixedString Remove     = "RMV";
   static constexpr FixedString Intersect  = "INTERSECT";
   
@@ -62,7 +62,7 @@ namespace nemesis { namespace lst { namespace cmds {
     static constexpr Cmd<Get> get{};
     static constexpr Cmd<GetRng> getRng{};
     static constexpr Cmd<Remove> remove{};
-    static constexpr Cmd<Swap> swap{};  // TODO not implemented
+    static constexpr Cmd<Splice> splice{};  
   };
 
   

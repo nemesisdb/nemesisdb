@@ -16,16 +16,6 @@ namespace nemesis { namespace lst {
 template<class List, class Cmds>
 class ListExecutor
 {
-  // TODO use in ArrExecutor
-  struct Rng
-  {    
-    std::size_t start;
-    std::size_t stop{};
-    bool hasStop{false};
-    bool hasRng{false};
-  };
-
-
 public:
   using ListValueT = List::ValueT;
 
@@ -211,34 +201,7 @@ public:
 
     return response;
   }
-
-
-private:
-  static Rng rangeFromRequest(const njson& body, const std::string_view name)
-  {
-    if (!body.contains(name))
-      return {};
-    else
-    {
-      Rng result{.hasRng = true};
-
-      const auto& element = body.at(name);
-      const auto& rng = element.array_range();
-      
-      result.start = rng.cbegin()->as<std::size_t>();
-      
-      if (element.size() == 2)
-      {
-        result.stop = rng.crbegin()->as<std::size_t>();
-        result.hasStop = true;
-      }
-
-      return result;
-    }      
-  }
-
-private:
-  
+ 
 
 };
 

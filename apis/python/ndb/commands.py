@@ -165,6 +165,7 @@ class CommonListCmds:
     self.LEN_REQ, self.LEN_RSP                = self.make(ident, "LEN")
     self.EXIST_REQ, self.EXIST_RSP            = self.make(ident, "EXIST")
     self.RMV_REQ, self.RMV_RSP                = self.make(ident, "RMV")
+    self.SPLICE_REQ, self.SPLICE_RSP          = self.make(ident, "SPLICE")
 
 
   def make(self, ident: str, cmd: str):

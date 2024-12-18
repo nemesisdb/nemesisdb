@@ -45,6 +45,7 @@ namespace nemesis { namespace lst {
         {LstQueryType::Delete,          Handler{std::bind_front(&LstHandler<T, Cmds>::deleteList,    std::ref(*this))}},
         {LstQueryType::DeleteAll,       Handler{std::bind_front(&LstHandler<T, Cmds>::deleteAll,     std::ref(*this))}},
         {LstQueryType::Exist,           Handler{std::bind_front(&LstHandler<T, Cmds>::exist,         std::ref(*this))}},
+        {LstQueryType::Splice,           Handler{std::bind_front(&LstHandler<T, Cmds>::splice,        std::ref(*this))}},
       }, 1, alloc);
       
       return h;
@@ -66,6 +67,7 @@ namespace nemesis { namespace lst {
         {Cmds::getRng.req,      LstQueryType::GetRng},        
         {Cmds::setRng.req,      LstQueryType::SetRng},
         {Cmds::remove.req,      LstQueryType::Remove},
+        {Cmds::splice.req,      LstQueryType::Splice},
       }, 1, alloc); 
 
       return map;
@@ -205,15 +207,14 @@ namespace nemesis { namespace lst {
 
       if (auto [valid, err] = validateCreate<Cmds>(request) ; !valid)
         return Response{.rsp = std::move(err)};
-      else if (const auto& name = reqBody.at("name").as_string(); listExist(name))
+      else if (const auto& name = reqBody.at("name").as_string(); listExists(name))
         return Response{.rsp = createErrorResponseNoTkn(RspName, RequestStatus::Duplicate)};
       else
       {
         try
         {
           const auto& name = reqBody.at("name").as_string();
-
-          [[maybe_unused]] const auto [it, emplaced] = m_lists.try_emplace(name, ListT{});
+          createList(name);
         }
         catch(const std::exception& e)
         {
@@ -240,7 +241,7 @@ namespace nemesis { namespace lst {
 
       if (auto [valid, err] = validateDelete<Cmds>(request) ; !valid)
         return Response{.rsp = std::move(err)};
-      else if (const auto& name = reqBody.at("name").as_string(); !listExist(name))
+      else if (const auto& name = reqBody.at("name").as_string(); !listExists(name))
         return Response{.rsp = createErrorResponseNoTkn(RspName, RequestStatus::NotExist)};
       else
       {
@@ -292,7 +293,7 @@ namespace nemesis { namespace lst {
       else
       {
         const auto& name = request.at(ReqName).at("name").as_string();
-        const auto status = toUnderlying(listExist(name) ? RequestStatus::Ok : RequestStatus::NotExist);
+        const auto status = toUnderlying(listExists(name) ? RequestStatus::Ok : RequestStatus::NotExist);
 
         njson rsp {jsoncons::json_object_arg, {{RspName, njson{}}}}; 
         rsp[RspName]["st"] = status;
@@ -301,25 +302,83 @@ namespace nemesis { namespace lst {
       }
     }
 
-  
+    
+    Response splice(njson& request)
+    {
+      static constexpr auto ReqName = Cmds::splice.req.data();
+      static constexpr auto RspName = Cmds::splice.rsp.data();
+      static const njson Prepared {jsoncons::json_object_arg, {{RspName, njson::object()}}};
+
+      const auto& body = request.at(ReqName);
+      const auto& srcName = body.at("srcName").as_string();
+      const auto& destName = body.at("destName").as_string();
+
+      if (!listExists(srcName))
+        return Response{.rsp = createErrorResponseNoTkn(RspName, RequestStatus::NotExist)};
+      else
+      {
+        Response response{.rsp = Prepared};
+        response.rsp[RspName]["st"] = toUnderlying(RequestStatus::Ok);
+
+        try
+        {
+          const Iterator itDest = createList(destName); // does nothing if dest already exists
+          const auto [srcExists, itSrc] = getList(body, "srcName");
+                    
+          ListT& srcList = itSrc->second;
+          ListT& destList = itDest->second;
+          const std::size_t destPos = body.contains("destPos") ? body.at("destPos").template as<std::size_t>() : 0U;
+          const auto [srcStart, srcStop, hasStop, hasRange] = rangeFromRequest(body, "srcRng");
+
+          if (hasStop)
+            destList.splice(destPos, srcList, srcStart, srcStop);
+          else
+            destList.splice(destPos, srcList, srcStart);
+        }
+        catch(const std::exception& e)
+        {
+          PLOGE << e.what();
+          response.rsp[RspName]["st"] = toUnderlying(RequestStatus::Unknown);
+        }
+
+        return response;
+      }
+    }
+
+
   private:
 
     // helpers
-    std::tuple<bool, Iterator> getList (const std::string& name, const njson& cmd)
+
+    Iterator createList (const std::string& name)
     {
-      const auto it = m_lists.find(name);
+      #ifdef NDB_DEBUG
+      const auto [it, emplaced] = m_lists.try_emplace(name, name);
+      #else
+      const auto [it, emplaced] = m_lists.insert({name, ListT{}});
+      #endif
+
+      PLOGD_IF(emplaced) << "Created list " << name;
+
+      return it;
+    }
+
+    
+    std::tuple<bool, Iterator> getList (const std::string& listName)
+    {
+      const auto it = m_lists.find(listName);
       return {it != m_lists.end(), it};
     }
 
 
-    std::tuple<bool, Iterator> getList (const njson& cmd)
+    std::tuple<bool, Iterator> getList (const njson& body, const std::string_view field = "name")
     {
-      const auto& name = cmd.at("name").as_string();
-      return getList(name, cmd);
+      const auto& name = body.at(field).as_string();
+      return getList(name);
     }
 
 
-    bool listExist (const std::string& name)
+    bool listExists (const std::string& name)
     {
       return m_lists.contains(name);
     }

@@ -225,14 +225,15 @@ namespace nemesis { namespace lst {
   }
 
 
-  // template<typename Cmds>
-  // static Validity validateSwap (const njson& req)
-  // {
-  //   auto [valid, err] = isValid(Cmds::swap.rsp, req.at(Cmds::SwapReq), { {Param::required("name", JsonString)},
-  //                                                                       {Param::required("posA", JsonUInt)},
-  //                                                                       {Param::required("posB", JsonUInt)}});
-  //   return valid ? makeValid() : makeInvalid(std::move(err));
-  // }
+  template<typename Cmds>
+  static Validity validateSplice (const njson& req)
+  {
+    auto [valid, err] = isValid(Cmds::splice.rsp, req.at(Cmds::SpliceReq), {  {Param::required("srcName", JsonString)},
+                                                                              {Param::required("srcRng", JsonArray)},
+                                                                              {Param::required("destName", JsonString)},
+                                                                              {Param::optional("destPos", JsonUInt)}});
+    return valid ? makeValid() : makeInvalid(std::move(err));
+  }
 }
 }
 

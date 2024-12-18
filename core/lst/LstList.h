@@ -15,12 +15,20 @@ namespace nemesis { namespace lst {
   {
   public:
     using ValueT = T;
-
-  private:
-    using It = std::list<T>::iterator;
+    using Iterator = std::list<T>::iterator;
     using ConstIt = std::list<T>::const_iterator;
 
+
   public:
+
+    #ifdef NDB_DEBUG
+    List(const std::string_view name) : m_name(name)
+    {
+    }
+    
+    const std::string& name() const { return m_name; }
+    #endif
+    
 
     bool isInbounds(const std::size_t pos) const noexcept
     {
@@ -44,6 +52,7 @@ namespace nemesis { namespace lst {
     {
       return add(items, m_list.size());
     }
+
 
     std::tuple<std::size_t, std::size_t> add(const njson& items, const std::size_t pos = 0)
     {
@@ -134,7 +143,33 @@ namespace nemesis { namespace lst {
     }
 
 
+    void splice (const std::size_t pos, List<T>& src, const std::size_t srcStart) noexcept
+    {
+      splice(pos, src, srcStart, src.size());
+    }
+
+
+    /// Move nodes from 'src' in range [srcStart, srcStop) into *this at 'pos'    
+    void splice (const std::size_t pos, List<T>& src, const std::size_t srcStart, const std::size_t srcStop) noexcept
+    {
+      const auto itDest = getIterator(pos);
+      const auto itSrcStart = src.getIterator(srcStart);
+      const auto itSrcEnd = src.getIterator(srcStop);
+
+      #ifdef NDB_DEBUG
+        PLOGD << "FROM " << src.name() << " @ ["<< srcStart << "," << srcStop << ") TO " << name() << " @ " << pos;
+      #endif
+
+      m_list.splice(itDest, src.m_list, itSrcStart, itSrcEnd);
+
+      #ifdef NDB_DEBUG
+        PLOGD << "SRC " << src.name() << " size: " << size() << ", DEST " << name() << " size: " << size();
+      #endif
+    }
+
+
   private:
+
     // Returns (pos, size)
     std::tuple<std::size_t, std::size_t> doAdd(const ConstIt dstIt, const std::vector<T>::const_iterator srcIt,
                                                                     const std::vector<T>::const_iterator srcItEnd)
@@ -143,8 +178,24 @@ namespace nemesis { namespace lst {
       return {std::distance(m_list.begin(), insertedIt), m_list.size()};
     }
 
+
+    Iterator getIterator(const std::size_t pos)
+    {
+      return std::next(m_list.begin(), std::min<std::size_t>(m_list.size(), pos));
+    }
+
+
+    ConstIt getIterator(const std::size_t pos) const
+    {
+      return getIterator(pos);
+    }
+    
+
   private:
     std::list<T> m_list;
+    #ifdef NDB_DEBUG
+    std::string m_name;
+    #endif
   };
 
 

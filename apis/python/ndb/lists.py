@@ -69,6 +69,21 @@ class _Lists(ABC):
     return rsp[self.cmds.RMV_RSP]['size']
   
 
+  async def splice(self, destName: str, srcName: str, srcStart: int, srcEnd = None, destPos = 0):
+    raise_if_empty(destName)
+    raise_if_empty(srcName)
+    
+    args = {'srcName':srcName, 'destName':destName, 'destPos':destPos}
+    
+    if srcEnd is not None:
+      args['srcRng'] = [srcStart, srcEnd]
+    else:
+      args['srcRng'] = [srcStart]
+
+    await self.client.sendCmd(self.cmds.SPLICE_REQ, self.cmds.SPLICE_RSP, args)
+   
+   
+
 class ObjLists(_Lists):
   def __init__(self, client):
     super().__init__(client)
