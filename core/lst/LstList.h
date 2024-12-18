@@ -67,8 +67,8 @@ namespace nemesis { namespace lst {
 
     void setRange(const njson& items, const std::size_t start)
     {
-      auto itStart = std::next(m_list.begin(), start);
-      const auto itEnd = std::next(itStart, items.size());
+      auto itStart = getIterator(start);
+      const auto itEnd = std::next(itStart, std::min<std::size_t>(m_list.size(), items.size()));
 
       auto itemsIt = items.array_range().cbegin();
       std::ranges::subrange range{itStart, itEnd};
@@ -94,10 +94,10 @@ namespace nemesis { namespace lst {
     }
 
 
-    std::vector<T> getRange(const std::size_t start, const std::size_t end) const
+    std::vector<T> getRange(const std::size_t start, const std::size_t stop) const
     {
-      const auto itStart = std::next(m_list.cbegin(), start);
-      const auto itEnd = std::next(m_list.cbegin(), std::min<std::size_t>(end, m_list.size()));
+      const auto itStart = getIterator(start);
+      const auto itEnd = getIterator(stop);
 
       std::vector<T> result;
       result.reserve(std::min<std::size_t>(std::distance(itStart, itEnd), 1000)); // TODO MaxResponseSize
@@ -135,8 +135,8 @@ namespace nemesis { namespace lst {
         m_list.clear();
       else
       {
-        const auto itStart = std::next(m_list.begin(), start);
-        const auto itEnd = std::next(m_list.begin(), std::min<std::size_t>(m_list.size(), end));
+        const auto itStart = getIterator(start);
+        const auto itEnd = getIterator(end);
       
         m_list.erase(itStart, itEnd);
       }
@@ -187,7 +187,7 @@ namespace nemesis { namespace lst {
 
     ConstIt getIterator(const std::size_t pos) const
     {
-      return getIterator(pos);
+      return std::next(m_list.begin(), std::min<std::size_t>(m_list.size(), pos));
     }
     
 
