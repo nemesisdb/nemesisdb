@@ -76,7 +76,7 @@ namespace nemesis { namespace lst {
 
     struct ValidateExecute
     {
-      std::function<lst::Validity(const njson&)> validate;
+      std::function<RequestStatus(const njson&)> validate;
       std::function<Response(ListT&, const njson&)> execute;
       std::string_view rspName;
     };
@@ -178,14 +178,14 @@ namespace nemesis { namespace lst {
     {
       const auto& validateExecute = it->second;
 
-      if (auto const[valid, err] = validateExecute.validate(request); !valid)
-        return Response{.rsp = std::move(err)};
+      if (const auto status = validateExecute.validate(request); status != RequestStatus::Ok)
+        return Response{.rsp = createErrorResponse(validateExecute.rspName, status)};
       else
       {
         const auto& body = request.at(reqName);
 
         if (auto [exist, itNameToList] = getList(body); !exist)
-          return Response{.rsp = createErrorResponseNoTkn(validateExecute.rspName, RequestStatus::NotExist)};
+          return Response{.rsp = createErrorResponse(validateExecute.rspName, RequestStatus::NotExist)};
         else
           return validateExecute.execute(itNameToList->second, body);
       }
@@ -204,10 +204,10 @@ namespace nemesis { namespace lst {
       response.rsp = Prepared;
       response.rsp[RspName]["st"] = toUnderlying(RequestStatus::Ok);
 
-      if (auto [valid, err] = validateCreate<Cmds>(request) ; !valid)
-        return Response{.rsp = std::move(err)};
+      if (const auto status = validateCreate<Cmds>(request); status != RequestStatus::Ok)
+        return Response{.rsp = createErrorResponse(RspName, status)};
       else if (const auto& name = reqBody.at("name").as_string(); listExists(name))
-        return Response{.rsp = createErrorResponseNoTkn(RspName, RequestStatus::Duplicate)};
+        return Response{.rsp = createErrorResponse(RspName, RequestStatus::Duplicate)};
       else
       {
         try
@@ -238,10 +238,10 @@ namespace nemesis { namespace lst {
       response.rsp = Prepared;
       response.rsp[RspName]["st"] = toUnderlying(RequestStatus::Ok);
 
-      if (auto [valid, err] = validateDelete<Cmds>(request) ; !valid)
-        return Response{.rsp = std::move(err)};
+      if (const auto status = validateDelete<Cmds>(request) ; status != RequestStatus::Ok)
+        return Response{.rsp = createErrorResponse(RspName, status)};
       else if (const auto& name = reqBody.at("name").as_string(); !listExists(name))
-        return Response{.rsp = createErrorResponseNoTkn(RspName, RequestStatus::NotExist)};
+        return Response{.rsp = createErrorResponse(RspName, RequestStatus::NotExist)};
       else
       {
         try
@@ -287,15 +287,14 @@ namespace nemesis { namespace lst {
       static constexpr auto RspName = Cmds::exist.rsp.data();
       static const njson Prepared {jsoncons::json_object_arg, {{RspName, njson::object()}}};
 
-      if (auto [valid, err] = validateExist<Cmds>(request) ; !valid)
-        return Response{.rsp = std::move(err)};
+      if (const auto status = validateExist<Cmds>(request) ; status != RequestStatus::Ok)
+        return Response{.rsp = createErrorResponse(RspName, status)};
       else
       {
         const auto& name = request.at(ReqName).at("name").as_string();
-        const auto status = toUnderlying(listExists(name) ? RequestStatus::Ok : RequestStatus::NotExist);
 
         njson rsp {jsoncons::json_object_arg, {{RspName, njson{}}}}; 
-        rsp[RspName]["st"] = status;
+        rsp[RspName]["st"] = toUnderlying(listExists(name) ? RequestStatus::Ok : RequestStatus::NotExist);
 
         return Response { .rsp = std::move(rsp)};
       }
@@ -312,8 +311,10 @@ namespace nemesis { namespace lst {
       const auto& srcName = body.at("srcName").as_string();
       const auto& destName = body.at("destName").as_string();
 
-      if (!listExists(srcName))
-        return Response{.rsp = createErrorResponseNoTkn(RspName, RequestStatus::NotExist)};
+      if (const auto status = validateSplice<Cmds>(request); status != RequestStatus::Ok)
+        return Response{.rsp = createErrorResponse(RspName, status)};
+      else if (!listExists(srcName))
+        return Response{.rsp = createErrorResponse(RspName, RequestStatus::NotExist)};
       else
       {
         Response response{.rsp = Prepared};

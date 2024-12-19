@@ -159,7 +159,7 @@ private:
     };
     
 
-    if (auto [valid, rsp] = isValid(queryRspName, ws, json, {{Param::required("name", JsonString)}}, validate))
+    if (const auto status = isValid(queryRspName, ws, json, {{Param::required("name", JsonString)}}, validate))
     {
       njson rsp;
 
@@ -187,9 +187,9 @@ private:
 
   ndb_always_inline Response sessionNew(njson& req)
   {
-    if (auto [valid, rsp] = validateNew(req); !valid)
+    if (const auto status = validateNew(req); status != RequestStatus::Ok)
     {
-      return Response{.rsp = std::move(rsp)};
+      return Response{.rsp = createErrorResponse(cmds::NewRsp, status)};
     }
     else
     {
@@ -247,8 +247,8 @@ private:
   
   ndb_always_inline Response sessionExists(njson& req)
   {
-    if (auto [valid, rsp] = validateExists(req); !valid)
-      return Response{.rsp = std::move(rsp)};
+    if (const auto status = validateExists(req); status != RequestStatus::Ok)
+      return Response{.rsp = createErrorResponse(cmds::ExistsRsp, status)};
     else
       return SessionExecutor::sessionExists(m_sessions, req.at(cmds::ExistsReq).at("tkns"));
   }
@@ -264,11 +264,11 @@ private:
   {    
     // TODO  add this check in handle() so the error can be caught earlier
     if (!m_settings.persistEnabled)
-      return Response{.rsp = createErrorResponseNoTkn(cmds::SaveRsp, RequestStatus::CommandDisabled)};
+      return Response{.rsp = createErrorResponse(cmds::SaveRsp, RequestStatus::CommandDisabled)};
     else 
     {
-      if (auto [valid, rsp] = validateSave(req); !valid)
-        return Response{.rsp = std::move(rsp)};
+      if (const auto status = validateSave(req); status != RequestStatus::Ok)
+        return Response{.rsp = createErrorResponse(cmds::SaveRsp, status)};
       else
         return doSave(cmds::SaveReq, cmds::SaveRsp, req.at(cmds::SaveReq));
     }
@@ -277,8 +277,8 @@ private:
   
   ndb_always_inline Response sessionLoad(njson& req)
   {
-    if (auto [valid, rsp] = validateLoad(req); !valid)
-        return Response{.rsp = std::move(rsp)};
+    if (const auto status = validateLoad(req); status != RequestStatus::Ok)
+        return Response{.rsp = createErrorResponse(sh::LoadRsp, status)};
     else
     {
       const auto& loadName = req.at(sh::LoadReq).at("name").as_string();
@@ -334,8 +334,8 @@ private:
 
   ndb_always_inline Response set(njson& request)
   {
-    if (auto [valid, rsp] = kv::validateSet(cmds::SetReq, cmds::SetRsp, request); !valid)
-      return Response{.rsp = std::move(rsp)};
+    if (const auto status = kv::validateSet(cmds::SetReq, cmds::SetRsp, request); status != RequestStatus::Ok)
+      return Response{.rsp = createErrorResponse(cmds::SetRsp, status)};
     else
       return executeExtendableKvCommand(cmds::SetRsp, request, ShQueryType::Set, kv::KvExecutor<true>::set);
   }
@@ -343,8 +343,8 @@ private:
 
   ndb_always_inline Response get(njson& request)
   {
-    if (auto [valid, rsp] = kv::validateGet(cmds::GetReq, cmds::GetRsp, request); !valid)
-      return Response{.rsp = std::move(rsp)};
+    if (const auto status = kv::validateGet(cmds::GetReq, cmds::GetRsp, request); status != RequestStatus::Ok)
+      return Response{.rsp = createErrorResponse(cmds::GetRsp, status)};
     else
       return executeExtendableKvCommand(cmds::GetRsp, request, ShQueryType::Get, kv::KvExecutor<true>::get);
   }
@@ -358,8 +358,8 @@ private:
 
   ndb_always_inline Response add(njson& request)
   {
-    if (auto [valid, rsp] = kv::validateAdd(cmds::AddReq, cmds::AddRsp, request); !valid)
-      return Response{.rsp = std::move(rsp)};
+    if (const auto status = kv::validateAdd(cmds::AddReq, cmds::AddRsp, request); status != RequestStatus::Ok)
+      return Response{.rsp = createErrorResponse(cmds::AddRsp, status)};
     else
       return executeExtendableKvCommand(cmds::AddRsp, request, ShQueryType::Add, kv::KvExecutor<true>::add);
   }
@@ -367,8 +367,8 @@ private:
 
   ndb_always_inline Response remove(njson& request)
   {
-    if (auto [valid, rsp] = kv::validateRemove(cmds::RmvReq, cmds::RmvRsp, request); !valid)
-      return Response{.rsp = std::move(rsp)};
+    if (const auto status = kv::validateRemove(cmds::RmvReq, cmds::RmvRsp, request); status != RequestStatus::Ok)
+      return Response{.rsp = createErrorResponse(cmds::RmvRsp, status)};
     else
       return executeKvCommand(cmds::RmvRsp, request, kv::KvExecutor<true>::remove);
   }
@@ -382,8 +382,8 @@ private:
 
   ndb_always_inline Response contains(njson& request)
   {
-    if (auto [valid, rsp] = kv::validateContains(cmds::ContainsReq, cmds::ContainsRsp, request) ; !valid)
-      return Response{.rsp = std::move(rsp)};
+    if (const auto status = kv::validateContains(cmds::ContainsReq, cmds::ContainsRsp, request); status != RequestStatus::Ok)
+      return Response{.rsp = createErrorResponse(cmds::ContainsRsp, status)};
     else
       return executeKvCommand(cmds::ContainsRsp, request, kv::KvExecutor<true>::contains);
   }
@@ -397,8 +397,8 @@ private:
 
   ndb_always_inline Response clearSet(njson& request)
   {
-    if (auto [valid, rsp] = kv::validateClearSet(cmds::ClearSetReq, cmds::ClearSetRsp, request) ; !valid)
-      return Response{.rsp = std::move(rsp)};
+    if (const auto status = kv::validateClearSet(cmds::ClearSetReq, cmds::ClearSetRsp, request); status != RequestStatus::Ok)
+      return Response{.rsp = createErrorResponse(cmds::ClearSetRsp, status)};
     else
       return executeKvCommand(cmds::ClearSetRsp, request, kv::KvExecutor<true>::clearSet);
   }
@@ -478,7 +478,7 @@ private:
       njson rsp;
       rsp[queryRspName]["name"] = name;
       rsp[queryRspName]["st"] = toUnderlying(preparedStatus);
-      return Response{.rsp = std::move(rsp)};
+      return Response{.rsp = createErrorResponse(queryRspName, preparedStatus)};
     }
     else
     {

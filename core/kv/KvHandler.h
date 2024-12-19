@@ -124,7 +124,6 @@ public:
       return Response {.rsp = createErrorResponse(RequestStatus::Unknown)};
     }
   }
-
   
 
   // Called when loading at startup
@@ -175,27 +174,17 @@ private:
   
   ndb_always_inline Response set(njson& request)
   {
-    if (auto [valid, rsp] = validateSet(SetReq, SetRsp, request); !valid)
-      return Response{.rsp = std::move(rsp)};
+    if (const auto status = validateSet(SetReq, SetRsp, request); status != RequestStatus::Ok)
+      return Response{.rsp = createErrorResponse(SetRsp, status)};
     else
       return executeKvCommand(SetRsp, request, KvExecutor<false>::set);
   }
 
-  
-  /*
-  ndb_always_inline Response setQ(njson& request)
-  {
-    if (auto [valid, rsp] = validateSetQ(SetQReq, SetQRsp, request); !valid)
-      return Response{.rsp = std::move(rsp)};
-    else
-      return executeKvCommand(SetQRsp, request, KvExecutor<false>::setQ);
-  }
-  */
-  
+    
   ndb_always_inline Response get(njson& request)
   {
-    if (auto [valid, rsp] = validateGet(GetReq, GetRsp, request); !valid)
-      return Response{.rsp = std::move(rsp)};
+    if (const auto status = validateGet(GetReq, GetRsp, request); status != RequestStatus::Ok)
+      return Response{.rsp = createErrorResponse(GetRsp, status)};
     else
       return executeKvCommand(GetRsp, request, KvExecutor<false>::get);
   }
@@ -203,28 +192,17 @@ private:
   
   ndb_always_inline Response add(njson& request)
   {
-    if (auto [valid, rsp] = validateAdd(AddReq, AddRsp, request) ; !valid)
-      return Response{.rsp = std::move(rsp)};
+    if (const auto status = validateAdd(AddReq, AddRsp, request) ; status != RequestStatus::Ok)
+      return Response{.rsp = createErrorResponse(AddRsp, status)};
     else
       return executeKvCommand(AddRsp, request, KvExecutor<false>::add);
   }
 
 
-  /*
-  ndb_always_inline Response addQ(njson& request)
-  {
-    if (auto [valid, rsp] = validateAddQ(AddQReq, AddQRsp, request) ; !valid)
-      return Response{.rsp = std::move(rsp)};
-    else
-      return executeKvCommand(AddQRsp, request, KvExecutor<false>::addQ);
-  }
-  */
-
-
   ndb_always_inline Response remove(njson& request)
   {
-    if (auto [valid, rsp] = validateRemove(RmvReq, RmvRsp, request) ; !valid)
-      return Response{.rsp = std::move(rsp)};
+    if (const auto status = validateRemove(RmvReq, RmvRsp, request) ; status != RequestStatus::Ok)
+      return Response{.rsp = createErrorResponse(RmvRsp, status)};
     else
       return executeKvCommand(RmvRsp, request, KvExecutor<false>::remove);
   }
@@ -244,8 +222,8 @@ private:
 
   ndb_always_inline Response contains(njson& request)
   {
-    if (auto [valid, rsp] = validateContains(ContainsReq, ContainsRsp, request) ; !valid)
-      return Response{.rsp = std::move(rsp)};
+    if (const auto status = validateContains(ContainsReq, ContainsRsp, request) ; status != RequestStatus::Ok)
+      return Response{.rsp = createErrorResponse(ContainsRsp, status)};
     else
       return executeKvCommand(ContainsRsp, request, KvExecutor<false>::contains);
   }
@@ -253,8 +231,8 @@ private:
 
   ndb_always_inline Response find(njson& request)
   {
-    if (auto [valid, rsp] = validateFind(FindReq, FindRsp, request) ; !valid)
-      return Response{.rsp = std::move(rsp)};
+    if (const auto status = validateFind(FindReq, FindRsp, request) ; status != RequestStatus::Ok)
+      return Response{.rsp = createErrorResponse(FindRsp, status)};
     else
     {
       if (!request.at(FindReq).contains("keys"))
@@ -267,8 +245,8 @@ private:
 
   ndb_always_inline Response update(njson& request)
   {
-    if (auto [valid, rsp] = validateUpdate(UpdateReq, UpdateRsp, request) ; !valid)
-      return Response{.rsp = std::move(rsp)};
+    if (const auto status = validateUpdate(UpdateReq, UpdateRsp, request) ; status != RequestStatus::Ok)
+      return Response{.rsp = createErrorResponse(UpdateRsp, status)};
     else
       return executeKvCommand(UpdateRsp, request, KvExecutor<false>::update);
   }
@@ -282,8 +260,8 @@ private:
 
   ndb_always_inline Response clearSet(njson& request)
   {
-    if (auto [valid, rsp] = validateClearSet(ClearSetReq, ClearSetRsp, request) ; !valid)
-      return Response{.rsp = std::move(rsp)};
+    if (const auto status = validateClearSet(ClearSetReq, ClearSetRsp, request) ; status != RequestStatus::Ok)
+      return Response{.rsp = createErrorResponse(ClearSetRsp, status)};
     else
       return executeKvCommand(ClearSetRsp, request, KvExecutor<false>::clearSet);
   }
@@ -291,8 +269,8 @@ private:
 
   ndb_always_inline Response arrayAppend(njson& request)
   {
-    if (auto [valid, rsp] = validateArrayAppend(ArrAppendReq, ArrAppendRsp, request) ; !valid)
-      return Response{.rsp = std::move(rsp)};
+    if (const auto status = validateArrayAppend(ArrAppendReq, ArrAppendRsp, request) ; status != RequestStatus::Ok)
+      return Response{.rsp = createErrorResponse(ArrAppendRsp, status)};
     else
       return executeKvCommand(ArrAppendRsp, request, KvExecutor<false>::arrayAppend);
   }
@@ -301,11 +279,11 @@ private:
   Response save(njson& request)
   {
     if (!m_settings.persistEnabled)
-      return Response{.rsp = createErrorResponseNoTkn(SaveRsp, RequestStatus::CommandDisabled)};
+      return Response{.rsp = createErrorResponse(SaveRsp, RequestStatus::CommandDisabled)};
     else
     {
-      if (auto [valid, rsp] = kv::validateSave(request) ; !valid)
-        return Response{.rsp = std::move(rsp)};
+      if (const auto status = kv::validateSave(request) ; status != RequestStatus::Ok)
+        return Response{.rsp = createErrorResponse(SaveRsp, status)};
       else
         return doSave(SaveRsp, request.at(SaveReq));
     }
@@ -314,8 +292,8 @@ private:
 
   Response load(njson& request)
   {
-    if (auto [valid, rsp] = kv::validateLoad(request) ; !valid)
-      return Response{.rsp = std::move(rsp)};
+    if (const auto status = kv::validateLoad(request) ; status != RequestStatus::Ok)
+      return Response{.rsp = createErrorResponse(LoadRsp, status)};
     else
     {
       const auto& loadName = request.at(LoadReq).at("name").as_string();
@@ -349,10 +327,7 @@ private:
 
     if (auto [preparedStatus, metaStream] = prepareSave(cmd, root); preparedStatus != RequestStatus::Ok)
     {
-      njson rsp;
-      rsp[queryRspName]["name"] = name;
-      rsp[queryRspName]["st"] = toUnderlying(preparedStatus);
-      return Response{.rsp = std::move(rsp)};
+      return Response{.rsp = createErrorResponse(queryRspName, preparedStatus)};
     }
     else
     {

@@ -9,72 +9,54 @@
 namespace nemesis { namespace sh {
 
   using namespace nemesis::sh::cmds;
-  using Validity = std::tuple<bool, njson>;
 
 
-  Validity makeValid ()
+  RequestStatus validateNew (const njson& req)
   {
-    const static Validity result {true, njson{}};
-    return result;
-  }
-  
+    const auto topLevelStatus = isValid(NewRsp, req.at(NewReq), {{Param::optional("expiry", JsonObject)}});
 
-  Validity makeInvalid (njson rsp)
-  {
-    return Validity{false, std::move(rsp)};
-  }
-
-
-  Validity validateNew (const njson& req)
-  {
-    auto [topLevelValid, rsp] = isValid(NewRsp, req.at(NewReq), {{Param::optional("expiry", JsonObject)}});
-    if (!topLevelValid)
-      return Validity{false, std::move(rsp)};
+    if (topLevelStatus != RequestStatus::Ok)
+      return topLevelStatus;
     else
     {
       if (req.at(NewReq).contains("expiry"))
       {
-        auto validate = [](const njson& cmd) -> std::tuple<RequestStatus, const std::string_view>
+        auto validate = [](const njson& cmd) -> RequestStatus
         {
           if (cmd.at("duration") < 0)
-            return {RequestStatus::ValueSize, "expiry must be >= 0"};
+            return RequestStatus::ValueSize;
           else
-            return {RequestStatus::Ok, ""};
+            return RequestStatus::Ok;
         };
 
-        auto [expiryValid, rsp] = isValid(NewRsp, req.at(NewReq).at("expiry"), {{Param::required("duration", JsonUInt)},
+        const auto expiryStatus = isValid(NewRsp, req.at(NewReq).at("expiry"), {{Param::required("duration", JsonUInt)},
                                                                                 {Param::optional("deleteSession", JsonBool)},
                                                                                 {Param::optional("extendOnSetAdd", JsonBool)},
                                                                                 {Param::optional("extendOnGet", JsonBool)}
                                                                                }, validate);
 
-        if (!expiryValid)
-          return makeInvalid(std::move(rsp));
+        return expiryStatus;
       }
-
-      // no expiry, or has expiry and it's valid
-      return makeValid();
+      else
+        return RequestStatus::Ok; // no expiry, or has expiry and it's valid
     }
   }
 
 
-  Validity validateExists (const njson& req)
+  RequestStatus validateExists (const njson& req)
   {
-    if (auto [valid, rsp] = isValid(ExistsRsp, req.at(ExistsReq), {{Param::required("tkns", JsonArray)}}); !valid)
-      return makeInvalid(std::move(rsp));
-    else
-      return makeValid();
+    return isValid(ExistsRsp, req.at(ExistsReq), {{Param::required("tkns", JsonArray)}});
   }
 
 
-  Validity validateSave (const njson& req)
+  RequestStatus validateSave (const njson& req)
   {
-    auto validate = [](const njson& cmd) -> std::tuple<RequestStatus, const std::string_view>
+    auto validate = [](const njson& cmd) -> RequestStatus
     {
       if (cmd.contains("tkns"))
       {
         if (cmd.at("tkns").empty())
-          return {RequestStatus::ValueSize, "'tkns' empty"};
+          return RequestStatus::ValueSize;
         else
         {
           // check each array item is correct type, save command too important
@@ -82,31 +64,24 @@ namespace nemesis { namespace sh {
           for (const auto& item : cmd.at("tkns").array_range())
           {
             if (!item.is<SessionToken>())
-              return {RequestStatus::ValueTypeInvalid, "'tkns' contains invalid token"};
+              return RequestStatus::ValueTypeInvalid;
           }
         }
       }
 
-      return {RequestStatus::Ok, ""};
+      return RequestStatus::Ok;
     };
 
 
-    auto [valid, rsp] = isValid(SaveRsp, req.at(SaveReq), { {Param::required("name", JsonString)},
-                                                            {Param::optional("tkns", JsonArray)}}, validate);
+    return isValid(SaveRsp, req.at(SaveReq), {{Param::required("name", JsonString)},
+                                              {Param::optional("tkns", JsonArray)}}, validate);
 
-    if (!valid)
-      return makeInvalid(std::move(rsp));
-    else
-      return makeValid();
   }
 
 
-  Validity validateLoad (const njson& req)
+  RequestStatus validateLoad (const njson& req)
   {
-    if (auto [valid, rsp] = isValid(LoadRsp, req.at(LoadReq), {{Param::required("name", JsonString)}}); !valid)
-      return makeInvalid(std::move(rsp));
-    else
-      return makeValid();
+    return isValid(LoadRsp, req.at(LoadReq), {{Param::required("name", JsonString)}});
   }
 }
 }

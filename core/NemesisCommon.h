@@ -289,32 +289,28 @@ namespace nemesis {
   }
 
 
-  static inline njson createErrorResponse (const std::string_view commandRsp, const RequestStatus status, const std::string_view msg = "")
-  {
-    njson rsp;
-    rsp[commandRsp]["st"] = toUnderlying(status);
-    rsp[commandRsp]["tkn"] = njson::null();
-    rsp[commandRsp]["m"] = msg;
-    return rsp;
-  }
-
-  
-  static inline njson createErrorResponse (const RequestStatus status, const std::string_view msg = "")
-  {
-    njson rsp;
-    rsp["ERR"]["st"] = toUnderlying(status);
-    rsp["ERR"]["m"] = msg;
-    return rsp;
-  }
-
-
-  static inline njson createErrorResponseNoTkn (const std::string_view commandRsp, const RequestStatus status, const std::string_view msg = "") noexcept
+  // command is not known at time of err, send a general "ERR" response
+  static inline njson createErrorResponse (const RequestStatus status)
   {
     try
     {
       njson rsp;
-      rsp[commandRsp]["st"] = toUnderlying(status);
-      rsp[commandRsp]["m"] = msg;
+      rsp["ERR"]["st"] = toUnderlying(status);
+      return rsp;
+    }
+    catch(const std::exception& e)
+    {
+      return njson{};
+    }
+  }
+
+
+  static inline njson createErrorResponse (const std::string_view rspName, const RequestStatus status) noexcept
+  {
+    try
+    {
+      njson rsp;
+      rsp[rspName]["st"] = toUnderlying(status);
       return rsp;
     }
     catch(const std::exception& e)
@@ -327,36 +323,43 @@ namespace nemesis {
   using ValidateParams = std::map<const std::string_view, const Param>;
 
   // Checks the params (if present and correct type). If that passes and onPostValidate is set, onPostValidate() is called for custom checks.
-  std::tuple<RequestStatus, const std::string_view> isCmdValid (const njson& msg,
+  RequestStatus isCmdValid (const njson& msg,
                                                                 const ValidateParams& params,
-                                                                std::function<std::tuple<RequestStatus, const std::string_view>(const njson&)> onPostValidate)
+                                                                std::function<RequestStatus(const njson&)> onPostValidate)
   {
     for (const auto& [member, param] : params)
     {
       if (param.isRequired && !msg.contains(member))
-        return {RequestStatus::ParamMissing, "Missing parameter"};
+        return RequestStatus::ParamMissing;
       else if (msg.contains(member) && msg.at(member).type() != param.type) // not required but present OR required and present: check type
-        return {RequestStatus::ValueTypeInvalid, "Param type incorrect"};
+        return RequestStatus::ValueTypeInvalid;
     }
 
-    return onPostValidate ? onPostValidate(msg) : std::make_tuple(RequestStatus::Ok, "");
+    return onPostValidate ? onPostValidate(msg) : RequestStatus::Ok;
   }
 
 
-  std::tuple<bool, njson> isValid ( const std::string_view queryRspName, 
-                                    const njson& req,
-                                    const ValidateParams& params,
-                                    std::function<std::tuple<RequestStatus, const std::string_view>(const njson&)> onPostValidate = nullptr)
+  RequestStatus isValid ( const std::string_view queryRspName, 
+                          const njson& req,
+                          const ValidateParams& params,
+                          std::function<RequestStatus(const njson&)> onPostValidate = nullptr)
   {
-    const auto [stat, msg] = isCmdValid(req, params, onPostValidate);
     
-    if (stat != RequestStatus::Ok) [[unlikely]]
-    {
-      PLOGD << msg;
-      return {false, createErrorResponse(queryRspName, stat, msg)};
-    }
-    else
-      return {true, njson{}};
+    #ifdef NDB_DEBUG
+      const auto status = isCmdValid(req, params, onPostValidate);
+      PLOGD_IF(status != RequestStatus::Ok) << "Status: " << status;
+      return status;
+    #else
+      return isCmdValid(req, params, onPostValidate);
+    #endif
+
+    // if (const auto status = isCmdValid(req, params, onPostValidate); status == RequestStatus::Ok) [[unlikely]]
+    //   return {true, njson{}};
+    // else
+    // {
+    //   PLOGD << "Status: " << toUnderlying(status);
+    //   return {false, createErrorResponse(queryRspName, status)};
+    // } 
   }
 } // namespace nemesis
 

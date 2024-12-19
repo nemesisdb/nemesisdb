@@ -137,12 +137,12 @@ namespace nemesis { namespace arr {
 
       const auto& reqBody = request.at(ReqName);
 
-      if (auto [valid, rsp] = validateCreate<Cmds>(request) ; !valid)
-        return Response{.rsp = std::move(rsp)};
+      if (const auto status = validateCreate<Cmds>(request) ; status != RequestStatus::Ok)
+        return Response{.rsp = createErrorResponse(RspName, status)};
       else if (const auto& name = reqBody.at("name").as_string(); arrayExist(name))
-        return Response{.rsp = createErrorResponseNoTkn(RspName, RequestStatus::Duplicate)};
+        return Response{.rsp = createErrorResponse(RspName, RequestStatus::Duplicate)};
       else if (const std::size_t size = reqBody.at("len").template as<std::size_t>(); !ArrayT::isRequestedSizeValid(size))
-        return Response{.rsp = createErrorResponseNoTkn(RspName, RequestStatus::Bounds)};
+        return Response{.rsp = createErrorResponse(RspName, RequestStatus::Bounds)};
       else
       {
         Response response;
@@ -171,8 +171,8 @@ namespace nemesis { namespace arr {
       static constexpr auto ReqName = Cmds::DeleteReq.data();
       static constexpr auto RspName = Cmds::DeleteRsp.data();
 
-      if (auto [valid, rsp] = validateDelete<Cmds>(request) ; !valid)
-        return Response{.rsp = std::move(rsp)};
+      if (const auto status = validateDelete<Cmds>(request) ; status != RequestStatus::Ok)
+        return Response{.rsp = createErrorResponse(RspName, status)};
       else
       {
         Response response;
@@ -217,13 +217,15 @@ namespace nemesis { namespace arr {
 
     ndb_always_inline Response set(njson& request)
     {
-      if (auto [valid, rsp] = validateSet<Cmds>(request) ; !valid)
-        return Response{.rsp = std::move(rsp)};
+      static constexpr auto RspName = Cmds::SetRsp.data();
+
+      if (const auto status = validateSet<Cmds>(request) ; status != RequestStatus::Ok)
+        return Response{.rsp = createErrorResponse(RspName, status)};
       else
       {
         const auto& body = request.at(Cmds::SetReq);
         if (auto [exist, it] = getArray(body) ; !exist)
-          return Response{.rsp = createErrorResponseNoTkn(Cmds::SetRsp, RequestStatus::NotExist)};
+          return Response{.rsp = createErrorResponse(RspName, RequestStatus::NotExist)};
         else
           return ArrayExecutor<ArrayT, Cmds>::set(it->second, body);
       }
@@ -232,13 +234,15 @@ namespace nemesis { namespace arr {
 
     ndb_always_inline Response setRange(njson& request)
     {
-      if (auto [valid, rsp] = validateSetRange<Cmds>(request) ; !valid)
-        return Response{.rsp = std::move(rsp)};
+      static constexpr auto RspName = Cmds::SetRngRsp.data();
+
+      if (const auto status = validateSetRange<Cmds>(request) ; status != RequestStatus::Ok)
+        return Response{.rsp = createErrorResponse(RspName, status)};
       else
       {
         const auto& body = request.at(Cmds::SetRngReq);
         if (auto [exist, it] = getArray(body.at("name").as_string(), body) ; !exist)
-          return Response{.rsp = createErrorResponseNoTkn(Cmds::SetRngRsp, RequestStatus::NotExist)};
+          return Response{.rsp = createErrorResponse(RspName, RequestStatus::NotExist)};
         else
           return ArrayExecutor<ArrayT, Cmds>::setRange(it->second, body);
       }
@@ -247,13 +251,15 @@ namespace nemesis { namespace arr {
 
     ndb_always_inline Response get(njson& request)
     {
-      if (auto [valid, rsp] = validateGet<Cmds>(request) ; !valid)
-        return Response{.rsp = std::move(rsp)};
+      static constexpr auto RspName = Cmds::GetRsp.data();
+
+      if (const auto status = validateGet<Cmds>(request) ; status != RequestStatus::Ok)
+        return Response{.rsp = createErrorResponse(RspName, status)};
       else
       {
         const auto& body = request.at(Cmds::GetReq);
         if (auto [exist, it] = getArray(body) ; !exist)
-          return Response{.rsp = createErrorResponseNoTkn(Cmds::GetRsp, RequestStatus::NotExist)};
+          return Response{.rsp = createErrorResponse(RspName, RequestStatus::NotExist)};
         else
           return ArrayExecutor<ArrayT, Cmds>::get(it->second, body);
       }
@@ -262,13 +268,15 @@ namespace nemesis { namespace arr {
 
     ndb_always_inline Response getRange(njson& request)
     {
-      if (auto [valid, rsp] = validateGetRange<Cmds>(request) ; !valid)
-        return Response{.rsp = std::move(rsp)};
+      static constexpr auto RspName = Cmds::GetRngRsp.data();
+
+      if (const auto status = validateGetRange<Cmds>(request) ; status != RequestStatus::Ok)
+        return Response{.rsp = createErrorResponse(RspName, status)};
       else
       {
         const auto& body = request.at(Cmds::GetRngReq);
         if (auto [exist, it] = getArray(body) ; !exist)
-          return Response{.rsp = createErrorResponseNoTkn(Cmds::GetRngRsp, RequestStatus::NotExist)};
+          return Response{.rsp = createErrorResponse(RspName, RequestStatus::NotExist)};
         else
           return ArrayExecutor<ArrayT, Cmds>::getRange(it->second, body);
       }
@@ -278,13 +286,15 @@ namespace nemesis { namespace arr {
     // NOTE: length is actually capacity 
     ndb_always_inline Response length(njson& request)
     {    
-      if (auto [valid, rsp] = validateLength<Cmds>(request) ; !valid)
-        return Response{.rsp = std::move(rsp)};
+      static constexpr auto RspName = Cmds::LenRsp.data();
+
+      if (const auto status = validateLength<Cmds>(request) ; status != RequestStatus::Ok)
+        return Response{.rsp = createErrorResponse(RspName, status)};
       else
       {
         const auto& body = request.at(Cmds::LenReq);
         if (auto [exist, it] = getArray(body.at("name").as_string(), body) ; !exist)
-          return Response{.rsp = createErrorResponseNoTkn(Cmds::LenRsp, RequestStatus::NotExist)};
+          return Response{.rsp = createErrorResponse(RspName, RequestStatus::NotExist)};
         else
           return ArrayExecutor<ArrayT, Cmds>::length(it->second, body);
       }
@@ -293,13 +303,15 @@ namespace nemesis { namespace arr {
 
     ndb_always_inline Response used(njson& request)
     {    
-      if (auto [valid, rsp] = validateUsed<Cmds>(request) ; !valid)
-        return Response{.rsp = std::move(rsp)};
+      static constexpr auto RspName = Cmds::UsedRsp.data();
+
+      if (const auto status = validateUsed<Cmds>(request) ; status != RequestStatus::Ok)
+        return Response{.rsp = createErrorResponse(RspName, status)};
       else
       {
         const auto& body = request.at(Cmds::UsedReq);
         if (auto [exist, it] = getArray(body.at("name").as_string(), body) ; !exist)
-          return Response{.rsp = createErrorResponseNoTkn(Cmds::UsedRsp, RequestStatus::NotExist)};
+          return Response{.rsp = createErrorResponse(RspName, RequestStatus::NotExist)};
         else
           return ArrayExecutor<ArrayT, Cmds>::used(it->second, body);
       }
@@ -311,17 +323,16 @@ namespace nemesis { namespace arr {
       static constexpr auto ReqName = Cmds::ExistReq.data();
       static constexpr auto RspName = Cmds::ExistRsp.data();
 
-      if (auto [valid, err] = validateExist<Cmds>(request) ; !valid)
-        return Response{.rsp = std::move(err)};
+      if (const auto status = validateExist<Cmds>(request) ; status != RequestStatus::Ok)
+        return Response{.rsp = createErrorResponse(RspName, status)};
       else
       {
         static const njson Prepared = njson{jsoncons::json_object_arg, {{RspName, njson::object()}}};
 
         const auto& name = request.at(ReqName).at("name").as_string();
-        const auto status = toUnderlying(arrayExist(name) ? RequestStatus::Ok : RequestStatus::NotExist);
 
         njson rsp {jsoncons::json_object_arg, {{RspName, njson{}}}}; 
-        rsp[RspName]["st"] = status;
+        rsp[RspName]["st"] = toUnderlying(arrayExist(name) ? RequestStatus::Ok : RequestStatus::NotExist);;
         
         return Response { .rsp = std::move(rsp)};
       }
@@ -330,13 +341,15 @@ namespace nemesis { namespace arr {
 
     ndb_always_inline Response clear(njson& request)
     {
-      if (auto [valid, rsp] = validateClear<Cmds>(request) ; !valid)
-        return Response{.rsp = std::move(rsp)};
+      static constexpr auto RspName = Cmds::ClearRsp.data();
+
+      if (const auto status = validateClear<Cmds>(request) ; status != RequestStatus::Ok)
+        return Response{.rsp = createErrorResponse(RspName, status)};
       else
       {
         const auto& body = request.at(Cmds::ClearReq);
         if (auto [exist, it] = getArray(body.at("name").as_string(), body) ; !exist)
-          return Response{.rsp = createErrorResponseNoTkn(Cmds::ClearRsp, RequestStatus::NotExist)};
+          return Response{.rsp = createErrorResponse(RspName, RequestStatus::NotExist)};
         else
           return ArrayExecutor<ArrayT, Cmds>::clear(it->second, body);
       }
@@ -345,8 +358,10 @@ namespace nemesis { namespace arr {
     
     ndb_always_inline Response intersect(njson& request) requires (Cmds::IsSorted)
     {
-      if (auto [valid, rsp] = validateIntersect<Cmds>(request) ; !valid)
-        return Response{.rsp = std::move(rsp)};
+      static constexpr auto RspName = Cmds::IntersectRsp.data();
+
+      if (const auto status = validateIntersect<Cmds>(request) ; status != RequestStatus::Ok)
+        return Response{.rsp = createErrorResponse(RspName, status)};
       else
       {
         const auto& body = request.at(Cmds::IntersectReq);
@@ -354,14 +369,14 @@ namespace nemesis { namespace arr {
         const auto& srcB = body.at("srcB").as_string();
 
         if (srcA == srcB)
-          return Response{.rsp = createErrorResponseNoTkn(Cmds::IntersectRsp, RequestStatus::Duplicate)};
+          return Response{.rsp = createErrorResponse(RspName, RequestStatus::Duplicate)};
         else
         {
           const auto [arrAExist, arrA] = getArray(srcA, body);
           const auto [arrBExist, arrB] = getArray(srcB, body);
 
           if (!(arrAExist && arrBExist))
-            return Response{.rsp = createErrorResponseNoTkn(Cmds::IntersectRsp, RequestStatus::NotExist)};
+            return Response{.rsp = createErrorResponse(RspName, RequestStatus::NotExist)};
           else
             return ArrayExecutor<ArrayT, Cmds>::intersect(arrA->second, arrB->second);
         }
@@ -371,13 +386,15 @@ namespace nemesis { namespace arr {
 
     ndb_always_inline Response swap(njson& request) requires(!Cmds::IsSorted)
     {
-      if (auto [valid, rsp] = validateSwap<Cmds>(request) ; !valid)
-        return Response{.rsp = std::move(rsp)};
+      static constexpr auto RspName = Cmds::SwapRsp.data();
+
+      if (const auto status = validateSwap<Cmds>(request) ; status != RequestStatus::Ok)
+        return Response{.rsp = createErrorResponse(RspName, status)};
       else
       {
         const auto& body = request.at(Cmds::SwapReq);
         if (auto [exist, it] = getArray(body.at("name").as_string(), body) ; !exist)
-          return Response{.rsp = createErrorResponseNoTkn(Cmds::SwapRsp, RequestStatus::NotExist)};
+          return Response{.rsp = createErrorResponse(RspName, RequestStatus::NotExist)};
         else
           return ArrayExecutor<ArrayT, Cmds>::swap(it->second, body);
       }
@@ -386,13 +403,15 @@ namespace nemesis { namespace arr {
 
     ndb_always_inline Response min(njson& request) requires(Cmds::IsSorted)
     {
-      if (auto [valid, rsp] = validateMin<Cmds>(request) ; !valid)
-        return Response{.rsp = std::move(rsp)};
+      static constexpr auto RspName = Cmds::MinRsp.data();
+
+      if (const auto status = validateMin<Cmds>(request) ; status != RequestStatus::Ok)
+        return Response{.rsp = createErrorResponse(RspName, status)};
       else
       {
         const auto& body = request.at(Cmds::MinReq);
         if (auto [exist, it] = getArray(body.at("name").as_string(), body) ; !exist)
-          return Response{.rsp = createErrorResponseNoTkn(Cmds::MinRsp, RequestStatus::NotExist)};
+          return Response{.rsp = createErrorResponse(RspName, RequestStatus::NotExist)};
         else
           return ArrayExecutor<ArrayT, Cmds>::min(it->second, body);
       }
@@ -401,13 +420,15 @@ namespace nemesis { namespace arr {
     
     ndb_always_inline Response max(njson& request) requires(Cmds::IsSorted)
     {
-      if (auto [valid, rsp] = validateMax<Cmds>(request) ; !valid)
-        return Response{.rsp = std::move(rsp)};
+      static constexpr auto RspName = Cmds::MaxRsp.data();
+
+      if (const auto status = validateMax<Cmds>(request) ; status != RequestStatus::Ok)
+        return Response{.rsp = createErrorResponse(RspName, status)};
       else
       {
         const auto& body = request.at(Cmds::MaxReq);
         if (auto [exist, it] = getArray(body.at("name").as_string(), body) ; !exist)
-          return Response{.rsp = createErrorResponseNoTkn(Cmds::MaxRsp, RequestStatus::NotExist)};
+          return Response{.rsp = createErrorResponse(RspName, RequestStatus::NotExist)};
         else
           return ArrayExecutor<ArrayT, Cmds>::max(it->second, body);
       }
