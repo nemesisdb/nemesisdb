@@ -95,27 +95,39 @@ class ObjLists(_Lists):
     return ObjListCmds()
   
   
-  # NOTE: server contains 'pos' and 'size' in the response. Only return pos here.
-  async def add(self, name: str, items: List[dict], pos = None) -> int:
+  # NOTE: server returns 'pos' and 'size', but add() only returns pos.
+  async def add(self, name: str, items: list[dict] | dict, pos = None) -> int:
     raise_if_empty(name)
-    if pos is None:
-      args = {'name':name, 'items':items}      
+
+    itemsValid = items is not None and isinstance(items, (dict, list))
+
+    raise_if_not(itemsValid, 'items must be List[dict] or dict')
+    raise_if_not(pos is None or isinstance(pos, int), 'pos must be int or None', TypeError)
+
+    data = []
+
+    if isinstance(items, dict):
+      data.append(items)
     else:
-      raise_if_not(isinstance(pos, int), 'pos must be int', TypeError)
+      data = items
+
+    if pos is None:
+      args = {'name':name, 'items':data}      
+    else:
       raise_if_lt(pos, 0, 'pos < 0')    
-      args = {'name':name, 'items':items, 'pos':pos}
+      args = {'name':name, 'items':data, 'pos':pos}
 
     rsp = await self.client.sendCmd(self.cmds.ADD_REQ, self.cmds.ADD_RSP, args)
     return rsp[self.cmds.ADD_RSP]['pos']
+  
 
-
-  async def add_head(self, name: str, items: List[dict]) -> None:
+  async def add_head(self, name: str, items=list[dict]|dict) -> None:
     await self.add(name, items, pos=0)
 
 
-  async def add_tail(self, name: str, items: List[dict]) -> None:
+  async def add_tail(self, name: str, items=list[dict]|dict) -> int:
     return await self.add(name, items, pos=None)
-
+      
 
   async def set_rng(self, name: str, items: List[dict], start: int) -> None:
     raise_if_empty(name)
@@ -155,3 +167,4 @@ class ObjLists(_Lists):
       
     rsp = await self.client.sendCmd(self.cmds.GET_RNG_REQ, self.cmds.GET_RNG_RSP, {'name':name, 'rng':rng})
     return rsp[self.cmds.GET_RNG_RSP]['items']
+  

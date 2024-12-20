@@ -99,9 +99,9 @@ class ListAdd(ObjListTest):
   async def test_add_head(self):
     name = '8'
     await self.lists.create(name)
-    await self.lists.add(name, [{'b':0}])
+    await self.lists.add(name, {'b':0})
 
-    await self.lists.add_head(name, [{'a':0}])
+    await self.lists.add_head(name, {'a':0})
     values = await self.lists.get_rng(name, 0)
     self.assertEqual(len(values), 2)
     self.assertListEqual([{'a':0}, {'b':0}], values)
@@ -115,7 +115,7 @@ class ListAdd(ObjListTest):
     await self.lists.create(name)
     await self.lists.add(name, [{'a':0}, {'b':0}])
 
-    pos = await self.lists.add_tail(name, [{'c':0}])
+    pos = await self.lists.add_tail(name, {'c':0})
     self.assertEqual(pos, 2)
     values = await self.lists.get_rng(name, 0)
     self.assertEqual(len(values), 3)
