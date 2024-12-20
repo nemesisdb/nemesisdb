@@ -1,6 +1,6 @@
 {
-  "label": "Arrays",
-  "position": 10,
+  "label": "Lists",
+  "position": 20,
   "link": {
     "type": "generated-index",
     "description": "Python API"

@@ -1,6 +1,6 @@
 from ndb.commands import (StValues, Fields, ObjListCmds)
 from ndb.client import NdbClient
-from ndb.common import raise_if, raise_if_empty, raise_if_equal, raise_if_lt, raise_if_not
+from ndb.common import raise_if_empty, raise_if_lt, raise_if_not
 from typing import List
 from abc import ABC, abstractmethod
 
