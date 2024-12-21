@@ -13,7 +13,7 @@ class ListSetRng(ObjListTest):
     await self.lists.create(name)
     await self.lists.add(name, data)
 
-    await self.lists.set_rng(name, newData, start=0)
+    await self.lists.set(name, newData, start=0)
 
     values = await self.lists.get_rng(name, start=0)
     self.assertEqual(len(values), len(data))
@@ -28,7 +28,7 @@ class ListSetRng(ObjListTest):
     await self.lists.create(name)
     await self.lists.add(name, data)
 
-    await self.lists.set_rng(name, [{'f':0}, {'g':0}], start=1)
+    await self.lists.set(name, [{'f':0}, {'g':0}], start=1)
 
     values = await self.lists.get_rng(name, start=0)
     self.assertEqual(len(values), len(data))
@@ -40,11 +40,16 @@ class ListSetRng(ObjListTest):
     await self.lists.create(name)
 
     with self.assertRaises(ResponseError):
-      await self.lists.set_rng(name, [{'f':0}, {'g':0}], start=1)
+      await self.lists.set(name, [{'f':0}, {'g':0}], start=1)
 
     await self.lists.add(name, [{'a':0}, {'b': 0}])
     with self.assertRaises(ResponseError):
-      await self.lists.set_rng(name, [{'f':0}, {'g':0}], start=2)
+      await self.lists.set(name, [{'f':0}, {'g':0}], start=2)
+
+
+  async def test_types(self):
+    with self.assertRaises(TypeError):
+      await self.lists.set('asda', [{'f':0}, {'g':0}], start='1')
 
 
 if __name__ == "__main__":

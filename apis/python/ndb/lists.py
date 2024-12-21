@@ -129,10 +129,23 @@ class ObjLists(_Lists):
     return await self.add(name, items, pos=None)
       
 
-  async def set_rng(self, name: str, items: List[dict], start: int) -> None:
+  async def set(self, name: str, items=list[dict]|dict, start=0) -> None:
     raise_if_empty(name)
     raise_if_lt(start, 0, 'start < 0') 
-    await self.client.sendCmd(self.cmds.SET_RNG_REQ, self.cmds.SET_RNG_RSP, {'name':name, 'items':items, 'pos':start})
+
+    itemsValid = items is not None and isinstance(items, (dict, list))
+
+    raise_if_not(itemsValid, 'items must be List[dict] or dict')
+    raise_if_not(start is None or isinstance(start, int), 'start must be int', TypeError)
+
+    args = {'name':name, 'pos':start}
+
+    if isinstance(items, dict):
+      args['items'] = [items]
+    else:
+      args['items'] = items
+      
+    await self.client.sendCmd(self.cmds.SET_RNG_REQ, self.cmds.SET_RNG_RSP, args)
 
 
   async def get(self, name: str, pos: int) -> dict:
