@@ -177,7 +177,73 @@ async def olist_get_rng():
 
   print(await lists.get_rng('data', start=3, stop=6))
 
+
+async def olist_remove():
+  client = NdbClient()
+  await client.open('ws://127.0.0.1:1987/')
+
+  await delete_all(client)
   
+  lists = ObjLists(client)
+  await lists.create('data')
+
+  data = []
+  for i in range(0,10):
+    data.append({f'k{i}':i})
+
+  await lists.add('data', data)
+  print(await lists.get_rng('data', start=0))
+
+  # remove: k3, k4 and k5
+  await lists.remove('data', start=3, stop=6)
+  print(await lists.get_rng('data', start=0))
+  # [{'k0': 0}, {'k1': 1}, {'k2': 2}, {'k6': 6}, {'k7': 7}, {'k8': 8}, {'k9': 9}]
+
+  # remove k8 and k9 (stop is None, so remove to end)
+  await lists.remove('data', start=5)
+  print(await lists.get_rng('data', start=0))
+
+
+async def olist_splice():
+  client = NdbClient()
+  await client.open('ws://127.0.0.1:1987/')
+
+  await delete_all(client)
+  
+  lists = ObjLists(client)
+  await lists.create('src')
+
+  data = []
+  for i in range(0,10):
+    data.append({f'k{i}':i})
+
+  await lists.add('src', data)
+
+  src_list = await lists.get_rng('src', start=0)
+  print(f'Source\n{src_list}')
+
+  # move k3, k4 to a new list
+  print('Splicing 1')
+  await lists.splice('dest', 'src', srcStart=3, srcEnd=5)
+
+  src_list = await lists.get_rng('src', start=0)
+  dest_list = await lists.get_rng('dest', start=0)
+
+  print(f'\tSource: {src_list}')
+  print(f'\tDest: {dest_list}')
+
+
+  # move k5 to k9, appending to destination
+  print('Splicing 2')
+  await lists.splice('dest', 'src', srcStart=3)
+
+  src_list = await lists.get_rng('src', start=0)
+  dest_list = await lists.get_rng('dest', start=0)
+
+  print(f'\tSource: {src_list}')
+  print(f'\tDest: {dest_list}')
+
+
 if __name__ == "__main__":
   for f in [
               olst_as_queue(),
@@ -185,7 +251,9 @@ if __name__ == "__main__":
               olst_create(),
               olst_add(),
               olist_set(),
-              olist_get_rng()
+              olist_get_rng(),
+              olist_remove(),
+              olist_splice()
             ]:
     
     print(f'---- {f.__name__} ----')

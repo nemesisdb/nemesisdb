@@ -132,6 +132,29 @@ class ListSplice(ObjListTest):
     self.assertListEqual([{'a':0}, {'b':0}], destValues)
 
 
+  async def test_dest_default(self):
+    src = '1'
+    dest = '2'
+    
+    await self.lists.create(src)
+    await self.lists.create(dest)
+
+    await self.lists.add(src, [{'a':0}, {'b':0}, {'c':0}, {'d':0}])
+    await self.lists.add(dest, [{'a':0}, {'b':0}])
+
+    # move 'c' and 'd' to end of dest
+    await self.lists.splice(dest, src, srcStart=2)
+
+    srcValues = await self.lists.get_rng(src, start=0)
+    destValues = await self.lists.get_rng(dest, start=0)
+
+    self.assertEqual(len(srcValues), 2)
+    self.assertEqual(len(destValues), 4)
+
+    self.assertListEqual([{'a':0}, {'b':0}], srcValues)
+    self.assertListEqual([{'a':0}, {'b':0}, {'c':0}, {'d':0}], destValues)
+
+
   async def test_src_bounds(self):
     src = '1'
     dest = '2'

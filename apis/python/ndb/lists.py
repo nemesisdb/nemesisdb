@@ -70,16 +70,25 @@ class _Lists(ABC):
     return rsp[self.cmds.RMV_RSP]['size']
   
 
-  async def splice(self, destName: str, srcName: str, srcStart: int, srcEnd = None, destPos = 0):
+  async def splice(self, destName: str, srcName: str, srcStart: int, srcEnd = None, destPos = None) -> None:
     raise_if_empty(destName)
     raise_if_empty(srcName)
-    
-    args = {'srcName':srcName, 'destName':destName, 'destPos':destPos}
+    raise_if_lt(srcStart, 0, 'srcEnd < 0')
+
+    args = {'srcName':srcName, 'destName':destName}
     
     if srcEnd is not None:
-      args['srcRng'] = [srcStart, srcEnd]
+      raise_if_not(isinstance(srcEnd, int), 'srcEnd must be int', TypeError)
+      raise_if_lt(srcEnd, 0, 'srcEnd < 0')
+      raise_if_lt(srcEnd, srcStart, 'srcEnd < srcStart')
+      args['srcRng'] = [srcStart, srcEnd]      
     else:
       args['srcRng'] = [srcStart]
+
+    if destPos is not None:
+      raise_if_not(isinstance(destPos, int), 'destPos must be int', TypeError)
+      raise_if_lt(destPos, 0, 'destPos < 0')
+      args['destPos'] = destPos
 
     await self.client.sendCmd(self.cmds.SPLICE_REQ, self.cmds.SPLICE_RSP, args)
    
