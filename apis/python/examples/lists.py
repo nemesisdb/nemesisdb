@@ -52,7 +52,6 @@ async def olst_as_queue():
     print(player)
 
 
-
 async def olst_as_stack():
   """
   How to use a list as a stack for JSON objects.
@@ -80,7 +79,6 @@ async def olst_as_stack():
 
   for item in await lists.get_rng('stack', start=0):
     print(item)
-
 
 
 async def olst_create():
@@ -151,13 +149,43 @@ async def olist_set():
   print(await lists.get_rng('books', start=0))
 
 
+async def olist_get_rng():
+  client = NdbClient()
+  await client.open('ws://127.0.0.1:1987/')
+
+  await delete_all(client)
+
+  # create API object
+  lists = ObjLists(client)
+
+  await lists.create('data')
+
+  data = []
+
+  for i in range(0,10):
+    data.append({f'k{i}':i})
+
+  await lists.add('data', data)
+
+  # get everything but only print first 3
+  everything = await lists.get_rng('data', start=0)
+  print(everything[0:3])
+
+  # or just get the first three
+  firstThree = await lists.get_rng('data', start=0, stop=3)
+  print(firstThree)
+
+  print(await lists.get_rng('data', start=3, stop=6))
+
+  
 if __name__ == "__main__":
   for f in [
               olst_as_queue(),
               olst_as_stack(),
               olst_create(),
               olst_add(),
-              olist_set()
+              olist_set(),
+              olist_get_rng()
             ]:
     
     print(f'---- {f.__name__} ----')

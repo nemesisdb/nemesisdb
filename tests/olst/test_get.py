@@ -98,6 +98,11 @@ class ListGet(ObjListTest):
     values = await self.lists.get_rng(name, start=10)
     self.assertListEqual(values, [])
 
+
+  async def test_stop_lt_start(self):
+    with self.assertRaises(ValueError):
+      await self.lists.get_rng('abc', start=10,stop=9)
+
   #endregion
 
 

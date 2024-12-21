@@ -176,6 +176,7 @@ class ObjLists(_Lists):
     else:
       raise_if_not(isinstance(stop, int), 'stop must be int', TypeError)
       raise_if_lt(stop, 0, 'stop < 0')
+      raise_if_lt(stop, start, 'stop < start')
       rng = [start, stop]
       
     rsp = await self.client.sendCmd(self.cmds.GET_RNG_REQ, self.cmds.GET_RNG_RSP, {'name':name, 'rng':rng})
