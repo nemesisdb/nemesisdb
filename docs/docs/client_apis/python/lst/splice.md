@@ -11,19 +11,18 @@ async def splice(self, destName: str, srcName: str, srcStart: int, srcEnd = None
 
 |Param|Description|
 |---|---|
-|name|Name of the list|
 |destName|The list to receive the spliced nodes. This is created if it doesn't exist.|
 |srcName|The list to splice|
 |srcStart|The position in `srcName` to begin splicing|
-|srcEnd|The exclusive position in `srcName` to stop splicing. If `None`, to end is used.|
-|destPos|The position in `destName` where the spliced nodes will be inserted. If `None` will be appended to the tail|
+|srcEnd|The exclusive position in `srcName` to stop splicing. If `None`, to end is used|
+|destPos|The position in `destName` where the spliced nodes will be inserted. If `None`, nodes be appended to the tail|
 
 
-The function effectively moves source nodes in range `[srcStart, srcEnd)` and to the destination list, inserting at `destPos`.
+Move source nodes in range `[srcStart, srcEnd)` and to the destination list, inserting at `destPos`.
 
 If the destination list does not exist, it is created.
 
-No nodes are copied, only pointers are amended as required.
+No nodes are copied, only pointers are amended.
 
 
 ## Raises
@@ -34,6 +33,7 @@ No nodes are copied, only pointers are amended as required.
   - `srcName` is empty
 - `TypeError`
   - `srcEnd` not an int
+  - `destPos` not an int
 
 
 ## Examples
