@@ -31,7 +31,7 @@ class _Lists(ABC):
     await self.client.sendCmd(self.cmds.DELETE_REQ, self.cmds.DELETE_RSP, {'name':name})
 
   
-  async def exist(self, name: str) -> None:
+  async def exist(self, name: str) -> bool:
     raise_if_empty(name)
     # don't check status: EXIST response has 'st' success if list exists or NotExist otherwise (so not an error)
     rsp = await self.client.sendCmd(self.cmds.EXIST_REQ, self.cmds.EXIST_RSP, {'name':name}, checkStatus=False)
@@ -51,6 +51,7 @@ class _Lists(ABC):
       args = {'name':name, 'rng':[start]}
     else:
       raise_if_lt(stop, 0, 'stop < 0')
+      raise_if_lt(stop, start, 'stop < start')
       args = {'name':name, 'rng':[start, stop]}
 
     rsp = await self.client.sendCmd(self.cmds.RMV_REQ, self.cmds.RMV_RSP, args)
