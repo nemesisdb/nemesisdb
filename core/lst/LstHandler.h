@@ -327,7 +327,7 @@ namespace nemesis { namespace lst {
                     
           ListT& srcList = itSrc->second;
           ListT& destList = itDest->second;
-          const std::size_t destPos = body.contains("destPos") ? body.at("destPos").template as<std::size_t>() : 0U;
+          const std::size_t destPos = body.contains("destPos") ? body.at("destPos").template as<std::size_t>() : destList.size();
           const auto [srcStart, srcStop, hasStop, hasRange] = rangeFromRequest(body, "srcRng");
 
           if (hasStop)
