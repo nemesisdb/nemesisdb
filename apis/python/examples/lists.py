@@ -131,12 +131,33 @@ async def olst_add():
   print(f'After: {names}')
 
 
+async def olist_set():
+  client = NdbClient()
+  await client.open('ws://127.0.0.1:1987/')
+
+  await delete_all(client)
+
+  # create API object
+  lists = ObjLists(client)
+
+
+  await lists.create('books')
+
+  await lists.add('books', [{'title':'Harry Potter'}, {'title':'Moby Dick'}, {'title':'War and Peace'}])
+  print(await lists.get_rng('books', start=0))
+
+  # overwrite Moby Dick 
+  await lists.set('books', {'title':'Dracula'}, start=1)
+  print(await lists.get_rng('books', start=0))
+
+
 if __name__ == "__main__":
   for f in [
               olst_as_queue(),
               olst_as_stack(),
               olst_create(),
-              olst_add()
+              olst_add(),
+              olist_set()
             ]:
     
     print(f'---- {f.__name__} ----')
