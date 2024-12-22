@@ -10,7 +10,7 @@ class StValues:
     ST_LOAD_COMPLETE - SH_LOAD or KV_LOAD success, data available
   """
   ST_SUCCESS = 1
-  ST_SAVE_COMPLETE = 121
+  ST_SAVE_COMPLETE = 120
   ST_SAVE_ERROR = 123
   ST_LOAD_COMPLETE = 141
 
