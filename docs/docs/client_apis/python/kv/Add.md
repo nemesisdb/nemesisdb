@@ -1,17 +1,13 @@
 ---
 sidebar_position: 4
 displayed_sidebar: clientApisSidebar
-sidebar_label: kv_add
+sidebar_label: add
 ---
 
-# kv_add
-Stores keys but does not overwrite a key if it already exists.
-
-To overwrite an existing key, use [kv_set](./Set).
-
+# add
 
 ```py
-kv_add(keys: dict) -> None
+async def add(keys: dict) -> None
 ```
 
 |Param|Description|Returns|
@@ -19,31 +15,35 @@ kv_add(keys: dict) -> None
 |keys|The key/values to store|None|
 
 
+Stores keys but does not overwrite a key if it already exists.
+
+To overwrite an existing key, use [set](./Set).
+
+If a key already exists, no changes are made and it is not considered an error.
+
+
 
 ## Raises
-- `ResponseError` if query fails
+- `ResponseError`
 
 
 ## Examples
 
 ```py title='Avoid overwriting'
-await client.kv_set({'LinuxDistro':'Arch'})
-value = await client.kv_get(key='LinuxDistro')
+await kv.set({'LinuxDistro':'Arch'})
+value = await kv.get(key='LinuxDistro')
 print(f'Before add(): {value}')
 
-# kv_add() does not overwrite
-await client.kv_add({'LinuxDistro':'Arch btw'})
-value = await client.kv_get(key='LinuxDistro')
+# does not overwrite
+await kv.add({'LinuxDistro':'Arch btw'})
+value = await kv.get(key='LinuxDistro')
 print(f'After add(): {value}')
 
-# kv_set() does overwrite
-await client.kv_set({'LinuxDistro':'Arch btw'})
-value = await client.kv_get(key='LinuxDistro')
+# overwrite
+await kv.set({'LinuxDistro':'Arch btw'})
+value = await kv.get(key='LinuxDistro')
 print(f'After set(): {value}')
 ```
-
-- `kv_add()` does not overwrite keys
-- `kv_set()` does overwrite keys
 
 Output:
 ```
@@ -51,3 +51,6 @@ Before add(): {'LinuxDistro': 'Arch'}
 After add(): {'LinuxDistro': 'Arch'}
 After set(): {'LinuxDistro': 'Arch btw'}
 ```
+
+- `add()` does not overwrite keys
+- `set()` does overwrite keys

@@ -93,7 +93,6 @@ class _Lists(ABC):
     await self.client.sendCmd(self.cmds.SPLICE_REQ, self.cmds.SPLICE_RSP, args)
    
 
-
 class ObjLists(_Lists):
   "Object lists"
   def __init__(self, client):

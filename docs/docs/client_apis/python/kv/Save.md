@@ -1,20 +1,20 @@
 ---
 sidebar_position: 11
 displayed_sidebar: clientApisSidebar
-sidebar_label: kv_save
+sidebar_label: save
 ---
 
-# kv_save
-Saves all keys to the filesystem so they can be restored later.
-
-
+# save
 ```py
-kv_save(name: str) -> None
+async def save(name: str) -> None
 ```
 
 |Param|Description|
 |--|--|
 |name|The name of the dataset.<br/>The `name` is used to load data at runtime with `kv_load()` or at startup.|
+
+
+Saves all keys to the filesystem so they can be restored later.
 
 
 :::note
@@ -28,27 +28,23 @@ kv_save(name: str) -> None
 
 
 ## Raises
-- `ValueError` if name is empty
 - `ResponseError` if query fails
-
-
+- `ValueError`
+  - `name` is empty
 
 
 ## Examples
 
 ```py
-client = NdbClient()
-await client.open('ws://127.0.0.1:1987/')
+# set keys ... etc
 
-# set keys, etc
-
-await client.kv_save('my_data')
+await kv.save('my_data')
 print('Save success')  
 ```
 
 If the server is shutdown, we can restore the keys at runtime:
 
 ```py
-count = await client.kv_load('my_data')
+count = await kv.load('my_data')
 print(f'Loaded {count} keys')
 ```

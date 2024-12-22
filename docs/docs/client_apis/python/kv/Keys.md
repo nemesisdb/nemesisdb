@@ -1,22 +1,23 @@
 ---
 sidebar_position: 10
 displayed_sidebar: clientApisSidebar
-sidebar_label: kv_keys
+sidebar_label: keys
 ---
 
-# kv_keys
-Returns all keys, excluding values.
+# keys
 
 ```py
-kv_keys() -> List[str]
+async def kv_keys() -> List[str]
 ```
+
+Returns all keys, excluding values.
 
 
 ## Returns
-`list` : all keys
+A `list` of all keys
 
 
 ## Raises
-- `ResponseError` if query fails
+- `ResponseError`
 
 

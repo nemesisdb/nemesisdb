@@ -1,29 +1,32 @@
 ---
 sidebar_position: 7
 displayed_sidebar: clientApisSidebar
-sidebar_label: kv_clear_set
+sidebar_label: clear_set
 ---
 
-# kv_clear_set
-Deletes _all_ keys then sets new keys in a single call.
-
+# clear_set
 
 ```py
-kv_clear_set(keys: dict) -> None
+async def clear_set(keys: dict) -> int
 ```
 
 |Param|Description|
 |--|--|
-|keys|The new keys stored after the existing keys have been deleted|
+|keys|The new keys stored after the existing keys are deleted|
+
+Deletes _all_ keys then sets new keys in a single call.
+
+
+## Returns
+The number of keys deleted.
 
 
 ## Raises
-- `ResponseError` if query fails
+- `ResponseError`
 
 
 ## Examples
 
 ```py
-# using the db to store stats, after a period of time we reset counters
-nKeysDeleted = await client.kv_clear_set({'stats_total':0, 'stats_visitors':0, 'stats_blocked':0})
+nKeysDeleted = await kv.clear_set({'stats_total':0, 'stats_visitors':0, 'stats_blocked':0})
 ```

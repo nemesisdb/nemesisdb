@@ -1,14 +1,12 @@
 ---
 sidebar_position: 3
 displayed_sidebar: clientApisSidebar
-sidebar_label: kv_get
+sidebar_label: get
 ---
 
-# kv_get
-Retrieves keys from the database.
-
+# get
 ```py
-kv_get(keys = tuple(), key = None)
+async def get(keys = None, key=None) -> dict | Any:
 ```
 
 |Param|Description|
@@ -17,35 +15,47 @@ kv_get(keys = tuple(), key = None)
 |keys|Keys to retrieve|
 
 
+Retrieves keys from the database.
+
 ## Returns
 - If `keys` set, a `dict` is returned
-- Otherwise, the value of `key` is returned
+  - If a key does not exist, its value is `None`
+- If value of `key` is returned
+  - If `key` does not exist, `None` is returned
 
 
 ## Raises
-- `ResponseError` if query fails
-- `ValueError` if both `keys` and `key` are set
+- `ResponseError`
+- `ValueError`
+  - Both `keys` and `key` are set
+- `TypeError`
+  - `keys` not a dict
+  - `key` not a str
 
 
 ## Examples
 
 ```py title='Connect and Set'
 from ndb.client import NdbClient
+from ndb.kv import KV
+
 
 client = NdbClient(debug=False) # toggle for debug
-
 await client.open('ws://127.0.0.1:1987/')
-await client.kv_set({'username':'billy', 'password':'billy_passy'})
+
+# create API instance
+kv = KV(client)
+await kv.set({'username':'billy', 'password':'billy_passy'})
 ```
 
 
 ```py title='Get various'
 # get single key
-value = await client.kv_get(key='username')
+value = await kv.get(key='username')
 print (value)
 
 # get multiple keys
-values = await client.kv_get(keys=('username', 'password'))
+values = await kv.get(keys=('username', 'password'))
 print (values)
 ```
 

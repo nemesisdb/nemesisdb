@@ -4,7 +4,7 @@ from typing import List
 class StValues:
   """
   There are more but we only require:
-  
+
     ST_SUCCESS        - Command success
     ST_SAVE_COMPLETE  - KV_SAVE success, data persisted
     ST_SAVE_ERROR     - KV_SAVE fail
@@ -26,7 +26,7 @@ class SvCmd:
   INFO_RSP    = 'SV_INFO_RSP'
 
 
-class KvCmd:
+class KvCmds:
   SET_REQ       = 'KV_SET'
   SET_RSP       = 'KV_SET_RSP'
   ADD_REQ       = 'KV_ADD'
