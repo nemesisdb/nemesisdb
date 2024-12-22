@@ -1,6 +1,3 @@
-from typing import List
-
-
 class StValues:
   """
   There are more but we only require:
@@ -18,10 +15,9 @@ class StValues:
 
 class Fields:
   STATUS    = 'st'
-  TOKEN     = 'tkn'
 
 
-class SvCmd:
+class SvCmds:
   INFO_REQ    = 'SV_INFO'
   INFO_RSP    = 'SV_INFO_RSP'
 

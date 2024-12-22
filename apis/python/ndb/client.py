@@ -1,4 +1,4 @@
-from ndb.commands import StValues, Fields, SvCmd
+from ndb.commands import StValues, Fields
 from ndb.common import ResponseError
 from ndb.connection import Connection
 from ndb.logging import logger
@@ -37,29 +37,16 @@ class NdbClient:
     await self.ws.close()
  
 
-  ## SV
-  async def sv_info(self) -> dict:
-    rsp = await self._sendCmd(SvCmd.INFO_REQ, SvCmd.INFO_RSP, {})
-    info = dict(rsp.get(SvCmd.INFO_RSP))
-    info.pop('st')
-    return info
+  async def sendCmd(self, cmdReq: str, cmdRsp: str, body: dict, stSuccess = StValues.ST_SUCCESS, checkStatus = True):
+    return await self._sendCmd(cmdReq, cmdRsp, body, stSuccess, checkStatus)
   
- 
+  
   async def _sendCmd(self, cmdReq: str, cmdRsp: str, body: dict, stSuccess = StValues.ST_SUCCESS, checkStatus = True):
     req = {cmdReq : body}
     rsp = await self.ws.query(req)
     if checkStatus:
       self._raise_if_invalid(rsp, cmdRsp, stSuccess)
     return rsp
-  
-
-  async def sendCmd(self, cmdReq: str, cmdRsp: str, body: dict, stSuccess = StValues.ST_SUCCESS, checkStatus = True):
-    return await self._sendCmd(cmdReq, cmdRsp, body, stSuccess, checkStatus)
-  
-
-  async def _sendTknCmd(self, cmdReq: str, cmdRsp: str, body: dict, tkn: int):
-    body[Fields.TOKEN] = tkn   
-    return await self._sendCmd(cmdReq, cmdRsp, body)
   
 
   def _raise_if_invalid(self, rsp: dict, cmdRsp: str, expected = StValues.ST_SUCCESS):
