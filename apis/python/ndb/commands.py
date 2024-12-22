@@ -4,10 +4,11 @@ from typing import List
 class StValues:
   """
   There are more but we only require:
-    ST_SUCCESS - command success
-    ST_SAVE_COMPLETE - SH_SAVE or KV_SAVE success, data persisted
-    ST_SAVE_ERROR - SH_SAVE or KV_SAVE fail
-    ST_LOAD_COMPLETE - SH_LOAD or KV_LOAD success, data available
+  
+    ST_SUCCESS        - Command success
+    ST_SAVE_COMPLETE  - KV_SAVE success, data persisted
+    ST_SAVE_ERROR     - KV_SAVE fail
+    ST_LOAD_COMPLETE  - KV_LOAD success, data available
   """
   ST_SUCCESS = 1
   ST_SAVE_COMPLETE = 120
