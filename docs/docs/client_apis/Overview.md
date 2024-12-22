@@ -16,7 +16,6 @@ This API is new and likely to change.
   - `open()` and `close()` for the connection
   - Commands are sent with functions beginning:
     - `kv_` for keys not in a session, i.e. `kv_set()`
-    - `sh_` for keys in a session, i.e. `sh_get()`, `sh_create()`, etc
   - If a command returns an failure, an `ndb.ResponseError` is raised
     - The exception message contains the error code
     - The exception contains `rsp` which is the full response

@@ -7,13 +7,11 @@
 #include <core/CacheMap.h>
 #include <core/kv/KvCommon.h>
 #include <core/kv/KvCommands.h>
-#include <core/sh/ShCommands.h>
 
 
 namespace nemesis { namespace kv {
 
 
-namespace shcmds = nemesis::sh::cmds;
 namespace kvcmds = nemesis::kv::cmds;
 
 
@@ -25,7 +23,6 @@ namespace kvcmds = nemesis::kv::cmds;
 //
 // RspMeta and KvOnlyMeta structs are used to build the response object,
 // with the correct response name, either a KV or SH response.
-template<bool WithSessions>
 class KvExecutor
 {
   template<bool Sessions, const char * kv, const char * sh>
@@ -69,7 +66,7 @@ public:
 
   static Response set (CacheMap& map,  const njson& cmd)
   {
-    using Rsp = RspMeta<WithSessions, kvcmds::SetRsp, shcmds::SetRsp>;
+    using Rsp = KvOnlyMeta<kvcmds::SetRsp>;
 
     Response response = Rsp::make();
     auto& body = response.rsp.at(Rsp::name);
@@ -93,7 +90,7 @@ public:
 
   static Response get (const CacheMap& map,  const njson& cmd)
   {
-    using Rsp = RspMeta<WithSessions, kvcmds::GetRsp, shcmds::GetRsp>;
+    using Rsp = KvOnlyMeta<kvcmds::GetRsp>;
 
     Response response = Rsp::make();
 
@@ -128,7 +125,7 @@ public:
 
   static Response add (CacheMap& map,  const njson& cmd)
   {
-    using Rsp = RspMeta<WithSessions, kvcmds::AddRsp, shcmds::AddRsp>;
+    using Rsp = KvOnlyMeta<kvcmds::AddRsp>;
 
     Response response = Rsp::make();
 
@@ -152,7 +149,7 @@ public:
 
   static Response remove (CacheMap& map,  const njson& cmd)
   {
-    using Rsp = RspMeta<WithSessions, kvcmds::RmvRsp, shcmds::RmvRsp>;
+    using Rsp = KvOnlyMeta<kvcmds::RmvRsp>;
 
     Response response = Rsp::make();
 
@@ -183,7 +180,7 @@ public:
 
   static Response clear (CacheMap& map,  const njson& cmd)
   {
-    using Rsp = RspMeta<WithSessions, kvcmds::ClearRsp, shcmds::ClearRsp>;
+    using Rsp = KvOnlyMeta<kvcmds::ClearRsp>;
 
     const auto[ok, count] = map.clear();
 
@@ -197,7 +194,7 @@ public:
 
   static Response contains (const CacheMap& map,  const njson& cmd)
   {
-    using Rsp = RspMeta<WithSessions, kvcmds::ContainsRsp, shcmds::ContainsRsp>;
+    using Rsp = KvOnlyMeta<kvcmds::ContainsRsp>;
 
     Response response = Rsp::make();
 
@@ -221,7 +218,7 @@ public:
 
   static Response keys (const CacheMap& map,  const njson& cmd)
   {
-    using Rsp = RspMeta<WithSessions, kvcmds::KeysRsp, shcmds::KeysRsp>;
+    using Rsp = KvOnlyMeta<kvcmds::KeysRsp>;
 
     Response response = Rsp::make();
     response.rsp.at(Rsp::name)["st"] = toUnderlying(RequestStatus::Ok);
@@ -232,7 +229,7 @@ public:
 
   static Response clearSet (CacheMap& map,  const njson& cmd)
   {
-    using Rsp = RspMeta<WithSessions, kvcmds::ClearSetRsp, shcmds::ClearSetRsp>;
+    using Rsp = KvOnlyMeta<kvcmds::ClearSetRsp>;
 
     Response response = Rsp::make();
     auto& body = response.rsp.at(Rsp::name);
@@ -268,7 +265,7 @@ public:
 
   static Response count (const CacheMap& map,  const njson& cmd)
   {
-    using Rsp = RspMeta<WithSessions, kvcmds::CountRsp, shcmds::CountRsp>;
+    using Rsp = KvOnlyMeta<kvcmds::CountRsp>;
 
     Response response = Rsp::make();
     response.rsp.at(Rsp::name)["st"] = toUnderlying(RequestStatus::Ok);

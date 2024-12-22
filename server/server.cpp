@@ -9,8 +9,6 @@
 #include <core/NemesisCommon.h>
 #include <core/LogFormatter.h>
 #include <core/kv/KvCommon.h>
-#include <core/sh/ShSessions.h>
-#include <jsoncons/json_traits_macros.hpp>
 
 
 using namespace nemesis;
@@ -84,10 +82,9 @@ int main (int argc, char ** argv)
   PLOGI << "Query Interface: " << settings.wsSettingsString();
   
   int error = 0;
-  auto sessions = std::make_shared<nemesis::sh::Sessions>();
 
   Server server;
-  if (server.run(sessions))
+  if (server.run())
     run.wait();
   else
   {

@@ -8,18 +8,13 @@ displayed_sidebar: homeSidebar
 NemesisDB is an in-memory key-value database with support arrays.
 
 - The query interface is JSON over a WebSocket
-- Session support: each session has a dedicated map and can expire
-- Keys and sessions can be persisted to the filesystem
+- Keys can be persisted to the filesystem
 - Persisted data can be loaded at startup or runtime
-- Unsorted arrays for JSON objects, strings and integers
-- Sorted arrays for strings and integers
-  
-
-## Sessions
-- Each session has a dedicated map
-- A session can expire, after which, the keys are deleted
-- A session is identified by a session token (an unsigned int)
-- The session token is used in commands to access keys in that session
+- Arrays:
+  - Unsorted for JSON objects, strings and integers
+  - Sorted for strings and integers
+- Lists:
+  - Node based container for JSON objects
 
 
 ## Arrays
