@@ -11,11 +11,17 @@ displayed_sidebar: clientApisSidebar
 This API is new and likely to change. 
 :::
 
-- `from ndb.client import NdbClient`
-- The `NdbClient` class contains:
-  - `open()` and `close()` for the connection
-  - Commands are sent with functions beginning:
-    - `kv_` for keys not in a session, i.e. `kv_set()`
-  - If a command returns an failure, an `ndb.ResponseError` is raised
-    - The exception message contains the error code
-    - The exception contains `rsp` which is the full response
+Manage the connectiion:
+ - `from ndb.client import NdbClient`
+
+Each API has a separate class, i.e.:
+
+- `from ndb.kv import KV` for key value
+- `from ndb.lists import ObjLists` for object lists
+- `from ndb.arrays import SortedIntArrays` for sorted integer arrays
+
+All commands can raise a `ResponseError`:
+  - The exception contains the status (`st`)
+  - The exception contains `rsp` which is the full response
+
+Some commands can raise a `TypeError` or `ValueError`

@@ -89,11 +89,11 @@ data = {
        }
 
 await kv.set(data)
-values = await kv.get(keys=('server_users', 'server_port'))
 
+values = await kv.get(keys=('server_users', 'server_port'))
 print(f'Initial: {values}')
 
-# update and call set() to overwrite
+# update and call set() to overwrite on server
 values['server_port'] = 7891
 values['server_users']['banned'] = []
 
