@@ -16,10 +16,8 @@ namespace nemesis {  namespace kv {
   enum class KvQueryType : std::uint8_t
   { 
     KvSet,
-    //KvSetQ,
     KvGet,
     KvAdd,
-    //KvAddQ,
     KvRemove,
     KvClear,
     KvCount,
@@ -31,7 +29,6 @@ namespace nemesis {  namespace kv {
     KvSave,
     KvLoad,
     KvArrayAppend,
-    MAX,
     InternalSessionMonitor,
     InternalLoad,
     Unknown,

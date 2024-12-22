@@ -91,30 +91,6 @@ public:
   }
 
 
-  /*
-  static Response setQ (CacheMap& map,  const njson& cmd)
-  {
-    using Rsp = KvOnlyMeta<kvcmds::GetRsp>;
-
-    Response response = Rsp::make();
-
-    try
-    {         
-      for(const auto& kv : cmd["keys"].object_range())
-        map.set(kv.key(), kv.value());     
-    }
-    catch(const std::exception& e)
-    {
-      PLOGE << e.what();
-      response.rsp = njson {jsoncons::json_object_arg, {{Rsp::name, jsoncons::json_object_arg_t{}}}};
-      response.rsp[Rsp::name]["st"] = toUnderlying(RequestStatus::Unknown);
-    }
-
-    return response;
-  }
-  */
-
-
   static Response get (CacheMap& map,  const njson& cmd)
   {
     using Rsp = RspMeta<WithSessions, kvcmds::GetRsp, shcmds::GetRsp>;
@@ -172,30 +148,6 @@ public:
 
     return response;
   }
-
-
-  /*
-  static Response addQ (CacheMap& map,  const njson& cmd)
-  {
-    using Rsp = KvOnlyMeta<kvcmds::AddQRsp>;
-
-    Response response;
-
-    try
-    {
-      for(auto& kv : cmd["keys"].object_range())
-        map.add(kv.key(), kv.value());
-    }
-    catch (const std::exception& ex)
-    {
-      PLOGE << ex.what();
-      response = Rsp::make();
-      response.rsp.at(Rsp::name)["st"] = toUnderlying(RequestStatus::Unknown);
-    }
-
-    return response;
-  }
-  */
 
 
   static Response remove (CacheMap& map,  const njson& cmd)

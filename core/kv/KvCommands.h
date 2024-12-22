@@ -8,14 +8,10 @@ namespace nemesis { namespace kv { namespace cmds {
 
   const char SetReq[]     = "KV_SET";
   const char SetRsp[]     = "KV_SET_RSP";
-  const char SetQReq[]    = "KV_SETQ";
-  const char SetQRsp[]    = "KV_SETQ_RSP";
   const char GetReq[]     = "KV_GET";
   const char GetRsp[]     = "KV_GET_RSP";
   const char AddReq[]     = "KV_ADD";
   const char AddRsp[]     = "KV_ADD_RSP";
-  const char AddQReq[]    = "KV_ADDQ";
-  const char AddQRsp[]    = "KV_ADDQ_RSP";
   const char RmvReq[]     = "KV_RMV";
   const char RmvRsp[]     = "KV_RMV_RSP";
   const char ClearReq[]   = "KV_CLEAR";

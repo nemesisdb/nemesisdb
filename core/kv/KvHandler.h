@@ -59,8 +59,6 @@ private:
       {KvQueryType::KvArrayAppend,  Handler{std::bind_front(&KvHandler::arrayAppend,  std::ref(*this))}},
       {KvQueryType::KvSave,         Handler{std::bind_front(&KvHandler::save,         std::ref(*this))}},
       {KvQueryType::KvLoad,         Handler{std::bind_front(&KvHandler::load,         std::ref(*this))}},
-      //{KvQueryType::KvSetQ,         Handler{std::bind_front(&KvHandler::setQ,       std::ref(*this))}},
-      //{KvQueryType::KvAddQ,         Handler{std::bind_front(&KvHandler::addQ,       std::ref(*this))}}      
     }, 1, alloc);
     
     return h;
