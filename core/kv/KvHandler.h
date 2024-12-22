@@ -84,8 +84,6 @@ private:
       {ArrAppendReq,    KvQueryType::KvArrayAppend},
       {SaveReq,         KvQueryType::KvSave},
       {LoadReq,         KvQueryType::KvLoad}
-      //{SetQReq,         KvQueryType::KvSetQ},
-      //{AddQReq,         KvQueryType::KvAddQ}
     }, 1, alloc); 
 
     return map;
