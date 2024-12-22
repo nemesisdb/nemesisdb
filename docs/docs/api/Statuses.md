@@ -4,7 +4,7 @@ displayed_sidebar: apiSidebar
 ---
 
 # Status Values
-Many commands return a status (`st`), these are defined in `core/NemesisCommon.h`:
+All commands return a status (`st`), defined in `core/NemesisCommon.h`:
 
 
 ```cpp
@@ -25,12 +25,7 @@ enum class RequestStatus
   ValueMissing          = 40,
   ValueTypeInvalid,
   ValueSize,
-  SessionNotExist       = 100,
-  SessionTokenInvalid,
-  SessionOpenFail,
-  SessionNewFail,  
-  SaveStart             = 120,
-  SaveComplete,
+  SaveComplete          = 120,
   SaveDirWriteFail,
   SaveError,
   Loading               = 140,

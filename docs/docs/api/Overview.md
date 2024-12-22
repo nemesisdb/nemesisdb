@@ -5,14 +5,19 @@ displayed_sidebar: apiSidebar
 
 # Overview
 
+:::info
+During a busy period of changes, the Nemesis API docs have fallen behind, but will be updated soon.
+
+The [Python API](/category/python) docs are current.
+:::
+
+
 There are seperate APIs for key-values and sessions, but they all share:
 
 - Command names must be upper case
 - Commands are a JSON object
 - Commands that return a response contain a status (`st`) which is an unsigned integer
 - Parameters are in lower case unless stated otherwise
-
-There is a key value [TLDR](../home/tldr-kv).
 
 
 ## Key value
@@ -49,48 +54,8 @@ Commonly used commands:
 |---|---|
 |KV_ADD|Stores keys, but unlike `KV_SET`, does not overwrite if a already exists|
 |KV_CONTAINS|Checks if keys exist|
-|KV_RMV|Remove/delete keys|
+|KV_RMV|Delete key(s)|
+|KV_CLEAR|Deletes all keys|
+|KV_CLEAR_SET|Deletes all keys and sets new keys in a single command|
 
 <br/>
-
-## Sessions
-The session API contains commands to manage sessions, such as `SH_NEW`, `SH_END`, etc.
-
-- Create a session with `SH_NEW`
-- The token returned by `SH_NEW` can be used in subsequent `SH_` commands that require it
-- Use `SH_SET`, `SH_GET` etc to set and get keys. These are the same as their `KV_` counterparts but require a token (`tkn`)
-
-
-```json title='Create Session'
-{
-  "SH_NEW":{}
-}
-```
-
-```json title='Create session response'
-{
-  "SH_NEW_RSP":
-  {
-    "tkn":16351792548006066062
-  }
-}
-```
-
-After this, you can store data in that session:
-
-```json
-{
-  "SH_SET":
-  {
-    "tkn":16351792548006066062,
-    "keys":
-    {
-      "username":"user1",
-      "job":"Builder",
-      "age":26
-    }
-  }
-}
-```
-
-See [SH_NEW](sessions/sh-new.md) for details.

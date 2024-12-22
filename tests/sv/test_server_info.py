@@ -1,13 +1,12 @@
 import unittest
-from base import NDBTest
+from base import SvTest
 
-
-class Info(NDBTest):
+class Info(SvTest):
 
   async def test_info(self):
-    info = await self.client.sv_info()
+    info = await self.sv.info()
     self.assertTrue('serverVersion' in info)
-    self.assertEqual(info['persistEnabled'], True)
+    self.assertTrue(info['persistEnabled'])
 
 
 if __name__ == "__main__":

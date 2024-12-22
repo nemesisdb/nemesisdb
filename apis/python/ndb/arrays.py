@@ -198,13 +198,11 @@ class StringArrays(_Arrays):
   async def set(self, name: str, item: str, pos = None) -> None:
     raise_if_empty(name)
     await self._doUnsortedSet(name, item, pos)
-    #await self.client.sendCmd(self.cmds.SET_REQ, self.cmds.SET_RSP, {'name':name, 'pos': pos, 'item':item})
 
 
   async def set_rng(self, name: str, items: List[str], pos = None) -> None:
     raise_if_empty(name)
     await self._doSetRng(name, items, pos)
-    #await self.client.sendCmd(self.cmds.SET_RNG_REQ, self.cmds.SET_RNG_RSP, {'name':name, 'pos': pos, 'items':items})
 
 
   async def get(self, name: str, pos: int) -> str:

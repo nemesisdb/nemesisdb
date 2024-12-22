@@ -1,12 +1,6 @@
 #ifndef NDB_CORE_ARRCOMMON_H
 #define NDB_CORE_ARRCOMMON_H
 
-#include <map>
-#include <array>
-#include <any>
-#include <ankerl/unordered_dense.h>
-#include <uuid_v4/uuid_v4.h>
-#include <uwebsockets/App.h>
 #include <core/NemesisCommon.h>
 
 
@@ -32,6 +26,50 @@ namespace nemesis {  namespace arr {
     Max
   };
 
+
+  template <class ArrayCmds>
+  RequestStatus isArrayCmdValid ( const std::string_view queryRspName, 
+                                            const njson& req,
+                                            const ValidateParams& params,
+                                            std::function<RequestStatus(const njson&)> onPostValidate = nullptr)
+  {
+
+    auto validate = [&req, &params]() -> RequestStatus
+    {
+      for (const auto& [member, param] : params)
+      {
+        if (param.variableType && !ArrayCmds::isTypeValid(req.at(member).type()))
+          return RequestStatus::ValueTypeInvalid;
+        else if (!param.variableType)
+        {
+          if (param.isRequired && !req.contains(member))
+            return RequestStatus::ParamMissing;
+          else if (req.contains(member) && req.at(member).type() != param.type)
+            return RequestStatus::ValueTypeInvalid;
+        }
+      }
+
+      return RequestStatus::Ok;
+    };
+
+    #ifdef NDB_DEBUG
+      const auto status = validate();
+      PLOGD_IF(status != RequestStatus::Ok) << "Status: " << status;
+      return status;
+    #else
+      return validate();
+    #endif
+
+    // if (onPostValidate)
+    // { 
+    //   if (const auto status = onPostValidate(req); status == RequestStatus::Ok)
+    //     return {true, njson{}};
+    //   else
+    //     return {false, createErrorResponse(queryRspName, status)};
+    // }
+    // else
+    //   return {true, njson{}};
+  }
 }
 }
 

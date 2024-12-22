@@ -9,8 +9,6 @@
 #include <core/NemesisCommon.h>
 #include <core/LogFormatter.h>
 #include <core/kv/KvCommon.h>
-#include <core/sh/ShSessions.h>
-#include <jsoncons/json_traits_macros.hpp>
 
 
 using namespace nemesis;
@@ -50,14 +48,19 @@ int main (int argc, char ** argv)
                         {
                           "enabled":true,          
                           "path":"./data"
+                        },
+                        "arrays":
+                        {
+                          "maxCapacity":1000,
+                          "maxResponseSize":1000
                         }
                       })";
 
     Settings::init(njson::parse(s));
     auto& settings = Settings::get();
 
-    if (Settings::get().persistEnabled && !fs::exists(Settings::get().persistPath))
-      fs::create_directories(Settings::get().persistPath);
+    if (settings.persistEnabled && !fs::exists(settings.persistPath))
+      fs::create_directories(settings.persistPath);
       
   #else
     PLOGI << "Reading config";
@@ -79,10 +82,9 @@ int main (int argc, char ** argv)
   PLOGI << "Query Interface: " << settings.wsSettingsString();
   
   int error = 0;
-  auto sessions = std::make_shared<nemesis::sh::Sessions>();
 
   Server server;
-  if (server.run(sessions))
+  if (server.run())
     run.wait();
   else
   {

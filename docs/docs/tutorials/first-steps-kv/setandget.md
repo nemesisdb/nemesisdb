@@ -189,15 +189,6 @@ You need to ensure keys are unique to represent independent entities. For exampl
 We prefix the 'profile' key with `user:<number>` to ensure a unique key name.
 
 
-This is a disadvantage of disabling sessions. With sessions enabled:
-
-- You create a separate session for each user
-- To switch users, use the appropriate session token
-- Each session has a dedicated map so keys are unique only within each session
-
-The [tutorial](../sessions/what-is-a-session) explains further.
-
-
 :::note
 It is not possible to get keys based on a pattern, the exact key name is required.
 :::

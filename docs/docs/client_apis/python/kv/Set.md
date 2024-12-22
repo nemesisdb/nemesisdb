@@ -1,16 +1,14 @@
 ---
 sidebar_position: 2
 displayed_sidebar: clientApisSidebar
-sidebar_label: kv_set
+sidebar_label: set
 ---
 
-# kv_set
-Store keys to the database.
+# set
 
-Existing keys are overwritten, to avoid this use [kv_add](./Add).
 
 ```py
-kv_set(keys: dict) -> None
+async def set(keys: dict) -> None
 ```
 
 |Param|Description|
@@ -18,30 +16,36 @@ kv_set(keys: dict) -> None
 |keys|Key/values to store|
 
 
+Store keys to the database.
+
+Existing keys are overwritten, to avoid this use [add](./Add).
+
 
 ## Raises
-- `ResponseError` if query fails
+- `ResponseError`
 
 
 ## Examples
 
-```py title='Connect'
+```py title='Connect and Create API'
 from ndb.client import NdbClient
+from ndb.kv import KV
 
 client = NdbClient(debug=False) # toggle for debug
 await client.open('ws://127.0.0.1:1987/')
+
+kv = KV(client)
 ```
 
 
 ```py title='Set scalar'
+await kv.set({'username':'billy', 'password':'billy_passy'})
 
-await client.kv_set({'username':'billy', 'password':'billy_passy'})
-
-value = await client.kv_get(key='username')
+value = await kv.get(key='username')
 print (value)
 
 # get multiple keys, returns a dict of key:value
-values = await client.kv_get(keys=('username', 'password'))
+values = await kv.get(keys=('username', 'password'))
 print (values)
 ```
 
@@ -57,11 +61,11 @@ data = {  "server_ip":"123.456.7.8",
           }
         }
 
-await client.kv_set(data)
-value = await client.kv_get(key='server_users')
+await kv.set(data)
+value = await kv.get(key='server_users')
 print(value)
 
-values = await client.kv_get(keys=('server_ip', 'server_port'))
+values = await kv.get(keys=('server_ip', 'server_port'))
 print(values)
 ```
 
@@ -84,18 +88,18 @@ data = {
           }
        }
 
-await client.kv_set(data)
-values = await client.kv_get(keys=('server_users', 'server_port'))
+await kv.set(data)
 
+values = await kv.get(keys=('server_users', 'server_port'))
 print(f'Initial: {values}')
 
-# update and call set() to overwrite
+# update and call set() to overwrite on server
 values['server_port'] = 7891
 values['server_users']['banned'] = []
 
-await client.kv_set(values)
+await kv.set(values)
 
-values = await client.kv_get(keys=('server_users', 'server_port'))
+values = await kv.get(keys=('server_users', 'server_port'))
 print(f'Updated: {values}')
 ```
 

@@ -21,6 +21,7 @@
 #include <plog/Init.h>
 #include <plog/Log.h>
 #include <plog/Appenders/ColorConsoleAppender.h>
+#include <fixed_string.hpp>
 
 
 #define ndb_always_inline inline __attribute__((always_inline))
@@ -39,7 +40,7 @@ namespace nemesis {
   namespace chrono = std::chrono;
   namespace jsonpath = jsoncons::jsonpath;
 
-  static const char * NEMESIS_VERSION = "0.8";
+  static const char * NEMESIS_VERSION = "0.9";
   static const std::size_t NEMESIS_CONFIG_VERSION = 6U;
 
   static const std::size_t NEMESIS_KV_MINPAYLOAD = 64U;
@@ -47,7 +48,7 @@ namespace nemesis {
 
   enum class RequestStatus
   {
-    Ok = 1,
+    Ok                    = 1,
     OpCodeInvalid,
     JsonInvalid,
     PathInvalid,
@@ -62,12 +63,7 @@ namespace nemesis {
     ValueMissing          = 40,
     ValueTypeInvalid,
     ValueSize,
-    SessionNotExist       = 100,
-    SessionTokenInvalid,
-    SessionOpenFail,
-    SessionNewFail,  
-    SaveStart             = 120,
-    SaveComplete,
+    SaveComplete          = 120,
     SaveDirWriteFail,
     SaveError,
     Loading               = 140,
@@ -97,6 +93,12 @@ namespace nemesis {
   const JsonType JsonArray = JsonType::array_value;
 
 
+  using namespace fixstr;
+
+  template<std::size_t N>
+  using FixedString = fixstr::fixed_string<N>;
+
+  
   // kv
   using cachedkey = std::string;
   using cachedvalue = njson;
@@ -222,6 +224,37 @@ namespace nemesis {
   using KvWebSocket = uWS::WebSocket<false, true, WsSession>;
 
 
+  // TODO use in ArrExecutor
+  struct Rng
+  {    
+    std::size_t start;
+    std::size_t stop{};
+    bool hasStop{false};  // if false, ignore stop
+    bool hasRng{false};   // if false, ignore everything else
+  };
+
+  static inline Rng rangeFromRequest(const njson& body, const std::string_view name)
+  {
+    if (!body.contains(name))
+      return {};
+    else
+    {
+      Rng result{.hasRng = true};
+
+      const auto& element = body.at(name);
+      const auto& rng = element.array_range();
+      
+      result.start = rng.cbegin()->as<std::size_t>();
+      
+      if (element.size() == 2)
+      {
+        result.stop = rng.crbegin()->as<std::size_t>();
+        result.hasStop = true;
+      }
+
+      return result;
+    }      
+  }
 
 
   template<class Formatter>
@@ -251,101 +284,78 @@ namespace nemesis {
   }
 
 
-  static inline njson createErrorResponse (const std::string_view commandRsp, const RequestStatus status, const std::string_view msg = "")
+  // command is not known at time of err, send a general "ERR" response
+  static inline njson createErrorResponse (const RequestStatus status)
   {
-    njson rsp;
-    rsp[commandRsp]["st"] = toUnderlying(status);
-    rsp[commandRsp]["tkn"] = njson::null();
-    rsp[commandRsp]["m"] = msg;
-    return rsp;
-  }
-
-  
-  static inline njson createErrorResponse (const RequestStatus status, const std::string_view msg = "")
-  {
-    njson rsp;
-    rsp["ERR"]["st"] = toUnderlying(status);
-    rsp["ERR"]["m"] = msg;
-    return rsp;
+    try
+    {
+      njson rsp;
+      rsp["ERR"]["st"] = toUnderlying(status);
+      return rsp;
+    }
+    catch(const std::exception& e)
+    {
+      return njson{};
+    }
   }
 
 
-  static inline njson createErrorResponseNoTkn (const std::string_view commandRsp, const RequestStatus status, const std::string_view msg = "")
+  static inline njson createErrorResponse (const std::string_view rspName, const RequestStatus status) noexcept
   {
-    njson rsp;
-    rsp[commandRsp]["st"] = toUnderlying(status);
-    rsp[commandRsp]["m"] = msg;
-    return rsp;
+    try
+    {
+      njson rsp;
+      rsp[rspName]["st"] = toUnderlying(status);
+      return rsp;
+    }
+    catch(const std::exception& e)
+    {
+      return njson{};
+    }
   }
 
 
   using ValidateParams = std::map<const std::string_view, const Param>;
 
   // Checks the params (if present and correct type). If that passes and onPostValidate is set, onPostValidate() is called for custom checks.
-  std::tuple<RequestStatus, const std::string_view> isCmdValid (const njson& msg,
+  RequestStatus isCmdValid (const njson& msg,
                                                                 const ValidateParams& params,
-                                                                std::function<std::tuple<RequestStatus, const std::string_view>(const njson&)> onPostValidate)
+                                                                std::function<RequestStatus(const njson&)> onPostValidate)
   {
     for (const auto& [member, param] : params)
     {
       if (param.isRequired && !msg.contains(member))
-        return {RequestStatus::ParamMissing, "Missing parameter"};
+        return RequestStatus::ParamMissing;
       else if (msg.contains(member) && msg.at(member).type() != param.type) // not required but present OR required and present: check type
-        return {RequestStatus::ValueTypeInvalid, "Param type incorrect"};
+        return RequestStatus::ValueTypeInvalid;
     }
 
-    return onPostValidate ? onPostValidate(msg) : std::make_tuple(RequestStatus::Ok, "");
+    return onPostValidate ? onPostValidate(msg) : RequestStatus::Ok;
   }
 
 
-  std::tuple<bool, njson> isValid ( const std::string_view queryRspName, 
-                                    const njson& req,
-                                    const ValidateParams& params,
-                                    std::function<std::tuple<RequestStatus, const std::string_view>(const njson&)> onPostValidate = nullptr)
+  RequestStatus isValid ( const std::string_view queryRspName, 
+                          const njson& req,
+                          const ValidateParams& params,
+                          std::function<RequestStatus(const njson&)> onPostValidate = nullptr)
   {
-    const auto [stat, msg] = isCmdValid(req, params, onPostValidate);
     
-    if (stat != RequestStatus::Ok) [[unlikely]]
-    {
-      PLOGD << msg;
-      return {false, createErrorResponse(queryRspName, stat, msg)};
-    }
-    else
-      return {true, njson{}};
+    #ifdef NDB_DEBUG
+      const auto status = isCmdValid(req, params, onPostValidate);
+      PLOGD_IF(status != RequestStatus::Ok) << "Status: " << status;
+      return status;
+    #else
+      return isCmdValid(req, params, onPostValidate);
+    #endif
+
+    // if (const auto status = isCmdValid(req, params, onPostValidate); status == RequestStatus::Ok) [[unlikely]]
+    //   return {true, njson{}};
+    // else
+    // {
+    //   PLOGD << "Status: " << toUnderlying(status);
+    //   return {false, createErrorResponse(queryRspName, status)};
+    // } 
   }
-
-
-  template <class ArrayCmds>
-  std::tuple<bool, njson> isArrayCmdValid (  const std::string_view queryRspName, 
-                                                      const njson& req,
-                                                      const ValidateParams& params,
-                                                      std::function<std::tuple<RequestStatus, const std::string_view>(const njson&)> onPostValidate = nullptr)
-  {
-    for (const auto& [member, param] : params)
-    {
-      if (param.variableType && !ArrayCmds::isTypeValid(req.at(member).type()))
-        return {false, createErrorResponse(queryRspName, RequestStatus::ValueTypeInvalid)};
-      else if (!param.variableType)
-      {
-        if (param.isRequired && !req.contains(member))
-          return {false, createErrorResponse(queryRspName, RequestStatus::ParamMissing)};
-        else if (req.contains(member) && req.at(member).type() != param.type)
-          return {false, createErrorResponse(queryRspName, RequestStatus::ValueTypeInvalid)};
-      }
-    }
-
-    if (onPostValidate)
-    { 
-      if (auto [stat, msg] = onPostValidate(req); stat == RequestStatus::Ok)
-        return {true, njson{}};
-      else
-        return {false, createErrorResponse(queryRspName, stat, msg)};
-    }
-    else
-      return {true, njson{}};
-  }
-
-
 } // namespace nemesis
 
 

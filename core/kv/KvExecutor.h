@@ -7,13 +7,11 @@
 #include <core/CacheMap.h>
 #include <core/kv/KvCommon.h>
 #include <core/kv/KvCommands.h>
-#include <core/sh/ShCommands.h>
 
 
 namespace nemesis { namespace kv {
 
 
-namespace shcmds = nemesis::sh::cmds;
 namespace kvcmds = nemesis::kv::cmds;
 
 
@@ -25,7 +23,6 @@ namespace kvcmds = nemesis::kv::cmds;
 //
 // RspMeta and KvOnlyMeta structs are used to build the response object,
 // with the correct response name, either a KV or SH response.
-template<bool WithSessions>
 class KvExecutor
 {
   template<bool Sessions, const char * kv, const char * sh>
@@ -69,7 +66,7 @@ public:
 
   static Response set (CacheMap& map,  const njson& cmd)
   {
-    using Rsp = RspMeta<WithSessions, kvcmds::SetRsp, shcmds::SetRsp>;
+    using Rsp = KvOnlyMeta<kvcmds::SetRsp>;
 
     Response response = Rsp::make();
     auto& body = response.rsp.at(Rsp::name);
@@ -91,33 +88,9 @@ public:
   }
 
 
-  /*
-  static Response setQ (CacheMap& map,  const njson& cmd)
+  static Response get (const CacheMap& map,  const njson& cmd)
   {
     using Rsp = KvOnlyMeta<kvcmds::GetRsp>;
-
-    Response response = Rsp::make();
-
-    try
-    {         
-      for(const auto& kv : cmd["keys"].object_range())
-        map.set(kv.key(), kv.value());     
-    }
-    catch(const std::exception& e)
-    {
-      PLOGE << e.what();
-      response.rsp = njson {jsoncons::json_object_arg, {{Rsp::name, jsoncons::json_object_arg_t{}}}};
-      response.rsp[Rsp::name]["st"] = toUnderlying(RequestStatus::Unknown);
-    }
-
-    return response;
-  }
-  */
-
-
-  static Response get (CacheMap& map,  const njson& cmd)
-  {
-    using Rsp = RspMeta<WithSessions, kvcmds::GetRsp, shcmds::GetRsp>;
 
     Response response = Rsp::make();
 
@@ -152,7 +125,7 @@ public:
 
   static Response add (CacheMap& map,  const njson& cmd)
   {
-    using Rsp = RspMeta<WithSessions, kvcmds::AddRsp, shcmds::AddRsp>;
+    using Rsp = KvOnlyMeta<kvcmds::AddRsp>;
 
     Response response = Rsp::make();
 
@@ -174,33 +147,9 @@ public:
   }
 
 
-  /*
-  static Response addQ (CacheMap& map,  const njson& cmd)
-  {
-    using Rsp = KvOnlyMeta<kvcmds::AddQRsp>;
-
-    Response response;
-
-    try
-    {
-      for(auto& kv : cmd["keys"].object_range())
-        map.add(kv.key(), kv.value());
-    }
-    catch (const std::exception& ex)
-    {
-      PLOGE << ex.what();
-      response = Rsp::make();
-      response.rsp.at(Rsp::name)["st"] = toUnderlying(RequestStatus::Unknown);
-    }
-
-    return response;
-  }
-  */
-
-
   static Response remove (CacheMap& map,  const njson& cmd)
   {
-    using Rsp = RspMeta<WithSessions, kvcmds::RmvRsp, shcmds::RmvRsp>;
+    using Rsp = KvOnlyMeta<kvcmds::RmvRsp>;
 
     Response response = Rsp::make();
 
@@ -231,7 +180,7 @@ public:
 
   static Response clear (CacheMap& map,  const njson& cmd)
   {
-    using Rsp = RspMeta<WithSessions, kvcmds::ClearRsp, shcmds::ClearRsp>;
+    using Rsp = KvOnlyMeta<kvcmds::ClearRsp>;
 
     const auto[ok, count] = map.clear();
 
@@ -243,9 +192,9 @@ public:
   }
 
 
-  static Response contains (CacheMap& map,  const njson& cmd)
+  static Response contains (const CacheMap& map,  const njson& cmd)
   {
-    using Rsp = RspMeta<WithSessions, kvcmds::ContainsRsp, shcmds::ContainsRsp>;
+    using Rsp = KvOnlyMeta<kvcmds::ContainsRsp>;
 
     Response response = Rsp::make();
 
@@ -266,66 +215,10 @@ public:
     return response;
   }
 
-  
-  static Response find (CacheMap& map,  const njson& cmd)
+
+  static Response keys (const CacheMap& map,  const njson& cmd)
   {
-    using Rsp = KvOnlyMeta<kvcmds::FindRsp>;
-
-    Response response = Rsp::make();
-
-    const bool paths = cmd.at("rsp") == "paths";
-    njson result = njson::array();
-
-    auto& body = response.rsp.at(Rsp::name);
-
-
-    if (!map.find(cmd, paths, result))
-      body["st"] = toUnderlying(RequestStatus::PathInvalid);
-    else
-    {       
-      body["st"] = toUnderlying(RequestStatus::Ok);
-
-      if (cmd.at("rsp") != "kv")
-        response.rsp.at(Rsp::name)[paths ? "paths" : "keys"] = std::move(result);
-      else
-      {
-        // return key-values the same as KV_GET
-        body["keys"] = njson::object();
-
-        for(auto& item : result.array_range())
-        {
-          const auto& key = item.as_string();
-
-          if (const auto value = map.get(key); value)
-            body["keys"][key] = (*value).get();
-        } 
-      }
-    }
-
-    return response;
-  }
-
-
-  static Response update (CacheMap& map,  const njson& cmd)
-  {
-    using Rsp = KvOnlyMeta<kvcmds::UpdateRsp>;
-
-    const auto& key = cmd.at("key").as_string();
-    const auto& path = cmd.at("path").as_string();
-
-    const auto [keyExists, count] = map.update(key, path, cachedvalue::parse(cmd.at("value").to_string()));
-    
-    Response response = Rsp::make();
-    response.rsp.at(Rsp::name)["st"] = keyExists ? toUnderlying(RequestStatus::Ok) : toUnderlying(RequestStatus::NotExist);
-    response.rsp.at(Rsp::name)["cnt"] = count;
-
-    return response;
-  }
-
-
-  static Response keys (CacheMap& map,  const njson& cmd)
-  {
-    using Rsp = RspMeta<WithSessions, kvcmds::KeysRsp, shcmds::KeysRsp>;
+    using Rsp = KvOnlyMeta<kvcmds::KeysRsp>;
 
     Response response = Rsp::make();
     response.rsp.at(Rsp::name)["st"] = toUnderlying(RequestStatus::Ok);
@@ -336,7 +229,7 @@ public:
 
   static Response clearSet (CacheMap& map,  const njson& cmd)
   {
-    using Rsp = RspMeta<WithSessions, kvcmds::ClearSetRsp, shcmds::ClearSetRsp>;
+    using Rsp = KvOnlyMeta<kvcmds::ClearSetRsp>;
 
     Response response = Rsp::make();
     auto& body = response.rsp.at(Rsp::name);
@@ -370,39 +263,13 @@ public:
   }
 
 
-  static Response count (CacheMap& map,  const njson& cmd)
+  static Response count (const CacheMap& map,  const njson& cmd)
   {
-    using Rsp = RspMeta<WithSessions, kvcmds::CountRsp, shcmds::CountRsp>;
+    using Rsp = KvOnlyMeta<kvcmds::CountRsp>;
 
     Response response = Rsp::make();
     response.rsp.at(Rsp::name)["st"] = toUnderlying(RequestStatus::Ok);
     response.rsp.at(Rsp::name)["cnt"] = map.count();
-    return response;
-  }
-
-
-  static Response arrayAppend (CacheMap& map,  const njson& cmd)
-  {
-    using Rsp = KvOnlyMeta<kvcmds::ArrAppendRsp>;
-
-
-    const auto& key = cmd.at("key").as_string();
-    const auto& items = cmd.at("items");
-    
-    RequestStatus st = RequestStatus::Ok;
-
-    if (map.contains(key))
-    {
-      if (cmd.contains("name"))
-        st = map.arrayAppend(key, cmd.at("name").as_string_view(), items) ? RequestStatus::Ok : RequestStatus::Unknown;
-      else
-        st = map.arrayAppend(key, items) ? RequestStatus::Ok : RequestStatus::Unknown;
-    }
-    else
-      st = RequestStatus::NotExist;
-
-    Response response = Rsp::make();
-    response.rsp[Rsp::name]["st"] = toUnderlying(st);
     return response;
   }
 
