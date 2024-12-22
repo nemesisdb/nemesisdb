@@ -7,9 +7,9 @@ class Keys(KvTest):
   async def test_keys(self):
     input = {'a':0, 'b':'str', 'c':True, 'd':1.5}
 
-    await self.client.kv_set(input)
+    await self.kv.set(input)
 
-    keys = await self.client.kv_keys()
+    keys = await self.kv.keys()
     self.assertListEqual(keys, list(input.keys()))
     
     

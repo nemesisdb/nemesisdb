@@ -1,43 +1,43 @@
 ---
 sidebar_position: 12
 displayed_sidebar: clientApisSidebar
-sidebar_label: kv_load
+sidebar_label: load
 ---
 
-# kv_load
-Restores keys that were previously saved with `kv_save()`.
-
+# load
 
 ```py
-kv_load(name: str) -> int
+async def load(name: str) -> int
 ```
 
 |Param|Description|
 |--|--|
-|name|The name of the dataset.<br/>The `name` was used previously with `kv_save()`|
+|name|The name of the dataset.<br/>The `name` was used previously with `save()`|
+
+Restores keys that were previously persisted with `save()`.
 
 
 :::note
 - Persistance does _not_ have to be enabled for this command
 - You can also load at startup, using `--loadName`
-- To load sessions, use [sh_load()](../sh/Load)
 :::
 
 
 ## Returns
-The number of keys loaded
+The number of keys loaded.
 
 
 ## Raises
-- `ValueError` if name is empty
-- `ResponseError` if query fails
+- `ResponseError`
+- `ValueError`
+  - `name` is empty
 
 
 ## Examples
 
-Assuming a previous call to `kv_save('my_data')`:
+Assuming a previous call to `save('my_data')`:
 
 ```py title='Load keys'
-count = await client.kv_load('my_data')
+count = await kv.load('my_data')
 print(f'Loaded {count} keys')
 ```

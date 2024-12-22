@@ -13,8 +13,6 @@
 #include <core/NemesisCommon.h>
 #include <core/kv/KvCommon.h>
 #include <core/kv/KvHandler.h>
-#include <core/sh/ShHandler.h>
-#include <core/sh/ShSessions.h>
 #include <core/sv/SvCommands.h>
 #include <core/arr/ArrHandler.h>
 #include <core/arr/ArrCommands.h>
@@ -27,7 +25,6 @@ namespace nemesis {
 
 
 namespace kvCmds = nemesis::kv::cmds;
-namespace shCmds = nemesis::sh;
 namespace svCmds = nemesis::sv;
 namespace arrCmds = nemesis::arr::cmds;
 namespace lstCmds = nemesis::lst::cmds;
@@ -78,10 +75,8 @@ public:
   }
 
 
-  bool run (std::shared_ptr<sh::Sessions> sessions)
+  bool run ()
   {
-    m_sessions = sessions;
-
     if (!init())
       return false;
 
@@ -149,7 +144,6 @@ public:
         }
         
         m_kvHandler = std::make_shared<kv::KvHandler>();
-        m_shHandler = std::make_shared<sh::ShHandler>(m_sessions);
         m_objectArrHandler = std::make_shared<arr::OArrHandler>();
         m_intArrHandler = std::make_shared<arr::IntArrHandler>();
         m_strArrHandler = std::make_shared<arr::StrArrHandler>();
@@ -229,8 +223,11 @@ public:
 
         if (!wsApp.constructorFailed())
         {
-          bool timerSet = true;
+          wsApp.run();
           
+          /* this will be reused later for expiring KV
+          bool timerSet = true;
+
           #ifndef NDB_UNIT_TEST
             const auto periodMs = chrono::milliseconds{5'000};
 
@@ -256,6 +253,7 @@ public:
 
           if (timerSet)
             wsApp.run();
+          */
         }
       };
 
@@ -264,7 +262,7 @@ public:
 
       try
       {
-        m_thread.reset(new std::jthread(listen));
+        m_wsThread.reset(new std::jthread(listen));
 
         startLatch.wait();
 
@@ -272,7 +270,7 @@ public:
         {
           PLOGE << "Failed to start WS server";
         }          
-        else if (!setThreadAffinity(m_thread->native_handle(), core))
+        else if (!setThreadAffinity(m_wsThread->native_handle(), core))
         {
           PLOGE << "Failed to assign server to core " << core;
         }
@@ -373,11 +371,6 @@ public:
               const Response response = m_listHandler->handle(command, request);
               send(ws, response.rsp);
             }
-            else if (type == shCmds::ShIdent)
-            {
-              const Response response = m_shHandler->handle(command, request);
-              send(ws, response.rsp);
-            }
             else if (command == sv::cmds::InfoReq)  // only one SV command at the moment
             {
               // the json_object_arg is a tag, followed by initializer_list<pair<string, njson>>
@@ -416,10 +409,7 @@ public:
       {
         LoadResult loadResult;
 
-        if (info.dataType == SaveDataType::SessionKv)
-          loadResult = m_shHandler->internalLoad(loadName, info.paths.data);
-        else
-          loadResult = m_kvHandler->internalLoad(loadName, info.paths.data);
+        loadResult = m_kvHandler->internalLoad(loadName, info.paths.data);
         
         const auto success = loadResult.status == RequestStatus::LoadComplete;
     
@@ -454,25 +444,22 @@ public:
   private:
     struct TimerData
     {
-      std::shared_ptr<sh::ShHandler> shHandler;
+      // TODO use when KV expiry is implemented
     };
 
-    std::unique_ptr<std::jthread> m_thread;
+    std::unique_ptr<std::jthread> m_wsThread;
     std::vector<us_listen_socket_t *> m_sockets;
     std::set<KvWebSocket *> m_clients;    
     std::atomic_bool m_run;
     us_timer_t * m_monitorTimer{};
     // TODO profile runtime cost of shared_ptr vs raw ptr
     std::shared_ptr<kv::KvHandler> m_kvHandler;
-    std::shared_ptr<sh::ShHandler> m_shHandler;
     std::shared_ptr<arr::OArrHandler> m_objectArrHandler;
     std::shared_ptr<arr::IntArrHandler> m_intArrHandler;
     std::shared_ptr<arr::StrArrHandler> m_strArrHandler;
     std::shared_ptr<arr::SortedIntArrHandler> m_sortedIntArrHandler;
     std::shared_ptr<arr::SortedStrArrHandler> m_sortedStrArrHandler;
     std::shared_ptr<lst::OLstHandler> m_listHandler;
-
-    std::shared_ptr<sh::Sessions> m_sessions;
 };
 
 }

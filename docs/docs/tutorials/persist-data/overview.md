@@ -5,15 +5,14 @@ displayed_sidebar: tutorialSidebar
 
 # Overview
 
-- `SH_SAVE` persist all sessions or specific session(s)
 - `KV_SAVE` persists all keys
 - Data can be restored at startup with a command line argument
-- Data can be restored at runtime with the `SH_LOAD` or `KV_LOAD`
+- Data can be restored at runtime with `KV_LOAD`
 - Data is written as raw JSON, a future release will support a more space efficient format
 
 <br/>
 
-## Saving Key Value
+## Persisting Key Values
 The `KV_SAVE` command persist key values (i.e. those not in a session).
 
 The command saves all keys, you cannot specify particular keys to persist.
@@ -40,35 +39,6 @@ And later load at runtime with:
 
 <br/>
 
-## Saving Sessions
-The `SH_SAVE` command is used to persist session(s).
-
-Save all sessions:
-
-```json title='Save all sessions'
-{
-  "SH_SAVE":
-  {
-    "name":"users"
-  }
-}
-```
-
-Supply tokens (`tkns`) to save particular sessions:
-
-```json title="Save two sessions"
-{
-  "SH_SAVE":
-  {
-    "name":"blocked_users",
-    "tkns":[123456, 654321]
-  }
-}
-```
-
-
-<br/>
-
 ## Loading
 
 - Startup
@@ -77,8 +47,8 @@ Supply tokens (`tkns`) to save particular sessions:
     - Only applies at startup, not with `KV_LOAD` or `SH_LOAD`
 
 - Runtime
-  - `SH_LOAD` and `KV_LOAD` offer the flexibility to load data at any time
-  - `SH_LOAD` and `KV_LOAD` only read data from the persist path in the server config
+  - `KV_LOAD` offer the flexibility to load data at any time
+  - `KV_LOAD` only read data from the persist path in the server config
 
 
 <br/>
@@ -133,5 +103,5 @@ If we send another save command with the same name:
 :::info
 The current version does not allow you to load a specific timestamp, it always selects the most recent. <br/>
 
-If you need to restore specific data, use a different name for each use of `SH_SAVE`/`KV_SAVE`.
+If you need to restore specific data, use a different name for each use of `KV_SAVE`.
 :::

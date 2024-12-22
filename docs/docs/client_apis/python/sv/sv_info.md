@@ -3,13 +3,12 @@ sidebar_position: 1
 displayed_sidebar: clientApisSidebar
 ---
 
-# sv_info
-Returns minimal server information.
-
-
+# info
 ```py
-sv_info() -> dict:
+async def info() -> dict:
 ```
+
+Returns minimal server information.
 
 ## Returns
 |Key|Type|Meaning|
@@ -18,7 +17,6 @@ sv_info() -> dict:
 |serverVersion|string|The server version|
 
 
-
 ## Raises
-- `ResponseError` if query fails
+- `ResponseError`
 

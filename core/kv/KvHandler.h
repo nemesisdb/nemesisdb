@@ -66,7 +66,7 @@ private:
       KvQueryType::KvSet,      ValidateExecute
                               {
                                 .validate = validateSet,
-                                .execute = KvExecutor<false>::set,
+                                .execute = KvExecutor::set,
                                 .reqrsp = {SetReq, SetRsp}
                               }
     },
@@ -74,7 +74,7 @@ private:
       KvQueryType::KvGet,      ValidateExecute
                               {
                                 .validate = validateGet,
-                                .execute = KvExecutor<false>::get,
+                                .execute = KvExecutor::get,
                                 .reqrsp = {GetReq, GetRsp}
                               }
     },
@@ -82,7 +82,7 @@ private:
       KvQueryType::KvAdd,      ValidateExecute
                               {
                                 .validate = validateAdd,
-                                .execute = KvExecutor<false>::add,
+                                .execute = KvExecutor::add,
                                 .reqrsp = {AddReq, AddRsp}
                               }
     },
@@ -90,7 +90,7 @@ private:
       KvQueryType::KvRemove,  ValidateExecute
                               {
                                 .validate = validateRemove,
-                                .execute = KvExecutor<false>::remove,
+                                .execute = KvExecutor::remove,
                                 .reqrsp = {RmvReq, RmvRsp}
                               }
     },
@@ -98,7 +98,7 @@ private:
       KvQueryType::KvClear,   ValidateExecute
                               {
                                 .validate = [](const std::string_view, const std::string_view, const njson&){return RequestStatus::Ok;},
-                                .execute = KvExecutor<false>::clear,
+                                .execute = KvExecutor::clear,
                                 .reqrsp = {ClearReq, ClearRsp}
                               }
     },
@@ -106,7 +106,7 @@ private:
       KvQueryType::KvCount,   ValidateExecute
                               {
                                 .validate = [](const std::string_view, const std::string_view, const njson&){return RequestStatus::Ok;},
-                                .execute = KvExecutor<false>::count,
+                                .execute = KvExecutor::count,
                                 .reqrsp = {CountReq, CountRsp}
                               }
     },
@@ -114,7 +114,7 @@ private:
       KvQueryType::KvContains,  ValidateExecute
                                 {
                                   .validate = validateContains,
-                                  .execute = KvExecutor<false>::contains,
+                                  .execute = KvExecutor::contains,
                                   .reqrsp = {ContainsReq, ContainsRsp}
                                 }
     },
@@ -122,7 +122,7 @@ private:
       KvQueryType::KvKeys,      ValidateExecute
                                 {
                                   .validate = [](const std::string_view, const std::string_view, const njson&){return RequestStatus::Ok;},
-                                  .execute = KvExecutor<false>::keys,
+                                  .execute = KvExecutor::keys,
                                   .reqrsp = {KeysReq, KeysRsp}
                                 }
     },
@@ -130,7 +130,7 @@ private:
       KvQueryType::KvClearSet,  ValidateExecute
                                 {
                                   .validate = validateClearSet,
-                                  .execute = KvExecutor<false>::clearSet,
+                                  .execute = KvExecutor::clearSet,
                                   .reqrsp = {ClearSetReq, ClearSetRsp}
                                 }
     }
@@ -294,7 +294,7 @@ private:
 
       try
       {
-        response = KvExecutor<false>::saveKv(m_map, dataPath, name);
+        response = KvExecutor::saveKv(m_map, dataPath, name);
         metaDataStatus = KvSaveStatus::Complete;
       }
       catch(const std::exception& e)
@@ -316,7 +316,7 @@ private:
   {
     PLOGI << "Loading from " << dataSetsRoot;
     
-    Response response = KvExecutor<false>::loadKv (loadName, m_map, dataSetsRoot);
+    Response response = KvExecutor::loadKv (loadName, m_map, dataSetsRoot);
 
     PLOGI << "Loading complete";
 

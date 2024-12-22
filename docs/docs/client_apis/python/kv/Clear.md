@@ -1,34 +1,34 @@
 ---
 sidebar_position: 6
 displayed_sidebar: clientApisSidebar
-sidebar_label: kv_clear
+sidebar_label: clear
 ---
 
-# kv_clear
-Deletes _all_ keys.
-
-
-- To delete select key(s) use [kv_rmv](./Rmv)
-- To delete all keys and set new keys in a single call, use [kv_clear_set](./Clear_Set)
-
+# clear
 
 ```py
-kv_clear() -> int
+async def clear() -> int
 ```
+
+
+Deletes _all_ keys.
+
+- To delete select key(s) use [rmv](./Rmv)
+- To delete all keys and set new keys in a single call, use [clear_set](./Clear_Set)
+
 
 # Returns
 The number of keys deleted
 
 
 ## Raises
-- `ResponseError` if query fails
-- `ValueError` if keys is empty
+- `ResponseError`
 
 
 
 ## Examples
 
 ```py
-count = await client.kv_clear()
-print(f'Cleared {count} keys')
+count = await kv.clear()
+print(f'Deleted {count} keys')
 ```
