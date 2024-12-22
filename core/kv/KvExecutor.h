@@ -218,62 +218,6 @@ public:
     return response;
   }
 
-  
-  static Response find (CacheMap& map,  const njson& cmd)
-  {
-    using Rsp = KvOnlyMeta<kvcmds::FindRsp>;
-
-    Response response = Rsp::make();
-
-    const bool paths = cmd.at("rsp") == "paths";
-    njson result = njson::array();
-
-    auto& body = response.rsp.at(Rsp::name);
-
-
-    if (!map.find(cmd, paths, result))
-      body["st"] = toUnderlying(RequestStatus::PathInvalid);
-    else
-    {       
-      body["st"] = toUnderlying(RequestStatus::Ok);
-
-      if (cmd.at("rsp") != "kv")
-        response.rsp.at(Rsp::name)[paths ? "paths" : "keys"] = std::move(result);
-      else
-      {
-        // return key-values the same as KV_GET
-        body["keys"] = njson::object();
-
-        for(auto& item : result.array_range())
-        {
-          const auto& key = item.as_string();
-
-          if (const auto value = map.get(key); value)
-            body["keys"][key] = (*value).get();
-        } 
-      }
-    }
-
-    return response;
-  }
-
-
-  static Response update (CacheMap& map,  const njson& cmd)
-  {
-    using Rsp = KvOnlyMeta<kvcmds::UpdateRsp>;
-
-    const auto& key = cmd.at("key").as_string();
-    const auto& path = cmd.at("path").as_string();
-
-    const auto [keyExists, count] = map.update(key, path, cachedvalue::parse(cmd.at("value").to_string()));
-    
-    Response response = Rsp::make();
-    response.rsp.at(Rsp::name)["st"] = keyExists ? toUnderlying(RequestStatus::Ok) : toUnderlying(RequestStatus::NotExist);
-    response.rsp.at(Rsp::name)["cnt"] = count;
-
-    return response;
-  }
-
 
   static Response keys (CacheMap& map,  const njson& cmd)
   {
@@ -329,32 +273,6 @@ public:
     Response response = Rsp::make();
     response.rsp.at(Rsp::name)["st"] = toUnderlying(RequestStatus::Ok);
     response.rsp.at(Rsp::name)["cnt"] = map.count();
-    return response;
-  }
-
-
-  static Response arrayAppend (CacheMap& map,  const njson& cmd)
-  {
-    using Rsp = KvOnlyMeta<kvcmds::ArrAppendRsp>;
-
-
-    const auto& key = cmd.at("key").as_string();
-    const auto& items = cmd.at("items");
-    
-    RequestStatus st = RequestStatus::Ok;
-
-    if (map.contains(key))
-    {
-      if (cmd.contains("name"))
-        st = map.arrayAppend(key, cmd.at("name").as_string_view(), items) ? RequestStatus::Ok : RequestStatus::Unknown;
-      else
-        st = map.arrayAppend(key, items) ? RequestStatus::Ok : RequestStatus::Unknown;
-    }
-    else
-      st = RequestStatus::NotExist;
-
-    Response response = Rsp::make();
-    response.rsp[Rsp::name]["st"] = toUnderlying(st);
     return response;
   }
 

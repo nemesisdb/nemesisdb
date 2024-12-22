@@ -45,51 +45,9 @@ namespace nemesis { namespace kv {
   }
 
 
-  static RequestStatus validateFind(const std::string_view cmdReq, const std::string_view cmdRsp, const njson& req)
-  {
-    auto validate = [](const njson& cmd) -> RequestStatus
-    {
-      if (cmd.at("rsp") != "paths" && cmd.at("rsp") != "kv" && cmd.at("rsp") != "keys")
-        return RequestStatus::CommandSyntax;
-      else if (const auto& path = cmd.at("path").as_string() ; path.empty())
-        return RequestStatus::ValueSize;
-
-      return RequestStatus::Ok;
-    };
-
-    return isValid(cmdRsp, req.at(cmdReq), {  {Param::required("path", JsonString)},
-                                              {Param::required("rsp", JsonString)},
-                                              {Param::optional("keys", JsonArray)}}, validate);
-  }
-
-
-  static RequestStatus validateUpdate(const std::string_view cmdReq, const std::string_view cmdRsp, const njson& req)
-  {
-    auto validate = [](const njson& cmd) -> RequestStatus
-    {
-      // 'value' can be any valid JSON type, so just check it's present here
-      if (!cmd.contains("value"))
-        return RequestStatus::ParamMissing;
-      
-      return RequestStatus::Ok;
-    };
-
-    return isValid(cmdRsp, req.at(cmdReq), { {Param::required("key", JsonString)},
-                                             {Param::required("path", JsonString)}}, validate);
-  }
-
-
   static RequestStatus validateClearSet(const std::string_view cmdReq, const std::string_view cmdRsp, const njson& req)
   {
     return isValid(cmdRsp, req.at(cmdReq), {{Param::required("keys", JsonObject)}});
-  }
-
-
-  static RequestStatus validateArrayAppend(const std::string_view cmdReq, const std::string_view cmdRsp, const njson& req)
-  {
-    return isValid(cmdRsp, req.at(cmdReq), {{Param::required("key", JsonString)},
-                                            {Param::required("items", JsonArray)}, 
-                                            {Param::optional("name", JsonString)}});
   }
 
 
