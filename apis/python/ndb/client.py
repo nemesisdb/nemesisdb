@@ -1,4 +1,4 @@
-from ndb.commands import StValues, Fields, SvCmd, KvCmd, ShCmd
+from ndb.commands import StValues, Fields, SvCmd, KvCmd
 from ndb.connection import Connection
 from ndb.logging import logger
 from typing import Tuple, List

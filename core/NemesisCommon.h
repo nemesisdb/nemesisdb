@@ -48,7 +48,7 @@ namespace nemesis {
 
   enum class RequestStatus
   {
-    Ok = 1,
+    Ok                    = 1,
     OpCodeInvalid,
     JsonInvalid,
     PathInvalid,
@@ -63,12 +63,7 @@ namespace nemesis {
     ValueMissing          = 40,
     ValueTypeInvalid,
     ValueSize,
-    SessionNotExist       = 100,
-    SessionTokenInvalid,
-    SessionOpenFail,
-    SessionNewFail,  
-    SaveStart             = 120,
-    SaveComplete,
+    SaveComplete          = 120,
     SaveDirWriteFail,
     SaveError,
     Loading               = 140,
