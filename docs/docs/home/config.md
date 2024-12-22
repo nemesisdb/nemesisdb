@@ -71,10 +71,10 @@ This is the **logical** core, which may differ from physical cores when hyperthr
 
 |Param|Type|Description|
 |:---|:---:|:---|
-|enabled|bool|`true`:<br/>- `KV_SAVE` and `SH_SAVE` available<br/>- `path` must exist<br/><br/>`false`:<br/>-`KV_SAVE` and `SH_SAVE` not available<br/>- `path` is not checked|
+|enabled|bool|`true`:<br/>- `KV_SAVE` available<br/>- `path` must exist<br/><br/>`false`:<br/>-`KV_SAVE` not available<br/>- `path` is not checked|
 |path|string|Path to the directory where data is stored. Must be a directory.<br/>If `enabled` is true, this path must exist.|
 
-See [SH_SAVE](../api/sessions/sh-save) or [KV_SAVE](../api/kv/kv-save) for more.
+See [KV_SAVE](../api/kv/kv-save) for more.
 
 <br/>
 

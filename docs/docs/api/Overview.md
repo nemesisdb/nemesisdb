@@ -19,8 +19,6 @@ There are seperate APIs for key-values and sessions, but they all share:
 - Commands that return a response contain a status (`st`) which is an unsigned integer
 - Parameters are in lower case unless stated otherwise
 
-There is a key value [TLDR](../home/tldr-kv).
-
 
 ## Key value
 The commands all begin with `KV_`, for example `KV_SET` and `KV_GET`. They store keys that are not in a session (independent keys).

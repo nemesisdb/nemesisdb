@@ -11,7 +11,7 @@ async def save(name: str) -> None
 
 |Param|Description|
 |--|--|
-|name|The name of the dataset.<br/>The `name` is used to load data at runtime with `kv_load()` or at startup.|
+|name|The name of the dataset.<br/>The `name` is used to load data at runtime with `load()` or at startup.|
 
 
 Saves all keys to the filesystem so they can be restored later.
@@ -19,7 +19,6 @@ Saves all keys to the filesystem so they can be restored later.
 
 :::note
 - Persistance must be enabled in the server config
-- To persist sessions, use [sh_save()](../sh/Save)
 :::
 
 
