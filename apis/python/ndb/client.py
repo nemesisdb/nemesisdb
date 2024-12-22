@@ -1,38 +1,10 @@
 from ndb.commands import StValues, Fields, SvCmd
+from ndb.common import ResponseError
 from ndb.connection import Connection
 from ndb.logging import logger
 from typing import Tuple, List
 
 import logging
-
-## MOVE to common
-class NdbException(Exception):
-  def __init__(self, msg):
-    super().__init__(msg)
-
-
-class ResponseError(NdbException):
-  def __init__(self, body):
-    if Fields.STATUS in body:
-      msg = f'Response Failed with status: {body[Fields.STATUS]}'
-    else:
-      msg = 'Response failed'
-
-    super().__init__(msg)
-    self.rsp = body
-
-
-## MOVE to sessions.py
-class Session:
-  """Stores the session token session.
-  """
-  def __init__(self, tkn: int):
-    self.tkn = tkn
-
-  @property
-  def tknValid(self) -> bool:
-    return self.tkn > 0
-
 
 
 class NdbClient:
@@ -72,84 +44,7 @@ class NdbClient:
     info.pop('st')
     return info
   
-
-  #region KV
-  # async def kv_set(self, keys: dict) -> None:
-  #   await self._sendCmd(KvCmd.SET_REQ, KvCmd.SET_RSP, {'keys':keys})
-  
-
-  # async def kv_add(self, keys: dict) -> None:
-  #   await self._sendCmd(KvCmd.ADD_REQ, KvCmd.ADD_RSP, {'keys':keys})
-
-
-  # async def kv_get(self, keys = tuple(), key=None):
-  #   if key != None and len(keys):
-  #     raise ValueError('Both keys and key are set')
-  #   elif key != None:
-  #     return await self._kv_get_single(key)
-  #   else:
-  #     return await self._kv_get_multiple(keys)
-
-  
-  # async def _kv_get_single(self, key: str):
-  #   rsp = await self._sendCmd(KvCmd.GET_REQ, KvCmd.GET_RSP, {'keys':[key]})
-  #   if key in rsp[KvCmd.GET_RSP]['keys']:
-  #     return rsp[KvCmd.GET_RSP]['keys'][key]
-  #   else:
-  #     return None
-  
-
-  # async def _kv_get_multiple(self, keys: tuple) -> dict:
-  #   rsp = await self._sendCmd(KvCmd.GET_REQ, KvCmd.GET_RSP, {'keys':keys})
-  #   return rsp[KvCmd.GET_RSP]['keys']
-  
-
-  # async def kv_rmv(self, keys: tuple) -> None:
-  #   if len(keys) == 0:
-  #     raise ValueError('Keys empty')
-  #   await self._sendCmd(KvCmd.RMV_REQ, KvCmd.RMV_RSP, {'keys':keys})
-
-
-  # async def kv_count(self) -> int:
-  #   rsp = await self._sendCmd(KvCmd.COUNT_REQ, KvCmd.COUNT_RSP, {})
-  #   return rsp[KvCmd.COUNT_RSP]['cnt']
-
-
-  # async def kv_contains(self, keys: tuple) -> List[str]:
-  #   rsp = await self._sendCmd(KvCmd.CONTAINS_REQ, KvCmd.CONTAINS_RSP, {'keys':keys})
-  #   return rsp[KvCmd.CONTAINS_RSP]['contains']
-
-  
-  # async def kv_keys(self) -> List[str]:
-  #   rsp = await self._sendCmd(KvCmd.KEYS_REQ, KvCmd.KEYS_RSP, {})
-  #   return rsp[KvCmd.KEYS_RSP]['keys']
-  
-
-  # async def kv_clear(self) -> int:
-  #   rsp = await self._sendCmd(KvCmd.CLEAR_REQ, KvCmd.CLEAR_RSP, {})
-  #   return rsp[KvCmd.CLEAR_RSP]['cnt']
-        
-
-  # async def kv_clear_set(self, keys: dict) -> int:
-  #   rsp = await self._sendCmd(KvCmd.CLEAR_SET_REQ, KvCmd.CLEAR_SET_RSP, {'keys':keys})
-  #   return rsp[KvCmd.CLEAR_SET_RSP]['cnt'] 
-
-
-  # async def kv_save(self, name: str) -> None:
-  #   if len(name) == 0:
-  #     raise ValueError('Name empty')
-  #   await self._sendCmd(KvCmd.SAVE_REQ, KvCmd.SAVE_RSP, {'name':name}, StValues.ST_SAVE_COMPLETE)
-    
-
-  # async def kv_load(self, name: str) -> int:
-  #   if len(name) == 0:
-  #     raise ValueError('Name empty')
-  #   rsp = await self._sendCmd(KvCmd.LOAD_REQ, KvCmd.LOAD_RSP, {'name':name}, StValues.ST_LOAD_COMPLETE)
-  #   return rsp[KvCmd.LOAD_RSP]['keys']
-
-  #endregion
-
-  
+ 
   async def _sendCmd(self, cmdReq: str, cmdRsp: str, body: dict, stSuccess = StValues.ST_SUCCESS, checkStatus = True):
     req = {cmdReq : body}
     rsp = await self.ws.query(req)

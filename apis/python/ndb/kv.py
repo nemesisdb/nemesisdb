@@ -77,11 +77,11 @@ class KV:
 
 
   async def save(self, name: str) -> None:
-    raise_if_empty(name, 'save name empty')
+    raise_if_empty(name)
     await self.client.sendCmd(self.cmds.SAVE_REQ, self.cmds.SAVE_RSP, {'name':name}, StValues.ST_SAVE_COMPLETE)
     
 
   async def load(self, name: str) -> int:
-    raise_if_empty(name, 'load name empty')
+    raise_if_empty(name)
     rsp = await self.client.sendCmd(self.cmds.LOAD_REQ, self.cmds.LOAD_RSP, {'name':name}, StValues.ST_LOAD_COMPLETE)
     return rsp[self.cmds.LOAD_RSP]['keys']

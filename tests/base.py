@@ -2,7 +2,7 @@ from unittest import IsolatedAsyncioTestCase
 from ndb.client import NdbClient
 from ndb.arrays import ObjArrays, IntArrays, SortedIntArrays, StringArrays, SortedStrArrays
 from ndb.lists import ObjLists
-
+from ndb.kv import KV
 
 class NDBTest(IsolatedAsyncioTestCase):
   async def asyncSetUp(self):
@@ -14,13 +14,9 @@ class KvTest(NDBTest):
   async def asyncSetUp(self):
     await super().asyncSetUp()
     await self.client.open('ws://127.0.0.1:1987')    
-    await self.client.kv_clear()
-
-
-class SessionTest(NDBTest):
-  async def asyncSetUp(self):
-    await super().asyncSetUp()
-    await self.client.sh_end_all()
+    
+    self.kv = KV(self.client)
+    await self.kv.clear()
 
 
 class ObjArrayTest(NDBTest):

@@ -10,24 +10,24 @@ class Add(KvTest):
   async def test_new_key(self):
     input = {'i':100}
 
-    await self.client.kv_add(input)
+    await self.kv.add(input)
 
-    output = await self.client.kv_get(key='i')
+    output = await self.kv.get(key='i')
     self.assertEqual(output, input['i'])
 
 
   async def test_no_overwrite(self):
     input = {'i':100}
 
-    await self.client.kv_add(input)
+    await self.kv.add(input)
 
-    output = await self.client.kv_get(key='i')
+    output = await self.kv.get(key='i')
     self.assertEqual(output, input['i'])
 
     # call add again, confirm value does not change
-    await self.client.kv_add({'i':200})
+    await self.kv.add({'i':200})
 
-    output = await self.client.kv_get(key='i')
+    output = await self.kv.get(key='i')
     self.assertEqual(output, input['i'])
 
 
