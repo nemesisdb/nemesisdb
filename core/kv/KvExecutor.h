@@ -91,7 +91,7 @@ public:
   }
 
 
-  static Response get (CacheMap& map,  const njson& cmd)
+  static Response get (const CacheMap& map,  const njson& cmd)
   {
     using Rsp = RspMeta<WithSessions, kvcmds::GetRsp, shcmds::GetRsp>;
 
@@ -195,7 +195,7 @@ public:
   }
 
 
-  static Response contains (CacheMap& map,  const njson& cmd)
+  static Response contains (const CacheMap& map,  const njson& cmd)
   {
     using Rsp = RspMeta<WithSessions, kvcmds::ContainsRsp, shcmds::ContainsRsp>;
 
@@ -219,7 +219,7 @@ public:
   }
 
 
-  static Response keys (CacheMap& map,  const njson& cmd)
+  static Response keys (const CacheMap& map,  const njson& cmd)
   {
     using Rsp = RspMeta<WithSessions, kvcmds::KeysRsp, shcmds::KeysRsp>;
 
@@ -266,7 +266,7 @@ public:
   }
 
 
-  static Response count (CacheMap& map,  const njson& cmd)
+  static Response count (const CacheMap& map,  const njson& cmd)
   {
     using Rsp = RspMeta<WithSessions, kvcmds::CountRsp, shcmds::CountRsp>;
 
