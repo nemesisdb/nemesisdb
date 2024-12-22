@@ -67,133 +67,30 @@ print(intersected)
 
 # Overview
 
-The server uses a JSON API over websockets.
+The server uses a JSON API over websockets with APIs for:
 
-## KV APIs
-|Name|Identifier|Purpose|
-|---|---|---|
-|KV|`KV_`|Store, retrieve, delete, etc keys|
-|SH|`SH_`|Sessions management and store/get/delete, etc keys in a session|
-
-
-## Arrays APIs
-|Name|Identifier|Purpose|
-|---|---|---|
-|IARR|`IARR_`|Unsorted integer array|
-|STRARR|`STRARR_`|Unsorted string array|
-|OARR|`OARR_`|Unsorted JSON object array|
-|SIARR|`IARR_`|Sorted integer array|
-|SSTRARR|`STRARR_`|Sorted string array|
-
-
-## General APIs
-|Name|Identifier|Purpose|
-|---|---|---|
-|SV|`SV_`|Server information|
-
+- Key values
+- Arrays
+- Lists
 
 <br/>
 
-## Top Level Keys
-Keys that are not in a session, and are managed by the  `KV_` API.
+## KV
+Keys are managed by the  `KV_` API.
 
 - There is one map for all independent keys
-- Keys cannot expire, they must be deleted by command
-- Lower latency because session lookup is avoided
+- Keys cannot expire, they must be deleted by command. A future update will add key expiry
+
+## Arrays
+These are fixed sized arrays, implemented in contigious memory, with versions for:
+
+- Unsorted arrays for integers, strings and JSON objects
+- Sorted arrays for integers and strings
+
+## Lists
+A node based linked list for JSON objects.
 
 <br/>
-
-## Sessions
-Sessions are managed by the `SH_` API.
-
-- Each session has a dedicated map
-- A session can live forever or expire after a defined duration
-- When a session expires:
-  - The keys are deleted
-  - Optionally the session can be deleted
-
-When a session is created, a session token is returned (a 64-bit unsigned integer), so switching between sessions only requires using the appropriate token.
-
-Examples of sessions:
-
-- Each user that logs into an app
-- Each connected device in monitoring software
-- When an One Time Password is created
-- Whilst a user is completing a multi-page online form
-
-
-More info [here](https://docs.nemesisdb.io/tutorials/sessions/what-is-a-session).
-
-
-<br/>
-<br/>
-
-# Nemesis API
-
-To store multiple keys:
-
-```json
-{
-  "KV_SET":
-  {
-    "keys":
-    {
-      "forename":"James",
-      "age":35,
-      "address":
-      {
-        "city":"Paris"
-      }
-    }
-  }
-}
-```
-
-This sets three keys with value types:
-
-|Key|Value Type|
-|---|---|
-|forename|string|
-|age|integer|
-|address|object|
-
-<br/>
-
-Use `KV_GET` to get key(s):
-
-```json
-{
-  "KV_GET":
-  {
-    "keys":["age", "forename"]
-  }
-}
-```
-
-This responds with:
-
-```json
-{
-  "KV_GET_RSP":
-  {
-    "st": 1,
-    "keys":
-    {
-      "forename": "James",
-      "age":35
-    }
-  }
-}
-```
-<br/>
-
-|||
-|---|---|
-|KV_GET_RSP|The command name. A response to a command is always the command name with `_RSP` appended|
-|st|Status code (`1` is success)|
-|keys|The keys and values retrieved. If a key does not exist, it is omitted from the response.|
-
-
 <br/>
 
 # Install
@@ -216,18 +113,8 @@ The multithreaded version is collecting GitHub dust on the [0.4.1](https://githu
 
 <br/>
 
-## Save and Restore
-Session and key value data be saved to file and restored:
-
-Sessions enabled:
-- `SH_SAVE` save all sessions or particular sessions
-- `SH_LOAD` to load data from file at runtime
-- Use `--loadName` at the command line to load during start up
-
-Sessions disabled:
-- `KV_SAVE` to save all key
-- `KV_LOAD` to load keys from file at runtime
-- Use `--loadName` at the command line to load during start up
+## Persist and Restore
+Key values can be saved to file and restored at either runtime or at startup in the command line.
 
 
 <br/>
