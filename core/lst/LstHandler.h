@@ -144,15 +144,13 @@ namespace nemesis { namespace lst {
       static const HandlerPmrMap LocalHandlers{createLocalHandlers(handlerPmrResource.getAlloc())};
 
       if (const auto itType = QueryNameToType.find(reqName) ; itType == QueryNameToType.cend())
-      {
         return Response {.rsp = createErrorResponse(RequestStatus::CommandNotExist)};
-      }
-      else if (const auto handlerIt = LocalHandlers.find(itType->second) ; handlerIt != LocalHandlers.cend())
+      else if (const auto localHandlerIt = LocalHandlers.find(itType->second) ; localHandlerIt != LocalHandlers.cend())
       {
         // not sent to the executor
         try
         {
-          auto& handler = handlerIt->second;
+          auto& handler = localHandlerIt->second;
           return handler(request);
         }
         catch (const std::exception& ex)
@@ -161,14 +159,10 @@ namespace nemesis { namespace lst {
           return Response {.rsp = createErrorResponse(RequestStatus::Unknown)};
         }
       }
-      else if (const auto handlerIt = ExecutorHandlers.find(itType->second) ; handlerIt != ExecutorHandlers.cend())
-      {
-        return validateAndExecute(handlerIt, request, reqName);
-      }
+      else if (const auto execHandlerIt = ExecutorHandlers.find(itType->second) ; execHandlerIt != ExecutorHandlers.cend())
+        return validateAndExecute(execHandlerIt, request, reqName);
       else
-      {
         return Response {.rsp = createErrorResponse(RequestStatus::CommandNotExist)};
-      }
     }
 
 
