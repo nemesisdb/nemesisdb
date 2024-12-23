@@ -342,7 +342,7 @@ namespace nemesis {
     
     #ifdef NDB_DEBUG
       const auto status = isCmdValid(req, params, onPostValidate);
-      PLOGD_IF(status != RequestStatus::Ok) << "Status: " << status;
+      PLOGD_IF(status != RequestStatus::Ok) << "Status: " << toUnderlying(status);
       return status;
     #else
       return isCmdValid(req, params, onPostValidate);

@@ -54,7 +54,7 @@ namespace nemesis {  namespace arr {
 
     #ifdef NDB_DEBUG
       const auto status = validate();
-      PLOGD_IF(status != RequestStatus::Ok) << "Status: " << status;
+      PLOGD_IF(status != RequestStatus::Ok) << "Status: " << toUnderlying(status);
       return status;
     #else
       return validate();
