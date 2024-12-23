@@ -1,19 +1,39 @@
 # NemesisDB
-NemesisDB is an in-memory keyvalue JSON database:
+NemesisDB is an in-memory database using a JSON over websockets. There are APIs for:
 
-- All data and commands are JSON over WebSockets
-- Keys and sessions can be saved to file
-- Keys and sessions can be loaded at startup or runtime
+- Key values
+- Arrays
+- Lists
 
+<br/>
 
-API and further information in the [docs](https://docs.nemesisdb.io/).
+## KV
+- A JSON key is mapped to its value
+- Keys cannot expire, they must be deleted by command
+- A future update will add key expiry
 
-Contents:
-  - [Python API](#python-api)
-  - [Design](#design)
-  - [Install](#install)
-  - [Build for Linux](#build---linux-only)
-  
+## Arrays
+These are fixed sized arrays, implemented in contigious memory, with versions for:
+
+- Unsorted arrays for integers, strings and JSON objects
+- Sorted arrays for integers and strings
+
+## Lists
+A node based linked list for JSON objects:
+
+- Common features plus splicing
+- More features will be added
+
+<br/>
+<br/>
+
+> [!IMPORTANT]
+> The Nemesis API docs have fallen behind after many recent changes, but the Python docs are current. 
+> 
+
+- Nemesis [docs](https://docs.nemesisdb.io/).
+- Python API [docs](https://docs.nemesisdb.io/client_apis/Overview)
+
 
 <br/>
 <br/>
@@ -23,24 +43,27 @@ Contents:
 # Python API
 There is an early version of a [Python API](https://github.com/nemesisdb/nemesisdb/tree/main/apis/python) with docs [here](https://docs.nemesisdb.io/client_apis/Overview).
 
-Set then retrieve two keys, `username` and `password`:
+
+KV:
 
 ```py
 from ndb.client import NdbClient
+from ndb.kv import KV
 
 client = NdbClient()
-
 await client.open('ws://127.0.0.1:1987/')
-await client.kv_set({'username':'billy', 'password':'billy_password'})
 
-username = await client.kv_get(key='username')
+kv = KV(client)
+await kv.set({'username':'billy', 'password':'billy_password'})
+
+username = await kv.get(key='username')
 print (username) # billy
 
-values = await client.kv_get(keys=('username','password'))
+values = await kv.get(keys=('username','password'))
 print (values) # {'password':'billy_password', 'username':'billy'}
 ```
 
-Arrays:
+Sorted integer array:
 
 ```py
 from ndb.client import NdbClient
@@ -51,6 +74,7 @@ client = NdbClient()
 await client.open('ws://127.0.0.1:1987/')
 
 sortedInts = SortedIntArrays(client)
+
 await sortedInts.create('array1', capacity=5)
 await sortedInts.create('array2', capacity=6)
 
@@ -58,40 +82,38 @@ await sortedInts.set_rng('array1', [25,10,50,100,80])
 await sortedInts.set_rng('array2', [10,25,100,120,200,5])
 
 intersected = await sortedInts.intersect('array1', 'array2')
-print(intersected)
+print(intersected) # [10,25,100]
+```
+
+Object list:
+
+```py
+from ndb.client import NdbClient
+from ndb.lists import ObjLists
+
+client = NdbClient()
+await client.open('ws://127.0.0.1:1987/')
+
+lists = ObjLists(client)
+
+await lists.create('names')
+
+# add 3 items
+await lists.add('names', [{'name':'James'}, {'name':'Jane'}, {'name':'John'}])
+# add new head (Jack, James, Jane, John)
+await lists.add_head('names', {'name':'Jack'}) 
+# overwrite Jane and John (Jack, James, Brian, Bryan)
+await lists.set('names', [{'name':'Brian'},{'name':'Bryan'}], start=2)
+# splice Brian and Bryan to a newly created list
+await lists.splice(destName='other_names', srcName='names', srcStart=2, srcEnd=4)
+
+print(await lists.get_rng('names', start=0))        # [{'name': 'Jack'}, {'name': 'James'}]
+print(await lists.get_rng('other_names', start=0))  #[{'name': 'Brian'}, {'name': 'Bryan'}]
 ```
 
 <br/>
 <br/>
 
-
-# Overview
-
-The server uses a JSON API over websockets with APIs for:
-
-- Key values
-- Arrays
-- Lists
-
-<br/>
-
-## KV
-Keys are managed by the  `KV_` API.
-
-- There is one map for all independent keys
-- Keys cannot expire, they must be deleted by command. A future update will add key expiry
-
-## Arrays
-These are fixed sized arrays, implemented in contigious memory, with versions for:
-
-- Unsorted arrays for integers, strings and JSON objects
-- Sorted arrays for integers and strings
-
-## Lists
-A node based linked list for JSON objects.
-
-<br/>
-<br/>
 
 # Install
 NemesisDB is available as a Debian package and Docker image:
@@ -105,13 +127,6 @@ You can compile for Linux, instructions below.
 <br/>
 <br/>
 
-# Design
-
-As of version 0.5, the engine is single threaded. The instance is assigned to core 0 by default but can be configured in the server [config](https://docs.nemesisdb.io/home/config).
-
-The multithreaded version is collecting GitHub dust on the [0.4.1](https://github.com/nemesisdb/nemesisdb/tree/0.4.1) branch.
-
-<br/>
 
 ## Persist and Restore
 Key values can be saved to file and restored at either runtime or at startup in the command line.
