@@ -244,6 +244,31 @@ async def olist_splice():
   print(f'\tDest: {dest_list}')
 
 
+
+async def olist_splice_basic():
+  client = NdbClient()
+  await client.open('ws://127.0.0.1:1987/')
+
+  await delete_all(client)
+
+  lists = ObjLists(client)
+
+  await lists.create('names')
+
+  # add 3 items to list
+  await lists.add('names', [{'name':'James'}, {'name':'Jane'}, {'name':'John'}])
+
+  # add to head (Jack, James, Jane, John)
+  await lists.add_head('names', {'name':'Jack'}) 
+  # overwrite Jane and John (Jack, James, Brian, Bryan)
+  await lists.set('names', [{'name':'Brian'},{'name':'Bryan'}], start=2)
+  # splice Brian and Bryan to a newly created list
+  await lists.splice(destName='other_names', srcName='names', srcStart=2, srcEnd=4)
+  
+  print(await lists.get_rng('names', start=0))
+  print(await lists.get_rng('other_names', start=0))
+
+
 if __name__ == "__main__":
   for f in [
               olst_as_queue(),
@@ -253,7 +278,8 @@ if __name__ == "__main__":
               olist_set(),
               olist_get_rng(),
               olist_remove(),
-              olist_splice()
+              olist_splice(),
+              olist_splice_basic()
             ]:
     
     print(f'---- {f.__name__} ----')
