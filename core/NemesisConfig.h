@@ -24,6 +24,10 @@ namespace nemesis {
     std::size_t maxRspSize{};
   };
 
+  struct ListSettings
+  {
+    std::size_t maxRspSize{};
+  };
 
   struct Settings
   {
@@ -47,6 +51,8 @@ namespace nemesis {
 
       arrays.maxCapacity = cfg.at("arrays").at("maxCapacity").as<std::size_t>();
       arrays.maxRspSize = cfg.at("arrays").at("maxResponseSize").as<std::size_t>();
+
+      lists.maxRspSize = cfg.at("lists").at("maxResponseSize").as<std::size_t>();
 
       valid = true;
     }
@@ -92,6 +98,7 @@ namespace nemesis {
     bool valid{false};
     InterfaceSettings interface;
     ArraySettings arrays;
+    ListSettings lists;
     std::string startupLoadName;
     fs::path startupLoadPath;
     std::size_t maxPayload;
@@ -132,6 +139,11 @@ namespace nemesis {
             isValid([&arrays]{ return arrays.contains("maxResponseSize") && arrays.at("maxResponseSize").is_uint64(); }, "arrays::maxResponseSize must be an integer");
   }
 
+  bool validateLists(const njson& lists)
+  {
+    return  isValid([&lists]{ return lists.contains("maxResponseSize") && lists.at("maxResponseSize").is_uint64(); }, "lists::maxResponseSize must be an integer");
+  }
+
 
   std::tuple<bool, njson> parse(const fs::path& path)
   {
@@ -144,8 +156,9 @@ namespace nemesis {
 
       bool valid =  isValid([&cfg]{ return cfg.contains("persist") && cfg.at("persist").is_object(); },    "Require persist section") &&
                     isValid([&cfg]{ return cfg.contains("arrays") && cfg.at("arrays").is_object(); },      "Require arrays section") &&
-                    isValid([&cfg]{ return cfg.contains("version") && cfg.at("version").is_uint64(); },   "Require version as an unsigned int") &&
-                    isValid([&cfg]{ return cfg.at("version") == nemesis::NEMESIS_CONFIG_VERSION; },       "Config version must be " + std::to_string(nemesis::NEMESIS_CONFIG_VERSION)) &&
+                    isValid([&cfg]{ return cfg.contains("lists") && cfg.at("lists").is_object(); },        "Require lists section") &&
+                    isValid([&cfg]{ return cfg.contains("version") && cfg.at("version").is_uint64(); },    "Require version as an unsigned int") &&
+                    isValid([&cfg]{ return cfg.at("version") == nemesis::NEMESIS_CONFIG_VERSION; },        "Config version must be " + std::to_string(nemesis::NEMESIS_CONFIG_VERSION)) &&
                     isValid([&cfg]{ return !cfg.contains("core") || (cfg.contains("core") && cfg.at("core").is_uint64()); },  "'core' must be an unsigned integer") &&
                     isValid([&cfg]{ return cfg.contains("ip") && cfg.contains("port") && cfg.contains("maxPayload"); },       "Require ip, port, maxPayload and save") &&
                     isValid([&cfg]{ return cfg.at("ip").is_string() && cfg.at("port").is_uint64() && cfg.at("maxPayload").is_uint64(); }, "ip must string, port and maxPayload must be unsigned integer") &&
@@ -155,7 +168,8 @@ namespace nemesis {
       
       if (valid &&
           validatePersist(cfg.at("persist")) &&
-          validateArrays(cfg.at("arrays")))
+          validateArrays(cfg.at("arrays")) && 
+          validateLists(cfg.at("lists")))
       {
         return {true, cfg};
       }

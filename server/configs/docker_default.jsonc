@@ -14,5 +14,9 @@
     "maxCapacity":10000,      // the max capacity of arrays (number of elements, not bytes)
     "maxResponseSize":10000   // the max size of responses, such as get range.
     // if maxResponseSize < maxCapacity, it is possible not all values will be returned
+  },
+  "lists":
+  {
+    "maxResponseSize":10000   // the max size of responses, such as get range (number of elements, not bytes)
   }
 }

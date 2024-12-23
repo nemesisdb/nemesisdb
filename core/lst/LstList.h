@@ -20,13 +20,18 @@ namespace nemesis { namespace lst {
 
 
   public:
-
+    
     #ifdef NDB_DEBUG
-    List(const std::string_view name) : m_name(name)
+    List(const std::string_view name) : m_name(name), m_maxRspSize(Settings::get().lists.maxRspSize)
     {
     }
     
     const std::string& name() const { return m_name; }
+    #else
+    List() : m_maxRspSize(Settings::get().lists.maxRspSize)
+    {
+      
+    }
     #endif
     
 
@@ -94,13 +99,15 @@ namespace nemesis { namespace lst {
     }
 
 
-    std::vector<T> getRange(const std::size_t start, const std::size_t stop) const
+    std::vector<T> getRange(const std::size_t start, std::size_t stop) const
     {
+      stop = std::min<std::size_t>(std::min<std::size_t>(stop, m_list.size()), m_maxRspSize);
+
       const auto itStart = getIterator(start);
       const auto itEnd = getIterator(stop);
 
       std::vector<T> result;
-      result.reserve(std::min<std::size_t>(std::distance(itStart, itEnd), 1000)); // TODO MaxResponseSize
+      result.reserve(std::distance(itStart, itEnd));
 
       std::for_each(itStart, itEnd, [&result](const auto item)
       {
@@ -193,6 +200,7 @@ namespace nemesis { namespace lst {
 
   private:
     std::list<T> m_list;
+    std::size_t m_maxRspSize;
     #ifdef NDB_DEBUG
     std::string m_name;
     #endif

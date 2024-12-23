@@ -38,21 +38,24 @@ int main (int argc, char ** argv)
 
  
   #ifdef NDB_DEBUG
-    const auto s = R"({
-                        "version":5,                
+    const auto s = R"({ "version":6,                
                         "core":0,                   
                         "ip":"127.0.0.1",           
                         "port":1987,
-                        "maxPayload":1024,          
+                        "maxPayload":8192,          
                         "persist":
                         {
-                          "enabled":true,          
+                          "enabled":false,          
                           "path":"./data"
                         },
                         "arrays":
                         {
-                          "maxCapacity":1000,
-                          "maxResponseSize":1000
+                          "maxCapacity":10000,      
+                          "maxResponseSize":10000   
+                        },
+                        "lists":
+                        {
+                          "maxResponseSize":10000
                         }
                       })";
 
@@ -79,6 +82,7 @@ int main (int argc, char ** argv)
   
   PLOGI << "Arrays Max Capacity: " << settings.arrays.maxCapacity;
   PLOGI << "Arrays Max Rsp Size: " << settings.arrays.maxRspSize;
+  PLOGI << "Lists Max Rsp Size: " << settings.lists.maxRspSize;
   PLOGI << "Query Interface: " << settings.wsSettingsString();
   
   int error = 0;
