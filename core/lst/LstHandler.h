@@ -45,7 +45,7 @@ namespace nemesis { namespace lst {
         {LstQueryType::Delete,          Handler{std::bind_front(&LstHandler<T, Cmds>::deleteList,    std::ref(*this))}},
         {LstQueryType::DeleteAll,       Handler{std::bind_front(&LstHandler<T, Cmds>::deleteAll,     std::ref(*this))}},
         {LstQueryType::Exist,           Handler{std::bind_front(&LstHandler<T, Cmds>::exist,         std::ref(*this))}},
-        {LstQueryType::Splice,           Handler{std::bind_front(&LstHandler<T, Cmds>::splice,        std::ref(*this))}},
+        {LstQueryType::Splice,          Handler{std::bind_front(&LstHandler<T, Cmds>::splice,        std::ref(*this))}},
       }, 1, alloc);
       
       return h;

@@ -35,30 +35,23 @@ namespace nemesis { namespace arr {
     using HandlerPmrMap = ankerl::unordered_dense::pmr::map<ArrQueryType, Handler>;
     using QueryTypePmrMap = ankerl::unordered_dense::pmr::map<std::string_view, ArrQueryType>;
 
-
+    
     template<class Alloc>
-    auto createHandlers (Alloc& alloc)
+    auto createLocalHandlers (Alloc& alloc)
     {
       // initialise with 1 bucket and pmr allocator
       HandlerPmrMap h (
       {
-        {ArrQueryType::Create,          Handler{std::bind_front(&ArrHandler<T, Cmds>::createArray,        std::ref(*this))}},
-        {ArrQueryType::Delete,          Handler{std::bind_front(&ArrHandler<T, Cmds>::deleteArray,        std::ref(*this))}},
-        {ArrQueryType::DeleteAll,       Handler{std::bind_front(&ArrHandler<T, Cmds>::deleteAll,          std::ref(*this))}},
-        {ArrQueryType::Set,             Handler{std::bind_front(&ArrHandler<T, Cmds>::set,                std::ref(*this))}},
-        {ArrQueryType::SetRng,          Handler{std::bind_front(&ArrHandler<T, Cmds>::setRange,           std::ref(*this))}},
-        {ArrQueryType::Get,             Handler{std::bind_front(&ArrHandler<T, Cmds>::get,                std::ref(*this))}},
-        {ArrQueryType::GetRng,          Handler{std::bind_front(&ArrHandler<T, Cmds>::getRange,           std::ref(*this))}},
-        {ArrQueryType::Len,             Handler{std::bind_front(&ArrHandler<T, Cmds>::length,             std::ref(*this))}},
-        {ArrQueryType::Used,            Handler{std::bind_front(&ArrHandler<T, Cmds>::used,               std::ref(*this))}},
-        {ArrQueryType::Exist,           Handler{std::bind_front(&ArrHandler<T, Cmds>::exist,              std::ref(*this))}},
-        {ArrQueryType::Clear,           Handler{std::bind_front(&ArrHandler<T, Cmds>::clear,              std::ref(*this))}},
+        {ArrQueryType::Create,          Handler{std::bind_front(&ArrHandler<T, Cmds>::createArray,    std::ref(*this))}},
+        {ArrQueryType::Delete,          Handler{std::bind_front(&ArrHandler<T, Cmds>::deleteArray,    std::ref(*this))}},
+        {ArrQueryType::DeleteAll,       Handler{std::bind_front(&ArrHandler<T, Cmds>::deleteAll,      std::ref(*this))}},
+        {ArrQueryType::Exist,           Handler{std::bind_front(&ArrHandler<T, Cmds>::exist,          std::ref(*this))}},
       }, 1, alloc);
       
       
       if constexpr (!Cmds::IsSorted)
       {
-        h.emplace(ArrQueryType::Swap, Handler{std::bind_front(&ArrHandler<T, Cmds>::swap, std::ref(*this))});        
+        h.emplace(ArrQueryType::Swap,   Handler{std::bind_front(&ArrHandler<T, Cmds>::swap, std::ref(*this))});        
       }
       else
       {
@@ -97,6 +90,67 @@ namespace nemesis { namespace arr {
     }
 
 
+    struct ValidateExecute
+    {
+      std::function<RequestStatus(const njson&)> validate;
+      std::function<Response(ArrayT&, njson&)> execute;
+      std::string_view rspName;
+    };
+
+
+    const std::map<ArrQueryType, ValidateExecute> ExecutorHandlers = 
+    {
+      { ArrQueryType::Set,      ValidateExecute
+                                {
+                                  .validate = validateSet<Cmds>,
+                                  .execute = ArrayExecutor<ArrayT, Cmds>::set,
+                                  .rspName = Cmds::SetRsp.data()
+                                }
+      },
+      { ArrQueryType::SetRng,   ValidateExecute
+                                {
+                                  .validate = validateSetRange<Cmds>,
+                                  .execute = ArrayExecutor<ArrayT, Cmds>::setRange,
+                                  .rspName = Cmds::SetRngRsp.data()
+                                }
+      },
+      { ArrQueryType::Get,      ValidateExecute
+                                {
+                                  .validate = validateGet<Cmds>,
+                                  .execute = ArrayExecutor<ArrayT, Cmds>::get,
+                                  .rspName = Cmds::GetRsp.data()
+                                }
+      },
+      { ArrQueryType::GetRng,   ValidateExecute
+                                {
+                                  .validate = validateGetRange<Cmds>,
+                                  .execute = ArrayExecutor<ArrayT, Cmds>::getRange,
+                                  .rspName = Cmds::GetRngRsp.data()
+                                }
+      },
+      { ArrQueryType::Len,      ValidateExecute
+                                {
+                                  .validate = validateLength<Cmds>,
+                                  .execute = ArrayExecutor<ArrayT, Cmds>::length,
+                                  .rspName = Cmds::LenRsp.data()
+                                }
+      },
+      { ArrQueryType::Used,     ValidateExecute
+                                {
+                                  .validate = validateUsed<Cmds>,
+                                  .execute = ArrayExecutor<ArrayT, Cmds>::used,
+                                  .rspName = Cmds::UsedRsp.data()
+                                }
+      },
+      { ArrQueryType::Clear,    ValidateExecute
+                                {
+                                  .validate = validateClear<Cmds>,
+                                  .execute = ArrayExecutor<ArrayT, Cmds>::clear,
+                                  .rspName = Cmds::ClearRsp.data()
+                                }
+      }      
+    };
+
   public:
     
 
@@ -104,19 +158,17 @@ namespace nemesis { namespace arr {
     {      
       static PmrResource<typename HandlerPmrMap::value_type, 1024U> handlerPmrResource; // TODO buffer size
       static PmrResource<typename HandlerPmrMap::value_type, 1024U> queryTypeNamePmrResource; // TODO buffer size
-      static const HandlerPmrMap MsgHandlers{createHandlers(handlerPmrResource.getAlloc())}; 
+      static const HandlerPmrMap LocalHandlers{createLocalHandlers(handlerPmrResource.getAlloc())}; 
       static const QueryTypePmrMap QueryNameToType{createQueryTypeNameMap(queryTypeNamePmrResource.getAlloc())};
       
 
       if (const auto itType = QueryNameToType.find(command) ; itType == QueryNameToType.cend())
         return Response {.rsp = createErrorResponse(RequestStatus::CommandNotExist)};
-      else if (const auto handlerIt = MsgHandlers.find(itType->second) ; handlerIt == MsgHandlers.cend())
-        return Response {.rsp = createErrorResponse(RequestStatus::CommandDisabled)};
-      else
+      else if (const auto localHandlersIt = LocalHandlers.find(itType->second) ; localHandlersIt != LocalHandlers.cend())
       {
         try
         {
-          auto& handler = handlerIt->second;
+          auto& handler = localHandlersIt->second;
           return handler(request);
         }
         catch (const std::exception& kex)
@@ -126,10 +178,31 @@ namespace nemesis { namespace arr {
 
         return Response {.rsp = createErrorResponse(RequestStatus::Unknown)};
       }
+      else if (const auto execHandlerIt = ExecutorHandlers.find(itType->second) ; execHandlerIt != ExecutorHandlers.cend())
+        return validateAndExecute(execHandlerIt->second, request, command);
+      else
+        return Response {.rsp = createErrorResponse(RequestStatus::CommandNotExist)};
     }
 
 
   private:
+
+    Response validateAndExecute(const ValidateExecute& validateExecute, njson& request, const std::string_view reqName)
+    {
+      if (const auto status = validateExecute.validate(request); status != RequestStatus::Ok)
+        return Response{.rsp = createErrorResponse(validateExecute.rspName, status)};
+      else
+      {
+        auto& body = request.at(reqName);
+
+        if (auto [exist, itToArray] = getArray(body) ; !exist)
+          return Response{.rsp = createErrorResponse(validateExecute.rspName, RequestStatus::NotExist)};
+        else
+          return validateExecute.execute(itToArray->second, body);
+      }
+    }
+
+
     ndb_always_inline Response createArray(njson& request)
     {
       static constexpr auto ReqName = Cmds::CreateReq.data();
@@ -215,109 +288,6 @@ namespace nemesis { namespace arr {
     }
 
 
-    ndb_always_inline Response set(njson& request)
-    {
-      static constexpr auto RspName = Cmds::SetRsp.data();
-
-      if (const auto status = validateSet<Cmds>(request) ; status != RequestStatus::Ok)
-        return Response{.rsp = createErrorResponse(RspName, status)};
-      else
-      {
-        const auto& body = request.at(Cmds::SetReq);
-        if (auto [exist, it] = getArray(body) ; !exist)
-          return Response{.rsp = createErrorResponse(RspName, RequestStatus::NotExist)};
-        else
-          return ArrayExecutor<ArrayT, Cmds>::set(it->second, body);
-      }
-    }
-
-
-    ndb_always_inline Response setRange(njson& request)
-    {
-      static constexpr auto RspName = Cmds::SetRngRsp.data();
-
-      if (const auto status = validateSetRange<Cmds>(request) ; status != RequestStatus::Ok)
-        return Response{.rsp = createErrorResponse(RspName, status)};
-      else
-      {
-        auto& body = request.at(Cmds::SetRngReq);
-        if (auto [exist, it] = getArray(body.at("name").as_string(), body) ; !exist)
-          return Response{.rsp = createErrorResponse(RspName, RequestStatus::NotExist)};
-        else
-          return ArrayExecutor<ArrayT, Cmds>::setRange(it->second, body);
-      }
-    }
-
-
-    ndb_always_inline Response get(njson& request)
-    {
-      static constexpr auto RspName = Cmds::GetRsp.data();
-
-      if (const auto status = validateGet<Cmds>(request) ; status != RequestStatus::Ok)
-        return Response{.rsp = createErrorResponse(RspName, status)};
-      else
-      {
-        const auto& body = request.at(Cmds::GetReq);
-        if (auto [exist, it] = getArray(body) ; !exist)
-          return Response{.rsp = createErrorResponse(RspName, RequestStatus::NotExist)};
-        else
-          return ArrayExecutor<ArrayT, Cmds>::get(it->second, body);
-      }
-    }
-
-
-    ndb_always_inline Response getRange(njson& request)
-    {
-      static constexpr auto RspName = Cmds::GetRngRsp.data();
-
-      if (const auto status = validateGetRange<Cmds>(request) ; status != RequestStatus::Ok)
-        return Response{.rsp = createErrorResponse(RspName, status)};
-      else
-      {
-        const auto& body = request.at(Cmds::GetRngReq);
-        if (auto [exist, it] = getArray(body) ; !exist)
-          return Response{.rsp = createErrorResponse(RspName, RequestStatus::NotExist)};
-        else
-          return ArrayExecutor<ArrayT, Cmds>::getRange(it->second, body);
-      }
-    }
-
-
-    // NOTE: length is actually capacity 
-    ndb_always_inline Response length(njson& request)
-    {    
-      static constexpr auto RspName = Cmds::LenRsp.data();
-
-      if (const auto status = validateLength<Cmds>(request) ; status != RequestStatus::Ok)
-        return Response{.rsp = createErrorResponse(RspName, status)};
-      else
-      {
-        const auto& body = request.at(Cmds::LenReq);
-        if (auto [exist, it] = getArray(body.at("name").as_string(), body) ; !exist)
-          return Response{.rsp = createErrorResponse(RspName, RequestStatus::NotExist)};
-        else
-          return ArrayExecutor<ArrayT, Cmds>::length(it->second, body);
-      }
-    }
-
-
-    ndb_always_inline Response used(njson& request)
-    {    
-      static constexpr auto RspName = Cmds::UsedRsp.data();
-
-      if (const auto status = validateUsed<Cmds>(request) ; status != RequestStatus::Ok)
-        return Response{.rsp = createErrorResponse(RspName, status)};
-      else
-      {
-        const auto& body = request.at(Cmds::UsedReq);
-        if (auto [exist, it] = getArray(body.at("name").as_string(), body) ; !exist)
-          return Response{.rsp = createErrorResponse(RspName, RequestStatus::NotExist)};
-        else
-          return ArrayExecutor<ArrayT, Cmds>::used(it->second, body);
-      }
-    }
-
-
     ndb_always_inline Response exist(njson& request)
     {
       static constexpr auto ReqName = Cmds::ExistReq.data();
@@ -339,23 +309,6 @@ namespace nemesis { namespace arr {
     }
 
 
-    ndb_always_inline Response clear(njson& request)
-    {
-      static constexpr auto RspName = Cmds::ClearRsp.data();
-
-      if (const auto status = validateClear<Cmds>(request) ; status != RequestStatus::Ok)
-        return Response{.rsp = createErrorResponse(RspName, status)};
-      else
-      {
-        const auto& body = request.at(Cmds::ClearReq);
-        if (auto [exist, it] = getArray(body.at("name").as_string(), body) ; !exist)
-          return Response{.rsp = createErrorResponse(RspName, RequestStatus::NotExist)};
-        else
-          return ArrayExecutor<ArrayT, Cmds>::clear(it->second, body);
-      }
-    }
-
-    
     ndb_always_inline Response intersect(njson& request) requires (Cmds::IsSorted)
     {
       static constexpr auto RspName = Cmds::IntersectRsp.data();
@@ -434,7 +387,6 @@ namespace nemesis { namespace arr {
       }
     }
 
-  private:
 
     std::tuple<bool, Iterator> getArray (const std::string& name, const njson& cmd)
     {
@@ -442,13 +394,15 @@ namespace nemesis { namespace arr {
       return {it != m_arrays.end(), it};
     }
 
+
     std::tuple<bool, Iterator> getArray (const njson& cmd)
     {
       const auto& name = cmd.at("name").as_string();
       return getArray(name, cmd);
     }
 
-    bool arrayExist (const std::string& name)
+
+    bool arrayExist (const std::string& name) const
     {
       return m_arrays.contains(name);
     }

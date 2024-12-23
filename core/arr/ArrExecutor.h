@@ -78,6 +78,7 @@ public:
 
     try
     {
+      // TODO is there an alternative to this
       auto items = reqBody.at("items").as<std::vector<ArrayValueT>>();
 
       if constexpr (Cmds::IsSorted)
