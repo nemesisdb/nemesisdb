@@ -240,7 +240,7 @@ namespace nemesis { namespace arr {
         return Response{.rsp = createErrorResponse(RspName, status)};
       else
       {
-        const auto& body = request.at(Cmds::SetRngReq);
+        auto& body = request.at(Cmds::SetRngReq);
         if (auto [exist, it] = getArray(body.at("name").as_string(), body) ; !exist)
           return Response{.rsp = createErrorResponse(RspName, RequestStatus::NotExist)};
         else

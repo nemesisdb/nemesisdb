@@ -20,6 +20,8 @@ provides functions for that purpose.
 template<typename T, bool Sorted>
 class Array
 {
+  using Iterator = std::vector<T>::iterator;
+
 public:
 
   using ValueT = T;
@@ -69,10 +71,16 @@ public:
 
   void set(const T& item)
   {
-    m_array[m_used++] = item;
-
     if constexpr (Sorted)
-      std::sort(m_array.begin(), std::next(m_array.begin(), m_used));
+    {
+      const auto itLast = std::next(m_array.begin(), m_used);
+      const auto itInsert = std::lower_bound(m_array.begin(), itLast, item);
+      m_array.insert(itInsert, item);      
+    }
+    else
+      m_array[m_used] = item;
+
+    ++m_used;
   }
 
 
@@ -85,13 +93,74 @@ public:
   }
 
   
-  void setRange(const std::vector<T>& items)
+  void setRange(std::vector<T>& items)
   {    
-    for (const auto& item : items)
-      m_array[m_used++] = item;
+    // TODO add flag in request to signal items are already sorted
+    std::sort(std::begin(items), std::end(items));
 
-    if constexpr (Sorted)
-      std::sort(m_array.begin(), std::next(m_array.begin(), m_used));
+    if (m_used == 0)
+    {
+      for (const auto& item : items)
+        m_array[m_used++] = item;
+    }
+    else
+    {
+      // find lower_bound. Append until an item > lower_bound
+      // rotate lower_bound with appended items
+      // continue until lower_bound returns end
+      // append any remaining items
+      //   array:   [4,5,10,12]
+      //   set:     [7,8]
+      //   lower_bound points to 10
+      //   append:  [4,5,10,12,7,8]
+      //   [4, 5, 10, 12,    7,8]
+      //          ^-----^    ^-^
+      //      lowerbound   appended
+      // rotate lower_bound around appended: [4,5,7,8,10,12]
+      // if set was [7,8,15] then afer [7,8] are set, 
+      // lower_bound is called again on 15, which returns
+      // end, so we know remaining items are higher, so append
+
+      auto itItem = items.begin();
+      const auto itItemsEnd = items.end();
+
+      auto append = [this, &itItem, itItemsEnd](Iterator itPivot)
+      {
+        auto itArray = itPivot;
+        auto nAppended = 0;
+
+        for (auto i = m_used ; *itItem <= *itArray && itItem != itItemsEnd ; ++itItem)
+        {        
+          m_array[i++] = *itItem;
+          ++nAppended;
+        }
+        
+        if (nAppended)
+        {
+          const auto itArrayLast = std::next(m_array.begin(), m_used); 
+          std::rotate(itArray, std::next(m_array.begin(), m_used),  std::next(itArrayLast, nAppended));
+        }
+
+        return nAppended;
+      };
+      
+      auto itArrayLast = std::next(m_array.begin(), m_used); 
+      auto itPivot = m_array.begin();
+
+      for (itPivot = std::lower_bound(itPivot, itArrayLast, *itItem); itItem != itItemsEnd && itPivot != itArrayLast ; )
+      {
+        auto nAppended = append(itPivot);
+        m_used += nAppended;
+
+        itArrayLast = std::next(m_array.begin(), m_used); 
+        itPivot = std::lower_bound(std::next(itPivot, nAppended), itArrayLast, *itItem);
+      }
+
+      // any remaining items must be greater than the array max, so can
+      // be appended
+      for ( ; itItem != itItemsEnd ; ++itItem)
+        m_array[m_used++] = *itItem;
+    }
   }
 
 

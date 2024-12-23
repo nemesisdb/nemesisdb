@@ -68,7 +68,7 @@ public:
   }
 
 
-  static Response setRange (Array& array, const njson& reqBody)
+  static Response setRange (Array& array, njson& reqBody)
   {
     static const constexpr auto RspName = Cmds::SetRngRsp.data();
     static const njson Prepared = njson{jsoncons::json_object_arg, {{RspName, njson::object()}}};
@@ -78,7 +78,7 @@ public:
 
     try
     {
-      const auto& items = reqBody.at("items").as<std::vector<ArrayValueT>>();
+      auto items = reqBody.at("items").as<std::vector<ArrayValueT>>();
 
       if constexpr (Cmds::IsSorted)
       {
