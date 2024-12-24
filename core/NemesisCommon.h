@@ -43,8 +43,10 @@ namespace nemesis {
   static const char * NEMESIS_VERSION = "0.9";
   static const std::size_t NEMESIS_CONFIG_VERSION = 6U;
 
-  static const std::size_t NEMESIS_KV_MINPAYLOAD = 64U;
-  static const std::size_t NEMESIS_KV_MAXPAYLOAD = 8U * 1024U;
+  static const std::size_t NEMESIS_MINPAYLOAD = 64U;
+  // max: this is quite arbitrary but needed for config sanity checks
+  static const std::size_t NEMESIS_MAXPAYLOAD = 32U * 1024U; 
+
 
   enum class RequestStatus
   {

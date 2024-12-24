@@ -162,8 +162,8 @@ namespace nemesis {
                     isValid([&cfg]{ return !cfg.contains("core") || (cfg.contains("core") && cfg.at("core").is_uint64()); },  "'core' must be an unsigned integer") &&
                     isValid([&cfg]{ return cfg.contains("ip") && cfg.contains("port") && cfg.contains("maxPayload"); },       "Require ip, port, maxPayload and save") &&
                     isValid([&cfg]{ return cfg.at("ip").is_string() && cfg.at("port").is_uint64() && cfg.at("maxPayload").is_uint64(); }, "ip must string, port and maxPayload must be unsigned integer") &&
-                    isValid([&cfg]{ return cfg.at("maxPayload") >= nemesis::NEMESIS_KV_MINPAYLOAD; }, "maxPayload below minimum") &&
-                    isValid([&cfg]{ return cfg.at("maxPayload") <= nemesis::NEMESIS_KV_MAXPAYLOAD; }, "maxPayload exceeds maximum") ;
+                    isValid([&cfg]{ return cfg.at("maxPayload") >= nemesis::NEMESIS_MINPAYLOAD; }, "maxPayload below minimum") &&
+                    isValid([&cfg]{ return cfg.at("maxPayload") <= nemesis::NEMESIS_MAXPAYLOAD; }, "maxPayload exceeds maximum") ;
 
       
       if (valid &&

@@ -80,9 +80,10 @@ int main (int argc, char ** argv)
   else
     PLOGI << "Persist: Disabled";
   
-  PLOGI << "Arrays Max Capacity: " << settings.arrays.maxCapacity;
-  PLOGI << "Arrays Max Rsp Size: " << settings.arrays.maxRspSize;
-  PLOGI << "Lists Max Rsp Size: " << settings.lists.maxRspSize;
+  PLOGI << "Arrays Max Capacity: " << settings.arrays.maxCapacity << " elements";
+  PLOGI << "Arrays Max Rsp Size: " << settings.arrays.maxRspSize << " elements";
+  PLOGI << "Lists Max Rsp Size: " << settings.lists.maxRspSize << " elements";
+  PLOGI << "Max Payload: " << settings.interface.maxPayload << " bytes";
   PLOGI << "Query Interface: " << settings.wsSettingsString();
   
   int error = 0;
