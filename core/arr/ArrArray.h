@@ -71,14 +71,16 @@ public:
 
   void set(const T& item)
   {
+    m_array[m_used] = item;
+
     if constexpr (Sorted)
     {
       const auto itLast = std::next(m_array.begin(), m_used);
-      const auto itInsert = std::lower_bound(m_array.begin(), itLast, item);
-      m_array.insert(itInsert, item);      
+      auto itLowerBound = std::lower_bound(m_array.begin(), itLast, item);
+
+      while (itLowerBound != itLast)
+        std::iter_swap(itLowerBound++, itLast);
     }
-    else
-      m_array[m_used] = item;
 
     ++m_used;
   }
@@ -93,7 +95,14 @@ public:
   }
 
   
-  void setRange(std::vector<T>& items)
+  void setRange(std::vector<T>& items) requires (!Sorted)
+  {
+    for (const auto& item : items)
+        m_array[m_used++] = item;
+  }
+
+
+  void setRange(std::vector<T>& items) requires (Sorted)
   {    
     // TODO add flag in request to signal items are already sorted
     std::sort(std::begin(items), std::end(items));
@@ -105,59 +114,52 @@ public:
     }
     else
     {
-      // find lower_bound. Append until an item > lower_bound
-      // rotate lower_bound with appended items
-      // continue until lower_bound returns end
-      // append any remaining items
-      //   array:   [4,5,10,12]
-      //   set:     [7,8]
-      //   lower_bound points to 10
-      //   append:  [4,5,10,12,7,8]
-      //   [4, 5, 10, 12,    7,8]
-      //          ^-----^    ^-^
-      //      lowerbound   appended
-      // rotate lower_bound around appended: [4,5,7,8,10,12]
-      // if set was [7,8,15] then afer [7,8] are set, 
-      // lower_bound is called again on 15, which returns
-      // end, so we know remaining items are higher, so append
+      /*
+      auto doSwap = [](Iterator itLowerBound, Iterator itLast, std::size_t appended)
+      {
+        while (appended--)
+        {
+          for (auto it = itLowerBound ; it != itLast ; )
+            std::iter_swap(it++, itLast);
 
+          ++itLowerBound;
+          ++itLast;
+        }
+      };
+      */
+
+      auto itLast = std::next(m_array.begin(), m_used);      
       auto itItem = items.begin();
       const auto itItemsEnd = items.end();
+      auto itLowerBound = std::lower_bound(m_array.begin(), itLast, *itItem);
 
-      auto append = [this, &itItem, itItemsEnd](Iterator itPivot)
+      while (itLowerBound != itLast && itItem != itItemsEnd)
       {
-        auto itArray = itPivot;
-        auto nAppended = 0;
-
-        for (auto i = m_used ; *itItem <= *itArray && itItem != itItemsEnd ; ++itItem)
-        {        
+        auto appended = 0;
+        for (auto i = m_used; *itItem <= *itLowerBound && itItem != items.end(); ++itItem)
+        {
           m_array[i++] = *itItem;
-          ++nAppended;
+          ++appended;
         }
         
-        if (nAppended)
+        m_used += appended;
+
+        //doSwap(itLowerBound, itLast, appended);
+        auto itStart = std::make_reverse_iterator(std::next(m_array.begin(), m_used));
+        auto itMiddle = std::next(itStart, appended); // next because reverse iteerator
+        auto itEnd = std::make_reverse_iterator(itLowerBound);
+
+        std::rotate(itStart, itMiddle, itEnd);
+
+        if (itItem != itItemsEnd)
         {
-          const auto itArrayLast = std::next(m_array.begin(), m_used); 
-          std::rotate(itArray, std::next(m_array.begin(), m_used),  std::next(itArrayLast, nAppended));
+          std::advance(itLast, appended);
+          std::advance(itLowerBound, appended);
+          itLowerBound = std::lower_bound(itLowerBound, itLast, *itItem);
         }
-
-        return nAppended;
-      };
-      
-      auto itArrayLast = std::next(m_array.begin(), m_used); 
-      auto itPivot = m_array.begin();
-
-      for (itPivot = std::lower_bound(itPivot, itArrayLast, *itItem); itItem != itItemsEnd && itPivot != itArrayLast ; )
-      {
-        auto nAppended = append(itPivot);
-        m_used += nAppended;
-
-        itArrayLast = std::next(m_array.begin(), m_used); 
-        itPivot = std::lower_bound(std::next(itPivot, nAppended), itArrayLast, *itItem);
       }
-
-      // any remaining items must be greater than the array max, so can
-      // be appended
+      
+      // any remaining items must be greater than the array max, so can be appended
       for ( ; itItem != itItemsEnd ; ++itItem)
         m_array[m_used++] = *itItem;
     }
