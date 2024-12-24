@@ -89,17 +89,15 @@ public:
 
   void setRange(std::size_t pos, const std::vector<T>& items) requires (!Sorted)
   { 
-    for (const auto& item : items)
-      m_array[pos++] = item;
-
+    std::copy(std::cbegin(items), std::cend(items), std::next(std::begin(m_array), pos));
     m_used += items.size();
   }
 
   
   void setRange(std::vector<T>& items) requires (!Sorted)
   {
-    for (const auto& item : items)
-        m_array[m_used++] = item;
+    std::copy(std::cbegin(items), std::cend(items), std::next(std::begin(m_array), m_used));
+    m_used += items.size();
   }
 
 
@@ -110,8 +108,8 @@ public:
 
     if (m_used == 0)
     {
-      for (const auto& item : items)
-        m_array[m_used++] = item;
+      std::copy(std::cbegin(items), std::cend(items), std::begin(m_array));
+      m_used += items.size();
     }
     else
     {
@@ -146,8 +144,8 @@ public:
       
       // 1. all items > array max item OR
       // 2. remaining items > array max
-      for ( ; itItem != itItemsEnd ; ++itItem)
-        m_array[m_used++] = *itItem;
+      std::copy(itItem, itItemsEnd, std::next(std::begin(m_array), m_used));
+      m_used += std::distance(itItem, itItemsEnd);
     }
   }
 
