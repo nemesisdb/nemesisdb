@@ -22,7 +22,7 @@ namespace nemesis { namespace lst {
   public:
     
     #ifdef NDB_DEBUG
-    List(const std::string_view name) : m_name(name), m_maxRspSize(Settings::get().lists.maxRspSize)
+    List(const std::string_view name) : m_maxRspSize(Settings::get().lists.maxRspSize), m_name(name)
     {
     }
     
