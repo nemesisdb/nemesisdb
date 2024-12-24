@@ -78,8 +78,9 @@ public:
       const auto itLast = std::next(m_array.begin(), m_used);
       auto itLowerBound = std::lower_bound(m_array.begin(), itLast, item);
 
-      while (itLowerBound != itLast)
-        std::iter_swap(itLowerBound++, itLast);
+      //while (itLowerBound != itLast)
+        //std::iter_swap(itLowerBound++, itLast);
+      std::rotate(itLowerBound, itLast, std::next(itLast, 1));
     }
 
     ++m_used;
@@ -114,20 +115,6 @@ public:
     }
     else
     {
-      /*
-      auto doSwap = [](Iterator itLowerBound, Iterator itLast, std::size_t appended)
-      {
-        while (appended--)
-        {
-          for (auto it = itLowerBound ; it != itLast ; )
-            std::iter_swap(it++, itLast);
-
-          ++itLowerBound;
-          ++itLast;
-        }
-      };
-      */
-
       auto itLast = std::next(m_array.begin(), m_used);      
       auto itItem = items.begin();
       const auto itItemsEnd = items.end();
@@ -135,6 +122,7 @@ public:
 
       while (itLowerBound != itLast && itItem != itItemsEnd)
       {
+        // append whilst item <= lower bound
         auto appended = 0;
         for (auto i = m_used; *itItem <= *itLowerBound && itItem != items.end(); ++itItem)
         {
@@ -144,22 +132,20 @@ public:
         
         m_used += appended;
 
-        //doSwap(itLowerBound, itLast, appended);
-        auto itStart = std::make_reverse_iterator(std::next(m_array.begin(), m_used));
-        auto itMiddle = std::next(itStart, appended); // next because reverse iteerator
-        auto itEnd = std::make_reverse_iterator(itLowerBound);
-
-        std::rotate(itStart, itMiddle, itEnd);
-
+        // left rotate [lowerbound, last) to after appended
+        std::rotate(itLowerBound, itLast, std::next(itLast, appended));
+        
         if (itItem != itItemsEnd)
         {
+          // find lower bound of item
           std::advance(itLast, appended);
           std::advance(itLowerBound, appended);
           itLowerBound = std::lower_bound(itLowerBound, itLast, *itItem);
         }
       }
       
-      // any remaining items must be greater than the array max, so can be appended
+      // 1. all items > array max item OR
+      // 2. remaining items > array max
       for ( ; itItem != itItemsEnd ; ++itItem)
         m_array[m_used++] = *itItem;
     }
