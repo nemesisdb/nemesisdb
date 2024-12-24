@@ -145,16 +145,12 @@ public:
     Response response{.rsp = Prepared};
     response.rsp[RspName]["st"] = toUnderlying(RequestStatus::Ok);
 
-    const auto rngArray = reqBody.at("rng").array_range();
-    const auto start = rngArray.begin()->as<std::size_t>();
+    const auto [start, stop, hasStop, hasRng] = rangeFromRequest(reqBody, "rng");
 
     if (!array.isInBounds(start))  [[unlikely]]
         response.rsp[RspName]["st"] = toUnderlying(RequestStatus::Bounds);
     else
-    {
-      const auto stop = reqBody.at("rng").size() == 2 ? rngArray.crbegin()->as<std::size_t>() : array.size();
-      response.rsp[RspName]["items"] = array.getRange(start, stop);
-    }
+      response.rsp[RspName]["items"] = array.getRange(start, hasStop ? stop : array.size());
 
     return response;
   }
@@ -192,14 +188,12 @@ public:
 
     try
     {
-      const auto& rng = reqBody.at("rng").array_range();
-      const auto start = rng.cbegin()->as<std::size_t>();
-      const auto stop = reqBody.at("rng").size() == 2 ? rng.crbegin()->as<std::size_t>() : array.size();
-
+      const auto [start, stop, hasStop, hasRng] = rangeFromRequest(reqBody, "rng");
+      
       if (!array.isInBounds(start))
         response.rsp[RspName]["st"] = toUnderlying(RequestStatus::Bounds);
       else
-        array.clear(start, stop);
+        array.clear(start, hasStop ? stop : array.size());
     }
     catch(const std::exception& e)
     {
