@@ -1,5 +1,5 @@
 # NemesisDB
-NemesisDB is an in-memory database using a JSON over websockets. There are APIs for:
+NemesisDB is an in-memory database using JSON over websockets. There are APIs for:
 
 - Key values
 - Arrays
@@ -153,7 +153,19 @@ Key values can be saved to file and restored at either runtime or at startup in 
 <br/>
 
 ## Run
-Start listening on `127.0.0.1:1987` with persistence disabled:
+
+After installing via dpkg:
+
+- `cd /usr/local/bin/nemesisdb`
+- Then `cd <version>`
+
+After build:
+
+- `cd <clone_location>/server/Release/bin`
+
+<br/>
+
+In both cases, start server listening on `127.0.0.1:1987` and persistence disabled:
 
 `./nemesisdb --config=default.jsonc`
 
