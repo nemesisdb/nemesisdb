@@ -109,7 +109,7 @@ namespace nemesis { namespace lst {
       std::vector<T> result;
       result.reserve(std::distance(itStart, itEnd));
 
-      std::for_each(itStart, itEnd, [&result](const auto item)
+      std::for_each(itStart, itEnd, [&result](const auto& item)
       {
         result.emplace_back(item);
       });
