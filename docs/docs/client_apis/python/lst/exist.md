@@ -6,7 +6,7 @@ displayed_sidebar: clientApisSidebar
 # exist
 
 ```py 
-async def exist(name: str) -> None
+async def exist(name: str) -> bool
 ```
 
 |Param|Description|

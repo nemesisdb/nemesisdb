@@ -28,8 +28,8 @@ except:
   return
 
   
-# create API object
-kv = KV()
+# create API object, passing client
+kv = KV(client)
 
 await kv.set({'username':'billy', 'password':'billy_passy'})
 

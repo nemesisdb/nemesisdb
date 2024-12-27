@@ -18,7 +18,7 @@ async def splice(self, destName: str, srcName: str, srcStart: int, srcEnd = None
 |destPos|The position in `destName` where the spliced nodes will be inserted. If `None`, nodes be appended to the tail|
 
 
-Move source nodes in range `[srcStart, srcEnd)` and to the destination list, inserting at `destPos`.
+Move source nodes from `[srcStart, srcEnd)` to the destination list, inserting at `destPos`.
 
 If the destination list does not exist, it is created.
 
