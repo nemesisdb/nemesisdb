@@ -36,6 +36,10 @@ Default settings:
   {
     "maxCapacity":10000,
     "maxResponseSize":10000
+  },
+  "lists":
+  {
+    "maxResponseSize":10000
   }
 }
 ```
@@ -53,6 +57,7 @@ Default settings:
 |maxPayload|unsigned int|The max size, in bytes, of the WebSocket payload|Y|
 |persist|object|Settings for saving/loading keys|Y|
 |arrays|object|Settings for arrays|Y|
+|lists|object|Settings for lists|Y|
 
 
 <br/>
@@ -85,3 +90,10 @@ See [KV_SAVE](../api/kv/kv-save) for more.
 |maxCapacity|unsigned int|Arrays are fixed size so this is the max number of elements in the array, __not__ max number of bytes.|
 |maxResponseSize|unsigned int|Maximum number of items permitted in a response that returns multiple items, such as `get_range()`.<br/>If this is less than `maxCapacity` it is possible that not all items will be returned|
 
+<br/>
+
+## lists
+
+|Param|Type|Description|
+|:---|:---:|:---|
+|maxResponseSize|unsigned int|Maximum number of items permitted in a response that returns multiple items|

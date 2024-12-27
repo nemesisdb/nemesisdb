@@ -13,7 +13,7 @@ displayed_sidebar: tutorialSidebar
 <br/>
 
 ## Persisting Key Values
-The `KV_SAVE` command persist key values (i.e. those not in a session).
+The `KV_SAVE` command persists key values.
 
 The command saves all keys, you cannot specify particular keys to persist.
 
@@ -42,9 +42,9 @@ And later load at runtime with:
 ## Loading
 
 - Startup
-  - `--loadName` will load data. The name must match a `name` used in either `KV_SAVE` or `SH_SAVE`
+  - `--loadName` will load data. The name must match a `name` used in `KV_SAVE`
   - `--loadPath` is used to read data from a path that's different from that in the server config
-    - Only applies at startup, not with `KV_LOAD` or `SH_LOAD`
+    - Only applies at startup, not with `KV_LOAD`
 
 - Runtime
   - `KV_LOAD` offer the flexibility to load data at any time
@@ -71,7 +71,7 @@ The structure is:
 |:---|:---|
 |name|The name used in the save command|
 |timestamp|Timestamp when the data was saved|
-|data|Contains the session data|
+|data|Contains the data|
 |md|Contains metadata|
 
 <br/>

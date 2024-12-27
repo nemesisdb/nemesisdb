@@ -104,7 +104,7 @@ The response:
 But what if we want all this in a single key? We can use an object.
 
 
-## Clear Session Data
+## Clear Keys
 Start by clearing all keys:
 
 ```json
@@ -158,35 +158,11 @@ When we want the user's profile data, we just have to get one key:
 That's the basics of setting and getting, other common commands are:
 
 - `KV_ADD` : does not overwrite the key if it already exists
-- `KV_COUNT` : Return the number of keys present (either in the entire database or in the session, dependenent on sessions being enabled) 
+- `KV_COUNT` : Return the number of keys present 
 - `KV_RMV` : delete key(s)
-- `KV_CLEAR_SET` : similar to `KV_CLEAR` which clears all keys in the database/session (dependent on sessions being enabled), but `KV_CLEAR_SET` sets new keys after the clear in a single command. This is an alternative for sending separate `KV_CLEAR` and `KV_SET` commands
+- `KV_CLEAR_SET` : clears all keys and sets new keys in a single command
 
 <br/>
-
-### Considerations
-You need to ensure keys are unique to represent independent entities. For example, storing user data:
-
-```json
-{
-  "KV_SET":
-  {
-    "keys":
-    {
-      "user:10:profile":
-      {
-        "username":"Monster"
-      },
-      "user:11:profile":
-      {
-        "username":"Prime"
-      }
-    }
-  }
-}
-```
-
-We prefix the 'profile' key with `user:<number>` to ensure a unique key name.
 
 
 :::note

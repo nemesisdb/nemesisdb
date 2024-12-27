@@ -33,11 +33,3 @@ The install includes a default config to start the server on `127.0.0.1:1987`. T
 ### Windows
 - [Docker](./home/install/docker/windows)
 
-
-<br/>
-
-## Next Steps
-
-- [Python API](./category/python)
-- [First Steps: KV without sessions](./tutorials/first-steps-kv/setup)
-

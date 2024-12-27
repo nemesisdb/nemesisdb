@@ -83,25 +83,3 @@ Time: 94ms
 Ready
 ```
 
-<br/>
-
-
-``` title="Load name exists but contains no data (not an error)"
-./nemesisdb --config=default.jsonc --loadName=empty
-
-NemesisDB v0.3.7 starting
-Registering signals
-Reading config
-Load Path: "./data"
-Load Name: empty
-Reading metadata in "./data/empty/1701179912205808300/md"
-Loading from "./data/empty/1701179912205808300/data"
--- Load --
-Status: Success 
-Sessions: 0
-Keys: 0
-Time: 0
-----------
-Ready
-```
-
