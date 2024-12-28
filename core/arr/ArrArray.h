@@ -2,15 +2,13 @@
 #define NDB_CORE_ARRARRAY_H
 
 #include <algorithm>
+#include <vector>
 #include <core/NemesisCommon.h>
 #include <core/arr/ArrCommands.h>
 #include <core/arr/ArrArray.h>
 
 
 namespace nemesis { namespace arr {
-
-
-using std::vector;
 
 
 /*
@@ -78,8 +76,6 @@ public:
       const auto itLast = std::next(m_array.begin(), m_used);
       auto itLowerBound = std::lower_bound(m_array.begin(), itLast, item);
 
-      //while (itLowerBound != itLast)
-        //std::iter_swap(itLowerBound++, itLast);
       std::rotate(itLowerBound, itLast, std::next(itLast, 1));
     }
 
@@ -233,7 +229,7 @@ public:
   }
 
 
-  std::vector<T> min(const std::size_t n) const
+  std::vector<T> min(const std::size_t n) const requires (Sorted)
   {
     const auto nValues = std::min<std::size_t>(n, m_used);
     const auto itEnd = std::next(m_array.cbegin(), nValues);
@@ -250,7 +246,7 @@ public:
   }
 
 
-  std::vector<T> max(const std::size_t n) const
+  std::vector<T> max(const std::size_t n) const requires (Sorted)
   {
     const auto nValues = std::min<std::size_t>(n, m_used);
     const auto itEnd = std::next(m_array.crbegin(), nValues);
