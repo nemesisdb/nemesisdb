@@ -104,6 +104,7 @@ namespace nemesis {
   // kv
   using cachedkey = std::string;
   using cachedvalue = njson;
+  using cachedvalue2 = std::string_view;
   using KvSaveClock = chrono::system_clock;
   using KvSaveMetaDataUnit = chrono::milliseconds;
 

@@ -24,3 +24,5 @@ tests/sorted_strarr/__pycache__/*
 tests/sorted_strarr/__pycache__/*
 tests/strarr/__pycache__/*
 tests/olst/__pycache__/*
+lib/libcore.a
+apis/python/ndb/proto/__pycache__/*

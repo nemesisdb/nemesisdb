@@ -123,6 +123,7 @@ public:
   }
 
 
+  /*
   static Response add (CacheMap& map,  const njson& cmd)
   {
     using Rsp = KvOnlyMeta<kvcmds::AddRsp>;
@@ -272,6 +273,7 @@ public:
     response.rsp.at(Rsp::name)["cnt"] = map.count();
     return response;
   }
+  */
 
 
   static Response saveKv (const CacheMap& map, const fs::path& path, const std::string_view name)

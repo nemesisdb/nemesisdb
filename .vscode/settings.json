@@ -1,22 +1,20 @@
 {
   "terminal.integrated.defaultProfile.linux": "bash (2)",
-  // "terminal.integrated.profiles.linux": {
-  //   "bash": {
-  //     "path": "/app/bin/host-spawn",
-  //     "args": ["bash"],
-  //     "icon": "terminal-bash",
-  //     "overrideName": true
-  //   }
-  // },
-  // "terminal.integrated.profiles.linux": {
-  //   "bash": {
-  //     "path": "/usr/bin/flatpak-spawn",
-  //     "args": ["--host", "--env=TERM=xterm-256color", "bash"],
-  //     "icon": "terminal-bash",
-  //     "overrideName": true
-  //   }
-  // },
-  //"debug.terminal.clearBeforeReusing": true,
+  "protoc":
+  {
+    "path": "${workspaceRoot}/vcpkg/installed/x64-linux/tools/protobuf/protoc",
+    "compile_on_save": false,
+    "compile_all_path":"${workspaceRoot}/proto",
+    "options":
+    [
+      "--proto_path=${workspaceRoot}/proto",
+      "--cpp_out=${workspaceRoot}/core/proto",
+      "--python_out=${workspaceRoot}/apis/python/ndb/proto"
+    ]
+  },
+  "python.analysis.extraPaths": [
+    "./apis/python"
+  ],
   "editor.fontSize": 14,
   "editor.tabSize": 2,
   "files.associations": {
@@ -123,8 +121,6 @@
     "stack": "cpp",
     "cstdbool": "cpp",
     "version": "cpp"
-  },
-  "python.analysis.extraPaths": [
-    "./apis/python"
-  ]
+  }
+  
 }

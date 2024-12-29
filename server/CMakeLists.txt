@@ -5,7 +5,10 @@ include_directories("../")
 include_directories("../vcpkg/installed/x64-linux/include")
 include_directories("../unordered_dense/include")
 include_directories("../jsoncons/include")
-link_directories("../vcpkg/installed/x64-linux/lib")
+
+link_directories("../vcpkg/installed/x64-linux/lib"
+                 "../lib")
+
 
 
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/${CMAKE_BUILD_TYPE}/bin)
@@ -23,9 +26,10 @@ set(CPACK_PROJECT_NAME ${PROJECT_NAME})
 set(CPACK_PROJECT_VERSION ${PROJECT_VERSION})
 
 add_executable(nemesisdb server.cpp)
+add_dependencies(nemesisdb core)
 
 #when we have GCC-14
 #target_compile_options(nemesisdb PUBLIC -Wnrvo) 
 target_compile_features(nemesisdb PUBLIC cxx_std_20)
 target_compile_options(nemesisdb PRIVATE -Wall) # TODO reinstate when finished pmr
-target_link_libraries(nemesisdb PRIVATE "" -luSockets -lz -lboost_program_options)
+target_link_libraries(nemesisdb PRIVATE "" -lcore -luSockets -lprotobuf -lz -lboost_program_options)

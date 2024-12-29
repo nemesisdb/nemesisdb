@@ -1,0 +1,29 @@
+syntax = "proto3";
+
+package ndb.request;
+
+import "google/protobuf/struct.proto";
+
+option optimize_for = SPEED;
+
+
+message Set
+{
+  google.protobuf.Struct kv = 1;
+}
+
+
+message Get
+{
+  repeated string keys = 2;
+}
+
+
+message Request
+{
+  oneof kv
+  {
+    Get get = 1;
+    Set set = 2;
+  }
+}

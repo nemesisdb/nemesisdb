@@ -18,7 +18,7 @@
 #include <core/arr/ArrCommands.h>
 #include <core/lst/LstHandler.h>
 #include <core/lst/LstCommands.h>
-
+#include <core/proto/set.pb.h>
 
 
 namespace nemesis { 
@@ -29,6 +29,7 @@ namespace svCmds = nemesis::sv;
 namespace arrCmds = nemesis::arr::cmds;
 namespace lstCmds = nemesis::lst::cmds;
 
+namespace setreq = ndb::request;
 
 
 class Server
@@ -291,106 +292,67 @@ public:
 
     void onMessage(KvWebSocket * ws, std::string_view message, uWS::OpCode opCode)
     { 
-      if (opCode != uWS::OpCode::TEXT)
-        send(ws, createErrorResponse(RequestStatus::OpCodeInvalid));
+      if (opCode != uWS::OpCode::BINARY)
+        PLOGE << "Must be binary";
       else
       {
-        jsoncons::json_decoder<njson> decoder;
-        jsoncons::json_string_reader reader(message, decoder);
-        
-        try
+        setreq::Request request;
+
+        if (!request.ParseFromArray(message.data(), message.size()))
+          PLOGE << "Failed to parse request";
+        else
         {
-          if (reader.read(); !decoder.is_valid())
-            send(ws, createErrorResponse(RequestStatus::JsonInvalid));
-          else
-            handleMessage(ws, decoder.get_result());
+          switch (request.kv_case())
+          {
+            using enum setreq::Request::KvCase;
+
+            case kGet:
+            break;
+
+            case kSet:
+            {
+              const auto& set = request.set();
+              for (const auto& [k,v] : set.kv().fields())
+              {
+                switch (v.kind_case())
+                {
+                  using enum google::protobuf::Value::KindCase;
+
+                  case kNumberValue:
+                    PLOGD << k << "=" << v.number_value();
+                  break;
+
+                  case kBoolValue:
+                    PLOGD << k << "=" << v.bool_value();
+                  break;
+
+                  case kStringValue:
+                    PLOGD << k << "=" << v.string_value();
+                  break;
+
+                  case kListValue:
+                    //v.list_value().
+                  break;
+
+                  case kStructValue:
+                  break;
+
+                  default:
+                    // kNullValue or not KIND_NOT_SET
+                  break;
+                }
+              }
+            }
+            break;
+          }          
         }
-        catch (const jsoncons::ser_error& jsonEx)
-        {
-          send(ws, createErrorResponse(RequestStatus::JsonInvalid));
-        }
-        catch (const std::exception& ex)
-        {
-          send(ws, createErrorResponse(RequestStatus::Unknown));
-        }          
       }
     }
 
     
     void handleMessage(KvWebSocket * ws, njson request)
     {
-      // top level must be an object with one child
-      if (!request.is_object() || request.size() != 1U)
-        send(ws, createErrorResponse(RequestStatus::CommandSyntax));
-      else
-      {
-        const std::string& command = request.object_range().cbegin()->key();
-
-        if (!request.at(command).is_object())
-          send(ws, createErrorResponse(command+"_RSP", RequestStatus::CommandSyntax));
-        else
-        {
-          if (const auto pos = command.find('_'); pos == std::string::npos)
-            send(ws, createErrorResponse(command+"_RSP", RequestStatus::CommandSyntax));
-          else
-          {
-            const auto type = std::string_view(command.substr(0, pos));
-            
-            if (type == kvCmds::KvIdent)
-            {
-              const Response response = m_kvHandler->handle(command, request);
-              send(ws, response.rsp);
-            }
-            else if (type == arrCmds::OArrayIdent)
-            {
-              const Response response = m_objectArrHandler->handle(command, request);
-              send(ws, response.rsp);
-            }
-            else if (type == arrCmds::IntArrayIdent)
-            {
-              const Response response = m_intArrHandler->handle(command, request);
-              send(ws, response.rsp);
-            }
-            else if (type == arrCmds::StrArrayIdent)
-            {
-              const Response response = m_strArrHandler->handle(command, request);
-              send(ws, response.rsp);
-            }
-            else if (type == arrCmds::SortedIntArrayIdent)
-            {
-              const Response response = m_sortedIntArrHandler->handle(command, request);
-              send(ws, response.rsp);
-            }
-            else if (type == arrCmds::SortedStrArrayIdent)
-            {
-              const Response response = m_sortedStrArrHandler->handle(command, request);
-              send(ws, response.rsp);
-            }
-            else if (type == lstCmds::ListIdent)
-            {
-              const Response response = m_listHandler->handle(command, request);
-              send(ws, response.rsp);
-            }
-            else if (command == sv::cmds::InfoReq)  // only one SV command at the moment
-            {
-              // the json_object_arg is a tag, followed by initializer_list<pair<string, njson>>
-              static const njson Info = {jsoncons::json_object_arg, {
-                                                                      {"st", toUnderlying(RequestStatus::Ok)},  // for compatibility with APIs and consistency
-                                                                      {"serverVersion",   NEMESIS_VERSION},
-                                                                      {"persistEnabled",  Settings::get().persistEnabled}
-                                                                    }};
-              static const njson Prepared {jsoncons::json_object_arg, {{sv::cmds::InfoRsp, Info}}}; 
-
-              send(ws, Prepared);
-            }
-            else  [[unlikely]]
-            {
-              static const njson Prepared {createErrorResponse(command+"_RSP", RequestStatus::CommandNotExist)};
-              send(ws, Prepared);
-            }
-          }
-        }
-      }
+      
     }
 
 
