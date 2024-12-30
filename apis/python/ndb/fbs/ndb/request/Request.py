@@ -20,56 +20,57 @@ class Request(object):
     def GetRootAsRequest(cls, buf, offset=0):
         """This method is deprecated. Please switch to GetRootAs."""
         return cls.GetRootAs(buf, offset)
-    @classmethod
-    def RequestBufferHasIdentifier(cls, buf, offset, size_prefixed=False):
-        return flatbuffers.util.BufferHasIdentifier(buf, offset, b"\x4B\x56\x20\x20", size_prefixed=size_prefixed)
-
     # Request
     def Init(self, buf, pos):
         self._tab = flatbuffers.table.Table(buf, pos)
 
     # Request
-    def Kv(self, j):
+    def Ident(self):
         o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(4))
         if o != 0:
-            x = self._tab.Vector(o)
-            x += flatbuffers.number_types.UOffsetTFlags.py_type(j) * 4
-            x = self._tab.Indirect(x)
-            from ndb.request.KV import KV
-            obj = KV()
-            obj.Init(self._tab.Bytes, x)
-            return obj
-        return None
-
-    # Request
-    def KvLength(self):
-        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(4))
-        if o != 0:
-            return self._tab.VectorLen(o)
+            return self._tab.Get(flatbuffers.number_types.Int8Flags, o + self._tab.Pos)
         return 0
 
     # Request
-    def KvIsNone(self):
-        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(4))
-        return o == 0
+    def BodyType(self):
+        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(6))
+        if o != 0:
+            return self._tab.Get(flatbuffers.number_types.Uint8Flags, o + self._tab.Pos)
+        return 0
+
+    # Request
+    def Body(self):
+        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(8))
+        if o != 0:
+            from flatbuffers.table import Table
+            obj = Table(bytearray(), 0)
+            self._tab.Union(obj, o)
+            return obj
+        return None
 
 def RequestStart(builder):
-    builder.StartObject(1)
+    builder.StartObject(3)
 
 def Start(builder):
     RequestStart(builder)
 
-def RequestAddKv(builder, kv):
-    builder.PrependUOffsetTRelativeSlot(0, flatbuffers.number_types.UOffsetTFlags.py_type(kv), 0)
+def RequestAddIdent(builder, ident):
+    builder.PrependInt8Slot(0, ident, 0)
 
-def AddKv(builder, kv):
-    RequestAddKv(builder, kv)
+def AddIdent(builder, ident):
+    RequestAddIdent(builder, ident)
 
-def RequestStartKvVector(builder, numElems):
-    return builder.StartVector(4, numElems, 4)
+def RequestAddBodyType(builder, bodyType):
+    builder.PrependUint8Slot(1, bodyType, 0)
 
-def StartKvVector(builder, numElems):
-    return RequestStartKvVector(builder, numElems)
+def AddBodyType(builder, bodyType):
+    RequestAddBodyType(builder, bodyType)
+
+def RequestAddBody(builder, body):
+    builder.PrependUOffsetTRelativeSlot(2, flatbuffers.number_types.UOffsetTFlags.py_type(body), 0)
+
+def AddBody(builder, body):
+    RequestAddBody(builder, body)
 
 def RequestEnd(builder):
     return builder.EndObject()

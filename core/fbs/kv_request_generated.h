@@ -34,6 +34,9 @@ struct StringBuilder;
 struct KV;
 struct KVBuilder;
 
+struct KVSet;
+struct KVSetBuilder;
+
 struct Request;
 struct RequestBuilder;
 
@@ -105,6 +108,74 @@ template<> struct ValueTypeTraits<ndb::request::String> {
 
 bool VerifyValueType(::flatbuffers::Verifier &verifier, const void *obj, ValueType type);
 bool VerifyValueTypeVector(::flatbuffers::Verifier &verifier, const ::flatbuffers::Vector<::flatbuffers::Offset<void>> *values, const ::flatbuffers::Vector<uint8_t> *types);
+
+enum RequestIdent : int8_t {
+  RequestIdent_KV = 0,
+  RequestIdent_MIN = RequestIdent_KV,
+  RequestIdent_MAX = RequestIdent_KV
+};
+
+inline const RequestIdent (&EnumValuesRequestIdent())[1] {
+  static const RequestIdent values[] = {
+    RequestIdent_KV
+  };
+  return values;
+}
+
+inline const char * const *EnumNamesRequestIdent() {
+  static const char * const names[2] = {
+    "KV",
+    nullptr
+  };
+  return names;
+}
+
+inline const char *EnumNameRequestIdent(RequestIdent e) {
+  if (::flatbuffers::IsOutRange(e, RequestIdent_KV, RequestIdent_KV)) return "";
+  const size_t index = static_cast<size_t>(e);
+  return EnumNamesRequestIdent()[index];
+}
+
+enum RequestBody : uint8_t {
+  RequestBody_NONE = 0,
+  RequestBody_KVSet = 1,
+  RequestBody_MIN = RequestBody_NONE,
+  RequestBody_MAX = RequestBody_KVSet
+};
+
+inline const RequestBody (&EnumValuesRequestBody())[2] {
+  static const RequestBody values[] = {
+    RequestBody_NONE,
+    RequestBody_KVSet
+  };
+  return values;
+}
+
+inline const char * const *EnumNamesRequestBody() {
+  static const char * const names[3] = {
+    "NONE",
+    "KVSet",
+    nullptr
+  };
+  return names;
+}
+
+inline const char *EnumNameRequestBody(RequestBody e) {
+  if (::flatbuffers::IsOutRange(e, RequestBody_NONE, RequestBody_KVSet)) return "";
+  const size_t index = static_cast<size_t>(e);
+  return EnumNamesRequestBody()[index];
+}
+
+template<typename T> struct RequestBodyTraits {
+  static const RequestBody enum_value = RequestBody_NONE;
+};
+
+template<> struct RequestBodyTraits<ndb::request::KVSet> {
+  static const RequestBody enum_value = RequestBody_KVSet;
+};
+
+bool VerifyRequestBody(::flatbuffers::Verifier &verifier, const void *obj, RequestBody type);
+bool VerifyRequestBodyVector(::flatbuffers::Verifier &verifier, const ::flatbuffers::Vector<::flatbuffers::Offset<void>> *values, const ::flatbuffers::Vector<uint8_t> *types);
 
 struct UInt64 FLATBUFFERS_FINAL_CLASS : private ::flatbuffers::Table {
   typedef UInt64Builder Builder;
@@ -433,8 +504,8 @@ inline ::flatbuffers::Offset<KV> CreateKVDirect(
       val);
 }
 
-struct Request FLATBUFFERS_FINAL_CLASS : private ::flatbuffers::Table {
-  typedef RequestBuilder Builder;
+struct KVSet FLATBUFFERS_FINAL_CLASS : private ::flatbuffers::Table {
+  typedef KVSetBuilder Builder;
   enum FlatBuffersVTableOffset FLATBUFFERS_VTABLE_UNDERLYING_TYPE {
     VT_KV = 4
   };
@@ -450,12 +521,87 @@ struct Request FLATBUFFERS_FINAL_CLASS : private ::flatbuffers::Table {
   }
 };
 
+struct KVSetBuilder {
+  typedef KVSet Table;
+  ::flatbuffers::FlatBufferBuilder &fbb_;
+  ::flatbuffers::uoffset_t start_;
+  void add_kv(::flatbuffers::Offset<::flatbuffers::Vector<::flatbuffers::Offset<ndb::request::KV>>> kv) {
+    fbb_.AddOffset(KVSet::VT_KV, kv);
+  }
+  explicit KVSetBuilder(::flatbuffers::FlatBufferBuilder &_fbb)
+        : fbb_(_fbb) {
+    start_ = fbb_.StartTable();
+  }
+  ::flatbuffers::Offset<KVSet> Finish() {
+    const auto end = fbb_.EndTable(start_);
+    auto o = ::flatbuffers::Offset<KVSet>(end);
+    return o;
+  }
+};
+
+inline ::flatbuffers::Offset<KVSet> CreateKVSet(
+    ::flatbuffers::FlatBufferBuilder &_fbb,
+    ::flatbuffers::Offset<::flatbuffers::Vector<::flatbuffers::Offset<ndb::request::KV>>> kv = 0) {
+  KVSetBuilder builder_(_fbb);
+  builder_.add_kv(kv);
+  return builder_.Finish();
+}
+
+inline ::flatbuffers::Offset<KVSet> CreateKVSetDirect(
+    ::flatbuffers::FlatBufferBuilder &_fbb,
+    const std::vector<::flatbuffers::Offset<ndb::request::KV>> *kv = nullptr) {
+  auto kv__ = kv ? _fbb.CreateVector<::flatbuffers::Offset<ndb::request::KV>>(*kv) : 0;
+  return ndb::request::CreateKVSet(
+      _fbb,
+      kv__);
+}
+
+struct Request FLATBUFFERS_FINAL_CLASS : private ::flatbuffers::Table {
+  typedef RequestBuilder Builder;
+  enum FlatBuffersVTableOffset FLATBUFFERS_VTABLE_UNDERLYING_TYPE {
+    VT_IDENT = 4,
+    VT_BODY_TYPE = 6,
+    VT_BODY = 8
+  };
+  ndb::request::RequestIdent ident() const {
+    return static_cast<ndb::request::RequestIdent>(GetField<int8_t>(VT_IDENT, 0));
+  }
+  ndb::request::RequestBody body_type() const {
+    return static_cast<ndb::request::RequestBody>(GetField<uint8_t>(VT_BODY_TYPE, 0));
+  }
+  const void *body() const {
+    return GetPointer<const void *>(VT_BODY);
+  }
+  template<typename T> const T *body_as() const;
+  const ndb::request::KVSet *body_as_KVSet() const {
+    return body_type() == ndb::request::RequestBody_KVSet ? static_cast<const ndb::request::KVSet *>(body()) : nullptr;
+  }
+  bool Verify(::flatbuffers::Verifier &verifier) const {
+    return VerifyTableStart(verifier) &&
+           VerifyField<int8_t>(verifier, VT_IDENT, 1) &&
+           VerifyField<uint8_t>(verifier, VT_BODY_TYPE, 1) &&
+           VerifyOffset(verifier, VT_BODY) &&
+           VerifyRequestBody(verifier, body(), body_type()) &&
+           verifier.EndTable();
+  }
+};
+
+template<> inline const ndb::request::KVSet *Request::body_as<ndb::request::KVSet>() const {
+  return body_as_KVSet();
+}
+
 struct RequestBuilder {
   typedef Request Table;
   ::flatbuffers::FlatBufferBuilder &fbb_;
   ::flatbuffers::uoffset_t start_;
-  void add_kv(::flatbuffers::Offset<::flatbuffers::Vector<::flatbuffers::Offset<ndb::request::KV>>> kv) {
-    fbb_.AddOffset(Request::VT_KV, kv);
+  void add_ident(ndb::request::RequestIdent ident) {
+    fbb_.AddElement<int8_t>(Request::VT_IDENT, static_cast<int8_t>(ident), 0);
+  }
+  void add_body_type(ndb::request::RequestBody body_type) {
+    fbb_.AddElement<uint8_t>(Request::VT_BODY_TYPE, static_cast<uint8_t>(body_type), 0);
+  }
+  void add_body(::flatbuffers::Offset<void> body) {
+    fbb_.AddOffset(Request::VT_BODY, body);
   }
   explicit RequestBuilder(::flatbuffers::FlatBufferBuilder &_fbb)
         : fbb_(_fbb) {
@@ -470,19 +616,14 @@ struct RequestBuilder {
 
 inline ::flatbuffers::Offset<Request> CreateRequest(
     ::flatbuffers::FlatBufferBuilder &_fbb,
-    ::flatbuffers::Offset<::flatbuffers::Vector<::flatbuffers::Offset<ndb::request::KV>>> kv = 0) {
+    ndb::request::RequestIdent ident = ndb::request::RequestIdent_KV,
+    ndb::request::RequestBody body_type = ndb::request::RequestBody_NONE,
+    ::flatbuffers::Offset<void> body = 0) {
   RequestBuilder builder_(_fbb);
-  builder_.add_kv(kv);
+  builder_.add_body(body);
+  builder_.add_body_type(body_type);
+  builder_.add_ident(ident);
   return builder_.Finish();
-}
-
-inline ::flatbuffers::Offset<Request> CreateRequestDirect(
-    ::flatbuffers::FlatBufferBuilder &_fbb,
-    const std::vector<::flatbuffers::Offset<ndb::request::KV>> *kv = nullptr) {
-  auto kv__ = kv ? _fbb.CreateVector<::flatbuffers::Offset<ndb::request::KV>>(*kv) : 0;
-  return ndb::request::CreateRequest(
-      _fbb,
-      kv__);
 }
 
 inline bool VerifyValueType(::flatbuffers::Verifier &verifier, const void *obj, ValueType type) {
@@ -526,6 +667,31 @@ inline bool VerifyValueTypeVector(::flatbuffers::Verifier &verifier, const ::fla
   return true;
 }
 
+inline bool VerifyRequestBody(::flatbuffers::Verifier &verifier, const void *obj, RequestBody type) {
+  switch (type) {
+    case RequestBody_NONE: {
+      return true;
+    }
+    case RequestBody_KVSet: {
+      auto ptr = reinterpret_cast<const ndb::request::KVSet *>(obj);
+      return verifier.VerifyTable(ptr);
+    }
+    default: return true;
+  }
+}
+
+inline bool VerifyRequestBodyVector(::flatbuffers::Verifier &verifier, const ::flatbuffers::Vector<::flatbuffers::Offset<void>> *values, const ::flatbuffers::Vector<uint8_t> *types) {
+  if (!values || !types) return !values && !types;
+  if (values->size() != types->size()) return false;
+  for (::flatbuffers::uoffset_t i = 0; i < values->size(); ++i) {
+    if (!VerifyRequestBody(
+        verifier,  values->Get(i), types->GetEnum<RequestBody>(i))) {
+      return false;
+    }
+  }
+  return true;
+}
+
 inline const ndb::request::Request *GetRequest(const void *buf) {
   return ::flatbuffers::GetRoot<ndb::request::Request>(buf);
 }
@@ -534,40 +700,26 @@ inline const ndb::request::Request *GetSizePrefixedRequest(const void *buf) {
   return ::flatbuffers::GetSizePrefixedRoot<ndb::request::Request>(buf);
 }
 
-inline const char *RequestIdentifier() {
-  return "KV  ";
-}
-
-inline bool RequestBufferHasIdentifier(const void *buf) {
-  return ::flatbuffers::BufferHasIdentifier(
-      buf, RequestIdentifier());
-}
-
-inline bool SizePrefixedRequestBufferHasIdentifier(const void *buf) {
-  return ::flatbuffers::BufferHasIdentifier(
-      buf, RequestIdentifier(), true);
-}
-
 inline bool VerifyRequestBuffer(
     ::flatbuffers::Verifier &verifier) {
-  return verifier.VerifyBuffer<ndb::request::Request>(RequestIdentifier());
+  return verifier.VerifyBuffer<ndb::request::Request>(nullptr);
 }
 
 inline bool VerifySizePrefixedRequestBuffer(
     ::flatbuffers::Verifier &verifier) {
-  return verifier.VerifySizePrefixedBuffer<ndb::request::Request>(RequestIdentifier());
+  return verifier.VerifySizePrefixedBuffer<ndb::request::Request>(nullptr);
 }
 
 inline void FinishRequestBuffer(
     ::flatbuffers::FlatBufferBuilder &fbb,
     ::flatbuffers::Offset<ndb::request::Request> root) {
-  fbb.Finish(root, RequestIdentifier());
+  fbb.Finish(root);
 }
 
 inline void FinishSizePrefixedRequestBuffer(
     ::flatbuffers::FlatBufferBuilder &fbb,
     ::flatbuffers::Offset<ndb::request::Request> root) {
-  fbb.FinishSizePrefixed(root, RequestIdentifier());
+  fbb.FinishSizePrefixed(root);
 }
 
 }  // namespace request

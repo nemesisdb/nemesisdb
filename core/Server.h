@@ -294,43 +294,64 @@ public:
       if (opCode != uWS::OpCode::BINARY)
         return;
 
-      if (!ndb::request::RequestBufferHasIdentifier(message.data()))
-      {
-        PLOGE << "Message type not recognised";
-      }
+      
+      if (const auto request = ndb::request::GetRequest(message.data()); !request)
+          PLOGE << "Get request buffer failed";
       else
       {
-        if (const auto request = ndb::request::GetRequest(message.data()); !request)
-          PLOGE << "Get buffer failed";
-        else
+        switch (request->ident())
         {
-          PLOGD << request->kv()->size();
-
-          for (auto kv : *(request->kv()))
+        case ndb::request::RequestIdent_KV:
+        {
+          if (request->body_type() == ndb::request::RequestBody_KVSet)
           {
-            if (auto key = kv->key(); key)
+            const auto& kvRequest = *(request->body_as_KVSet());
+
+            for (auto kv : *(kvRequest.kv()))
             {
-              if (auto sv = key->string_view(); !sv.empty())
+              if (auto key = kv->key(); key)
               {
-                switch (kv->val_type())
+                if (auto sv = key->string_view(); !sv.empty())
                 {
-                  using enum ndb::request::ValueType;
+                  switch (kv->val_type())
+                  {
+                    using enum ndb::request::ValueType;
 
-                  case ValueType_Int64:
-                    PLOGD << sv << '=' << kv->val_as_Int64()->val();
-                  break;
+                    case ValueType_Int64:
+                      PLOGD << sv << '=' << kv->val_as_Int64()->val();
+                    break;
 
-                  case ValueType_String:
-                    PLOGD << sv << '=' << *(kv->val_as_String()->val());
-                  break;
+                    case ValueType_UInt64:
+                      PLOGD << sv << '=' << kv->val_as_UInt64()->val();
+                    break;
 
-                  default:
-                    PLOGE << "TODO";
-                  break;
+                    case ValueType_Bool:
+                      PLOGD << sv << '=' << kv->val_as_Bool()->val();
+                    break;
+
+                    case ValueType_String:
+                      PLOGD << sv << '=' << *(kv->val_as_String()->val());
+                    break;
+
+                    case ValueType_Double:
+                      PLOGD << sv << '=' << kv->val_as_Double()->val();
+                    break;
+
+                    default:
+                      PLOGE << "TODO";
+                    break;
+                  }
                 }
-              }
-            }    
+              }    
+            }
           }
+        }
+        break;
+        
+        
+        default:
+          PLOGE << "Request ident not recognised";
+          break;
         }
       }
     }

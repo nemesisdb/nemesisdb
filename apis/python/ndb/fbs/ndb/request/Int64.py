@@ -20,10 +20,6 @@ class Int64(object):
     def GetRootAsInt64(cls, buf, offset=0):
         """This method is deprecated. Please switch to GetRootAs."""
         return cls.GetRootAs(buf, offset)
-    @classmethod
-    def Int64BufferHasIdentifier(cls, buf, offset, size_prefixed=False):
-        return flatbuffers.util.BufferHasIdentifier(buf, offset, b"\x4B\x56\x20\x20", size_prefixed=size_prefixed)
-
     # Int64
     def Init(self, buf, pos):
         self._tab = flatbuffers.table.Table(buf, pos)

@@ -20,10 +20,6 @@ class Bool(object):
     def GetRootAsBool(cls, buf, offset=0):
         """This method is deprecated. Please switch to GetRootAs."""
         return cls.GetRootAs(buf, offset)
-    @classmethod
-    def BoolBufferHasIdentifier(cls, buf, offset, size_prefixed=False):
-        return flatbuffers.util.BufferHasIdentifier(buf, offset, b"\x4B\x56\x20\x20", size_prefixed=size_prefixed)
-
     # Bool
     def Init(self, buf, pos):
         self._tab = flatbuffers.table.Table(buf, pos)

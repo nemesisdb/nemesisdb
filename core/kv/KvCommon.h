@@ -8,10 +8,18 @@
 #include <uuid_v4/uuid_v4.h>
 #include <uwebsockets/App.h>
 #include <core/NemesisCommon.h>
+#include <core/fbs/kv_request_generated.h>
 
 
 namespace nemesis {  namespace kv {
 
+  struct CachedValue
+  {
+    ndb::request::ValueType type;
+    std::string_view value;
+  };
+  
+  using cachedvalue2 = CachedValue;
 
   enum class KvQueryType : std::uint8_t
   { 

@@ -25,3 +25,4 @@ tests/sorted_strarr/__pycache__/*
 tests/strarr/__pycache__/*
 tests/olst/__pycache__/*
 apis/python/ndb/fbs/ndb/request/__pycache__/*
+apis/python/ndb/fbs/ndb/__pycache__/*

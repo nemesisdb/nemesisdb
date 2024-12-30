@@ -1,7 +1,5 @@
 namespace ndb.request;
 
-file_identifier "KV  ";
-
 
 table UInt64
 {
@@ -38,17 +36,38 @@ union ValueType
 }
 
 
+enum RequestIdent : byte
+{
+  KV
+}
+
 table KV
 {
   key:string;
   val:ValueType;
 }
 
-
-table Request
-{
+table KVSet
+{  
   kv:[KV];
 }
 
+union RequestBody
+{
+  KVSet
+}
+
+
+table Request
+{
+  ident:RequestIdent = KV;
+  body:RequestBody;
+}
+
+// table Get
+// {
+//   type:RequestType = Get;
+//   kv:[string];
+// }
 
 root_type Request;

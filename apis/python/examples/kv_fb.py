@@ -6,13 +6,30 @@ import flatbuffers
 import builtins
 sys.path.append('../')
 from ndb.client import NdbClient
-from ndb.fbs.ndb.request import Request, KV, ValueType, Int64, String
+from ndb.fbs.ndb.request import Request, KV, ValueType, Int64, UInt64, String, Double, Bool, RequestBody, KVSet
 
 
-def createInt64 (b: flatbuffers.Builder, v: Int64) -> int:
-  Int64.Start(b)
-  Int64.AddVal(b, v)
-  return Int64.End(b)
+def createInteger (b: flatbuffers.Builder, v: int) -> int:
+  if v < 0:
+    Int64.Start(b)
+    Int64.AddVal(b, v)
+    return Int64.End(b)
+  else:
+    UInt64.Start(b)
+    UInt64.AddVal(b, v)
+    return UInt64.End(b)
+
+
+def createBool (b: flatbuffers.Builder, v: bool) -> int:
+  Bool.Start(b)
+  Bool.AddVal(b, v)
+  return Bool.End(b)
+
+
+def createDouble (b: flatbuffers.Builder, v: float) -> int:
+  Double.Start(b)
+  Double.AddVal(b, v)
+  return Double.End(b)
 
 
 def createString (b: flatbuffers.Builder, v: str) -> str:
@@ -34,12 +51,20 @@ def createKVVector(b: flatbuffers.Builder, kv: dict) -> int:
   for k,v in kv.items():
     match type(v):
       case builtins.int:
-        val = createInt64(b, v)
-        t = ValueType.ValueType.Int64
+          val = createInteger(b, v)
+          t = ValueType.ValueType.Int64
       
       case builtins.str:
         val = createString(b,v)
         t = ValueType.ValueType.String
+
+      case builtins.float:
+        val = createDouble(b,v)
+        t = ValueType.ValueType.Double
+
+      case builtins.bool:
+        val = createBool(b,v)
+        t = ValueType.ValueType.Bool
 
       case _:
         t = None
@@ -62,7 +87,7 @@ def createKVVector(b: flatbuffers.Builder, kv: dict) -> int:
     
     i += 1
 
-  Request.StartKvVector(b, len(kvObjectsOffsets))
+  KVSet.StartKvVector(b, len(kvObjectsOffsets))
 
   for offset in kvObjectsOffsets:
     b.PrependUOffsetTRelative(offset)
@@ -72,30 +97,19 @@ def createKVVector(b: flatbuffers.Builder, kv: dict) -> int:
 async def test():
   builder = flatbuffers.Builder()
 
-  #k1 = builder.CreateString('k1')
-  
-  # Int64.Start(builder)
-  # Int64.AddVal(builder, 123)
-  # val = Int64.End(builder)
-  
-  # KV.KVStart(builder)
-  # KV.AddKey(builder, k1)
-  # KV.AddValType(builder, ValueType.ValueType.Int64)
-  # KV.KVAddVal(builder, val)
-  # KV.KVEnd(builder)
-  data = {'k1':123, 'k2':456, 'k3':'hello'}
+  data = {'k1':123, 'k2':'hello', 'k3':123.456, 'k4':-123, 'k5':False,'k6':True}
   key_vals = createKVVector(builder, data)
   
-  
-  # Request.StartKvVector(builder, len(data))
-  # builder.PrependUOffsetTRelative(key_vals)
-  # vec = builder.EndVector()
+  KVSet.Start(builder)
+  KVSet.AddKv(builder, key_vals)
+  body = KVSet.End(builder)
 
   Request.RequestStart(builder)
-  Request.AddKv(builder, key_vals)
+  Request.AddBodyType(builder, RequestBody.RequestBody.KVSet)
+  Request.AddBody(builder, body)
   req = Request.RequestEnd(builder)
 
-  builder.Finish(req ,file_identifier=bytearray('KV  '.encode()))
+  builder.Finish(req)
   buffer = builder.Output()
 
   client = NdbClient()
