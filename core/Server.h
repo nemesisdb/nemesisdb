@@ -18,7 +18,7 @@
 #include <core/arr/ArrCommands.h>
 #include <core/lst/LstHandler.h>
 #include <core/lst/LstCommands.h>
-
+#include <core/fbs/kv_request_generated.h>
 
 
 namespace nemesis { 
@@ -291,28 +291,47 @@ public:
 
     void onMessage(KvWebSocket * ws, std::string_view message, uWS::OpCode opCode)
     { 
-      if (opCode != uWS::OpCode::TEXT)
-        send(ws, createErrorResponse(RequestStatus::OpCodeInvalid));
+      if (opCode != uWS::OpCode::BINARY)
+        return;
+
+      if (!ndb::request::RequestBufferHasIdentifier(message.data()))
+      {
+        PLOGE << "Message type not recognised";
+      }
       else
       {
-        jsoncons::json_decoder<njson> decoder;
-        jsoncons::json_string_reader reader(message, decoder);
-        
-        try
+        if (const auto request = ndb::request::GetRequest(message.data()); !request)
+          PLOGE << "Get buffer failed";
+        else
         {
-          if (reader.read(); !decoder.is_valid())
-            send(ws, createErrorResponse(RequestStatus::JsonInvalid));
-          else
-            handleMessage(ws, decoder.get_result());
+          PLOGD << request->kv()->size();
+
+          for (auto kv : *(request->kv()))
+          {
+            if (auto key = kv->key(); key)
+            {
+              if (auto sv = key->string_view(); !sv.empty())
+              {
+                switch (kv->val_type())
+                {
+                  using enum ndb::request::ValueType;
+
+                  case ValueType_Int64:
+                    PLOGD << sv << '=' << kv->val_as_Int64()->val();
+                  break;
+
+                  case ValueType_String:
+                    PLOGD << sv << '=' << *(kv->val_as_String()->val());
+                  break;
+
+                  default:
+                    PLOGE << "TODO";
+                  break;
+                }
+              }
+            }    
+          }
         }
-        catch (const jsoncons::ser_error& jsonEx)
-        {
-          send(ws, createErrorResponse(RequestStatus::JsonInvalid));
-        }
-        catch (const std::exception& ex)
-        {
-          send(ws, createErrorResponse(RequestStatus::Unknown));
-        }          
       }
     }
 

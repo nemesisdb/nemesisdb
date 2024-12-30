@@ -25,7 +25,7 @@ class NdbClient:
   #   return f'NDB - {self.uri} - {connected}'
 
 
-  async def open(self, uri: str) -> bool:
+  async def open(self, uri: str) -> None:
     if uri == '':
       raise ValueError('URI empty')
         
@@ -40,6 +40,8 @@ class NdbClient:
   async def sendCmd(self, cmdReq: str, cmdRsp: str, body: dict, stSuccess = StValues.ST_SUCCESS, checkStatus = True):
     return await self._sendCmd(cmdReq, cmdRsp, body, stSuccess, checkStatus)
   
+  async def sendCmd2(self, data:bytearray):
+    await self.ws.query2(data)
   
   async def _sendCmd(self, cmdReq: str, cmdRsp: str, body: dict, stSuccess = StValues.ST_SUCCESS, checkStatus = True):
     req = {cmdReq : body}

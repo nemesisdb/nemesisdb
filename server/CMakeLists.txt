@@ -28,4 +28,4 @@ add_executable(nemesisdb server.cpp)
 #target_compile_options(nemesisdb PUBLIC -Wnrvo) 
 target_compile_features(nemesisdb PUBLIC cxx_std_20)
 target_compile_options(nemesisdb PRIVATE -Wall) # TODO reinstate when finished pmr
-target_link_libraries(nemesisdb PRIVATE "" -luSockets -lz -lboost_program_options)
+target_link_libraries(nemesisdb PRIVATE "" -luSockets -lflatbuffers -lz -lboost_program_options)
