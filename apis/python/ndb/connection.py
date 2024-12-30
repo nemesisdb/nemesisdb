@@ -70,7 +70,7 @@ class Connection:
     return msg
   
 
-  async def query2(self, buffer: bytearray) -> dict:
+  async def query2(self, buffer: bytearray) -> bytes:
     try:
       queryTask = asio.create_task(self._query2(buffer))
       await queryTask
@@ -79,15 +79,16 @@ class Connection:
       # if there is an active query when we are disconnected, the query
       # task is cancelled, raising an exception
       pass
-
+    
     return msg
 
-  async def _query2(self, buffer: bytearray):
+
+  async def _query2(self, buffer: bytearray) -> bytes:
     await self.ws.send(buffer, text=False)    
-    #await self.rspEvt.wait()
-    #msg = json.loads(self.message)
-    #self.rspEvt.clear()
-    #return msg
+    await self.rspEvt.wait()
+    msg = self.message    
+    self.rspEvt.clear()
+    return msg
   
 
   async def _query(self, query: str):

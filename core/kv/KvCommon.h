@@ -9,13 +9,15 @@
 #include <uwebsockets/App.h>
 #include <core/NemesisCommon.h>
 #include <core/fbs/kv_request_generated.h>
+#include <core/fbs/kv_response_generated.h>
+#include <core/fbs/common_generated.h>
 
 
 namespace nemesis {  namespace kv {
 
   struct CachedValue
   {
-    ndb::request::ValueType type;
+    ndb::common::ValueType type;
     std::string_view value;
   };
   

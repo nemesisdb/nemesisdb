@@ -1,55 +1,16 @@
+include "common.fbs";
+
 namespace ndb.request;
 
 
-table UInt64
-{
-  val: uint64;
-}
-
-table Int64
-{
-  val: int64;
-}
-
-table Double
-{
-  val: double;
-}
-
-table Bool
-{
-  val: bool;
-}
-
-table String
-{
-  val: string;
-}
-
-union ValueType
-{
-  UInt64,
-  Int64,
-  Double,
-  Bool,
-  String
-}
-
-
-enum RequestIdent : byte
-{
-  KV
-}
-
-table KV
-{
-  key:string;
-  val:ValueType;
-}
-
 table KVSet
 {  
-  kv:[KV];
+  kv:[common.Map];
+}
+
+table KVGet
+{
+  kv:[string];
 }
 
 union RequestBody
@@ -60,14 +21,10 @@ union RequestBody
 
 table Request
 {
-  ident:RequestIdent = KV;
+  ident:common.Ident = KV;
   body:RequestBody;
 }
 
-// table Get
-// {
-//   type:RequestType = Get;
-//   kv:[string];
-// }
+
 
 root_type Request;

@@ -18,7 +18,6 @@
 #include <core/arr/ArrCommands.h>
 #include <core/lst/LstHandler.h>
 #include <core/lst/LstCommands.h>
-#include <core/fbs/kv_request_generated.h>
 
 
 namespace nemesis { 
@@ -45,7 +44,6 @@ public:
   {
     stop();
   }
-
 
 
   void stop()
@@ -301,7 +299,7 @@ public:
       {
         switch (request->ident())
         {
-        case ndb::request::RequestIdent_KV:
+        case ndb::common::Ident_KV:
         {
           if (request->body_type() == ndb::request::RequestBody_KVSet)
           {
@@ -315,7 +313,7 @@ public:
                 {
                   switch (kv->val_type())
                   {
-                    using enum ndb::request::ValueType;
+                    using enum ndb::common::ValueType;
 
                     case ValueType_Int64:
                       PLOGD << sv << '=' << kv->val_as_Int64()->val();
@@ -344,11 +342,18 @@ public:
                 }
               }    
             }
+          
+            flatbuffers::FlatBufferBuilder b;
+            
+            auto rsp = ndb::response::CreateResponse(b, ndb::response::Status::Status_Ok);
+            b.Finish(rsp);
+
+            send(ws, b);
           }
         }
         break;
         
-        
+
         default:
           PLOGE << "Request ident not recognised";
           break;
@@ -480,6 +485,14 @@ public:
       ws->send(msg.to_string(), WsSendOpCode);
     }
 
+
+    void send (KvWebSocket * ws, const flatbuffers::FlatBufferBuilder& builder)
+    {
+      const auto buffer = builder.GetBufferPointer();
+
+      const std::string_view sv {reinterpret_cast<char *>(buffer), builder.GetSize()};
+      ws->send(sv, uWS::OpCode::BINARY);
+    }
 
   private:
     struct TimerData

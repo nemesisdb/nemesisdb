@@ -6,7 +6,9 @@ import flatbuffers
 import builtins
 sys.path.append('../')
 from ndb.client import NdbClient
-from ndb.fbs.ndb.request import Request, KV, ValueType, Int64, UInt64, String, Double, Bool, RequestBody, KVSet
+from ndb.fbs.ndb.request import Request, RequestBody, KVSet
+from ndb.fbs.ndb.response import Response, Status
+from ndb.fbs.ndb.common import ValueType, Map, Int64, UInt64, String, Double, Bool
 
 
 def createInteger (b: flatbuffers.Builder, v: int) -> int:
@@ -40,7 +42,6 @@ def createString (b: flatbuffers.Builder, v: str) -> str:
 
 
 def createKVVector(b: flatbuffers.Builder, kv: dict) -> int:
-  
   keyOffsets = []
   valueOffsets = []
   typeOffsets = []
@@ -51,8 +52,8 @@ def createKVVector(b: flatbuffers.Builder, kv: dict) -> int:
   for k,v in kv.items():
     match type(v):
       case builtins.int:
-          val = createInteger(b, v)
-          t = ValueType.ValueType.Int64
+        val = createInteger(b, v)
+        t = ValueType.ValueType.Int64
       
       case builtins.str:
         val = createString(b,v)
@@ -79,11 +80,11 @@ def createKVVector(b: flatbuffers.Builder, kv: dict) -> int:
 
   i = 0
   for k in keyOffsets:
-    KV.KVStart(b)
-    KV.AddKey(b, keyOffsets[i])
-    KV.AddValType(b, typeOffsets[i])
-    KV.AddVal(b, valueOffsets[i])
-    kvObjectsOffsets.append(KV.KVEnd(b))
+    Map.MapStart(b)
+    Map.AddKey(b, keyOffsets[i])
+    Map.AddValType(b, typeOffsets[i])
+    Map.AddVal(b, valueOffsets[i])
+    kvObjectsOffsets.append(Map.MapEnd(b))
     
     i += 1
 
@@ -91,6 +92,7 @@ def createKVVector(b: flatbuffers.Builder, kv: dict) -> int:
 
   for offset in kvObjectsOffsets:
     b.PrependUOffsetTRelative(offset)
+  
   return b.EndVector()
 
 
@@ -114,10 +116,15 @@ async def test():
 
   client = NdbClient()
   await client.open('ws://127.0.0.1:1987')
-  await client.sendCmd2(buffer)
-
+  rsp = await client.sendCmd2(buffer)
+    
+  response = Response.Response.GetRootAs(rsp)
   
-
+  if response.Status() == Status.Status.Ok:
+    print('Ok')
+  else:
+    print('Fail')
+    
 
 if __name__ == "__main__":
   for f in [test()]:

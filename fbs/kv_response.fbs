@@ -1,0 +1,14 @@
+namespace ndb.response;
+
+enum Status : int
+{
+  Fail = 0, // fail/error condition intentional the zero value
+  Ok = 1,
+  CommandUnknown,
+  ParseError
+}
+
+table Response
+{
+  status:Status;
+}

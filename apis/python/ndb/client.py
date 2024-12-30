@@ -40,9 +40,11 @@ class NdbClient:
   async def sendCmd(self, cmdReq: str, cmdRsp: str, body: dict, stSuccess = StValues.ST_SUCCESS, checkStatus = True):
     return await self._sendCmd(cmdReq, cmdRsp, body, stSuccess, checkStatus)
   
-  async def sendCmd2(self, data:bytearray):
-    await self.ws.query2(data)
+
+  async def sendCmd2(self, data:bytearray) -> bytes:
+    return await self.ws.query2(data)
   
+
   async def _sendCmd(self, cmdReq: str, cmdRsp: str, body: dict, stSuccess = StValues.ST_SUCCESS, checkStatus = True):
     req = {cmdReq : body}
     rsp = await self.ws.query(req)

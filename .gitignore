@@ -26,3 +26,5 @@ tests/strarr/__pycache__/*
 tests/olst/__pycache__/*
 apis/python/ndb/fbs/ndb/request/__pycache__/*
 apis/python/ndb/fbs/ndb/__pycache__/*
+apis/python/ndb/fbs/ndb/common/__pycache__/*
+apis/python/ndb/fbs/ndb/response/__pycache__/*
