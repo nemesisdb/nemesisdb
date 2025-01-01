@@ -8,94 +8,83 @@
 #include <core/kv/KvCommon.h>
 
 
-namespace nemesis { 
+namespace nemesis { namespace kv {
 
 
-class CacheMap2
+class CacheMap
 {
-  using Map = ankerl::unordered_dense::segmented_map<cachedkey, kv::cachedvalue2>;
-  using CacheMapIterator = Map::iterator;
-  using CacheMapConstIterator = Map::const_iterator;
+  using ScalarMap = ankerl::unordered_dense::segmented_map<cachedkey, CachedValue>;
+  //using StringMap = ankerl::unordered_dense::segmented_map<cachedkey, kv::CachedString>;
+  using CacheMapIterator = ScalarMap::iterator;
+  using CacheMapConstIterator = ScalarMap::const_iterator;
 
 public:
   
-  CacheMap2& operator=(CacheMap2&&) = default; // required by Map::erase()
-  CacheMap2(CacheMap2&&) = default;
+  CacheMap& operator=(CacheMap&&) = default; // required by ScalarMap::erase()
+  CacheMap(CacheMap&&) = default;
 
-  CacheMap2& operator=(const CacheMap2&) = delete;   
-  CacheMap2(CacheMap2&) = delete;
+  CacheMap& operator=(const CacheMap&) = delete;   
+  CacheMap(CacheMap&) = delete;
 
   
-  CacheMap2 (const std::size_t buckets = 0) : m_map(buckets) 
+  CacheMap (const std::size_t buckets = 0) : m_map(buckets) 
   {
   }
 
-
-  /*
-  void set(const std::string& key, const int64_t v)
-  {
-    kv::cachedvalue2 cv { .type = flexbuffers::Type::FBT_INT,
-                          .value = v};
-
-    m_map.insert_or_assign(key, cv);
-  }
-
-  void set(const std::string& key, const uint64_t v)
-  {
-    kv::cachedvalue2 cv { .type = flexbuffers::Type::FBT_UINT,
-                          .value = v};
-
-    m_map.insert_or_assign(key, cv);
-  }
-
-
-  void set(const std::string& key, const bool v)
-  {
-    kv::cachedvalue2 cv { .type = flexbuffers::Type::FBT_BOOL,
-                          .value = v};
-
-    m_map.insert_or_assign(key, cv);
-  }
-
-
-  void set(const std::string& key, const std::string& v)
-  {
-    kv::cachedvalue2 cv { .type = flexbuffers::Type::FBT_STRING,
-                          .value = v};
-
-    m_map.insert_or_assign(key, cv);
-  }
-
-
-  void set(const std::string& key, const double v)
-  {
-    kv::cachedvalue2 cv { .type = flexbuffers::Type::FBT_FLOAT,
-                          .value = v};
-
-    m_map.insert_or_assign(key, cv);
-  }
-  */
 
   template<flexbuffers::Type FlexT, typename ValueT>
   void set (const std::string& key, const ValueT& v)
   {
-    kv::cachedvalue2 cv { .type = FlexT,
-                          .value = v};
-
+    CachedValue cv {.type = FlexT, .value = v};
     m_map.insert_or_assign(key, cv);
   }
 
 
-  std::optional<std::reference_wrapper<const kv::cachedvalue2>> get (const cachedkey& key) const
+  void get (const KeyVector& keys, FlexBuilder& fb)
   {
-    if (const auto it = m_map.find(key) ; it != m_map.cend())
-      return {it->second};
+    fb.Map([&]()
+    {
+      for (const auto& key : keys)
+      { 
+        if (const auto& it = m_map.find(key->str()); it != m_map.cend())
+        {
+          const auto pKey = key->c_str();
+          const auto& cv = it->second;
+          
+          switch (cv.type)
+          {
+            using enum flexbuffers::Type;
 
-    return {};
-  };
+            case FBT_INT:
+              fb.Int(pKey, std::get<CachedValue::GET_INT>(cv.value));
+            break;
 
+            case FBT_UINT:
+              fb.UInt(pKey, std::get<CachedValue::GET_UINT>(cv.value));
+            break;
 
-  void add (cachedkey key, kv::cachedvalue2 value)
+            case FBT_FLOAT:
+              fb.Float(pKey, std::get<CachedValue::GET_DBL>(cv.value));
+            break;
+
+            case FBT_BOOL:
+              fb.Bool(pKey, std::get<CachedValue::GET_BOOL>(cv.value));
+            break;
+
+            case FBT_STRING:
+              fb.String(pKey, std::get<CachedValue::GET_STR>(cv.value));
+            break;
+
+            default:
+            break;
+          }
+        }
+      }      
+    });
+  }
+
+  
+  void add (cachedkey key, CachedValue value)
   {
     //m_map.try_emplace(std::move(key), std::move(value));
   }
@@ -114,7 +103,7 @@ public:
 
     // try
     // {
-    //   m_map.replace(Map::value_container_type{});
+    //   m_map.replace(ScalarMap::value_container_type{});
     // }
     // catch (...)
     // {
@@ -142,16 +131,17 @@ public:
 
   njson keys() const
   {
-    njson keys = njson::make_array();
+    // njson keys = njson::make_array();
     
-    for(const auto& it : m_map)
-      keys.emplace_back(it.first);
+    // for(const auto& it : m_map)
+    //   keys.emplace_back(it.first);
 
-    return keys;
+    // return keys;
+    return njson{};
   }
 
 
-  const Map& map () const
+  const ScalarMap& map () const
   {
     return m_map;
   }
@@ -162,9 +152,11 @@ private:
   
 
 private:
-  Map m_map;
+  ScalarMap m_map;
+  //StringMap m_stringMap;
 };
 
+} // ns kv
 } // ns nemesis
 
 #endif

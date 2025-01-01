@@ -11,7 +11,7 @@
 #include <core/kv/KvCommon.h>
 #include <core/kv/KvExecutor.h>
 #include <core/kv/KvCommandValidate.h>
-#include <core/CacheMap2.h>
+#include <core/kv/CacheMap.h>
 
 
 namespace nemesis { namespace kv {
@@ -93,49 +93,10 @@ public:
     }
     else
     {
-      flexbuffers::Builder flxb;
-
-      flxb.Map([&]()
-      {
-        for (const auto& key : *(get.keys()))
-        { 
-          if (const auto& cvOpt = m_map.get(key->str()); cvOpt)
-          {
-            const auto pKey = key->c_str();
-            const auto& cv = cvOpt->get();
-            
-            switch (cv.type)
-            {
-              using enum flexbuffers::Type;
-
-              case FBT_INT:
-                flxb.Int(pKey, std::get<cachedvalue2::GET_INT>(cv.value));
-              break;
-
-              case FBT_UINT:
-                flxb.UInt(pKey, std::get<cachedvalue2::GET_UINT>(cv.value));
-              break;
-
-              case FBT_FLOAT:
-                flxb.Float(pKey, std::get<cachedvalue2::GET_DBL>(cv.value));
-              break;
-
-              case FBT_BOOL:
-                flxb.Bool(pKey, std::get<cachedvalue2::GET_BOOL>(cv.value));
-              break;
-
-              case FBT_STRING:
-                flxb.String(pKey, std::get<cachedvalue2::GET_STR>(cv.value));
-              break;
-
-              default:
-              break;
-            }
-          }
-        }      
-      });
-
+      FlexBuilder flxb;
+      m_map.get(*get.keys(), flxb);
       flxb.Finish();
+      
       const auto buff = flxb.GetBuffer();
 
       const auto vec = fbb.CreateVector(buff);  // place the flex buffer vector in the flat buffer
@@ -285,7 +246,7 @@ private:
 
 private:
   const Settings& m_settings;
-  CacheMap2 m_map;
+  kv::CacheMap m_map;
 };
 
 }

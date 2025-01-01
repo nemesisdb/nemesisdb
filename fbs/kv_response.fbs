@@ -2,7 +2,7 @@ include "common.fbs";
 
 namespace ndb.response;
 
-enum Status : int
+enum Status : byte
 {
   Fail = 0, // fail/error condition intentional the zero value
   Ok = 1,

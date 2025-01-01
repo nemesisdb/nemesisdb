@@ -29,7 +29,7 @@ struct KVGetBuilder;
 struct Response;
 struct ResponseBuilder;
 
-enum Status : int32_t {
+enum Status : int8_t {
   Status_Fail = 0,
   Status_Ok = 1,
   Status_CommandUnknown = 2,
@@ -207,7 +207,7 @@ struct Response FLATBUFFERS_FINAL_CLASS : private ::flatbuffers::Table {
     VT_BODY = 8
   };
   ndb::response::Status status() const {
-    return static_cast<ndb::response::Status>(GetField<int32_t>(VT_STATUS, 0));
+    return static_cast<ndb::response::Status>(GetField<int8_t>(VT_STATUS, 0));
   }
   ndb::response::ResponseBody body_type() const {
     return static_cast<ndb::response::ResponseBody>(GetField<uint8_t>(VT_BODY_TYPE, 0));
@@ -224,7 +224,7 @@ struct Response FLATBUFFERS_FINAL_CLASS : private ::flatbuffers::Table {
   }
   bool Verify(::flatbuffers::Verifier &verifier) const {
     return VerifyTableStart(verifier) &&
-           VerifyField<int32_t>(verifier, VT_STATUS, 4) &&
+           VerifyField<int8_t>(verifier, VT_STATUS, 1) &&
            VerifyField<uint8_t>(verifier, VT_BODY_TYPE, 1) &&
            VerifyOffset(verifier, VT_BODY) &&
            VerifyResponseBody(verifier, body(), body_type()) &&
@@ -245,7 +245,7 @@ struct ResponseBuilder {
   ::flatbuffers::FlatBufferBuilder &fbb_;
   ::flatbuffers::uoffset_t start_;
   void add_status(ndb::response::Status status) {
-    fbb_.AddElement<int32_t>(Response::VT_STATUS, static_cast<int32_t>(status), 0);
+    fbb_.AddElement<int8_t>(Response::VT_STATUS, static_cast<int8_t>(status), 0);
   }
   void add_body_type(ndb::response::ResponseBody body_type) {
     fbb_.AddElement<uint8_t>(Response::VT_BODY_TYPE, static_cast<uint8_t>(body_type), 0);
@@ -271,8 +271,8 @@ inline ::flatbuffers::Offset<Response> CreateResponse(
     ::flatbuffers::Offset<void> body = 0) {
   ResponseBuilder builder_(_fbb);
   builder_.add_body(body);
-  builder_.add_status(status);
   builder_.add_body_type(body_type);
+  builder_.add_status(status);
   return builder_.Finish();
 }
 

@@ -25,37 +25,14 @@ namespace nemesis {  namespace kv {
     static const std::size_t GET_BOOL = 4;
 
     flexbuffers::Type type;
-    std::variant<std::string, int64_t, uint64_t, double, bool> value;    
+    // this will do for now until memory slabs implemented
+    std::variant<std::string, int64_t, uint64_t, double, bool> value;
   };
   
-  using cachedvalue2 = CachedValue;
-
+  using KeyVector = flatbuffers::Vector<flatbuffers::Offset<flatbuffers::String>>;
+  using FlexBuilder = flexbuffers::Builder;
+  using FlatBuilder = flatbuffers::FlatBufferBuilder;
   
-  // template<typename T>
-  // inline void scalarToVector(std::vector<char>& vec, T val)
-  // {
-  //   for (unsigned long i = 0; i < sizeof(T); ++i)
-  //   {
-  //     vec[i] = val & 0xFF;
-  //     val >>= 8;
-  //   }
-  // }
-  
-
-  // template<typename T>
-  // inline T vectorToScalar (const std::vector<char>& vec)
-  // {
-  //   T v{};
-
-  //   for (auto i = sizeof(T)-1; i < sizeof(T); --i)
-  //   {
-  //     v = vec[i];
-  //     v <<= 8;
-  //   }
-
-  //   return v;
-  // }
-
   
   enum class KvQueryType : std::uint8_t
   { 

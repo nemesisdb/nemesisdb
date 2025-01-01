@@ -28,7 +28,7 @@ class Response(object):
     def Status(self):
         o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(4))
         if o != 0:
-            return self._tab.Get(flatbuffers.number_types.Int32Flags, o + self._tab.Pos)
+            return self._tab.Get(flatbuffers.number_types.Int8Flags, o + self._tab.Pos)
         return 0
 
     # Response
@@ -55,7 +55,7 @@ def Start(builder):
     ResponseStart(builder)
 
 def ResponseAddStatus(builder, status):
-    builder.PrependInt32Slot(0, status, 0)
+    builder.PrependInt8Slot(0, status, 0)
 
 def AddStatus(builder, status):
     ResponseAddStatus(builder, status)
