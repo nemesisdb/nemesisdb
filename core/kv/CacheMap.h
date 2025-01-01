@@ -13,14 +13,13 @@ namespace nemesis { namespace kv {
 
 class CacheMap
 {
-  using ScalarMap = ankerl::unordered_dense::segmented_map<cachedkey, CachedValue>;
-  //using StringMap = ankerl::unordered_dense::segmented_map<cachedkey, kv::CachedString>;
-  using CacheMapIterator = ScalarMap::iterator;
-  using CacheMapConstIterator = ScalarMap::const_iterator;
+  using Map = ankerl::unordered_dense::segmented_map<cachedkey, CachedValue>;
+  using CacheMapIterator = Map::iterator;
+  using CacheMapConstIterator = Map::const_iterator;
 
 public:
   
-  CacheMap& operator=(CacheMap&&) = default; // required by ScalarMap::erase()
+  CacheMap& operator=(CacheMap&&) = default; // required by Map::erase()
   CacheMap(CacheMap&&) = default;
 
   CacheMap& operator=(const CacheMap&) = delete;   
@@ -35,7 +34,22 @@ public:
   template<flexbuffers::Type FlexT, typename ValueT>
   void set (const std::string& key, const ValueT& v)
   {
-    CachedValue cv {.type = FlexT, .value = v};
+    ValueExtractF extract{nullptr};
+
+    if constexpr (FlexT == flexbuffers::Type::FBT_INT)
+      extract = extractInt;
+    else if constexpr (FlexT == flexbuffers::Type::FBT_UINT)
+      extract = extractUInt;
+    else if constexpr (FlexT == flexbuffers::Type::FBT_FLOAT)
+      extract = extractFloat;
+    else if constexpr (FlexT == flexbuffers::Type::FBT_BOOL)
+      extract = extractBool;
+    else if constexpr (FlexT == flexbuffers::Type::FBT_STRING)
+      extract = extractString;
+    else
+      static_assert("Unsupported FlexBuffer::Type");
+
+    CachedValue cv {.value = v, .extract = extract};
     m_map.insert_or_assign(key, cv);
   }
 
@@ -49,35 +63,9 @@ public:
         if (const auto& it = m_map.find(key->str()); it != m_map.cend())
         {
           const auto pKey = key->c_str();
-          const auto& cv = it->second;
+          const auto& cachedValue = it->second;
           
-          switch (cv.type)
-          {
-            using enum flexbuffers::Type;
-
-            case FBT_INT:
-              fb.Int(pKey, std::get<CachedValue::GET_INT>(cv.value));
-            break;
-
-            case FBT_UINT:
-              fb.UInt(pKey, std::get<CachedValue::GET_UINT>(cv.value));
-            break;
-
-            case FBT_FLOAT:
-              fb.Float(pKey, std::get<CachedValue::GET_DBL>(cv.value));
-            break;
-
-            case FBT_BOOL:
-              fb.Bool(pKey, std::get<CachedValue::GET_BOOL>(cv.value));
-            break;
-
-            case FBT_STRING:
-              fb.String(pKey, std::get<CachedValue::GET_STR>(cv.value));
-            break;
-
-            default:
-            break;
-          }
+          cachedValue.extract(pKey, cachedValue.value, fb);
         }
       }      
     });
@@ -103,7 +91,7 @@ public:
 
     // try
     // {
-    //   m_map.replace(ScalarMap::value_container_type{});
+    //   m_map.replace(Map::value_container_type{});
     // }
     // catch (...)
     // {
@@ -141,7 +129,7 @@ public:
   }
 
 
-  const ScalarMap& map () const
+  const Map& map () const
   {
     return m_map;
   }
@@ -149,11 +137,34 @@ public:
 
 private:
 
-  
+  static void extractInt(const char * key, const ValueVariant& value, FlexBuilder& fb)
+  {
+    fb.Int(key, std::get<CachedValue::GET_INT>(value));
+  }
+
+  static void extractUInt(const char * key, const ValueVariant& value, FlexBuilder& fb)
+  {
+    fb.UInt(key, std::get<CachedValue::GET_UINT>(value));
+  }
+
+  static void extractFloat(const char * key, const ValueVariant& value, FlexBuilder& fb)
+  {
+    fb.Float(key, std::get<CachedValue::GET_DBL>(value));
+  }
+
+  static void extractBool(const char * key, const ValueVariant& value, FlexBuilder& fb)
+  {
+    fb.Bool(key, std::get<CachedValue::GET_BOOL>(value));
+  }
+
+  static void extractString(const char * key, const ValueVariant& value, FlexBuilder& fb)
+  {
+    fb.String(key, std::get<CachedValue::GET_STR>(value));
+  }
+
 
 private:
-  ScalarMap m_map;
-  //StringMap m_stringMap;
+  Map m_map;
 };
 
 } // ns kv
