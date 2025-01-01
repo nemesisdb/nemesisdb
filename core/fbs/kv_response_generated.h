@@ -5,6 +5,8 @@
 #define FLATBUFFERS_GENERATED_KVRESPONSE_NDB_RESPONSE_H_
 
 #include "flatbuffers/flatbuffers.h"
+#include "flatbuffers/flexbuffers.h"
+#include "flatbuffers/flex_flat_util.h"
 
 // Ensure the included flatbuffers.h is the same version as when this file was
 // generated, otherwise it may not be compatible.
@@ -13,8 +15,16 @@ static_assert(FLATBUFFERS_VERSION_MAJOR == 24 &&
               FLATBUFFERS_VERSION_REVISION == 25,
              "Non-compatible flatbuffers version included");
 
+#include "common_generated.h"
+
 namespace ndb {
 namespace response {
+
+struct KVSet;
+struct KVSetBuilder;
+
+struct KVGet;
+struct KVGetBuilder;
 
 struct Response;
 struct ResponseBuilder;
@@ -55,20 +65,180 @@ inline const char *EnumNameStatus(Status e) {
   return EnumNamesStatus()[index];
 }
 
+enum ResponseBody : uint8_t {
+  ResponseBody_NONE = 0,
+  ResponseBody_KVSet = 1,
+  ResponseBody_KVGet = 2,
+  ResponseBody_MIN = ResponseBody_NONE,
+  ResponseBody_MAX = ResponseBody_KVGet
+};
+
+inline const ResponseBody (&EnumValuesResponseBody())[3] {
+  static const ResponseBody values[] = {
+    ResponseBody_NONE,
+    ResponseBody_KVSet,
+    ResponseBody_KVGet
+  };
+  return values;
+}
+
+inline const char * const *EnumNamesResponseBody() {
+  static const char * const names[4] = {
+    "NONE",
+    "KVSet",
+    "KVGet",
+    nullptr
+  };
+  return names;
+}
+
+inline const char *EnumNameResponseBody(ResponseBody e) {
+  if (::flatbuffers::IsOutRange(e, ResponseBody_NONE, ResponseBody_KVGet)) return "";
+  const size_t index = static_cast<size_t>(e);
+  return EnumNamesResponseBody()[index];
+}
+
+template<typename T> struct ResponseBodyTraits {
+  static const ResponseBody enum_value = ResponseBody_NONE;
+};
+
+template<> struct ResponseBodyTraits<ndb::response::KVSet> {
+  static const ResponseBody enum_value = ResponseBody_KVSet;
+};
+
+template<> struct ResponseBodyTraits<ndb::response::KVGet> {
+  static const ResponseBody enum_value = ResponseBody_KVGet;
+};
+
+bool VerifyResponseBody(::flatbuffers::Verifier &verifier, const void *obj, ResponseBody type);
+bool VerifyResponseBodyVector(::flatbuffers::Verifier &verifier, const ::flatbuffers::Vector<::flatbuffers::Offset<void>> *values, const ::flatbuffers::Vector<uint8_t> *types);
+
+struct KVSet FLATBUFFERS_FINAL_CLASS : private ::flatbuffers::Table {
+  typedef KVSetBuilder Builder;
+  bool Verify(::flatbuffers::Verifier &verifier) const {
+    return VerifyTableStart(verifier) &&
+           verifier.EndTable();
+  }
+};
+
+struct KVSetBuilder {
+  typedef KVSet Table;
+  ::flatbuffers::FlatBufferBuilder &fbb_;
+  ::flatbuffers::uoffset_t start_;
+  explicit KVSetBuilder(::flatbuffers::FlatBufferBuilder &_fbb)
+        : fbb_(_fbb) {
+    start_ = fbb_.StartTable();
+  }
+  ::flatbuffers::Offset<KVSet> Finish() {
+    const auto end = fbb_.EndTable(start_);
+    auto o = ::flatbuffers::Offset<KVSet>(end);
+    return o;
+  }
+};
+
+inline ::flatbuffers::Offset<KVSet> CreateKVSet(
+    ::flatbuffers::FlatBufferBuilder &_fbb) {
+  KVSetBuilder builder_(_fbb);
+  return builder_.Finish();
+}
+
+struct KVGet FLATBUFFERS_FINAL_CLASS : private ::flatbuffers::Table {
+  typedef KVGetBuilder Builder;
+  enum FlatBuffersVTableOffset FLATBUFFERS_VTABLE_UNDERLYING_TYPE {
+    VT_KV = 4
+  };
+  const ::flatbuffers::Vector<uint8_t> *kv() const {
+    return GetPointer<const ::flatbuffers::Vector<uint8_t> *>(VT_KV);
+  }
+  flexbuffers::Reference kv_flexbuffer_root() const {
+    const auto _f = kv();
+    return _f ? flexbuffers::GetRoot(_f->Data(), _f->size())
+              : flexbuffers::Reference();
+  }
+  bool Verify(::flatbuffers::Verifier &verifier) const {
+    return VerifyTableStart(verifier) &&
+           VerifyOffset(verifier, VT_KV) &&
+           verifier.VerifyVector(kv()) &&
+           flexbuffers::VerifyNestedFlexBuffer(kv(), verifier) &&
+           verifier.EndTable();
+  }
+};
+
+struct KVGetBuilder {
+  typedef KVGet Table;
+  ::flatbuffers::FlatBufferBuilder &fbb_;
+  ::flatbuffers::uoffset_t start_;
+  void add_kv(::flatbuffers::Offset<::flatbuffers::Vector<uint8_t>> kv) {
+    fbb_.AddOffset(KVGet::VT_KV, kv);
+  }
+  explicit KVGetBuilder(::flatbuffers::FlatBufferBuilder &_fbb)
+        : fbb_(_fbb) {
+    start_ = fbb_.StartTable();
+  }
+  ::flatbuffers::Offset<KVGet> Finish() {
+    const auto end = fbb_.EndTable(start_);
+    auto o = ::flatbuffers::Offset<KVGet>(end);
+    return o;
+  }
+};
+
+inline ::flatbuffers::Offset<KVGet> CreateKVGet(
+    ::flatbuffers::FlatBufferBuilder &_fbb,
+    ::flatbuffers::Offset<::flatbuffers::Vector<uint8_t>> kv = 0) {
+  KVGetBuilder builder_(_fbb);
+  builder_.add_kv(kv);
+  return builder_.Finish();
+}
+
+inline ::flatbuffers::Offset<KVGet> CreateKVGetDirect(
+    ::flatbuffers::FlatBufferBuilder &_fbb,
+    const std::vector<uint8_t> *kv = nullptr) {
+  auto kv__ = kv ? _fbb.CreateVector<uint8_t>(*kv) : 0;
+  return ndb::response::CreateKVGet(
+      _fbb,
+      kv__);
+}
+
 struct Response FLATBUFFERS_FINAL_CLASS : private ::flatbuffers::Table {
   typedef ResponseBuilder Builder;
   enum FlatBuffersVTableOffset FLATBUFFERS_VTABLE_UNDERLYING_TYPE {
-    VT_STATUS = 4
+    VT_STATUS = 4,
+    VT_BODY_TYPE = 6,
+    VT_BODY = 8
   };
   ndb::response::Status status() const {
     return static_cast<ndb::response::Status>(GetField<int32_t>(VT_STATUS, 0));
   }
+  ndb::response::ResponseBody body_type() const {
+    return static_cast<ndb::response::ResponseBody>(GetField<uint8_t>(VT_BODY_TYPE, 0));
+  }
+  const void *body() const {
+    return GetPointer<const void *>(VT_BODY);
+  }
+  template<typename T> const T *body_as() const;
+  const ndb::response::KVSet *body_as_KVSet() const {
+    return body_type() == ndb::response::ResponseBody_KVSet ? static_cast<const ndb::response::KVSet *>(body()) : nullptr;
+  }
+  const ndb::response::KVGet *body_as_KVGet() const {
+    return body_type() == ndb::response::ResponseBody_KVGet ? static_cast<const ndb::response::KVGet *>(body()) : nullptr;
+  }
   bool Verify(::flatbuffers::Verifier &verifier) const {
     return VerifyTableStart(verifier) &&
            VerifyField<int32_t>(verifier, VT_STATUS, 4) &&
+           VerifyField<uint8_t>(verifier, VT_BODY_TYPE, 1) &&
+           VerifyOffset(verifier, VT_BODY) &&
+           VerifyResponseBody(verifier, body(), body_type()) &&
            verifier.EndTable();
   }
 };
+
+template<> inline const ndb::response::KVSet *Response::body_as<ndb::response::KVSet>() const {
+  return body_as_KVSet();
+}
+
+template<> inline const ndb::response::KVGet *Response::body_as<ndb::response::KVGet>() const {
+  return body_as_KVGet();
+}
 
 struct ResponseBuilder {
   typedef Response Table;
@@ -76,6 +246,12 @@ struct ResponseBuilder {
   ::flatbuffers::uoffset_t start_;
   void add_status(ndb::response::Status status) {
     fbb_.AddElement<int32_t>(Response::VT_STATUS, static_cast<int32_t>(status), 0);
+  }
+  void add_body_type(ndb::response::ResponseBody body_type) {
+    fbb_.AddElement<uint8_t>(Response::VT_BODY_TYPE, static_cast<uint8_t>(body_type), 0);
+  }
+  void add_body(::flatbuffers::Offset<void> body) {
+    fbb_.AddOffset(Response::VT_BODY, body);
   }
   explicit ResponseBuilder(::flatbuffers::FlatBufferBuilder &_fbb)
         : fbb_(_fbb) {
@@ -90,10 +266,43 @@ struct ResponseBuilder {
 
 inline ::flatbuffers::Offset<Response> CreateResponse(
     ::flatbuffers::FlatBufferBuilder &_fbb,
-    ndb::response::Status status = ndb::response::Status_Fail) {
+    ndb::response::Status status = ndb::response::Status_Fail,
+    ndb::response::ResponseBody body_type = ndb::response::ResponseBody_NONE,
+    ::flatbuffers::Offset<void> body = 0) {
   ResponseBuilder builder_(_fbb);
+  builder_.add_body(body);
   builder_.add_status(status);
+  builder_.add_body_type(body_type);
   return builder_.Finish();
+}
+
+inline bool VerifyResponseBody(::flatbuffers::Verifier &verifier, const void *obj, ResponseBody type) {
+  switch (type) {
+    case ResponseBody_NONE: {
+      return true;
+    }
+    case ResponseBody_KVSet: {
+      auto ptr = reinterpret_cast<const ndb::response::KVSet *>(obj);
+      return verifier.VerifyTable(ptr);
+    }
+    case ResponseBody_KVGet: {
+      auto ptr = reinterpret_cast<const ndb::response::KVGet *>(obj);
+      return verifier.VerifyTable(ptr);
+    }
+    default: return true;
+  }
+}
+
+inline bool VerifyResponseBodyVector(::flatbuffers::Verifier &verifier, const ::flatbuffers::Vector<::flatbuffers::Offset<void>> *values, const ::flatbuffers::Vector<uint8_t> *types) {
+  if (!values || !types) return !values && !types;
+  if (values->size() != types->size()) return false;
+  for (::flatbuffers::uoffset_t i = 0; i < values->size(); ++i) {
+    if (!VerifyResponseBody(
+        verifier,  values->Get(i), types->GetEnum<ResponseBody>(i))) {
+      return false;
+    }
+  }
+  return true;
 }
 
 }  // namespace response

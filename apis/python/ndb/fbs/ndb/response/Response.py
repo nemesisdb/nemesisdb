@@ -31,8 +31,25 @@ class Response(object):
             return self._tab.Get(flatbuffers.number_types.Int32Flags, o + self._tab.Pos)
         return 0
 
+    # Response
+    def BodyType(self):
+        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(6))
+        if o != 0:
+            return self._tab.Get(flatbuffers.number_types.Uint8Flags, o + self._tab.Pos)
+        return 0
+
+    # Response
+    def Body(self):
+        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(8))
+        if o != 0:
+            from flatbuffers.table import Table
+            obj = Table(bytearray(), 0)
+            self._tab.Union(obj, o)
+            return obj
+        return None
+
 def ResponseStart(builder):
-    builder.StartObject(1)
+    builder.StartObject(3)
 
 def Start(builder):
     ResponseStart(builder)
@@ -42,6 +59,18 @@ def ResponseAddStatus(builder, status):
 
 def AddStatus(builder, status):
     ResponseAddStatus(builder, status)
+
+def ResponseAddBodyType(builder, bodyType):
+    builder.PrependUint8Slot(1, bodyType, 0)
+
+def AddBodyType(builder, bodyType):
+    ResponseAddBodyType(builder, bodyType)
+
+def ResponseAddBody(builder, body):
+    builder.PrependUOffsetTRelativeSlot(2, flatbuffers.number_types.UOffsetTFlags.py_type(body), 0)
+
+def AddBody(builder, body):
+    ResponseAddBody(builder, body)
 
 def ResponseEnd(builder):
     return builder.EndObject()

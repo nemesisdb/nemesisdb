@@ -1,3 +1,5 @@
+include "common.fbs";
+
 namespace ndb.response;
 
 enum Status : int
@@ -8,7 +10,24 @@ enum Status : int
   ParseError
 }
 
+table KVSet
+{
+
+}
+
+table KVGet
+{
+  kv:[ubyte] (flexbuffer);
+}
+
+union ResponseBody
+{
+  KVSet,
+  KVGet
+}
+
 table Response
 {
   status:Status;
+  body:ResponseBody;
 }

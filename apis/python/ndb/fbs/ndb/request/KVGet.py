@@ -25,7 +25,7 @@ class KVGet(object):
         self._tab = flatbuffers.table.Table(buf, pos)
 
     # KVGet
-    def Kv(self, j):
+    def Keys(self, j):
         o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(4))
         if o != 0:
             a = self._tab.Vector(o)
@@ -33,14 +33,14 @@ class KVGet(object):
         return ""
 
     # KVGet
-    def KvLength(self):
+    def KeysLength(self):
         o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(4))
         if o != 0:
             return self._tab.VectorLen(o)
         return 0
 
     # KVGet
-    def KvIsNone(self):
+    def KeysIsNone(self):
         o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(4))
         return o == 0
 
@@ -50,17 +50,17 @@ def KVGetStart(builder):
 def Start(builder):
     KVGetStart(builder)
 
-def KVGetAddKv(builder, kv):
-    builder.PrependUOffsetTRelativeSlot(0, flatbuffers.number_types.UOffsetTFlags.py_type(kv), 0)
+def KVGetAddKeys(builder, keys):
+    builder.PrependUOffsetTRelativeSlot(0, flatbuffers.number_types.UOffsetTFlags.py_type(keys), 0)
 
-def AddKv(builder, kv):
-    KVGetAddKv(builder, kv)
+def AddKeys(builder, keys):
+    KVGetAddKeys(builder, keys)
 
-def KVGetStartKvVector(builder, numElems):
+def KVGetStartKeysVector(builder, numElems):
     return builder.StartVector(4, numElems, 4)
 
-def StartKvVector(builder, numElems):
-    return KVGetStartKvVector(builder, numElems)
+def StartKeysVector(builder, numElems):
+    return KVGetStartKeysVector(builder, numElems)
 
 def KVGetEnd(builder):
     return builder.EndObject()

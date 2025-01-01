@@ -5,17 +5,18 @@ namespace ndb.request;
 
 table KVSet
 {  
-  kv:[common.Map];
+  kv:[ubyte] (flexbuffer);
 }
 
 table KVGet
 {
-  kv:[string];
+  keys:[string];
 }
 
 union RequestBody
 {
-  KVSet
+  KVSet,
+  KVGet
 }
 
 

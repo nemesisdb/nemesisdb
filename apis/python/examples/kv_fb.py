@@ -3,107 +3,62 @@
 import asyncio as asio
 import sys
 import flatbuffers
+import flatbuffers.flexbuffers
 import builtins
 sys.path.append('../')
 from ndb.client import NdbClient
-from ndb.fbs.ndb.request import Request, RequestBody, KVSet
-from ndb.fbs.ndb.response import Response, Status
-from ndb.fbs.ndb.common import ValueType, Map, Int64, UInt64, String, Double, Bool
+from ndb.fbs.ndb.request import Request, RequestBody, KVSet, KVGet
+from ndb.fbs.ndb.response import Response, ResponseBody, Status, KVGet as KVGetRsp
 
 
-def createInteger (b: flatbuffers.Builder, v: int) -> int:
-  if v < 0:
-    Int64.Start(b)
-    Int64.AddVal(b, v)
-    return Int64.End(b)
-  else:
-    UInt64.Start(b)
-    UInt64.AddVal(b, v)
-    return UInt64.End(b)
-
-
-def createBool (b: flatbuffers.Builder, v: bool) -> int:
-  Bool.Start(b)
-  Bool.AddVal(b, v)
-  return Bool.End(b)
-
-
-def createDouble (b: flatbuffers.Builder, v: float) -> int:
-  Double.Start(b)
-  Double.AddVal(b, v)
-  return Double.End(b)
-
-
-def createString (b: flatbuffers.Builder, v: str) -> str:
-  s = b.CreateString(v)
-  String.Start(b)
-  String.AddVal(b, s)
-  return String.End(b)
-
-
-def createKVVector(b: flatbuffers.Builder, kv: dict) -> int:
-  keyOffsets = []
-  valueOffsets = []
-  typeOffsets = []
-
-  for k in kv:
-    keyOffsets.append(b.CreateString(k))
+def createKvArray(kv: dict) -> bytearray:
   
-  for k,v in kv.items():
+  # NOTE MapFromElements() does not differentiate between Int and UInt
+  # so do serialising manually here
+  b = flatbuffers.flexbuffers.Builder()
+
+  def getValueTypeAndAdd(v):
     match type(v):
       case builtins.int:
-        val = createInteger(b, v)
-        t = ValueType.ValueType.Int64
+        return b.Int if v < 0 else b.UInt
       
       case builtins.str:
-        val = createString(b,v)
-        t = ValueType.ValueType.String
+        return b.String
 
       case builtins.float:
-        val = createDouble(b,v)
-        t = ValueType.ValueType.Double
+        return b.Float
 
       case builtins.bool:
-        val = createBool(b,v)
-        t = ValueType.ValueType.Bool
-
-      case _:
-        t = None
-
-    if t is not None:
-      valueOffsets.append(val)
-      typeOffsets.append(t)
-  
-  assert (len(keyOffsets) == len(typeOffsets) == len(valueOffsets))
-
-  kvObjectsOffsets = []
-
-  i = 0
-  for k in keyOffsets:
-    Map.MapStart(b)
-    Map.AddKey(b, keyOffsets[i])
-    Map.AddValType(b, typeOffsets[i])
-    Map.AddVal(b, valueOffsets[i])
-    kvObjectsOffsets.append(Map.MapEnd(b))
+        return b.Bool
     
-    i += 1
+      case _:
+        return None
 
-  KVSet.StartKvVector(b, len(kvObjectsOffsets))
 
-  for offset in kvObjectsOffsets:
-    b.PrependUOffsetTRelative(offset)
-  
-  return b.EndVector()
+  with b.Map():
+    for k,v in kv.items():
+      f = getValueTypeAndAdd(v)
+      if f:
+        b.Key(k)
+        f(v)
+
+  return b.Finish()
 
 
 async def test():
+  client = NdbClient()
+  await client.open('ws://127.0.0.1:1987')
+  
   builder = flatbuffers.Builder()
 
   data = {'k1':123, 'k2':'hello', 'k3':123.456, 'k4':-123, 'k5':False,'k6':True}
-  key_vals = createKVVector(builder, data)
   
+  testBytes = createKvArray(data)
+
+  kvVec = builder.CreateByteVector(testBytes)
+
   KVSet.Start(builder)
-  KVSet.AddKv(builder, key_vals)
+  KVSet.AddKv(builder, kvVec)
   body = KVSet.End(builder)
 
   Request.RequestStart(builder)
@@ -112,19 +67,52 @@ async def test():
   req = Request.RequestEnd(builder)
 
   builder.Finish(req)
-  buffer = builder.Output()
 
-  client = NdbClient()
-  await client.open('ws://127.0.0.1:1987')
+  buffer = builder.Output()
   rsp = await client.sendCmd2(buffer)
-    
+  
   response = Response.Response.GetRootAs(rsp)
   
-  if response.Status() == Status.Status.Ok:
-    print('Ok')
-  else:
+
+  if response.Status() is not Status.Status.Ok:
     print('Fail')
+  else:
+    print('Ok')
+
+    builder.Clear()
     
+    k1 = builder.CreateString('k4')
+
+    KVGet.StartKeysVector(builder, 1)
+    builder.PrependUOffsetTRelative(k1)
+    keys = builder.EndVector()
+
+    KVGet.Start(builder)
+    KVGet.AddKeys(builder, keys)
+    body = KVGet.End(builder)
+
+    Request.Start(builder)
+    Request.AddBodyType(builder, RequestBody.RequestBody.KVGet)
+    Request.AddBody(builder, body)
+    req = Request.End(builder)
+
+    builder.Finish(req)
+
+    buffer = builder.Output()
+
+    rspBuffer = await client.sendCmd2(buffer)
+    rsp = Response.Response.GetRootAs(rspBuffer)
+
+    if rsp.Status() == Status.Status.Ok:
+      if rsp.BodyType() == ResponseBody.ResponseBody.KVGet:
+        union_body = KVGetRsp.KVGet()
+        union_body.Init(rsp.Body().Bytes, rsp.Body().Pos)
+        x = union_body.Kv(1)
+        print(union_body.KvLength())
+        # b = flatbuffers.flexbuffers.Builder()
+        # flatbuffers.flexbuffers.Loads()
+        
+
 
 if __name__ == "__main__":
   for f in [test()]:

@@ -1,5 +1,5 @@
-#ifndef _NDB_CACHEMAP_
-#define _NDB_CACHEMAP_
+#ifndef _NDB_CACHEMAP2_
+#define _NDB_CACHEMAP2_
 
 // This should be in kv dir
 
@@ -11,7 +11,7 @@
 namespace nemesis { 
 
 
-class CacheMap
+class CacheMap2
 {
   using Map = ankerl::unordered_dense::segmented_map<cachedkey, kv::cachedvalue2>;
   using CacheMapIterator = Map::iterator;
@@ -19,21 +19,70 @@ class CacheMap
 
 public:
   
-  CacheMap& operator=(CacheMap&&) = default; // required by Map::erase()
-  CacheMap(CacheMap&&) = default;
+  CacheMap2& operator=(CacheMap2&&) = default; // required by Map::erase()
+  CacheMap2(CacheMap2&&) = default;
 
-  CacheMap& operator=(const CacheMap&) = delete;   
-  CacheMap(CacheMap&) = delete;
+  CacheMap2& operator=(const CacheMap2&) = delete;   
+  CacheMap2(CacheMap2&) = delete;
 
   
-  CacheMap (const std::size_t buckets = 0) : m_map(buckets) 
+  CacheMap2 (const std::size_t buckets = 0) : m_map(buckets) 
   {
   }
 
 
-  void set (cachedkey key, kv::cachedvalue2 value)
+  /*
+  void set(const std::string& key, const int64_t v)
   {
-    m_map.insert_or_assign(std::move(key), std::move(value));
+    kv::cachedvalue2 cv { .type = flexbuffers::Type::FBT_INT,
+                          .value = v};
+
+    m_map.insert_or_assign(key, cv);
+  }
+
+  void set(const std::string& key, const uint64_t v)
+  {
+    kv::cachedvalue2 cv { .type = flexbuffers::Type::FBT_UINT,
+                          .value = v};
+
+    m_map.insert_or_assign(key, cv);
+  }
+
+
+  void set(const std::string& key, const bool v)
+  {
+    kv::cachedvalue2 cv { .type = flexbuffers::Type::FBT_BOOL,
+                          .value = v};
+
+    m_map.insert_or_assign(key, cv);
+  }
+
+
+  void set(const std::string& key, const std::string& v)
+  {
+    kv::cachedvalue2 cv { .type = flexbuffers::Type::FBT_STRING,
+                          .value = v};
+
+    m_map.insert_or_assign(key, cv);
+  }
+
+
+  void set(const std::string& key, const double v)
+  {
+    kv::cachedvalue2 cv { .type = flexbuffers::Type::FBT_FLOAT,
+                          .value = v};
+
+    m_map.insert_or_assign(key, cv);
+  }
+  */
+
+  template<flexbuffers::Type FlexT, typename ValueT>
+  void set (const std::string& key, const ValueT& v)
+  {
+    kv::cachedvalue2 cv { .type = FlexT,
+                          .value = v};
+
+    m_map.insert_or_assign(key, cv);
   }
 
 
@@ -48,32 +97,34 @@ public:
 
   void add (cachedkey key, kv::cachedvalue2 value)
   {
-    m_map.try_emplace(std::move(key), std::move(value));
+    //m_map.try_emplace(std::move(key), std::move(value));
   }
 
 
   void remove (const cachedkey& key)
   {
-    m_map.erase(key);
+    //m_map.erase(key);
   };
 
   
   std::tuple<bool, std::size_t> clear()
   {
-    auto size = m_map.size();
-    bool valid = true;
+    // auto size = m_map.size();
+    // bool valid = true;
 
-    try
-    {
-      m_map.replace(Map::value_container_type{});
-    }
-    catch (...)
-    {
-      valid = false;
-      size = 0U;
-    }
+    // try
+    // {
+    //   m_map.replace(Map::value_container_type{});
+    // }
+    // catch (...)
+    // {
+    //   valid = false;
+    //   size = 0U;
+    // }
     
-    return std::make_pair(valid, size);
+    // return std::make_pair(valid, size);
+
+    return {false, 0};
   };
 
 
@@ -104,6 +155,11 @@ public:
   {
     return m_map;
   }
+
+
+private:
+
+  
 
 private:
   Map m_map;

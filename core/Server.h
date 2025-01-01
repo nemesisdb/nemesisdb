@@ -13,6 +13,7 @@
 #include <core/NemesisCommon.h>
 #include <core/kv/KvCommon.h>
 #include <core/kv/KvHandler.h>
+#include <core/kv/KvHandler2.h>
 #include <core/sv/SvCommands.h>
 #include <core/arr/ArrHandler.h>
 #include <core/arr/ArrCommands.h>
@@ -142,6 +143,7 @@ public:
         }
         
         m_kvHandler = std::make_shared<kv::KvHandler>();
+        m_kvHandler2 = std::make_shared<kv::KvHandler2>();
         m_objectArrHandler = std::make_shared<arr::OArrHandler>();
         m_intArrHandler = std::make_shared<arr::IntArrHandler>();
         m_strArrHandler = std::make_shared<arr::StrArrHandler>();
@@ -290,152 +292,63 @@ public:
     void onMessage(KvWebSocket * ws, std::string_view message, uWS::OpCode opCode)
     { 
       if (opCode != uWS::OpCode::BINARY)
-        return;
-
-      
-      if (const auto request = ndb::request::GetRequest(message.data()); !request)
-          PLOGE << "Get request buffer failed";
+        sendFailure(ws, ndb::response::Status::Status_ParseError);
       else
       {
-        switch (request->ident())
+        if (const auto request = ndb::request::GetRequest(message.data()); !request)
         {
-        case ndb::common::Ident_KV:
+          sendFailure(ws, ndb::response::Status::Status_ParseError);
+          PLOGE << "Get request buffer failed";
+        }
+        else
         {
-          if (request->body_type() == ndb::request::RequestBody_KVSet)
+          switch (request->ident())
           {
-            const auto& kvRequest = *(request->body_as_KVSet());
-
-            for (auto kv : *(kvRequest.kv()))
+            case ndb::common::Ident_KV:
             {
-              if (auto key = kv->key(); key)
+              if (request->body_type() == ndb::request::RequestBody_KVSet)
               {
-                if (auto sv = key->string_view(); !sv.empty())
-                {
-                  switch (kv->val_type())
-                  {
-                    using enum ndb::common::ValueType;
-
-                    case ValueType_Int64:
-                      PLOGD << sv << '=' << kv->val_as_Int64()->val();
-                    break;
-
-                    case ValueType_UInt64:
-                      PLOGD << sv << '=' << kv->val_as_UInt64()->val();
-                    break;
-
-                    case ValueType_Bool:
-                      PLOGD << sv << '=' << kv->val_as_Bool()->val();
-                    break;
-
-                    case ValueType_String:
-                      PLOGD << sv << '=' << *(kv->val_as_String()->val());
-                    break;
-
-                    case ValueType_Double:
-                      PLOGD << sv << '=' << kv->val_as_Double()->val();
-                    break;
-
-                    default:
-                      PLOGE << "TODO";
-                    break;
-                  }
-                }
-              }    
+                const auto& kvRequest = *(request->body_as_KVSet());
+                m_kvHandler2->handle(kvRequest);
+                
+                flatbuffers::FlatBufferBuilder b;
+                const auto rsp = ndb::response::CreateResponse(b, ndb::response::Status::Status_Ok);
+                b.Finish(rsp);
+                send(ws, b);
+              }
+              else if (request->body_type() == ndb::request::RequestBody_KVGet)
+              {
+                const auto& kvRequest = *(request->body_as_KVGet());
+                const auto builder = m_kvHandler2->handle(kvRequest);
+                send(ws, builder);
+              }
             }
-          
-            flatbuffers::FlatBufferBuilder b;
+            break;
             
-            auto rsp = ndb::response::CreateResponse(b, ndb::response::Status::Status_Ok);
-            b.Finish(rsp);
-
-            send(ws, b);
+            default:
+            {
+              PLOGE << "Request ident not recognised";
+              sendFailure(ws, ndb::response::Status::Status_CommandUnknown);
+              break;
+            }
           }
         }
-        break;
-        
-
-        default:
-          PLOGE << "Request ident not recognised";
-          break;
-        }
       }
+    }
+
+
+    void sendFailure (KvWebSocket * ws, const ndb::response::Status status)
+    {
+      flatbuffers::FlatBufferBuilder b{64};
+      const auto rsp = ndb::response::CreateResponse(b, status);
+      b.Finish(rsp);
+      send(ws, b);
     }
 
     
     void handleMessage(KvWebSocket * ws, njson request)
     {
-      // top level must be an object with one child
-      if (!request.is_object() || request.size() != 1U)
-        send(ws, createErrorResponse(RequestStatus::CommandSyntax));
-      else
-      {
-        const std::string& command = request.object_range().cbegin()->key();
-
-        if (!request.at(command).is_object())
-          send(ws, createErrorResponse(command+"_RSP", RequestStatus::CommandSyntax));
-        else
-        {
-          if (const auto pos = command.find('_'); pos == std::string::npos)
-            send(ws, createErrorResponse(command+"_RSP", RequestStatus::CommandSyntax));
-          else
-          {
-            const auto type = std::string_view(command.substr(0, pos));
-            
-            if (type == kvCmds::KvIdent)
-            {
-              const Response response = m_kvHandler->handle(command, request);
-              send(ws, response.rsp);
-            }
-            else if (type == arrCmds::OArrayIdent)
-            {
-              const Response response = m_objectArrHandler->handle(command, request);
-              send(ws, response.rsp);
-            }
-            else if (type == arrCmds::IntArrayIdent)
-            {
-              const Response response = m_intArrHandler->handle(command, request);
-              send(ws, response.rsp);
-            }
-            else if (type == arrCmds::StrArrayIdent)
-            {
-              const Response response = m_strArrHandler->handle(command, request);
-              send(ws, response.rsp);
-            }
-            else if (type == arrCmds::SortedIntArrayIdent)
-            {
-              const Response response = m_sortedIntArrHandler->handle(command, request);
-              send(ws, response.rsp);
-            }
-            else if (type == arrCmds::SortedStrArrayIdent)
-            {
-              const Response response = m_sortedStrArrHandler->handle(command, request);
-              send(ws, response.rsp);
-            }
-            else if (type == lstCmds::ListIdent)
-            {
-              const Response response = m_listHandler->handle(command, request);
-              send(ws, response.rsp);
-            }
-            else if (command == sv::cmds::InfoReq)  // only one SV command at the moment
-            {
-              // the json_object_arg is a tag, followed by initializer_list<pair<string, njson>>
-              static const njson Info = {jsoncons::json_object_arg, {
-                                                                      {"st", toUnderlying(RequestStatus::Ok)},  // for compatibility with APIs and consistency
-                                                                      {"serverVersion",   NEMESIS_VERSION},
-                                                                      {"persistEnabled",  Settings::get().persistEnabled}
-                                                                    }};
-              static const njson Prepared {jsoncons::json_object_arg, {{sv::cmds::InfoRsp, Info}}}; 
-
-              send(ws, Prepared);
-            }
-            else  [[unlikely]]
-            {
-              static const njson Prepared {createErrorResponse(command+"_RSP", RequestStatus::CommandNotExist)};
-              send(ws, Prepared);
-            }
-          }
-        }
-      }
+      
     }
 
 
@@ -507,6 +420,7 @@ public:
     us_timer_t * m_monitorTimer{};
     // TODO profile runtime cost of shared_ptr vs raw ptr
     std::shared_ptr<kv::KvHandler> m_kvHandler;
+    std::shared_ptr<kv::KvHandler2> m_kvHandler2;
     std::shared_ptr<arr::OArrHandler> m_objectArrHandler;
     std::shared_ptr<arr::IntArrHandler> m_intArrHandler;
     std::shared_ptr<arr::StrArrHandler> m_strArrHandler;

@@ -1,48 +1,6 @@
 namespace ndb.common;
 
 
-table UInt64
-{
-  val: uint64;
-}
-
-table Int64
-{
-  val: int64;
-}
-
-table Double
-{
-  val: double;
-}
-
-table Bool
-{
-  val: bool;
-}
-
-table String
-{
-  val: string;
-}
-
-union ValueType
-{
-  UInt64,
-  Int64,
-  Double,
-  Bool,
-  String
-}
-
-
-table Map
-{
-  key:string;
-  val:ValueType;
-}
-
-
 enum Ident : byte
 {
   KV
