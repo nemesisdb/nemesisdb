@@ -81,10 +81,16 @@ async def test():
 
     builder.Clear()
     
-    k1 = builder.CreateString('k4')
+    keys = ['k1', 'k2','k3','k4','k5''k6']
+    keysOffsets = []
 
-    KVGet.StartKeysVector(builder, 1)
-    builder.PrependUOffsetTRelative(k1)
+    for key in keys:
+      keysOffsets.append(builder.CreateString(key))
+
+    KVGet.StartKeysVector(builder, len(keysOffsets))
+    for off in keysOffsets:
+      builder.PrependUOffsetTRelative(off)
+    
     keys = builder.EndVector()
 
     KVGet.Start(builder)
@@ -107,10 +113,8 @@ async def test():
       if rsp.BodyType() == ResponseBody.ResponseBody.KVGet:
         union_body = KVGetRsp.KVGet()
         union_body.Init(rsp.Body().Bytes, rsp.Body().Pos)
-        x = union_body.Kv(1)
-        print(union_body.KvLength())
-        # b = flatbuffers.flexbuffers.Builder()
-        # flatbuffers.flexbuffers.Loads()
+
+        print(flatbuffers.flexbuffers.Loads(union_body.KvAsNumpy().tobytes()))
         
 
 
