@@ -16,9 +16,7 @@
 
 namespace nemesis {  namespace kv {
 
-  using KeyVector = flatbuffers::Vector<flatbuffers::Offset<flatbuffers::String>>;
-  using FlexBuilder = flexbuffers::Builder;
-  using FlatBuilder = flatbuffers::FlatBufferBuilder;
+  using KeyVector = flatbuffers::Vector<flatbuffers::Offset<flatbuffers::String>>;  
   using ValueVariant = std::variant<std::string, int64_t, uint64_t, double, bool>;
   using ValueExtractF = void (*)(const char *, const ValueVariant&, FlexBuilder&);
 

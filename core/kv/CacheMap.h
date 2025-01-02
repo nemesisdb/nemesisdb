@@ -78,9 +78,12 @@ public:
   }
 
 
-  void remove (const cachedkey& key)
+  void remove (const KeyVector& keys)
   {
-    //m_map.erase(key);
+    for (const auto& key : keys)
+    {
+      m_map.erase(key->str());
+    }
   };
 
   

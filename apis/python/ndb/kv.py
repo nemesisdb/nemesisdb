@@ -1,13 +1,14 @@
 from ndb.commands import (StValues, KvCmds)
 from ndb.client import NdbClient
 from ndb.common import raise_if_empty, raise_if_not, raise_if, CreateKvArray
+from ndb.logging import logger
 from typing import List, Any
 import flatbuffers
 import flatbuffers.flexbuffers
-from ndb.fbs.ndb.request import Request, RequestBody, KVSet, KVGet
-from ndb.fbs.ndb.response import Response, ResponseBody, Status, KVGet as KVGetRsp
+from ndb.fbs.ndb.request import Request, RequestBody, KVSet, KVGet, KVRmv
+from ndb.fbs.ndb.response import Response, ResponseBody, Status, KVGet as KVGetRsp, KVRmv as KVRmvRsp
 
-
+logger
 class KV2:
   "Key Value"
 
@@ -30,8 +31,8 @@ class KV2:
       self._completeRequest(fb, body, RequestBody.RequestBody.KVSet)
 
       await self.client.sendCmd2(fb.Output())
-    finally:
-      fb.Clear()
+    except Exception as e:
+      logger.error(e)
 
   
   async def get(self, key=None, keys=[]) -> dict:
@@ -59,10 +60,33 @@ class KV2:
         # this is how we get a flexbuffer from a flatbuffer
         return flatbuffers.flexbuffers.Loads(union_body.KvAsNumpy().tobytes())
 
-    finally:
-      fb.Clear()
+    except Exception as e:
+      logger.error(e)
 
 
+  async def remove(self, key=None, keys=[]) -> None:
+    raise_if(key is None and len(keys) == 0, 'key or keys must be set')
+
+    if len(keys) == 0:
+      keys = [key]
+
+    try:
+      fb = flatbuffers.Builder()
+      keysOff = self._createStrings(fb, keys)
+
+      KVRmv.Start(fb)
+      KVRmv.AddKeys(fb, keysOff)
+      body = KVRmv.End(fb)
+
+      self._completeRequest(fb, body, RequestBody.RequestBody.KVRmv)
+
+      await self.client.sendCmd2(fb.Output())
+
+    except Exception as e:
+      logger.error(e)
+
+
+  ## Helpers ##
   def _createStrings (self, fb: flatbuffers.Builder, strings: list) -> int:
     keysOffsets = []
     for key in strings:
@@ -82,7 +106,8 @@ class KV2:
       req = Request.RequestEnd(fb)
 
       fb.Finish(req)
-    except:
+    except Exception as e:
+      logger.error(e)
       fb.Clear()
 
 

@@ -4,18 +4,13 @@ from ndb.connection import Connection
 from ndb.logging import logger
 from typing import Tuple, List
 
-import logging
 
 
 class NdbClient:
-  def __init__(self, debug = False):
+  def __init__(self):
     self.uri = ''
     self.ws = Connection()
-    if debug:
-      logger.setLevel(logging.DEBUG)
-      logger.addHandler(logging.StreamHandler())
-
-
+    
   # def __str__(self):
   #   if self.ws.opened != None and self.ws.opened:
   #     connected = 'Connected' 

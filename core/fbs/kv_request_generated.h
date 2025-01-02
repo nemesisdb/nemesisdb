@@ -26,6 +26,9 @@ struct KVSetBuilder;
 struct KVGet;
 struct KVGetBuilder;
 
+struct KVRmv;
+struct KVRmvBuilder;
+
 struct Request;
 struct RequestBuilder;
 
@@ -33,31 +36,34 @@ enum RequestBody : uint8_t {
   RequestBody_NONE = 0,
   RequestBody_KVSet = 1,
   RequestBody_KVGet = 2,
+  RequestBody_KVRmv = 3,
   RequestBody_MIN = RequestBody_NONE,
-  RequestBody_MAX = RequestBody_KVGet
+  RequestBody_MAX = RequestBody_KVRmv
 };
 
-inline const RequestBody (&EnumValuesRequestBody())[3] {
+inline const RequestBody (&EnumValuesRequestBody())[4] {
   static const RequestBody values[] = {
     RequestBody_NONE,
     RequestBody_KVSet,
-    RequestBody_KVGet
+    RequestBody_KVGet,
+    RequestBody_KVRmv
   };
   return values;
 }
 
 inline const char * const *EnumNamesRequestBody() {
-  static const char * const names[4] = {
+  static const char * const names[5] = {
     "NONE",
     "KVSet",
     "KVGet",
+    "KVRmv",
     nullptr
   };
   return names;
 }
 
 inline const char *EnumNameRequestBody(RequestBody e) {
-  if (::flatbuffers::IsOutRange(e, RequestBody_NONE, RequestBody_KVGet)) return "";
+  if (::flatbuffers::IsOutRange(e, RequestBody_NONE, RequestBody_KVRmv)) return "";
   const size_t index = static_cast<size_t>(e);
   return EnumNamesRequestBody()[index];
 }
@@ -72,6 +78,10 @@ template<> struct RequestBodyTraits<ndb::request::KVSet> {
 
 template<> struct RequestBodyTraits<ndb::request::KVGet> {
   static const RequestBody enum_value = RequestBody_KVGet;
+};
+
+template<> struct RequestBodyTraits<ndb::request::KVRmv> {
+  static const RequestBody enum_value = RequestBody_KVRmv;
 };
 
 bool VerifyRequestBody(::flatbuffers::Verifier &verifier, const void *obj, RequestBody type);
@@ -186,6 +196,58 @@ inline ::flatbuffers::Offset<KVGet> CreateKVGetDirect(
       keys__);
 }
 
+struct KVRmv FLATBUFFERS_FINAL_CLASS : private ::flatbuffers::Table {
+  typedef KVRmvBuilder Builder;
+  enum FlatBuffersVTableOffset FLATBUFFERS_VTABLE_UNDERLYING_TYPE {
+    VT_KEYS = 4
+  };
+  const ::flatbuffers::Vector<::flatbuffers::Offset<::flatbuffers::String>> *keys() const {
+    return GetPointer<const ::flatbuffers::Vector<::flatbuffers::Offset<::flatbuffers::String>> *>(VT_KEYS);
+  }
+  bool Verify(::flatbuffers::Verifier &verifier) const {
+    return VerifyTableStart(verifier) &&
+           VerifyOffset(verifier, VT_KEYS) &&
+           verifier.VerifyVector(keys()) &&
+           verifier.VerifyVectorOfStrings(keys()) &&
+           verifier.EndTable();
+  }
+};
+
+struct KVRmvBuilder {
+  typedef KVRmv Table;
+  ::flatbuffers::FlatBufferBuilder &fbb_;
+  ::flatbuffers::uoffset_t start_;
+  void add_keys(::flatbuffers::Offset<::flatbuffers::Vector<::flatbuffers::Offset<::flatbuffers::String>>> keys) {
+    fbb_.AddOffset(KVRmv::VT_KEYS, keys);
+  }
+  explicit KVRmvBuilder(::flatbuffers::FlatBufferBuilder &_fbb)
+        : fbb_(_fbb) {
+    start_ = fbb_.StartTable();
+  }
+  ::flatbuffers::Offset<KVRmv> Finish() {
+    const auto end = fbb_.EndTable(start_);
+    auto o = ::flatbuffers::Offset<KVRmv>(end);
+    return o;
+  }
+};
+
+inline ::flatbuffers::Offset<KVRmv> CreateKVRmv(
+    ::flatbuffers::FlatBufferBuilder &_fbb,
+    ::flatbuffers::Offset<::flatbuffers::Vector<::flatbuffers::Offset<::flatbuffers::String>>> keys = 0) {
+  KVRmvBuilder builder_(_fbb);
+  builder_.add_keys(keys);
+  return builder_.Finish();
+}
+
+inline ::flatbuffers::Offset<KVRmv> CreateKVRmvDirect(
+    ::flatbuffers::FlatBufferBuilder &_fbb,
+    const std::vector<::flatbuffers::Offset<::flatbuffers::String>> *keys = nullptr) {
+  auto keys__ = keys ? _fbb.CreateVector<::flatbuffers::Offset<::flatbuffers::String>>(*keys) : 0;
+  return ndb::request::CreateKVRmv(
+      _fbb,
+      keys__);
+}
+
 struct Request FLATBUFFERS_FINAL_CLASS : private ::flatbuffers::Table {
   typedef RequestBuilder Builder;
   enum FlatBuffersVTableOffset FLATBUFFERS_VTABLE_UNDERLYING_TYPE {
@@ -209,6 +271,9 @@ struct Request FLATBUFFERS_FINAL_CLASS : private ::flatbuffers::Table {
   const ndb::request::KVGet *body_as_KVGet() const {
     return body_type() == ndb::request::RequestBody_KVGet ? static_cast<const ndb::request::KVGet *>(body()) : nullptr;
   }
+  const ndb::request::KVRmv *body_as_KVRmv() const {
+    return body_type() == ndb::request::RequestBody_KVRmv ? static_cast<const ndb::request::KVRmv *>(body()) : nullptr;
+  }
   bool Verify(::flatbuffers::Verifier &verifier) const {
     return VerifyTableStart(verifier) &&
            VerifyField<int8_t>(verifier, VT_IDENT, 1) &&
@@ -225,6 +290,10 @@ template<> inline const ndb::request::KVSet *Request::body_as<ndb::request::KVSe
 
 template<> inline const ndb::request::KVGet *Request::body_as<ndb::request::KVGet>() const {
   return body_as_KVGet();
+}
+
+template<> inline const ndb::request::KVRmv *Request::body_as<ndb::request::KVRmv>() const {
+  return body_as_KVRmv();
 }
 
 struct RequestBuilder {
@@ -274,6 +343,10 @@ inline bool VerifyRequestBody(::flatbuffers::Verifier &verifier, const void *obj
     }
     case RequestBody_KVGet: {
       auto ptr = reinterpret_cast<const ndb::request::KVGet *>(obj);
+      return verifier.VerifyTable(ptr);
+    }
+    case RequestBody_KVRmv: {
+      auto ptr = reinterpret_cast<const ndb::request::KVRmv *>(obj);
       return verifier.VerifyTable(ptr);
     }
     default: return true;

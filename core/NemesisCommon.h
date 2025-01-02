@@ -22,6 +22,8 @@
 #include <plog/Log.h>
 #include <plog/Appenders/ColorConsoleAppender.h>
 #include <fixed_string.hpp>
+#include <flatbuffers/flatbuffers.h>
+#include <flatbuffers/flexbuffers.h>
 
 
 #define ndb_always_inline inline __attribute__((always_inline))
@@ -48,6 +50,11 @@ namespace nemesis {
   static const std::size_t NEMESIS_MAXPAYLOAD = 32U * 1024U; 
 
 
+  using FlexBuilder = flexbuffers::Builder;
+  using FlatBuilder = flatbuffers::FlatBufferBuilder;
+
+
+  // OLD, most of below can be ripped out when FlatBuffers fully added
   enum class RequestStatus
   {
     Ok                    = 1,

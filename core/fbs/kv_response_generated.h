@@ -26,6 +26,9 @@ struct KVSetBuilder;
 struct KVGet;
 struct KVGetBuilder;
 
+struct KVRmv;
+struct KVRmvBuilder;
+
 struct Response;
 struct ResponseBuilder;
 
@@ -69,31 +72,34 @@ enum ResponseBody : uint8_t {
   ResponseBody_NONE = 0,
   ResponseBody_KVSet = 1,
   ResponseBody_KVGet = 2,
+  ResponseBody_KVRmv = 3,
   ResponseBody_MIN = ResponseBody_NONE,
-  ResponseBody_MAX = ResponseBody_KVGet
+  ResponseBody_MAX = ResponseBody_KVRmv
 };
 
-inline const ResponseBody (&EnumValuesResponseBody())[3] {
+inline const ResponseBody (&EnumValuesResponseBody())[4] {
   static const ResponseBody values[] = {
     ResponseBody_NONE,
     ResponseBody_KVSet,
-    ResponseBody_KVGet
+    ResponseBody_KVGet,
+    ResponseBody_KVRmv
   };
   return values;
 }
 
 inline const char * const *EnumNamesResponseBody() {
-  static const char * const names[4] = {
+  static const char * const names[5] = {
     "NONE",
     "KVSet",
     "KVGet",
+    "KVRmv",
     nullptr
   };
   return names;
 }
 
 inline const char *EnumNameResponseBody(ResponseBody e) {
-  if (::flatbuffers::IsOutRange(e, ResponseBody_NONE, ResponseBody_KVGet)) return "";
+  if (::flatbuffers::IsOutRange(e, ResponseBody_NONE, ResponseBody_KVRmv)) return "";
   const size_t index = static_cast<size_t>(e);
   return EnumNamesResponseBody()[index];
 }
@@ -108,6 +114,10 @@ template<> struct ResponseBodyTraits<ndb::response::KVSet> {
 
 template<> struct ResponseBodyTraits<ndb::response::KVGet> {
   static const ResponseBody enum_value = ResponseBody_KVGet;
+};
+
+template<> struct ResponseBodyTraits<ndb::response::KVRmv> {
+  static const ResponseBody enum_value = ResponseBody_KVRmv;
 };
 
 bool VerifyResponseBody(::flatbuffers::Verifier &verifier, const void *obj, ResponseBody type);
@@ -199,6 +209,35 @@ inline ::flatbuffers::Offset<KVGet> CreateKVGetDirect(
       kv__);
 }
 
+struct KVRmv FLATBUFFERS_FINAL_CLASS : private ::flatbuffers::Table {
+  typedef KVRmvBuilder Builder;
+  bool Verify(::flatbuffers::Verifier &verifier) const {
+    return VerifyTableStart(verifier) &&
+           verifier.EndTable();
+  }
+};
+
+struct KVRmvBuilder {
+  typedef KVRmv Table;
+  ::flatbuffers::FlatBufferBuilder &fbb_;
+  ::flatbuffers::uoffset_t start_;
+  explicit KVRmvBuilder(::flatbuffers::FlatBufferBuilder &_fbb)
+        : fbb_(_fbb) {
+    start_ = fbb_.StartTable();
+  }
+  ::flatbuffers::Offset<KVRmv> Finish() {
+    const auto end = fbb_.EndTable(start_);
+    auto o = ::flatbuffers::Offset<KVRmv>(end);
+    return o;
+  }
+};
+
+inline ::flatbuffers::Offset<KVRmv> CreateKVRmv(
+    ::flatbuffers::FlatBufferBuilder &_fbb) {
+  KVRmvBuilder builder_(_fbb);
+  return builder_.Finish();
+}
+
 struct Response FLATBUFFERS_FINAL_CLASS : private ::flatbuffers::Table {
   typedef ResponseBuilder Builder;
   enum FlatBuffersVTableOffset FLATBUFFERS_VTABLE_UNDERLYING_TYPE {
@@ -222,6 +261,9 @@ struct Response FLATBUFFERS_FINAL_CLASS : private ::flatbuffers::Table {
   const ndb::response::KVGet *body_as_KVGet() const {
     return body_type() == ndb::response::ResponseBody_KVGet ? static_cast<const ndb::response::KVGet *>(body()) : nullptr;
   }
+  const ndb::response::KVRmv *body_as_KVRmv() const {
+    return body_type() == ndb::response::ResponseBody_KVRmv ? static_cast<const ndb::response::KVRmv *>(body()) : nullptr;
+  }
   bool Verify(::flatbuffers::Verifier &verifier) const {
     return VerifyTableStart(verifier) &&
            VerifyField<int8_t>(verifier, VT_STATUS, 1) &&
@@ -238,6 +280,10 @@ template<> inline const ndb::response::KVSet *Response::body_as<ndb::response::K
 
 template<> inline const ndb::response::KVGet *Response::body_as<ndb::response::KVGet>() const {
   return body_as_KVGet();
+}
+
+template<> inline const ndb::response::KVRmv *Response::body_as<ndb::response::KVRmv>() const {
+  return body_as_KVRmv();
 }
 
 struct ResponseBuilder {
@@ -287,6 +333,10 @@ inline bool VerifyResponseBody(::flatbuffers::Verifier &verifier, const void *ob
     }
     case ResponseBody_KVGet: {
       auto ptr = reinterpret_cast<const ndb::response::KVGet *>(obj);
+      return verifier.VerifyTable(ptr);
+    }
+    case ResponseBody_KVRmv: {
+      auto ptr = reinterpret_cast<const ndb::response::KVRmv *>(obj);
       return verifier.VerifyTable(ptr);
     }
     default: return true;

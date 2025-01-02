@@ -291,14 +291,16 @@ public:
 
     void onMessage(KvWebSocket * ws, std::string_view message, uWS::OpCode opCode)
     { 
+      FlatBuilder fbb;
+
       if (opCode != uWS::OpCode::BINARY)
-        sendFailure(ws, ndb::response::Status::Status_ParseError);
+        sendFailure(ws, fbb, ndb::response::Status::Status_ParseError);
       else
       {
         if (const auto request = ndb::request::GetRequest(message.data()); !request)
         {
-          sendFailure(ws, ndb::response::Status::Status_ParseError);
           PLOGE << "Get request buffer failed";
+          sendFailure(ws, fbb, ndb::response::Status::Status_ParseError);
         }
         else
         {
@@ -306,29 +308,14 @@ public:
           {
             case ndb::common::Ident_KV:
             {
-              if (request->body_type() == ndb::request::RequestBody_KVSet)
-              {
-                const auto& kvRequest = *(request->body_as_KVSet());
-                m_kvHandler2->handle(kvRequest);
-                
-                flatbuffers::FlatBufferBuilder b;
-                const auto rsp = ndb::response::CreateResponse(b, ndb::response::Status::Status_Ok);
-                b.Finish(rsp);
-                send(ws, b);
-              }
-              else if (request->body_type() == ndb::request::RequestBody_KVGet)
-              {
-                const auto& kvRequest = *(request->body_as_KVGet());
-                const auto builder = m_kvHandler2->handle(kvRequest);
-                send(ws, builder);
-              }
+              handleKv(ws, fbb, *request);
             }
             break;
             
             default:
             {
               PLOGE << "Request ident not recognised";
-              sendFailure(ws, ndb::response::Status::Status_CommandUnknown);
+              sendFailure(ws, fbb, ndb::response::Status::Status_CommandUnknown);
               break;
             }
           }
@@ -336,19 +323,35 @@ public:
       }
     }
 
-
-    void sendFailure (KvWebSocket * ws, const ndb::response::Status status)
+    
+    void handleKv(KvWebSocket * ws, FlatBuilder& fbb, const ndb::request::Request& request)
     {
-      flatbuffers::FlatBufferBuilder b{64};
-      const auto rsp = ndb::response::CreateResponse(b, status);
-      b.Finish(rsp);
-      send(ws, b);
+      if (request.body_type() == ndb::request::RequestBody_KVSet)
+      {
+        const auto& kvRequest = *(request.body_as_KVSet());
+        m_kvHandler2->handle(fbb, kvRequest);
+        send(ws, fbb);
+      }
+      else if (request.body_type() == ndb::request::RequestBody_KVGet)
+      {
+        const auto& kvRequest = *(request.body_as_KVGet());
+        m_kvHandler2->handle(fbb, kvRequest);
+        send(ws, fbb);
+      }
+      else if (request.body_type() == ndb::request::RequestBody_KVRmv)
+      {
+        const auto& kvRequest = *(request.body_as_KVRmv());
+        m_kvHandler2->handle(fbb, kvRequest);
+        send(ws, fbb);
+      }
     }
 
-    
-    void handleMessage(KvWebSocket * ws, njson request)
+
+    void sendFailure (KvWebSocket * ws, FlatBuilder& fbb, const ndb::response::Status status)
     {
-      
+      const auto rsp = ndb::response::CreateResponse(fbb, status);
+      fbb.Finish(rsp);
+      send(ws, fbb);
     }
 
 

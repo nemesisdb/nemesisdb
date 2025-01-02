@@ -27,6 +27,10 @@ KvHandler receives a command:
 */
 class KvHandler2
 {
+  using enum ndb::response::Status;
+  using enum ndb::response::ResponseBody;
+
+
 public:
   KvHandler2() : m_settings(Settings::get())
   {
@@ -36,82 +40,87 @@ public:
 
 public:
    
-  Response handle(const ndb::request::KVSet& set)
+  void handle(FlatBuilder& fbb, const ndb::request::KVSet& set)
   { 
-    const auto& vec = set.kv_flexbuffer_root().AsMap().Values();
-    const auto& keys = set.kv_flexbuffer_root().AsMap().Keys();
-
-    for (std::size_t i = 0 ; i < vec.size(); ++i)
+    try
     {
-      const auto& key = keys[i].AsString().str();
+      const auto& vec = set.kv_flexbuffer_root().AsMap().Values();
+      const auto& keys = set.kv_flexbuffer_root().AsMap().Keys();
 
-      switch (vec[i].GetType())
+      for (std::size_t i = 0 ; i < vec.size(); ++i)
       {
-        using enum flexbuffers::Type;
+        const auto& key = keys[i].AsString().str();
 
-        case FBT_INT:
-          m_map.set<FBT_INT>(key, vec[i].AsInt64());
-        break;
-        
-        case FBT_UINT:
-          m_map.set<FBT_UINT>(key, vec[i].AsUInt64());
-        break;
+        switch (vec[i].GetType())
+        {
+          using enum flexbuffers::Type;
 
-        case FBT_BOOL:
-          m_map.set<FBT_BOOL>(key, vec[i].AsBool());
-        break;
+          case FBT_INT:
+            m_map.set<FBT_INT>(key, vec[i].AsInt64());
+          break;
+          
+          case FBT_UINT:
+            m_map.set<FBT_UINT>(key, vec[i].AsUInt64());
+          break;
 
-        case FBT_STRING:
-          m_map.set<FBT_STRING>(key, vec[i].AsString().str());
-        break;
+          case FBT_BOOL:
+            m_map.set<FBT_BOOL>(key, vec[i].AsBool());
+          break;
 
-        case FBT_FLOAT:
-          m_map.set<FBT_FLOAT>(key, vec[i].AsFloat());
-        break;
+          case FBT_STRING:
+            m_map.set<FBT_STRING>(key, vec[i].AsString().str());
+          break;
 
-        default:
-          PLOGE << __FUNCTION__ << " - unknown type";
-        break;
+          case FBT_FLOAT:
+            m_map.set<FBT_FLOAT>(key, vec[i].AsFloat());
+          break;
+
+          default:
+            PLOGE << __FUNCTION__ << " - unknown type";
+          break;
+        }
       }
-    }
 
-    return Response{};
+      createEmptyBodyResponse(fbb, Status_Ok, ResponseBody_KVSet);
+    }
+    catch(const std::exception& e)
+    {
+      createEmptyBodyResponse(fbb, Status_Fail, ResponseBody_KVSet);
+    }
   }
   
 
-  flatbuffers::FlatBufferBuilder handle(const ndb::request::KVGet& get)
+  void handle(FlatBuilder& fbb, const ndb::request::KVGet& get)
   {
-    flatbuffers::FlatBufferBuilder fbb;
-
     if (!get.keys())
     {
-      auto rsp = ndb::response::CreateResponse( fbb,
-                                                ndb::response::Status::Status_Fail,
-                                                ndb::response::ResponseBody::ResponseBody_KVGet);
-
-      fbb.Finish(rsp);
+      createEmptyBodyResponse(fbb, Status_Fail, ResponseBody_KVGet);
     }
     else
     {
       FlexBuilder flxb;
       m_map.get(*get.keys(), flxb);
       flxb.Finish();
-      
+
       const auto buff = flxb.GetBuffer();
 
       const auto vec = fbb.CreateVector(buff);  // place the flex buffer vector in the flat buffer
       const auto body = ndb::response::CreateKVGet(fbb, vec);
       
-      auto rsp = ndb::response::CreateResponse( fbb,
-                                                ndb::response::Status::Status_Ok,
-                                                ndb::response::ResponseBody::ResponseBody_KVGet,
-                                                body.Union());
-
+      auto rsp = ndb::response::CreateResponse(fbb, Status_Ok, ResponseBody_KVGet, body.Union());
       fbb.Finish(rsp);
     }
-   
-    return fbb;
   }
+
+
+  void handle(FlatBuilder& fbb, const ndb::request::KVRmv& rmv)
+  {
+    if (rmv.keys())
+      m_map.remove(*rmv.keys());
+
+    createEmptyBodyResponse(fbb, Status_Ok, ResponseBody_KVRmv);
+  }
+
 
 
   // Called when loading at startup
@@ -134,21 +143,13 @@ public:
 
 private:
     
-  /*
-  Response validateAndExecute(const std::map<KvQueryType, ValidateExecute>::const_iterator it, const njson& request, const std::string_view reqName, const std::string_view rspName)
+  void createEmptyBodyResponse (FlatBuilder& fbb, const ndb::response::Status status, const ndb::response::ResponseBody bodyType)
   {
-    const auto& validateExecute = it->second;
-
-    if (const auto status = validateExecute.validate(reqName, rspName, request); status != RequestStatus::Ok)
-      return Response{.rsp = createErrorResponse(rspName, status)};
-    else
-    {
-      const auto& body = request.at(reqName);
-      return validateExecute.execute(m_map, body);
-    }
+    auto rsp = ndb::response::CreateResponse (fbb, status, bodyType);
+    fbb.Finish(rsp);
   }
-  */
   
+
   Response save(njson& request)
   {
     if (!m_settings.persistEnabled)

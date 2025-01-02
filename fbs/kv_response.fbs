@@ -12,7 +12,6 @@ enum Status : byte
 
 table KVSet
 {
-
 }
 
 table KVGet
@@ -20,10 +19,15 @@ table KVGet
   kv:[ubyte] (flexbuffer);
 }
 
+table KVRmv
+{
+}
+
 union ResponseBody
 {
   KVSet,
-  KVGet
+  KVGet,
+  KVRmv
 }
 
 table Response

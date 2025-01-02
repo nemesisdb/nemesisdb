@@ -6,3 +6,4 @@ class ResponseBody(object):
     NONE = 0
     KVSet = 1
     KVGet = 2
+    KVRmv = 3

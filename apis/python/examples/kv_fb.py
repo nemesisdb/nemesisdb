@@ -57,7 +57,9 @@ async def test():
   try:
     await kv.set(data)
     
-    print('Ok')
+    print(await kv.get(keys=['k1', 'k2','k3','k4','k5''k6']))
+
+    await kv.remove(keys=['k1'])
 
     print(await kv.get(keys=['k1', 'k2','k3','k4','k5''k6']))
     

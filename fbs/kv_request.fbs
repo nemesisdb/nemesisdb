@@ -13,10 +13,17 @@ table KVGet
   keys:[string];
 }
 
+table KVRmv
+{
+  keys:[string];
+}
+
+
 union RequestBody
 {
   KVSet,
-  KVGet
+  KVGet,
+  KVRmv
 }
 
 
