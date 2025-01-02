@@ -57,19 +57,6 @@ class Connection:
         self.rcvTask.cancel()
 
 
-  async def query(self, s: dict) -> dict:
-    try:
-      queryTask = asio.create_task(self._query(json.dumps(s)))
-      await queryTask
-      msg = queryTask.result()
-    except asio.CancelledError:
-      # if there is an active query when we are disconnected, the query
-      # task is cancelled, raising an exception
-      pass
-
-    return msg
-  
-
   async def query2(self, buffer: bytearray) -> bytes:
     try:
       queryTask = asio.create_task(self._query2(buffer))
@@ -88,6 +75,19 @@ class Connection:
     await self.rspEvt.wait()
     msg = self.message    
     self.rspEvt.clear()
+    return msg
+  
+
+  async def query(self, s: dict) -> dict:
+    try:
+      queryTask = asio.create_task(self._query(json.dumps(s)))
+      await queryTask
+      msg = queryTask.result()
+    except asio.CancelledError:
+      # if there is an active query when we are disconnected, the query
+      # task is cancelled, raising an exception
+      pass
+
     return msg
   
 
