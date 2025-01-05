@@ -1,3 +1,8 @@
+> [!WARNING]
+> This repo is no longer maintained. I've started a new data cache which uses FlatBuffers:  [fcache](https://github.com/ccooper1982/fcache).
+
+<br/>
+
 # NemesisDB
 NemesisDB is an in-memory database using JSON over websockets. There are APIs for:
 
